@@ -1,0 +1,53 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+  <div class="container-fluid">
+    <!-- Logo/Brand -->
+    <a class="navbar-brand fw-bold" routerLink="/">
+      SpanishNow
+    </a>
+
+    <!-- Toggle button para móvil -->
+    <button
+      class="navbar-toggler"
+      type="button"
+      data-bs-toggle="collapse"
+      data-bs-target="#navbarNav"
+    >
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <!-- Navbar content -->
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <!-- Links según el rol -->
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item" *ngIf="currentUser()?.role === 'teacher'">
+          <a class="nav-link" routerLink="/teacher/dashboard" routerLinkActive="active">
+            Mis Cursos
+          </a>
+        </li>
+        <li class="nav-item" *ngIf="currentUser()?.role === 'student'">
+          <a class="nav-link" routerLink="/student/dashboard" routerLinkActive="active">
+            Explorar Cursos
+          </a>
+        </li>
+        <li class="nav-item" *ngIf="currentUser()?.role === 'student'">
+          <a class="nav-link" routerLink="/student/my-courses" routerLinkActive="active">
+            Mis Cursos
+          </a>
+        </li>
+      </ul>
+
+      <!-- User info y logout -->
+      <div class="d-flex align-items-center">
+        <span class="text-white me-3">
+          {{ currentUser()?.name }}
+          <span class="badge bg-light text-primary ms-2">
+            {{ currentUser()?.role === 'teacher' ? 'Profesor' : 'Estudiante' }}
+          </span>
+        </span>
+        <button class="btn btn-outline-light btn-sm" (click)="logout()">
+          Cerrar sesión
+        </button>
+      </div>
+    </div>
+  </div>
+</nav>

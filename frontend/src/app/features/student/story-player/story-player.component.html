@@ -1,0 +1,120 @@
+<!-- Navbar compartido -->
+<app-navbar></app-navbar>
+
+<div class="container-fluid mt-4">
+  <div class="row">
+    <!-- Sidebar con lista de historias -->
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-header bg-primary text-white">
+          <h6 class="mb-0">{{ course()?.title }}</h6>
+        </div>
+        <div class="card-body p-0">
+          <div *ngIf="isLoading()" class="p-3 text-center">
+            <div class="spinner-border spinner-border-sm" role="status"></div>
+            <p class="small text-muted mt-2 mb-0">Cargando...</p>
+          </div>
+
+          <div *ngIf="!isLoading() && course()">
+            <div *ngFor="let unit of course()?.units" class="border-bottom">
+              <div class="p-3 bg-light">
+                <strong class="small">{{ unit.title }}</strong>
+              </div>
+              <div class="list-group list-group-flush">
+                <button
+                  *ngFor="let story of unit.stories"
+                  class="list-group-item list-group-item-action"
+                  [class.active]="currentStory()?.id === story.id"
+                  (click)="selectStory(story)"
+                >
+                  <small>{{ story.title }}</small>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-outline-secondary w-100 mt-3" (click)="goBack()">
+        ← Volver al Dashboard
+      </button>
+    </div>
+
+    <!-- Área principal del reproductor -->
+    <div class="col-md-9">
+      <div *ngIf="errorMessage()" class="alert alert-danger" role="alert">
+        {{ errorMessage() }}
+      </div>
+
+      <div *ngIf="!currentStory() && !isLoading()" class="card">
+        <div class="card-body text-center py-5">
+          <h5>Selecciona una historia para comenzar</h5>
+          <p class="text-muted">Elige una historia del menú lateral</p>
+        </div>
+      </div>
+
+      <div *ngIf="currentStory()" class="card">
+        <div class="card-header">
+          <h4 class="mb-0">{{ currentStory()?.title }}</h4>
+        </div>
+
+        <div class="card-body">
+          <!-- Controles de audio -->
+          <div class="mb-4 p-3 bg-light rounded">
+            <div class="d-flex align-items-center justify-content-between">
+              <div>
+                <h6 class="mb-2">Controles de Audio</h6>
+                <div class="btn-group" role="group">
+                  <button
+                    type="button"
+                    class="btn btn-sm"
+                    [class.btn-primary]="currentSpeed() === 'slow'"
+                    [class.btn-outline-primary]="currentSpeed() !== 'slow'"
+                    (click)="switchSpeed('slow')"
+                  >
+                    🐢 Lento
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-sm"
+                    [class.btn-primary]="currentSpeed() === 'normal'"
+                    [class.btn-outline-primary]="currentSpeed() !== 'normal'"
+                    (click)="switchSpeed('normal')"
+                  >
+                    🐰 Normal
+                  </button>
+                </div>
+              </div>
+
+              <button
+                class="btn btn-lg"
+                [class.btn-success]="!isPlaying()"
+                [class.btn-warning]="isPlaying()"
+                (click)="togglePlayPause()"
+              >
+                <span *ngIf="!isPlaying()">▶ Reproducir</span>
+                <span *ngIf="isPlaying()">⏸ Pausar</span>
+              </button>
+            </div>
+
+            <div *ngIf="!currentStory()?.audioSlowUrl && !currentStory()?.audioNormalUrl" class="alert alert-warning mt-3 mb-0">
+              <small>⚠️ Esta historia aún no tiene audio disponible</small>
+            </div>
+          </div>
+
+          <!-- Texto de la historia -->
+          <div class="story-text p-4 bg-white border rounded">
+            <p class="lead" style="line-height: 1.8; white-space: pre-wrap;">{{ currentStory()?.text }}</p>
+          </div>
+
+          <!-- Botón de completado -->
+          <div class="mt-4 text-center">
+            <button class="btn btn-success btn-lg" (click)="markAsCompleted()">
+              ✓ Marcar como Completada
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,184 @@
+<!-- Navbar compartido -->
+<app-navbar></app-navbar>
+
+<div class="container-fluid mt-4">
+  <div class="row">
+    <div class="col-12">
+      <!-- Tabs para cambiar entre vistas -->
+      <ul class="nav nav-tabs mb-4">
+        <li class="nav-item">
+          <button
+            class="nav-link"
+            [class.active]="activeView() === 'catalog'"
+            (click)="switchView('catalog')"
+          >
+            Explorar Cursos
+          </button>
+        </li>
+        <li class="nav-item">
+          <button
+            class="nav-link"
+            [class.active]="activeView() === 'my-courses'"
+            (click)="switchView('my-courses')"
+          >
+            Mis Cursos
+            <span *ngIf="myCourses().length > 0" class="badge bg-primary ms-2">
+              {{ myCourses().length }}
+            </span>
+          </button>
+        </li>
+      </ul>
+
+      <!-- Mensaje de error -->
+      <div *ngIf="errorMessage()" class="alert alert-danger" role="alert">
+        {{ errorMessage() }}
+      </div>
+
+      <!-- VISTA: Catálogo de Cursos -->
+      <div *ngIf="activeView() === 'catalog'">
+        <div class="mb-4">
+          <h1 class="h3">Catálogo de Cursos</h1>
+          <p class="text-muted mb-0">Explora todos los cursos de español disponibles</p>
+        </div>
+
+        <!-- Loading spinner -->
+        <div *ngIf="isLoadingCatalog()" class="text-center py-5">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando...</span>
+          </div>
+          <p class="text-muted mt-2">Cargando catálogo...</p>
+        </div>
+
+        <!-- Empty state -->
+        <div *ngIf="!isLoadingCatalog() && allCourses().length === 0" class="card">
+          <div class="card-body text-center py-5">
+            <h2 class="h5 mb-3">No hay cursos disponibles</h2>
+            <p class="text-muted mb-0">Los profesores aún no han creado cursos</p>
+          </div>
+        </div>
+
+        <!-- Grid de cursos -->
+        <div *ngIf="!isLoadingCatalog() && allCourses().length > 0" class="row g-4">
+          <div *ngFor="let course of allCourses()" class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm">
+              <!-- Imagen del curso -->
+              <img
+                [src]="course.imageUrl || 'https://via.placeholder.com/400x200?text=Curso+de+Español'"
+                class="card-img-top"
+                [alt]="course.title"
+                style="height: 200px; object-fit: cover;"
+              >
+
+              <div class="card-body">
+                <!-- Título y nivel -->
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <h5 class="card-title mb-0">{{ course.title }}</h5>
+                  <span class="badge bg-primary">{{ course.level }}</span>
+                </div>
+
+                <!-- Descripción -->
+                <p class="card-text text-muted small mb-3">
+                  {{ course.description }}
+                </p>
+
+                <!-- Estado de inscripción -->
+                <div *ngIf="isEnrolled(course.id)" class="alert alert-success py-2 mb-2">
+                  <small>✓ Ya estás inscrito en este curso</small>
+                </div>
+              </div>
+
+              <!-- Footer con acciones -->
+              <div class="card-footer bg-transparent">
+                <button
+                  *ngIf="!isEnrolled(course.id)"
+                  class="btn btn-primary w-100"
+                  (click)="enrollInCourse(course.id)"
+                >
+                  Inscribirse
+                </button>
+                <button
+                  *ngIf="isEnrolled(course.id)"
+                  class="btn btn-outline-primary w-100"
+                  (click)="switchView('my-courses')"
+                >
+                  Ver en Mis Cursos
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VISTA: Mis Cursos -->
+      <div *ngIf="activeView() === 'my-courses'">
+        <div class="mb-4">
+          <h1 class="h3">Mis Cursos</h1>
+          <p class="text-muted mb-0">Cursos en los que estás inscrito</p>
+        </div>
+
+        <!-- Loading spinner -->
+        <div *ngIf="isLoadingMyCourses()" class="text-center py-5">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando...</span>
+          </div>
+          <p class="text-muted mt-2">Cargando tus cursos...</p>
+        </div>
+
+        <!-- Empty state -->
+        <div *ngIf="!isLoadingMyCourses() && myCourses().length === 0" class="card">
+          <div class="card-body text-center py-5">
+            <h2 class="h5 mb-3">No estás inscrito en ningún curso</h2>
+            <p class="text-muted mb-4">Explora el catálogo y comienza tu aprendizaje</p>
+            <button class="btn btn-primary" (click)="switchView('catalog')">
+              Explorar Cursos
+            </button>
+          </div>
+        </div>
+
+        <!-- Grid de mis cursos -->
+        <div *ngIf="!isLoadingMyCourses() && myCourses().length > 0" class="row g-4">
+          <div *ngFor="let enrollment of myCourses()" class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm">
+              <!-- Imagen del curso -->
+              <img
+                [src]="enrollment.course?.imageUrl || 'https://via.placeholder.com/400x200?text=Curso+de+Español'"
+                class="card-img-top"
+                [alt]="enrollment.course?.title"
+                style="height: 200px; object-fit: cover;"
+              >
+
+              <div class="card-body">
+                <!-- Título y nivel -->
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <h5 class="card-title mb-0">{{ enrollment.course?.title }}</h5>
+                  <span class="badge bg-primary">{{ enrollment.course?.level }}</span>
+                </div>
+
+                <!-- Descripción -->
+                <p class="card-text text-muted small mb-3">
+                  {{ enrollment.course?.description }}
+                </p>
+
+                <!-- Fecha de inscripción -->
+                <small class="text-muted">
+                  Inscrito: {{ enrollment.createdAt | date:'short' }}
+                </small>
+              </div>
+
+              <!-- Footer con acciones -->
+              <div class="card-footer bg-transparent">
+                <a
+                  [routerLink]="['/student/course', enrollment.courseId, 'play']"
+                  class="btn btn-success w-100"
+                >
+                  Continuar Aprendiendo →
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

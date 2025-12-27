@@ -44,11 +44,17 @@ router.post('/', authMiddleware, isTeacher, upload.single('image'), async (req, 
     const { title, description, level } = req.body;
     let imageUrl = null;
 
-    if (req.file) {
-      const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: 'spanishnow/courses'
-      });
-      imageUrl = result.secure_url;
+    // Solo subir a Cloudinary si está configurado y hay archivo
+    if (req.file && process.env.CLOUDINARY_CLOUD_NAME) {
+      try {
+        const result = await cloudinary.uploader.upload(req.file.path, {
+          folder: 'spanishnow/courses'
+        });
+        imageUrl = result.secure_url;
+      } catch (cloudinaryError) {
+        console.warn('Cloudinary upload failed, continuing without image:', cloudinaryError.message);
+        // Continuar sin imagen si Cloudinary falla
+      }
     }
 
     const course = await Course.create({

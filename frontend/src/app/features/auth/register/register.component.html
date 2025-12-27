@@ -1,0 +1,148 @@
+<div class="container-fluid">
+  <div class="row justify-content-center mt-5">
+    <div class="col-md-6 col-lg-4">
+
+      <div class="card shadow">
+        <div class="card-body p-4">
+
+          <!-- Título -->
+          <div class="text-center mb-4">
+            <h2 class="fw-bold text-primary">SpanishNow</h2>
+            <p class="text-muted">Crea tu cuenta</p>
+          </div>
+
+          <!-- Mensaje de error -->
+          <div *ngIf="errorMessage" class="alert alert-danger" role="alert">
+            {{ errorMessage }}
+          </div>
+
+          <!-- Formulario -->
+          <form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
+
+            <!-- Campo Nombre -->
+            <div class="mb-3">
+              <label for="name" class="form-label">Nombre completo</label>
+              <input
+                type="text"
+                class="form-control"
+                id="name"
+                formControlName="name"
+                [class.is-invalid]="hasError('name')"
+                placeholder="Juan Pérez"
+              >
+              <div *ngIf="hasError('name')" class="invalid-feedback">
+                {{ getErrorMessage('name') }}
+              </div>
+            </div>
+
+            <!-- Campo Email -->
+            <div class="mb-3">
+              <label for="email" class="form-label">Email</label>
+              <input
+                type="email"
+                class="form-control"
+                id="email"
+                formControlName="email"
+                [class.is-invalid]="hasError('email')"
+                placeholder="tu@email.com"
+              >
+              <div *ngIf="hasError('email')" class="invalid-feedback">
+                {{ getErrorMessage('email') }}
+              </div>
+            </div>
+
+            <!-- Campo Password -->
+            <div class="mb-3">
+              <label for="password" class="form-label">Contraseña</label>
+              <input
+                type="password"
+                class="form-control"
+                id="password"
+                formControlName="password"
+                [class.is-invalid]="hasError('password')"
+                placeholder="Mínimo 6 caracteres"
+              >
+              <div *ngIf="hasError('password')" class="invalid-feedback">
+                {{ getErrorMessage('password') }}
+              </div>
+            </div>
+
+            <!-- Selector de Rol -->
+            <div class="mb-3">
+              <label class="form-label">Soy un...</label>
+
+              <!-- Radio buttons para seleccionar rol -->
+              <!-- formControlName vincula con el control 'role' -->
+              <div class="form-check">
+                <input
+                  class="form-check-input"
+                  type="radio"
+                  name="role"
+                  id="roleStudent"
+                  value="student"
+                  formControlName="role"
+                >
+                <label class="form-check-label" for="roleStudent">
+                  <strong>Estudiante</strong>
+                  <small class="d-block text-muted">
+                    Quiero aprender español
+                  </small>
+                </label>
+              </div>
+
+              <div class="form-check mt-2">
+                <input
+                  class="form-check-input"
+                  type="radio"
+                  name="role"
+                  id="roleTeacher"
+                  value="teacher"
+                  formControlName="role"
+                >
+                <label class="form-check-label" for="roleTeacher">
+                  <strong>Profesor</strong>
+                  <small class="d-block text-muted">
+                    Quiero crear y enseñar cursos
+                  </small>
+                </label>
+              </div>
+            </div>
+
+            <!-- Botón Submit -->
+            <div class="d-grid gap-2 mb-3">
+              <button
+                type="submit"
+                class="btn btn-primary"
+                [disabled]="registerForm.invalid || isLoading"
+              >
+                <span
+                  *ngIf="isLoading"
+                  class="spinner-border spinner-border-sm me-2"
+                  role="status"
+                  aria-hidden="true"
+                ></span>
+                {{ isLoading ? 'Creando cuenta...' : 'Crear cuenta' }}
+              </button>
+            </div>
+
+            <!-- Link a login -->
+            <div class="text-center">
+              <p class="mb-0 text-muted">
+                ¿Ya tienes cuenta?
+                <a routerLink="/auth/login" class="text-primary">Inicia sesión aquí</a>
+              </p>
+            </div>
+
+          </form>
+        </div>
+      </div>
+
+      <div class="text-center mt-3">
+        <small class="text-muted">
+          Aprende español con el método TPRS
+        </small>
+      </div>
+
+    </div>
+  </div>
+</div>

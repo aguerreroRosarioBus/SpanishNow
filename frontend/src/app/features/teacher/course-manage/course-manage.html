@@ -1,0 +1,316 @@
+<app-navbar></app-navbar>
+
+<div class="container-fluid mt-4">
+  <div class="row">
+    <div class="col-12">
+      <!-- Loading -->
+      <div *ngIf="isLoading()" class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Cargando...</span>
+        </div>
+        <p class="text-muted mt-2">Cargando curso...</p>
+      </div>
+
+      <!-- Error -->
+      <div *ngIf="errorMessage()" class="alert alert-danger">
+        {{ errorMessage() }}
+      </div>
+
+      <!-- Course Content -->
+      <div *ngIf="!isLoading() && course()">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <button class="btn btn-outline-secondary btn-sm mb-2" (click)="goBack()">
+              ← Volver al Dashboard
+            </button>
+            <h1 class="h3 mb-1">{{ course()?.title }}</h1>
+            <p class="text-muted mb-0">Gestión de Contenido del Curso</p>
+          </div>
+          <button class="btn btn-success" (click)="openUnitModal()">
+            + Nueva Unidad
+          </button>
+        </div>
+
+        <!-- Units List -->
+        <div class="row g-4">
+          <!-- Empty State -->
+          <div *ngIf="units().length === 0" class="col-12">
+            <div class="card">
+              <div class="card-body text-center py-5">
+                <h2 class="h5 mb-3">No hay unidades creadas</h2>
+                <p class="text-muted mb-4">Comienza creando la primera unidad de tu curso</p>
+                <button class="btn btn-primary" (click)="openUnitModal()">
+                  Crear Primera Unidad
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Units -->
+          <div *ngFor="let unit of units()" class="col-12">
+            <div class="card">
+              <div class="card-header bg-primary text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h5 class="mb-0">{{ unit.title }}</h5>
+                    <small>Orden: {{ unit.order }}</small>
+                  </div>
+                  <div>
+                    <button
+                      class="btn btn-sm btn-light me-2"
+                      (click)="openStoryModal(unit.id)"
+                    >
+                      + Agregar Historia
+                    </button>
+                    <button
+                      class="btn btn-sm btn-danger"
+                      (click)="deleteUnit(unit.id)"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="card-body">
+                <p class="mb-3">{{ unit.description }}</p>
+
+                <!-- Stories List -->
+                <div *ngIf="unit.stories && unit.stories.length > 0">
+                  <h6 class="mb-3">Historias ({{ unit.stories.length }})</h6>
+                  <div class="list-group">
+                    <div
+                      *ngFor="let story of unit.stories"
+                      class="list-group-item d-flex justify-content-between align-items-center"
+                    >
+                      <div>
+                        <strong>{{ story.title }}</strong>
+                        <small class="text-muted ms-2">Orden: {{ story.order }}</small>
+                        <br>
+                        <small class="text-muted">
+                          {{ story.text.substring(0, 100) }}{{ story.text.length > 100 ? '...' : '' }}
+                        </small>
+                      </div>
+                      <button
+                        class="btn btn-sm btn-outline-danger"
+                        (click)="deleteStory(unit.id, story.id)"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- No Stories -->
+                <div *ngIf="!unit.stories || unit.stories.length === 0" class="text-center py-3">
+                  <p class="text-muted mb-2">No hay historias en esta unidad</p>
+                  <button class="btn btn-sm btn-primary" (click)="openStoryModal(unit.id)">
+                    Agregar Primera Historia
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Unit Modal -->
+<div
+  class="modal fade"
+  [class.show]="showUnitModal()"
+  [style.display]="showUnitModal() ? 'block' : 'none'"
+  tabindex="-1"
+>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Nueva Unidad</h5>
+        <button type="button" class="btn-close" (click)="closeUnitModal()"></button>
+      </div>
+      <form [formGroup]="unitForm" (ngSubmit)="createUnit()">
+        <div class="modal-body">
+          <!-- Title -->
+          <div class="mb-3">
+            <label for="unitTitle" class="form-label">Título *</label>
+            <input
+              type="text"
+              class="form-control"
+              id="unitTitle"
+              formControlName="title"
+              placeholder="Ej: Saludos y Presentaciones"
+            >
+            <div
+              *ngIf="unitForm.get('title')?.invalid && unitForm.get('title')?.touched"
+              class="text-danger small mt-1"
+            >
+              El título debe tener al menos 3 caracteres
+            </div>
+          </div>
+
+          <!-- Description -->
+          <div class="mb-3">
+            <label for="unitDescription" class="form-label">Descripción *</label>
+            <textarea
+              class="form-control"
+              id="unitDescription"
+              rows="3"
+              formControlName="description"
+              placeholder="Describe el contenido de esta unidad"
+            ></textarea>
+            <div
+              *ngIf="unitForm.get('description')?.invalid && unitForm.get('description')?.touched"
+              class="text-danger small mt-1"
+            >
+              La descripción debe tener al menos 10 caracteres
+            </div>
+          </div>
+
+          <!-- Order -->
+          <div class="mb-3">
+            <label for="unitOrder" class="form-label">Orden *</label>
+            <input
+              type="number"
+              class="form-control"
+              id="unitOrder"
+              formControlName="order"
+              min="0"
+            >
+            <small class="text-muted">Define el orden de aparición de la unidad</small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="closeUnitModal()">
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            class="btn btn-primary"
+            [disabled]="unitForm.invalid"
+          >
+            Crear Unidad
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Story Modal -->
+<div
+  class="modal fade"
+  [class.show]="showStoryModal()"
+  [style.display]="showStoryModal() ? 'block' : 'none'"
+  tabindex="-1"
+>
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Nueva Historia</h5>
+        <button type="button" class="btn-close" (click)="closeStoryModal()"></button>
+      </div>
+      <form [formGroup]="storyForm" (ngSubmit)="createStory()">
+        <div class="modal-body">
+          <!-- Title -->
+          <div class="mb-3">
+            <label for="storyTitle" class="form-label">Título *</label>
+            <input
+              type="text"
+              class="form-control"
+              id="storyTitle"
+              formControlName="title"
+              placeholder="Ej: Juan quiere conocer a María"
+            >
+            <div
+              *ngIf="storyForm.get('title')?.invalid && storyForm.get('title')?.touched"
+              class="text-danger small mt-1"
+            >
+              El título debe tener al menos 3 caracteres
+            </div>
+          </div>
+
+          <!-- Text -->
+          <div class="mb-3">
+            <label for="storyText" class="form-label">Texto de la Historia *</label>
+            <textarea
+              class="form-control"
+              id="storyText"
+              rows="8"
+              formControlName="text"
+              placeholder="Escribe la historia aquí..."
+            ></textarea>
+            <small class="text-muted d-block mt-1">
+              Escribe la historia usando vocabulario repetitivo y estructuras simples (método TPRS)
+            </small>
+            <div
+              *ngIf="storyForm.get('text')?.invalid && storyForm.get('text')?.touched"
+              class="text-danger small mt-1"
+            >
+              El texto debe tener al menos 20 caracteres
+            </div>
+          </div>
+
+          <!-- Order -->
+          <div class="mb-3">
+            <label for="storyOrder" class="form-label">Orden *</label>
+            <input
+              type="number"
+              class="form-control"
+              id="storyOrder"
+              formControlName="order"
+              min="0"
+            >
+          </div>
+
+          <!-- Audio Slow -->
+          <div class="mb-3">
+            <label for="audioSlow" class="form-label">Audio Lento (Opcional)</label>
+            <input
+              type="file"
+              class="form-control"
+              id="audioSlow"
+              accept="audio/*"
+              (change)="onAudioSlowSelected($event)"
+            >
+            <small class="text-muted">Formato: MP3, WAV, OGG (máx 50MB)</small>
+          </div>
+
+          <!-- Audio Normal -->
+          <div class="mb-3">
+            <label for="audioNormal" class="form-label">Audio Normal (Opcional)</label>
+            <input
+              type="file"
+              class="form-control"
+              id="audioNormal"
+              accept="audio/*"
+              (change)="onAudioNormalSelected($event)"
+            >
+            <small class="text-muted">Formato: MP3, WAV, OGG (máx 50MB)</small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="closeStoryModal()">
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            class="btn btn-primary"
+            [disabled]="storyForm.invalid"
+          >
+            Crear Historia
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Backdrop -->
+<div
+  class="modal-backdrop fade"
+  [class.show]="showUnitModal() || showStoryModal()"
+  *ngIf="showUnitModal() || showStoryModal()"
+  (click)="showUnitModal() ? closeUnitModal() : closeStoryModal()"
+></div>

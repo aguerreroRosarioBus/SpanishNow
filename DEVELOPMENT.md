@@ -984,6 +984,28 @@ spanishnow/
 
 ## Changelog
 
+### 2024-12-27 - Estado Actual
+- ✅ Componentes de autenticación completados (login, register) con Bootstrap via CDN
+- ✅ Navbar y layout principal implementados
+- ✅ Dashboard de profesor completado
+  - ✅ Lista de cursos del profesor
+  - ✅ Crear curso con imagen (Cloudinary opcional)
+  - ✅ Formularios reactivos con validación
+- ✅ Dashboard de alumno completado
+  - ✅ Catálogo de cursos con inscripción
+  - ✅ Vista "Mis Cursos" con cursos inscritos
+  - ✅ Sistema de tabs (Explorar/Mis Cursos)
+- ✅ Story Player básico completado
+  - ✅ Reproducción de audio (lento/normal)
+  - ✅ Controles reproducir/pausar
+  - ✅ Vista de texto de historia
+  - ✅ Navegación por unidades y historias
+- ✅ Servicios creados: UnitService, StoryService (en progreso)
+- 🚧 **En progreso**: Página de Gestión de Curso para profesores
+  - Permitir crear unidades dentro de un curso
+  - Permitir crear historias dentro de una unidad
+  - Gestión completa del contenido desde UI
+
 ### 2024-12-24 - Versión Inicial
 - ✅ Proyecto inicializado (backend + frontend)
 - ✅ Base de datos MySQL configurada
@@ -995,6 +1017,6 @@ spanishnow/
 
 ---
 
-**Última actualización**: 24 de diciembre de 2024
-**Versión**: 0.1.0 (MVP en desarrollo)
-**Estado**: 🚧 En construcción activa
+**Última actualización**: 27 de diciembre de 2024
+**Versión**: 0.2.0 (MVP en desarrollo avanzado)
+**Estado**: 🚧 En construcción activa - Trabajando en gestión de contenido para profesores

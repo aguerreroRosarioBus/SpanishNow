@@ -1,0 +1,197 @@
+<!-- Navbar compartido -->
+<app-navbar></app-navbar>
+
+<div class="container-fluid mt-4">
+  <div class="row">
+    <div class="col-12">
+      <!-- Header -->
+      <div class="mb-4">
+        <h1 class="h3">Mis Cursos</h1>
+        <p class="text-muted mb-0">Gestiona tus cursos de español TPRS</p>
+      </div>
+
+      <!-- Mensaje de error -->
+      <div *ngIf="errorMessage()" class="alert alert-danger" role="alert">
+        {{ errorMessage() }}
+      </div>
+
+      <!-- Loading spinner -->
+      <div *ngIf="isLoading()" class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Cargando...</span>
+        </div>
+        <p class="text-muted mt-2">Cargando cursos...</p>
+      </div>
+
+      <!-- Lista de cursos -->
+      <div *ngIf="!isLoading()">
+        <!-- Botón para crear nuevo curso -->
+        <div class="mb-4">
+          <button class="btn btn-primary" (click)="openCreateModal()">
+            + Crear Nuevo Curso
+          </button>
+        </div>
+
+        <!-- Empty state -->
+        <div *ngIf="courses().length === 0" class="card">
+          <div class="card-body text-center py-5">
+            <h2 class="h5 mb-3">No tienes cursos todavía</h2>
+            <p class="text-muted mb-4">Crea tu primer curso TPRS para comenzar a enseñar español</p>
+            <button class="btn btn-primary" (click)="openCreateModal()">
+              Crear mi primer curso
+            </button>
+          </div>
+        </div>
+
+        <!-- Grid de cursos -->
+        <div *ngIf="courses().length > 0" class="row g-4">
+          <div *ngFor="let course of courses()" class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm">
+              <!-- Imagen del curso -->
+              <img
+                [src]="course.imageUrl || 'https://via.placeholder.com/400x200?text=Curso+de+Español'"
+                class="card-img-top"
+                [alt]="course.title"
+                style="height: 200px; object-fit: cover;"
+              >
+
+              <div class="card-body">
+                <!-- Título y nivel -->
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <h5 class="card-title mb-0">{{ course.title }}</h5>
+                  <span class="badge bg-primary">{{ course.level }}</span>
+                </div>
+
+                <!-- Descripción -->
+                <p class="card-text text-muted small">
+                  {{ course.description }}
+                </p>
+              </div>
+
+              <!-- Footer con acciones -->
+              <div class="card-footer bg-transparent">
+                <div class="d-flex gap-2">
+                  <a
+                    [routerLink]="['/teacher/course', course.id, 'manage']"
+                    class="btn btn-sm btn-primary flex-fill"
+                  >
+                    Gestionar Contenido
+                  </a>
+                  <button class="btn btn-sm btn-outline-secondary">
+                    Editar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Modal para crear curso -->
+<div *ngIf="showCreateModal()" class="modal d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <!-- Header -->
+      <div class="modal-header">
+        <h5 class="modal-title">Crear Nuevo Curso</h5>
+        <button type="button" class="btn-close" (click)="closeCreateModal()"></button>
+      </div>
+
+      <!-- Body con formulario -->
+      <div class="modal-body">
+        <form [formGroup]="courseForm" (ngSubmit)="createCourse()">
+          <!-- Título -->
+          <div class="mb-3">
+            <label for="title" class="form-label">Título del curso *</label>
+            <input
+              type="text"
+              class="form-control"
+              id="title"
+              formControlName="title"
+              [class.is-invalid]="hasError('title')"
+              placeholder="Ej: Español para principiantes"
+            >
+            <div *ngIf="hasError('title')" class="invalid-feedback">
+              {{ getErrorMessage('title') }}
+            </div>
+          </div>
+
+          <!-- Descripción -->
+          <div class="mb-3">
+            <label for="description" class="form-label">Descripción *</label>
+            <textarea
+              class="form-control"
+              id="description"
+              formControlName="description"
+              [class.is-invalid]="hasError('description')"
+              rows="4"
+              placeholder="Describe brevemente de qué trata el curso y qué aprenderán los estudiantes"
+            ></textarea>
+            <div *ngIf="hasError('description')" class="invalid-feedback">
+              {{ getErrorMessage('description') }}
+            </div>
+          </div>
+
+          <!-- Nivel -->
+          <div class="mb-3">
+            <label for="level" class="form-label">Nivel CEFR *</label>
+            <select
+              class="form-select"
+              id="level"
+              formControlName="level"
+              [class.is-invalid]="hasError('level')"
+            >
+              <option *ngFor="let level of levels" [value]="level">{{ level }}</option>
+            </select>
+            <small class="form-text text-muted">
+              A1-A2: Básico | B1-B2: Intermedio | C1-C2: Avanzado
+            </small>
+            <div *ngIf="hasError('level')" class="invalid-feedback">
+              {{ getErrorMessage('level') }}
+            </div>
+          </div>
+
+          <!-- Imagen -->
+          <div class="mb-3">
+            <label for="image" class="form-label">Imagen del curso (opcional)</label>
+            <input
+              type="file"
+              class="form-control"
+              id="image"
+              accept="image/*"
+              (change)="onImageSelected($event)"
+            >
+            <small class="form-text text-muted">
+              Formatos: JPG, PNG. Tamaño máximo: 5MB
+            </small>
+
+            <!-- Preview de la imagen -->
+            <div *ngIf="imagePreview" class="mt-3">
+              <img [src]="imagePreview" alt="Preview" class="img-thumbnail" style="max-height: 200px;">
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Footer -->
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeCreateModal()" [disabled]="isCreating()">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          (click)="createCourse()"
+          [disabled]="courseForm.invalid || isCreating()"
+        >
+          <span *ngIf="isCreating()" class="spinner-border spinner-border-sm me-2"></span>
+          {{ isCreating() ? 'Creando...' : 'Crear Curso' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

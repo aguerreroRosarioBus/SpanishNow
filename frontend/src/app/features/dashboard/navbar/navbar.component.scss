@@ -1,0 +1,9 @@
+// Estilos del navbar compartido
+.navbar-brand {
+  font-size: 1.5rem;
+}
+
+.nav-link.active {
+  font-weight: 600;
+  border-bottom: 2px solid white;
+}

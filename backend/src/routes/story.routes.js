@@ -45,20 +45,29 @@ router.post('/', authMiddleware, isTeacher, upload.fields([
     let audioSlowUrl = null;
     let audioNormalUrl = null;
 
-    if (req.files['audioSlow']) {
-      const result = await cloudinary.uploader.upload(req.files['audioSlow'][0].path, {
-        folder: 'spanishnow/audio',
-        resource_type: 'video'
-      });
-      audioSlowUrl = result.secure_url;
+    // Solo subir a Cloudinary si está configurado
+    if (req.files['audioSlow'] && process.env.CLOUDINARY_CLOUD_NAME) {
+      try {
+        const result = await cloudinary.uploader.upload(req.files['audioSlow'][0].path, {
+          folder: 'spanishnow/audio',
+          resource_type: 'video'
+        });
+        audioSlowUrl = result.secure_url;
+      } catch (cloudinaryError) {
+        console.warn('Cloudinary upload failed for audioSlow, continuing without audio:', cloudinaryError.message);
+      }
     }
 
-    if (req.files['audioNormal']) {
-      const result = await cloudinary.uploader.upload(req.files['audioNormal'][0].path, {
-        folder: 'spanishnow/audio',
-        resource_type: 'video'
-      });
-      audioNormalUrl = result.secure_url;
+    if (req.files['audioNormal'] && process.env.CLOUDINARY_CLOUD_NAME) {
+      try {
+        const result = await cloudinary.uploader.upload(req.files['audioNormal'][0].path, {
+          folder: 'spanishnow/audio',
+          resource_type: 'video'
+        });
+        audioNormalUrl = result.secure_url;
+      } catch (cloudinaryError) {
+        console.warn('Cloudinary upload failed for audioNormal, continuing without audio:', cloudinaryError.message);
+      }
     }
 
     const story = await Story.create({
@@ -102,20 +111,29 @@ router.put('/:id', authMiddleware, isTeacher, upload.fields([
     let audioSlowUrl = story.audioSlowUrl;
     let audioNormalUrl = story.audioNormalUrl;
 
-    if (req.files['audioSlow']) {
-      const result = await cloudinary.uploader.upload(req.files['audioSlow'][0].path, {
-        folder: 'spanishnow/audio',
-        resource_type: 'video'
-      });
-      audioSlowUrl = result.secure_url;
+    // Solo subir a Cloudinary si está configurado
+    if (req.files['audioSlow'] && process.env.CLOUDINARY_CLOUD_NAME) {
+      try {
+        const result = await cloudinary.uploader.upload(req.files['audioSlow'][0].path, {
+          folder: 'spanishnow/audio',
+          resource_type: 'video'
+        });
+        audioSlowUrl = result.secure_url;
+      } catch (cloudinaryError) {
+        console.warn('Cloudinary upload failed for audioSlow, continuing without audio:', cloudinaryError.message);
+      }
     }
 
-    if (req.files['audioNormal']) {
-      const result = await cloudinary.uploader.upload(req.files['audioNormal'][0].path, {
-        folder: 'spanishnow/audio',
-        resource_type: 'video'
-      });
-      audioNormalUrl = result.secure_url;
+    if (req.files['audioNormal'] && process.env.CLOUDINARY_CLOUD_NAME) {
+      try {
+        const result = await cloudinary.uploader.upload(req.files['audioNormal'][0].path, {
+          folder: 'spanishnow/audio',
+          resource_type: 'video'
+        });
+        audioNormalUrl = result.secure_url;
+      } catch (cloudinaryError) {
+        console.warn('Cloudinary upload failed for audioNormal, continuing without audio:', cloudinaryError.message);
+      }
     }
 
     await story.update({ title, text, audioSlowUrl, audioNormalUrl, order });

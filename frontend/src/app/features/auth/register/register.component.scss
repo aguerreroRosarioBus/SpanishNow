@@ -1,0 +1,80 @@
+/**
+ * Estilos del componente Register
+ * Similar al Login
+ */
+
+.container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+}
+
+.card {
+  border: none;
+  border-radius: 12px;
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+h2 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+a {
+  text-decoration: none;
+  font-weight: 500;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.btn-primary {
+  padding: 0.75rem;
+  font-weight: 500;
+  transition: all 0.2s;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+}
+
+// Estilo específico para los radio buttons
+.form-check {
+  padding: 0.75rem;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  transition: all 0.2s;
+
+  &:hover {
+    background-color: #f8f9fa;
+    border-color: #0d6efd;
+  }
+
+  // Cuando el radio está seleccionado
+  &:has(.form-check-input:checked) {
+    background-color: #e7f1ff;
+    border-color: #0d6efd;
+  }
+}
+
+.form-check-label {
+  cursor: pointer;
+  width: 100%;
+}
