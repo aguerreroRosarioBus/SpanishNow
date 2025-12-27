@@ -28,6 +28,8 @@ export class StoryPlayerComponent implements OnInit {
   currentStory = signal<Story | null>(null);
   isLoading = signal<boolean>(false);
   errorMessage = signal<string>('');
+  enrollmentId = signal<number | null>(null);
+  completedStories = signal<Set<number>>(new Set());
 
   // Control del reproductor de audio
   isPlaying = signal<boolean>(false);
@@ -43,14 +45,53 @@ export class StoryPlayerComponent implements OnInit {
     // Obtener el ID del curso de la URL
     this.route.params.subscribe(params => {
       this.courseId = +params['courseId'];
-      this.loadCourse();
+      this.loadEnrollmentAndCourse();
+    });
+  }
+
+  loadEnrollmentAndCourse(): void {
+    this.isLoading.set(true);
+    this.errorMessage.set('');
+
+    // Primero obtener el enrollment
+    this.enrollmentService.getMyCourses().subscribe({
+      next: (enrollments) => {
+        const enrollment = enrollments.find(e => e.courseId === this.courseId);
+        if (!enrollment) {
+          this.errorMessage.set('No estás inscrito en este curso');
+          this.isLoading.set(false);
+          return;
+        }
+
+        this.enrollmentId.set(enrollment.id);
+
+        // Cargar progreso
+        this.loadProgress(enrollment.id);
+
+        // Luego cargar el curso
+        this.loadCourse();
+      },
+      error: (error) => {
+        console.error('Error loading enrollment:', error);
+        this.errorMessage.set('Error al cargar la inscripción');
+        this.isLoading.set(false);
+      }
+    });
+  }
+
+  loadProgress(enrollmentId: number): void {
+    this.enrollmentService.getProgress(enrollmentId).subscribe({
+      next: (progress) => {
+        const completed = new Set(progress.filter(p => p.completed).map(p => p.storyId));
+        this.completedStories.set(completed);
+      },
+      error: (error) => {
+        console.error('Error loading progress:', error);
+      }
     });
   }
 
   loadCourse(): void {
-    this.isLoading.set(true);
-    this.errorMessage.set('');
-
     this.courseService.getCourse(this.courseId).subscribe({
       next: (course) => {
         this.course.set(course);
@@ -135,14 +176,35 @@ export class StoryPlayerComponent implements OnInit {
 
   markAsCompleted(): void {
     const story = this.currentStory();
-    if (!story) return;
+    const enrollmentId = this.enrollmentId();
 
-    // Aquí necesitamos el enrollmentId
-    // Por ahora solo mostramos confirmación
-    if (confirm('¿Marcar esta historia como completada?')) {
-      // TODO: Implementar la lógica real con el enrollmentId
-      alert('Historia marcada como completada (funcionalidad en desarrollo)');
+    if (!story || !enrollmentId) return;
+
+    // Verificar si ya está completada
+    if (this.isStoryCompleted(story.id)) {
+      alert('Esta historia ya está marcada como completada');
+      return;
     }
+
+    if (confirm('¿Marcar esta historia como completada?')) {
+      this.enrollmentService.markStoryCompleted(enrollmentId, story.id).subscribe({
+        next: () => {
+          // Agregar a la lista de completadas
+          const completed = new Set(this.completedStories());
+          completed.add(story.id);
+          this.completedStories.set(completed);
+          alert('¡Historia completada!');
+        },
+        error: (error) => {
+          console.error('Error marking story as completed:', error);
+          alert('Error al marcar la historia como completada');
+        }
+      });
+    }
+  }
+
+  isStoryCompleted(storyId: number): boolean {
+    return this.completedStories().has(storyId);
   }
 
   goBack(): void {

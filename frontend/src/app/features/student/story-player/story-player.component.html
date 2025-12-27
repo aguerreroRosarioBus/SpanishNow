@@ -23,11 +23,13 @@
               <div class="list-group list-group-flush">
                 <button
                   *ngFor="let story of unit.stories"
-                  class="list-group-item list-group-item-action"
+                  class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
                   [class.active]="currentStory()?.id === story.id"
+                  [class.list-group-item-success]="isStoryCompleted(story.id) && currentStory()?.id !== story.id"
                   (click)="selectStory(story)"
                 >
                   <small>{{ story.title }}</small>
+                  <span *ngIf="isStoryCompleted(story.id)" class="badge bg-success">✓</span>
                 </button>
               </div>
             </div>
@@ -109,9 +111,17 @@
 
           <!-- Botón de completado -->
           <div class="mt-4 text-center">
-            <button class="btn btn-success btn-lg" (click)="markAsCompleted()">
+            <button
+              *ngIf="!isStoryCompleted(currentStory()?.id || 0)"
+              class="btn btn-success btn-lg"
+              (click)="markAsCompleted()"
+            >
               ✓ Marcar como Completada
             </button>
+            <div *ngIf="isStoryCompleted(currentStory()?.id || 0)" class="alert alert-success">
+              <strong>✓ Historia Completada</strong>
+              <p class="mb-0 small">Has terminado esta historia</p>
+            </div>
           </div>
         </div>
       </div>

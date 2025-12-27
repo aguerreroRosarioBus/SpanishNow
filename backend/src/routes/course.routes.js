@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authMiddleware, isTeacher } = require('../middlewares/auth.middleware');
-const { Course, Unit, User } = require('../models');
+const { Course, Unit, User, Story } = require('../models');
 const cloudinary = require('../config/cloudinary');
 const upload = require('../middlewares/upload.middleware');
 
@@ -18,13 +18,24 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get course by ID with units
+// Get course by ID with units and stories
 router.get('/:id', async (req, res) => {
   try {
     const course = await Course.findByPk(req.params.id, {
       include: [
         { model: User, as: 'teacher', attributes: ['id', 'name'] },
-        { model: Unit, as: 'units', order: [['order', 'ASC']] }
+        {
+          model: Unit,
+          as: 'units',
+          include: [
+            { model: Story, as: 'stories', order: [['order', 'ASC']] }
+          ],
+          order: [['order', 'ASC']]
+        }
+      ],
+      order: [
+        [{ model: Unit, as: 'units' }, 'order', 'ASC'],
+        [{ model: Unit, as: 'units' }, { model: Story, as: 'stories' }, 'order', 'ASC']
       ]
     });
 
