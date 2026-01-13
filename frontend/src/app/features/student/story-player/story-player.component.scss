@@ -9,3 +9,96 @@
   background-color: #0d6efd;
   border-color: #0d6efd;
 }
+
+// ===== VISUAL IMPROVEMENTS =====
+
+// Breadcrumbs styling
+.breadcrumb {
+  background: transparent;
+  padding: 0;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+
+  .breadcrumb-item {
+    &.active {
+      font-weight: 600;
+      color: #495057;
+    }
+  }
+}
+
+// Story progress section
+.story-progress-section {
+  border-left: 4px solid #198754;
+  transition: all 0.3s ease;
+
+  .progress {
+    transition: width 0.3s ease;
+  }
+
+  .progress-steps {
+    .step-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+      color: #6c757d;
+      transition: color 0.3s ease;
+
+      &.completed {
+        color: #198754;
+        font-weight: 600;
+      }
+
+      .step-icon {
+        font-size: 1.25rem;
+      }
+
+      small {
+        font-size: 0.75rem;
+        text-align: center;
+      }
+    }
+  }
+}
+
+// Unit progress
+.unit-section {
+  .unit-progress {
+    margin-top: 0.75rem;
+
+    .progress {
+      border-radius: 10px;
+      overflow: hidden;
+      transition: width 0.3s ease;
+    }
+  }
+}
+
+// Unit and story icons
+.list-group-item {
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.03);
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .breadcrumb {
+    font-size: 0.8rem;
+  }
+
+  .story-progress-section {
+    .progress-steps {
+      flex-wrap: wrap;
+
+      .step-item {
+        small {
+          font-size: 0.7rem;
+        }
+      }
+    }
+  }
+}

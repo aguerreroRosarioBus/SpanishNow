@@ -24,3 +24,9 @@ build/
 
 # Uploads
 uploads/
+
+# Temporary files
+tmpclaude-*
+backend/tmpclaude-*
+frontend/tmpclaude-*
+nul

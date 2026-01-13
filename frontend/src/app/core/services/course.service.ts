@@ -24,8 +24,8 @@ export class CourseService {
     return this.http.post<Course>(this.apiUrl, formData);
   }
 
-  updateCourse(id: number, formData: FormData): Observable<Course> {
-    return this.http.put<Course>(`${this.apiUrl}/${id}`, formData);
+  updateCourse(id: number, data: FormData | Partial<Course>): Observable<Course> {
+    return this.http.put<Course>(`${this.apiUrl}/${id}`, data);
   }
 
   deleteCourse(id: number): Observable<void> {

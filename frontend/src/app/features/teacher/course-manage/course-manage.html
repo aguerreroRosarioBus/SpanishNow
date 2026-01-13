@@ -24,7 +24,12 @@
             <button class="btn btn-outline-secondary btn-sm mb-2" (click)="goBack()">
               ← Volver al Dashboard
             </button>
-            <h1 class="h3 mb-1">{{ course()?.title }}</h1>
+            <div class="d-flex align-items-center gap-2">
+              <h1 class="h3 mb-1">{{ course()?.title }}</h1>
+              <button class="btn btn-sm btn-outline-primary" (click)="openEditCourseModal()" title="Editar curso">
+                ✏️
+              </button>
+            </div>
             <p class="text-muted mb-0">Gestión de Contenido del Curso</p>
           </div>
           <button class="btn btn-success" (click)="openUnitModal()">
@@ -50,13 +55,36 @@
           <!-- Units -->
           <div *ngFor="let unit of units()" class="col-12">
             <div class="card">
-              <div class="card-header bg-primary text-white">
+              <div
+                class="card-header bg-primary text-white"
+                draggable="true"
+                (dragstart)="onUnitDragStart($event, unit)"
+                (dragover)="onDragOver($event)"
+                (drop)="onUnitDrop($event, unit)"
+                style="cursor: move;"
+              >
                 <div class="d-flex justify-content-between align-items-center">
-                  <div>
-                    <h5 class="mb-0">{{ unit.title }}</h5>
-                    <small>Orden: {{ unit.order }}</small>
+                  <div class="d-flex align-items-center">
+                    <span class="me-3" style="font-size: 1.5rem; opacity: 0.7;">☰</span>
+                    <div>
+                      <h5 class="mb-0">{{ unit.title }}</h5>
+                      <small>Orden: {{ unit.order + 1 }}</small>
+                    </div>
                   </div>
                   <div>
+                    <button
+                      class="btn btn-sm btn-light me-2"
+                      (click)="openEditUnitModal(unit)"
+                      title="Editar unidad"
+                    >
+                      ✏️ Editar
+                    </button>
+                    <button
+                      class="btn btn-sm btn-light me-2"
+                      (click)="openVocabularyModal(unit)"
+                    >
+                      📚 Vocabulario
+                    </button>
                     <button
                       class="btn btn-sm btn-light me-2"
                       (click)="openStoryModal(unit.id)"
@@ -81,22 +109,55 @@
                   <div class="list-group">
                     <div
                       *ngFor="let story of unit.stories"
-                      class="list-group-item d-flex justify-content-between align-items-center"
+                      class="list-group-item"
+                      draggable="true"
+                      (dragstart)="onStoryDragStart($event, story, unit.id)"
+                      (dragover)="onDragOver($event)"
+                      (drop)="onStoryDrop($event, story, unit.id)"
+                      style="cursor: move;"
                     >
-                      <div>
-                        <strong>{{ story.title }}</strong>
-                        <small class="text-muted ms-2">Orden: {{ story.order }}</small>
-                        <br>
-                        <small class="text-muted">
-                          {{ story.text.substring(0, 100) }}{{ story.text.length > 100 ? '...' : '' }}
-                        </small>
+                      <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                          <span class="me-2" style="opacity: 0.5;">☰</span>
+                          <strong>{{ story.title }}</strong>
+                          <small class="text-muted ms-2">Orden: {{ story.order + 1 }}</small>
+                          <br>
+                          <small class="text-muted">
+                            {{ story.text.substring(0, 100) }}{{ story.text.length > 100 ? '...' : '' }}
+                          </small>
+                          <br>
+                          <span class="badge bg-info text-dark mt-2">
+                            {{ story.questions?.length || 0 }} pregunta(s)
+                          </span>
+                        </div>
+                        <div class="btn-group">
+                          <button
+                            class="btn btn-sm btn-outline-secondary"
+                            (click)="openEditStoryModal(story, unit.id)"
+                            title="Editar historia"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            class="btn btn-sm btn-outline-primary"
+                            (click)="openQuestionModal(story)"
+                          >
+                            📝 Preguntas
+                          </button>
+                          <button
+                            class="btn btn-sm btn-outline-info"
+                            (click)="openRepetitionModal(story)"
+                          >
+                            🎤 Listen & Repeat
+                          </button>
+                          <button
+                            class="btn btn-sm btn-outline-danger"
+                            (click)="deleteStory(unit.id, story.id)"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
                       </div>
-                      <button
-                        class="btn btn-sm btn-outline-danger"
-                        (click)="deleteStory(unit.id, story.id)"
-                      >
-                        Eliminar
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -166,19 +227,6 @@
             >
               La descripción debe tener al menos 10 caracteres
             </div>
-          </div>
-
-          <!-- Order -->
-          <div class="mb-3">
-            <label for="unitOrder" class="form-label">Orden *</label>
-            <input
-              type="number"
-              class="form-control"
-              id="unitOrder"
-              formControlName="order"
-              min="0"
-            >
-            <small class="text-muted">Define el orden de aparición de la unidad</small>
           </div>
         </div>
         <div class="modal-footer">
@@ -252,18 +300,6 @@
             </div>
           </div>
 
-          <!-- Order -->
-          <div class="mb-3">
-            <label for="storyOrder" class="form-label">Orden *</label>
-            <input
-              type="number"
-              class="form-control"
-              id="storyOrder"
-              formControlName="order"
-              min="0"
-            >
-          </div>
-
           <!-- Audio Slow -->
           <div class="mb-3">
             <label for="audioSlow" class="form-label">Audio Lento (Opcional)</label>
@@ -307,10 +343,528 @@
   </div>
 </div>
 
+<!-- Question Management Modal -->
+<div
+  class="modal fade"
+  [class.show]="showQuestionModal()"
+  [style.display]="showQuestionModal() ? 'block' : 'none'"
+  tabindex="-1"
+>
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Gestionar Preguntas: {{ selectedStory()?.title }}</h5>
+        <button type="button" class="btn-close" (click)="closeQuestionModal()"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Create Question Form -->
+        <div class="card mb-4">
+          <div class="card-header bg-primary text-white">
+            <h6 class="mb-0">Crear Nueva Pregunta</h6>
+          </div>
+          <div class="card-body">
+            <form [formGroup]="questionForm" (ngSubmit)="createQuestion()">
+              <div class="mb-3">
+                <label for="questionText" class="form-label">Pregunta *</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="questionText"
+                  formControlName="questionText"
+                  placeholder="¿El protagonista es estudiante?"
+                >
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Tipo de Pregunta *</label>
+                <select class="form-select" formControlName="answerType">
+                  <option value="yes_no">Sí / No</option>
+                  <option value="choice">Opción Múltiple</option>
+                </select>
+              </div>
+
+              <!-- Multiple Choice Options -->
+              <div *ngIf="questionForm.get('answerType')?.value === 'choice'" class="mb-3">
+                <label class="form-label">Opciones *</label>
+                <div formArrayName="options">
+                  <div *ngFor="let option of questionOptions.controls; let i = index" class="input-group mb-2">
+                    <input
+                      type="text"
+                      class="form-control"
+                      [formControlName]="i"
+                      placeholder="Opción {{ i + 1 }}"
+                    >
+                    <button
+                      *ngIf="questionOptions.length > 2"
+                      type="button"
+                      class="btn btn-outline-danger"
+                      (click)="removeOption(i)"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-primary" (click)="addOption()">
+                  + Agregar Opción
+                </button>
+              </div>
+
+              <div class="mb-3">
+                <label for="correctAnswer" class="form-label">Respuesta Correcta *</label>
+                <input
+                  *ngIf="questionForm.get('answerType')?.value === 'yes_no'"
+                  type="text"
+                  class="form-control"
+                  id="correctAnswer"
+                  formControlName="correctAnswer"
+                  placeholder="Sí o No"
+                >
+                <select
+                  *ngIf="questionForm.get('answerType')?.value === 'choice'"
+                  class="form-select"
+                  formControlName="correctAnswer"
+                >
+                  <option value="">Selecciona la respuesta correcta</option>
+                  <option *ngFor="let opt of questionOptions.controls; let i = index" [value]="opt.value">
+                    {{ opt.value }}
+                  </option>
+                </select>
+              </div>
+
+              <button
+                type="submit"
+                class="btn btn-success"
+                [disabled]="questionForm.invalid || isSubmittingQuestion()"
+              >
+                <span *ngIf="!isSubmittingQuestion()">✓ Crear Pregunta</span>
+                <span *ngIf="isSubmittingQuestion()">
+                  <span class="spinner-border spinner-border-sm me-2"></span>
+                  Creando...
+                </span>
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Questions List -->
+        <div class="card">
+          <div class="card-header">
+            <h6 class="mb-0">Preguntas Existentes ({{ storyQuestions().length }})</h6>
+          </div>
+          <div class="card-body">
+            <div *ngIf="storyQuestions().length === 0" class="text-center py-4 text-muted">
+              No hay preguntas creadas para esta historia
+            </div>
+
+            <div *ngIf="storyQuestions().length > 0" class="list-group">
+              <div *ngFor="let question of storyQuestions(); let i = index" class="list-group-item">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div class="flex-grow-1">
+                    <strong>{{ i + 1 }}. {{ question.questionText }}</strong>
+                    <br>
+                    <span class="badge bg-secondary mt-2">
+                      {{ question.answerType === 'yes_no' ? 'Sí/No' : 'Opción Múltiple' }}
+                    </span>
+                    <span class="badge bg-success mt-2 ms-2">
+                      ✓ {{ question.correctAnswer }}
+                    </span>
+                    <div *ngIf="question.answerType === 'choice' && question.options" class="mt-2">
+                      <small class="text-muted">Opciones:</small>
+                      <ul class="small mb-0">
+                        <li *ngFor="let opt of question.options">{{ opt }}</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <button
+                    class="btn btn-sm btn-outline-danger"
+                    (click)="deleteQuestion(question.id)"
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeQuestionModal()">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== -->
+<!-- VOCABULARY MODAL -->
+<!-- ===================== -->
+<div
+  class="modal fade"
+  [class.show]="showVocabularyModal()"
+  [style.display]="showVocabularyModal() ? 'block' : 'none'"
+  tabindex="-1"
+>
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          📚 Vocabulario - {{ selectedUnit()?.title }}
+        </h5>
+        <button type="button" class="btn-close" (click)="closeVocabularyModal()"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Form to create vocabulary -->
+        <form [formGroup]="vocabularyForm" (ngSubmit)="createVocabulary()">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Palabra (Español) *</label>
+              <input type="text" class="form-control" formControlName="word" placeholder="casa">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Traducción (Inglés) *</label>
+              <input type="text" class="form-control" formControlName="translation" placeholder="house">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Parte de la oración</label>
+              <select class="form-select" formControlName="partOfSpeech">
+                <option value="">Seleccionar...</option>
+                <option value="noun">Sustantivo (noun)</option>
+                <option value="verb">Verbo (verb)</option>
+                <option value="adjective">Adjetivo (adjective)</option>
+                <option value="adverb">Adverbio (adverb)</option>
+                <option value="pronoun">Pronombre (pronoun)</option>
+                <option value="preposition">Preposición (preposition)</option>
+                <option value="conjunction">Conjunción (conjunction)</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Ejemplo de uso</label>
+              <input type="text" class="form-control" formControlName="example" placeholder="La casa es grande">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Audio de pronunciación</label>
+              <input type="file" class="form-control" accept="audio/*" (change)="onVocabAudioSelected($event)">
+              <small class="text-muted">Archivo de audio con la pronunciación</small>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Imagen</label>
+              <input type="file" class="form-control" accept="image/*" (change)="onVocabImageSelected($event)">
+              <small class="text-muted">Imagen visual para la palabra</small>
+            </div>
+            <div class="col-12">
+              <button
+                type="submit"
+                class="btn btn-primary"
+                [disabled]="vocabularyForm.invalid || isSubmittingVocabulary()"
+              >
+                <span *ngIf="!isSubmittingVocabulary()">Agregar Vocabulario</span>
+                <span *ngIf="isSubmittingVocabulary()">Creando...</span>
+              </button>
+            </div>
+          </div>
+        </form>
+
+        <hr class="my-4">
+
+        <!-- List of existing vocabulary -->
+        <h6>Vocabulario Existente ({{ unitVocabulary().length }})</h6>
+        <div *ngIf="unitVocabulary().length === 0" class="alert alert-info">
+          No hay vocabulario agregado para esta unidad.
+        </div>
+        <div class="list-group">
+          <div *ngFor="let vocab of unitVocabulary()" class="list-group-item">
+            <div class="d-flex justify-content-between align-items-start">
+              <div class="flex-grow-1">
+                <strong>{{ vocab.word }}</strong> → {{ vocab.translation }}
+                <span *ngIf="vocab.partOfSpeech" class="badge bg-secondary ms-2">{{ vocab.partOfSpeech }}</span>
+                <br>
+                <small class="text-muted" *ngIf="vocab.example">Ejemplo: {{ vocab.example }}</small>
+                <br>
+                <small class="text-success" *ngIf="vocab.audioUrl">🔊 Tiene audio</small>
+                <small class="text-info ms-2" *ngIf="vocab.imageUrl">🖼️ Tiene imagen</small>
+              </div>
+              <button
+                class="btn btn-sm btn-outline-danger"
+                (click)="deleteVocabulary(vocab.id)"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeVocabularyModal()">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== -->
+<!-- REPETITION MODAL -->
+<!-- ===================== -->
+<div
+  class="modal fade"
+  [class.show]="showRepetitionModal()"
+  [style.display]="showRepetitionModal() ? 'block' : 'none'"
+  tabindex="-1"
+>
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          🎤 Listen & Repeat - {{ selectedStory()?.title }}
+        </h5>
+        <button type="button" class="btn-close" (click)="closeRepetitionModal()"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Form to create repetition activity -->
+        <form [formGroup]="repetitionForm" (ngSubmit)="createRepetition()">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">Frase para repetir *</label>
+              <input type="text" class="form-control" formControlName="phrase" placeholder="¿Cómo te llamas?">
+              <small class="text-muted">Frase en español que el estudiante debe repetir</small>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Audio modelo *</label>
+              <input type="file" class="form-control" accept="audio/*" (change)="onRepetitionAudioSelected($event)">
+              <small class="text-muted">Audio con la pronunciación correcta que el estudiante escuchará</small>
+            </div>
+            <div class="col-12">
+              <button
+                type="submit"
+                class="btn btn-primary"
+                [disabled]="repetitionForm.invalid || isSubmittingRepetition()"
+              >
+                <span *ngIf="!isSubmittingRepetition()">Agregar Actividad</span>
+                <span *ngIf="isSubmittingRepetition()">Creando...</span>
+              </button>
+            </div>
+          </div>
+        </form>
+
+        <hr class="my-4">
+
+        <!-- List of existing repetition activities -->
+        <h6>Actividades Existentes ({{ storyRepetitions().length }})</h6>
+        <div *ngIf="storyRepetitions().length === 0" class="alert alert-info">
+          No hay actividades de repetición para esta historia.
+        </div>
+        <div class="list-group">
+          <div
+            *ngFor="let activity of storyRepetitions()"
+            class="list-group-item"
+            draggable="true"
+            (dragstart)="onRepetitionDragStart($event, activity)"
+            (dragover)="onDragOver($event)"
+            (drop)="onRepetitionDrop($event, activity)"
+            style="cursor: move;"
+          >
+            <div class="d-flex justify-content-between align-items-start">
+              <div class="flex-grow-1">
+                <span class="me-2" style="opacity: 0.5;">☰</span>
+                <strong>{{ activity.phrase }}</strong>
+                <small class="text-muted ms-2">Orden: {{ activity.order + 1 }}</small>
+                <br>
+                <small class="text-success" *ngIf="activity.audioUrl">🔊 Tiene audio modelo</small>
+              </div>
+              <button
+                class="btn btn-sm btn-outline-danger"
+                (click)="deleteRepetition(activity.id)"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeRepetitionModal()">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Course Modal -->
+<div
+  class="modal fade"
+  [class.show]="showCourseEditModal()"
+  [style.display]="showCourseEditModal() ? 'block' : 'none'"
+  tabindex="-1"
+>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Editar Curso</h5>
+        <button type="button" class="btn-close" (click)="closeEditCourseModal()"></button>
+      </div>
+      <form [formGroup]="courseForm" (ngSubmit)="updateCourse()">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="courseTitle" class="form-label">Título *</label>
+            <input
+              type="text"
+              class="form-control"
+              id="courseTitle"
+              formControlName="title"
+              placeholder="Ej: Español A1"
+            />
+          </div>
+          <div class="mb-3">
+            <label for="courseDescription" class="form-label">Descripción</label>
+            <textarea
+              class="form-control"
+              id="courseDescription"
+              formControlName="description"
+              rows="3"
+              placeholder="Descripción del curso"
+            ></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="closeEditCourseModal()">
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-primary" [disabled]="courseForm.invalid">
+            Guardar Cambios
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Unit Modal -->
+<div
+  class="modal fade"
+  [class.show]="showUnitEditModal()"
+  [style.display]="showUnitEditModal() ? 'block' : 'none'"
+  tabindex="-1"
+>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Editar Unidad</h5>
+        <button type="button" class="btn-close" (click)="closeEditUnitModal()"></button>
+      </div>
+      <form [formGroup]="unitForm" (ngSubmit)="updateUnit()">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="editUnitTitle" class="form-label">Título *</label>
+            <input
+              type="text"
+              class="form-control"
+              id="editUnitTitle"
+              formControlName="title"
+              placeholder="Ej: Unidad 1: Saludos"
+            />
+          </div>
+          <div class="mb-3">
+            <label for="editUnitDescription" class="form-label">Descripción *</label>
+            <textarea
+              class="form-control"
+              id="editUnitDescription"
+              formControlName="description"
+              rows="3"
+              placeholder="Descripción de la unidad"
+            ></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="closeEditUnitModal()">
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-primary" [disabled]="unitForm.invalid">
+            Guardar Cambios
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Story Modal -->
+<div
+  class="modal fade"
+  [class.show]="showStoryEditModal()"
+  [style.display]="showStoryEditModal() ? 'block' : 'none'"
+  tabindex="-1"
+>
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Editar Historia</h5>
+        <button type="button" class="btn-close" (click)="closeEditStoryModal()"></button>
+      </div>
+      <form [formGroup]="storyForm" (ngSubmit)="updateStory()">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="editStoryTitle" class="form-label">Título *</label>
+            <input
+              type="text"
+              class="form-control"
+              id="editStoryTitle"
+              formControlName="title"
+              placeholder="Ej: Mi primer día en la escuela"
+            />
+          </div>
+          <div class="mb-3">
+            <label for="editStoryText" class="form-label">Texto de la Historia *</label>
+            <textarea
+              class="form-control"
+              id="editStoryText"
+              formControlName="text"
+              rows="6"
+              placeholder="Escribe aquí el texto de la historia..."
+            ></textarea>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="editAudioSlow" class="form-label">Audio Lento (opcional)</label>
+              <input
+                type="file"
+                class="form-control"
+                id="editAudioSlow"
+                accept="audio/*"
+                (change)="onAudioSlowSelected($event)"
+              />
+              <small class="text-muted">Deja vacío para mantener el audio actual</small>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="editAudioNormal" class="form-label">Audio Normal (opcional)</label>
+              <input
+                type="file"
+                class="form-control"
+                id="editAudioNormal"
+                accept="audio/*"
+                (change)="onAudioNormalSelected($event)"
+              />
+              <small class="text-muted">Deja vacío para mantener el audio actual</small>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="closeEditStoryModal()">
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-primary" [disabled]="storyForm.invalid">
+            Guardar Cambios
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <!-- Modal Backdrop -->
 <div
   class="modal-backdrop fade"
-  [class.show]="showUnitModal() || showStoryModal()"
-  *ngIf="showUnitModal() || showStoryModal()"
-  (click)="showUnitModal() ? closeUnitModal() : closeStoryModal()"
+  [class.show]="showCourseEditModal() || showUnitModal() || showUnitEditModal() || showStoryModal() || showStoryEditModal() || showQuestionModal() || showVocabularyModal() || showRepetitionModal()"
+  *ngIf="showCourseEditModal() || showUnitModal() || showUnitEditModal() || showStoryModal() || showStoryEditModal() || showQuestionModal() || showVocabularyModal() || showRepetitionModal()"
 ></div>

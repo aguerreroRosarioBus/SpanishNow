@@ -1,0 +1,192 @@
+<!-- Modal Backdrop -->
+<div
+  *ngIf="show()"
+  class="modal fade show d-block"
+  tabindex="-1"
+  [class.modal-static]="!submitted() || !allCorrect"
+  style="background-color: rgba(0, 0, 0, 0.5);"
+>
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <!-- Modal Header -->
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title">Actividades de Comprensión</h5>
+        <button
+          type="button"
+          class="btn-close btn-close-white"
+          *ngIf="allCorrect"
+          (click)="closeModal()"
+        ></button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="modal-body">
+        <!-- Error Message -->
+        <div *ngIf="errorMessage()" class="alert alert-danger" role="alert">
+          {{ errorMessage() }}
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <small class="text-muted">
+              Pregunta {{ currentQuestionIndex() + 1 }} de {{ totalQuestions }}
+            </small>
+            <small class="text-muted">
+              Respondidas: {{ userAnswers().size }} / {{ totalQuestions }}
+            </small>
+          </div>
+          <div class="progress" style="height: 8px;">
+            <div
+              class="progress-bar bg-success"
+              role="progressbar"
+              [style.width.%]="getProgressPercentage()"
+            ></div>
+          </div>
+        </div>
+
+        <!-- Question Card -->
+        <div *ngIf="currentQuestion" class="card border-primary mb-4">
+          <div class="card-body">
+            <h5 class="card-title mb-4">{{ currentQuestion.questionText }}</h5>
+
+            <!-- Yes/No Questions -->
+            <div *ngIf="currentQuestion.answerType === 'yes_no'" class="d-grid gap-3">
+              <button
+                type="button"
+                class="btn btn-lg"
+                [ngClass]="getAnswerButtonClass('Sí')"
+                [disabled]="submitted()"
+                (click)="selectAnswer('Sí')"
+              >
+                Sí
+              </button>
+              <button
+                type="button"
+                class="btn btn-lg"
+                [ngClass]="getAnswerButtonClass('No')"
+                [disabled]="submitted()"
+                (click)="selectAnswer('No')"
+              >
+                No
+              </button>
+            </div>
+
+            <!-- Multiple Choice Questions -->
+            <div *ngIf="currentQuestion.answerType === 'choice' && currentQuestion.options" class="d-grid gap-3">
+              <button
+                *ngFor="let option of currentQuestion.options"
+                type="button"
+                class="btn btn-lg text-start"
+                [ngClass]="getAnswerButtonClass(option)"
+                [disabled]="submitted()"
+                (click)="selectAnswer(option)"
+              >
+                {{ option }}
+              </button>
+            </div>
+
+            <!-- Feedback after submission -->
+            <div *ngIf="submitted()" class="mt-4">
+              <div
+                *ngIf="isQuestionCorrect(currentQuestion.id)"
+                class="alert alert-success mb-0"
+                role="alert"
+              >
+                <strong>✓ ¡Correcto!</strong>
+              </div>
+              <div
+                *ngIf="isQuestionIncorrect(currentQuestion.id)"
+                class="alert alert-danger mb-0"
+                role="alert"
+              >
+                <strong>✗ Incorrecto</strong>
+                <p class="mb-0 mt-2">
+                  La respuesta correcta es: <strong>{{ getResultForQuestion(currentQuestion.id)?.correctAnswer }}</strong>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Navigation Buttons -->
+        <div *ngIf="!submitted()" class="d-flex justify-content-between align-items-center">
+          <button
+            type="button"
+            class="btn btn-outline-secondary"
+            [disabled]="isFirstQuestion"
+            (click)="previousQuestion()"
+          >
+            ← Anterior
+          </button>
+
+          <button
+            *ngIf="!isLastQuestion"
+            type="button"
+            class="btn btn-outline-secondary"
+            [disabled]="isLastQuestion"
+            (click)="nextQuestion()"
+          >
+            Siguiente →
+          </button>
+
+          <button
+            *ngIf="isLastQuestion"
+            type="button"
+            class="btn btn-success btn-lg"
+            [disabled]="!allQuestionsAnswered || isSubmitting()"
+            (click)="submitAnswers()"
+          >
+            <span *ngIf="!isSubmitting()">Enviar Respuestas</span>
+            <span *ngIf="isSubmitting()">
+              <span class="spinner-border spinner-border-sm me-2"></span>
+              Enviando...
+            </span>
+          </button>
+        </div>
+
+        <!-- Results Summary -->
+        <div *ngIf="submitted()" class="mt-4">
+          <!-- All Correct -->
+          <div *ngIf="allCorrect" class="alert alert-success text-center" role="alert">
+            <h4 class="alert-heading">¡Excelente! 🎉</h4>
+            <p class="mb-0">Has respondido correctamente todas las preguntas. ¡Sigue así!</p>
+          </div>
+
+          <!-- Has Incorrect Answers -->
+          <div *ngIf="hasIncorrectAnswers" class="text-center">
+            <div class="alert alert-warning" role="alert">
+              <strong>Algunas respuestas son incorrectas</strong>
+              <p class="mb-0">Revisa las preguntas marcadas en rojo e intenta nuevamente.</p>
+            </div>
+
+            <div class="d-flex gap-3 justify-content-center">
+              <button
+                type="button"
+                class="btn btn-primary"
+                (click)="retryIncorrect()"
+              >
+                🔄 Reintentar Incorrectas
+              </button>
+
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                (click)="currentQuestionIndex.set(0)"
+              >
+                Ver Todas las Preguntas
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div *ngIf="submitted() && !allCorrect" class="modal-footer">
+        <p class="text-muted small mb-0">
+          Debes responder correctamente todas las preguntas para continuar.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>

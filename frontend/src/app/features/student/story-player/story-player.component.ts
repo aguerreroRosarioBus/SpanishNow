@@ -4,13 +4,26 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { CourseService } from '../../../core/services/course.service';
 import { EnrollmentService } from '../../../core/services/enrollment.service';
-import { Course, Unit, Story } from '../../../core/models/course.model';
+import { QuestionService } from '../../../core/services/question.service';
+import { ActivityConfigService, ActivityConfig } from '../../../core/services/activity-config.service';
+import { Course, Unit, Story, Question, Progress } from '../../../core/models/course.model';
 import { NavbarComponent } from '../../dashboard/navbar/navbar.component';
+import { ActivityModalComponent } from '../activity-modal/activity-modal.component';
+import { FlashcardModalComponent } from '../flashcard-modal/flashcard-modal.component';
+import { MatchingModalComponent } from '../matching-modal/matching-modal.component';
+import { ListenRepeatModalComponent } from '../listen-repeat-modal/listen-repeat-modal.component';
 
 @Component({
   selector: 'app-story-player',
   standalone: true,
-  imports: [CommonModule, NavbarComponent],
+  imports: [
+    CommonModule,
+    NavbarComponent,
+    ActivityModalComponent,
+    FlashcardModalComponent,
+    MatchingModalComponent,
+    ListenRepeatModalComponent
+  ],
   templateUrl: './story-player.component.html',
   styleUrl: './story-player.component.scss'
 })
@@ -20,21 +33,41 @@ export class StoryPlayerComponent implements OnInit {
   private authService = inject(AuthService);
   private courseService = inject(CourseService);
   private enrollmentService = inject(EnrollmentService);
+  private questionService = inject(QuestionService);
+  private activityConfigService = inject(ActivityConfigService);
 
   currentUser = this.authService.currentUser;
 
   courseId!: number;
   course = signal<Course | null>(null);
+  currentUnit = signal<Unit | null>(null);
   currentStory = signal<Story | null>(null);
   isLoading = signal<boolean>(false);
   errorMessage = signal<string>('');
   enrollmentId = signal<number | null>(null);
   completedStories = signal<Set<number>>(new Set());
+  progressRecords = signal<Map<number, Progress>>(new Map());
 
   // Control del reproductor de audio
   isPlaying = signal<boolean>(false);
   currentSpeed = signal<'slow' | 'normal'>('slow');
   audioElement: HTMLAudioElement | null = null;
+
+  // Activity modal state
+  showActivityModal = signal<boolean>(false);
+  currentStoryQuestions = signal<Question[]>([]);
+  currentProgressId = signal<number | null>(null);
+
+  // Sequential activity orchestrator
+  activityConfigs = signal<ActivityConfig[]>([]);
+  currentActivityIndex = signal<number>(0);
+  currentActivityType = signal<string | null>(null);
+  showContinueDialog = signal<boolean>(false);
+
+  // Modal visibility signals
+  showFlashcardModal = signal<boolean>(false);
+  showMatchingModal = signal<boolean>(false);
+  showListenRepeatModal = signal<boolean>(false);
 
   ngOnInit(): void {
     if (!this.authService.isStudent()) {
@@ -82,8 +115,18 @@ export class StoryPlayerComponent implements OnInit {
   loadProgress(enrollmentId: number): void {
     this.enrollmentService.getProgress(enrollmentId).subscribe({
       next: (progress) => {
-        const completed = new Set(progress.filter(p => p.completed).map(p => p.storyId));
+        const completed = new Set<number>();
+        const records = new Map<number, Progress>();
+
+        progress.forEach(p => {
+          records.set(p.storyId, p);
+          if (p.completed) {
+            completed.add(p.storyId);
+          }
+        });
+
         this.completedStories.set(completed);
+        this.progressRecords.set(records);
       },
       error: (error) => {
         console.error('Error loading progress:', error);
@@ -120,6 +163,74 @@ export class StoryPlayerComponent implements OnInit {
 
     this.currentStory.set(story);
     this.isPlaying.set(false);
+
+    // Actualizar la unidad actual basándose en la historia seleccionada
+    const unit = this.getUnitByStory(story);
+    if (unit) {
+      this.currentUnit.set(unit);
+    }
+  }
+
+  getUnitByStory(story: Story): Unit | null {
+    const course = this.course();
+    if (!course || !course.units) return null;
+
+    return course.units.find(u =>
+      u.stories?.some(s => s.id === story.id)
+    ) || null;
+  }
+
+  // Navigation between units
+  canGoPreviousUnit(): boolean {
+    const course = this.course();
+    const currentUnit = this.currentUnit();
+    if (!course || !course.units || !currentUnit) return false;
+
+    const currentIndex = course.units.findIndex(u => u.id === currentUnit.id);
+    return currentIndex > 0;
+  }
+
+  canGoNextUnit(): boolean {
+    const course = this.course();
+    const currentUnit = this.currentUnit();
+    if (!course || !course.units || !currentUnit) return false;
+
+    const currentIndex = course.units.findIndex(u => u.id === currentUnit.id);
+    return currentIndex < course.units.length - 1;
+  }
+
+  goToPreviousUnit(): void {
+    const course = this.course();
+    const currentUnit = this.currentUnit();
+    if (!course || !course.units || !currentUnit) return;
+
+    const currentIndex = course.units.findIndex(u => u.id === currentUnit.id);
+    if (currentIndex > 0) {
+      const previousUnit = course.units[currentIndex - 1];
+      this.currentUnit.set(previousUnit);
+
+      // Seleccionar la primera historia de la unidad anterior
+      if (previousUnit.stories && previousUnit.stories.length > 0) {
+        this.selectStory(previousUnit.stories[0]);
+      }
+    }
+  }
+
+  goToNextUnit(): void {
+    const course = this.course();
+    const currentUnit = this.currentUnit();
+    if (!course || !course.units || !currentUnit) return;
+
+    const currentIndex = course.units.findIndex(u => u.id === currentUnit.id);
+    if (currentIndex < course.units.length - 1) {
+      const nextUnit = course.units[currentIndex + 1];
+      this.currentUnit.set(nextUnit);
+
+      // Seleccionar la primera historia de la siguiente unidad
+      if (nextUnit.stories && nextUnit.stories.length > 0) {
+        this.selectStory(nextUnit.stories[0]);
+      }
+    }
   }
 
   togglePlayPause(): void {
@@ -186,14 +297,17 @@ export class StoryPlayerComponent implements OnInit {
       return;
     }
 
-    if (confirm('¿Marcar esta historia como completada?')) {
+    if (confirm('¿Has terminado de escuchar la historia?')) {
       this.enrollmentService.markStoryCompleted(enrollmentId, story.id).subscribe({
-        next: () => {
+        next: (progress) => {
           // Agregar a la lista de completadas
           const completed = new Set(this.completedStories());
           completed.add(story.id);
           this.completedStories.set(completed);
-          alert('¡Historia completada!');
+
+          // Set progress ID and start sequential activities
+          this.currentProgressId.set(progress.id);
+          this.loadActivityConfigsAndStart(story.id);
         },
         error: (error) => {
           console.error('Error marking story as completed:', error);
@@ -203,8 +317,205 @@ export class StoryPlayerComponent implements OnInit {
     }
   }
 
+  loadQuestionsForStory(storyId: number): void {
+    this.questionService.getQuestionsByStory(storyId).subscribe({
+      next: (questions) => {
+        if (questions.length > 0) {
+          this.currentStoryQuestions.set(questions);
+          this.showActivityModal.set(true);
+        } else {
+          alert('¡Historia completada! No hay actividades para esta historia.');
+        }
+      },
+      error: (error) => {
+        console.error('Error loading questions:', error);
+        alert('Error al cargar las actividades');
+      }
+    });
+  }
+
+  onActivitiesCompleted(success: boolean): void {
+    if (success) {
+      alert('¡Excelente! Has completado todas las actividades correctamente.');
+      this.showActivityModal.set(false);
+      this.currentStoryQuestions.set([]);
+      this.currentProgressId.set(null);
+    }
+  }
+
+  onActivityModalClose(): void {
+    this.showActivityModal.set(false);
+    this.currentStoryQuestions.set([]);
+    this.currentProgressId.set(null);
+  }
+
   isStoryCompleted(storyId: number): boolean {
     return this.completedStories().has(storyId);
+  }
+
+  // ===== HELPER METHODS FOR PROGRESS VISUALIZATION =====
+
+  getProgressForStory(storyId: number): Progress | undefined {
+    return this.progressRecords().get(storyId);
+  }
+
+  isStoryFullyCompleted(storyId: number): boolean {
+    const progress = this.getProgressForStory(storyId);
+    return (progress?.completed && progress?.activitiesCompleted) || false;
+  }
+
+  getUnitProgress(unit: Unit): number {
+    const totalStories = unit.stories?.length || 0;
+    if (totalStories === 0) return 0;
+
+    const completedCount = unit.stories?.filter(s =>
+      this.completedStories().has(s.id)
+    ).length || 0;
+
+    return Math.round((completedCount / totalStories) * 100);
+  }
+
+  getUnitCompletionText(unit: Unit): string {
+    const completed = unit.stories?.filter(s =>
+      this.completedStories().has(s.id)
+    ).length || 0;
+    const total = unit.stories?.length || 0;
+    return `${completed}/${total}`;
+  }
+
+  getCurrentStoryProgress(): {
+    storyCompleted: boolean;
+    activitiesCompleted: boolean;
+    percentage: number;
+    steps: { label: string; completed: boolean }[];
+  } {
+    const story = this.currentStory();
+    if (!story) {
+      return {
+        storyCompleted: false,
+        activitiesCompleted: false,
+        percentage: 0,
+        steps: []
+      };
+    }
+
+    const storyCompleted = this.isStoryCompleted(story.id);
+    const progress = this.getProgressForStory(story.id);
+    const activitiesCompleted = progress?.activitiesCompleted || false;
+
+    const steps = [
+      { label: 'Historia escuchada', completed: storyCompleted },
+      { label: 'Actividades completadas', completed: activitiesCompleted }
+    ];
+
+    const completedSteps = steps.filter(s => s.completed).length;
+    const percentage = Math.round((completedSteps / steps.length) * 100);
+
+    return { storyCompleted, activitiesCompleted, percentage, steps };
+  }
+
+  getCurrentUnit(): Unit | null {
+    const story = this.currentStory();
+    if (!story) return null;
+
+    const course = this.course();
+    if (!course || !course.units) return null;
+
+    return course.units.find(u =>
+      u.stories?.some(s => s.id === story.id)
+    ) || null;
+  }
+
+  // ===== SEQUENTIAL ACTIVITY ORCHESTRATOR =====
+
+  loadActivityConfigsAndStart(storyId: number): void {
+    this.activityConfigService.getConfigsByStory(storyId).subscribe({
+      next: (configs) => {
+        // Filter only enabled activities and sort by order
+        const enabled = configs.filter(c => c.isEnabled).sort((a, b) => a.order - b.order);
+        this.activityConfigs.set(enabled);
+        this.currentActivityIndex.set(0);
+
+        // Start first activity
+        if (enabled.length > 0) {
+          this.showActivity(enabled[0].activityType);
+        }
+      },
+      error: (error) => console.error('Error loading activity configs:', error)
+    });
+  }
+
+  showActivity(activityType: string): void {
+    this.currentActivityType.set(activityType);
+
+    switch (activityType) {
+      case 'questions':
+        this.loadQuestionsForStory(this.currentStory()!.id);
+        this.showActivityModal.set(true);
+        break;
+      case 'flashcards':
+        this.showFlashcardModal.set(true);
+        break;
+      case 'matching':
+        this.showMatchingModal.set(true);
+        break;
+      case 'listen_repeat':
+        this.showListenRepeatModal.set(true);
+        break;
+    }
+  }
+
+  onActivityCompleted(activityType: string): void {
+    // Close current modal
+    this.closeAllModals();
+
+    // Increment index
+    const nextIndex = this.currentActivityIndex() + 1;
+    const configs = this.activityConfigs();
+
+    if (nextIndex < configs.length) {
+      // More activities pending, show continue dialog
+      this.showContinueDialog.set(true);
+    } else {
+      // All activities completed
+      this.onAllActivitiesCompleted();
+    }
+  }
+
+  closeAllModals(): void {
+    this.showActivityModal.set(false);
+    this.showFlashcardModal.set(false);
+    this.showMatchingModal.set(false);
+    this.showListenRepeatModal.set(false);
+  }
+
+  continueToNextActivity(): void {
+    this.showContinueDialog.set(false);
+    const nextIndex = this.currentActivityIndex() + 1;
+    this.currentActivityIndex.set(nextIndex);
+
+    const nextActivity = this.activityConfigs()[nextIndex];
+    this.showActivity(nextActivity.activityType);
+  }
+
+  skipNextActivity(): void {
+    this.showContinueDialog.set(false);
+    // Student can resume later
+  }
+
+  onAllActivitiesCompleted(): void {
+    // Update progress.activitiesCompleted
+    const progressId = this.currentProgressId();
+    if (!progressId) return;
+
+    // TODO: Call endpoint to update activitiesCompleted
+    console.log('All activities completed for progress:', progressId);
+
+    // Reload progress
+    const enrollmentId = this.enrollmentId();
+    if (enrollmentId) {
+      this.loadProgress(enrollmentId);
+    }
   }
 
   goBack(): void {

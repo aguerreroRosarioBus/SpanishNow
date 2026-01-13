@@ -26,7 +26,7 @@ router.get('/:id', async (req, res) => {
 // Create unit (teachers only)
 router.post('/', authMiddleware, isTeacher, async (req, res) => {
   try {
-    const { courseId, title, description, order } = req.body;
+    const { courseId, title, description } = req.body;
 
     const course = await Course.findByPk(courseId);
     if (!course) {
@@ -36,6 +36,10 @@ router.post('/', authMiddleware, isTeacher, async (req, res) => {
     if (course.teacherId !== req.user.id) {
       return res.status(403).json({ error: 'Not authorized' });
     }
+
+    // Calcular automáticamente el order basado en unidades existentes
+    const existingUnits = await Unit.count({ where: { courseId } });
+    const order = existingUnits;
 
     const unit = await Unit.create({ courseId, title, description, order });
     res.status(201).json(unit);
@@ -60,7 +64,12 @@ router.put('/:id', authMiddleware, isTeacher, async (req, res) => {
     }
 
     const { title, description, order } = req.body;
-    await unit.update({ title, description, order });
+    const updateData = {};
+    if (title !== undefined) updateData.title = title;
+    if (description !== undefined) updateData.description = description;
+    if (order !== undefined) updateData.order = order;
+
+    await unit.update(updateData);
 
     res.json(unit);
   } catch (error) {

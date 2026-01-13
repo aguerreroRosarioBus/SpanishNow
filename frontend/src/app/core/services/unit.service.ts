@@ -12,7 +12,7 @@ export class UnitService {
 
   constructor(private http: HttpClient) {}
 
-  createUnit(data: { courseId: number; title: string; description: string; order: number }): Observable<Unit> {
+  createUnit(data: { courseId: number; title: string; description: string }): Observable<Unit> {
     return this.http.post<Unit>(this.apiUrl, data);
   }
 

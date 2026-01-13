@@ -1,0 +1,172 @@
+.modal {
+  &.show {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+}
+
+.modal-dialog {
+  animation: slideUp 0.3s ease-out;
+}
+
+.modal-content {
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+  padding: 1.25rem 1.5rem;
+}
+
+.modal-body {
+  padding: 2rem 1.5rem;
+}
+
+.progress {
+  background-color: #e9ecef;
+  border-radius: 8px;
+  overflow: hidden;
+
+  .progress-bar {
+    transition: width 0.4s ease;
+  }
+}
+
+.card {
+  border-width: 2px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+
+  .card-body {
+    padding: 2rem;
+  }
+
+  .card-title {
+    font-size: 1.25rem;
+    font-weight: 500;
+    color: #2c3e50;
+    line-height: 1.6;
+  }
+}
+
+.btn {
+  font-weight: 500;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+}
+
+.btn-lg {
+  padding: 0.875rem 1.5rem;
+  font-size: 1.1rem;
+}
+
+.btn-outline-primary {
+  border-width: 2px;
+
+  &:hover:not(:disabled) {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    color: white;
+  }
+}
+
+.btn-primary {
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+  color: white;
+}
+
+.btn-success {
+  background-color: #198754;
+  border-color: #198754;
+  color: white;
+}
+
+.btn-danger {
+  background-color: #dc3545;
+  border-color: #dc3545;
+  color: white;
+}
+
+.btn-outline-secondary {
+  border-width: 2px;
+}
+
+.alert {
+  border-radius: 8px;
+  border: none;
+
+  &.alert-success {
+    background-color: #d1e7dd;
+    color: #0f5132;
+  }
+
+  &.alert-danger {
+    background-color: #f8d7da;
+    color: #842029;
+  }
+
+  &.alert-warning {
+    background-color: #fff3cd;
+    color: #664d03;
+  }
+}
+
+.spinner-border-sm {
+  width: 1rem;
+  height: 1rem;
+  border-width: 0.15em;
+}
+
+// Animations
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .modal-body {
+    padding: 1.5rem 1rem;
+  }
+
+  .card .card-body {
+    padding: 1.5rem;
+  }
+
+  .card .card-title {
+    font-size: 1.1rem;
+  }
+
+  .btn-lg {
+    padding: 0.75rem 1.25rem;
+    font-size: 1rem;
+  }
+}

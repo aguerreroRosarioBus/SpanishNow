@@ -6,6 +6,9 @@ const Vocabulary = require('./Vocabulary');
 const Question = require('./Question');
 const Enrollment = require('./Enrollment');
 const Progress = require('./Progress');
+const QuestionResponse = require('./QuestionResponse');
+const RepetitionActivity = require('./RepetitionActivity');
+const ActivityConfig = require('./ActivityConfig');
 
 // Define associations
 User.hasMany(Course, { foreignKey: 'teacherId', as: 'courses' });
@@ -35,6 +38,21 @@ Progress.belongsTo(Enrollment, { foreignKey: 'enrollmentId', as: 'enrollment' })
 Story.hasMany(Progress, { foreignKey: 'storyId', as: 'progress' });
 Progress.belongsTo(Story, { foreignKey: 'storyId', as: 'story' });
 
+// QuestionResponse associations
+Progress.hasMany(QuestionResponse, { foreignKey: 'progressId', as: 'questionResponses', onDelete: 'CASCADE' });
+QuestionResponse.belongsTo(Progress, { foreignKey: 'progressId', as: 'progress' });
+
+Question.hasMany(QuestionResponse, { foreignKey: 'questionId', as: 'responses' });
+QuestionResponse.belongsTo(Question, { foreignKey: 'questionId', as: 'question' });
+
+// RepetitionActivity associations
+Story.hasMany(RepetitionActivity, { foreignKey: 'storyId', as: 'repetitionActivities', onDelete: 'CASCADE' });
+RepetitionActivity.belongsTo(Story, { foreignKey: 'storyId', as: 'story' });
+
+// ActivityConfig associations
+Story.hasMany(ActivityConfig, { foreignKey: 'storyId', as: 'activityConfigs', onDelete: 'CASCADE' });
+ActivityConfig.belongsTo(Story, { foreignKey: 'storyId', as: 'story' });
+
 module.exports = {
   User,
   Course,
@@ -43,5 +61,8 @@ module.exports = {
   Vocabulary,
   Question,
   Enrollment,
-  Progress
+  Progress,
+  QuestionResponse,
+  RepetitionActivity,
+  ActivityConfig
 };

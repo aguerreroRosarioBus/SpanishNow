@@ -1,0 +1,186 @@
+<app-navbar></app-navbar>
+
+<div class="container mt-4">
+  <!-- Loading -->
+  <div *ngIf="isLoading()" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status"></div>
+    <p class="text-muted mt-2">Cargando actividades...</p>
+  </div>
+
+  <!-- Error -->
+  <div *ngIf="errorMessage()" class="alert alert-warning">
+    {{ errorMessage() }}
+    <button class="btn btn-outline-secondary mt-3" (click)="goBack()">
+      ← Volver
+    </button>
+  </div>
+
+  <!-- Listen & Repeat Activity -->
+  <div *ngIf="!isLoading() && !errorMessage() && activities().length > 0">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <button class="btn btn-outline-secondary" (click)="goBack()">
+        ← Volver
+      </button>
+      <h2 class="mb-0">Escucha y Repite</h2>
+      <button class="btn btn-outline-primary" (click)="restart()">
+        🔄 Reiniciar
+      </button>
+    </div>
+
+    <!-- Progress -->
+    <div class="mb-4">
+      <div class="d-flex justify-content-between mb-2">
+        <small class="text-muted">
+          Frase {{ currentIndex() + 1 }} de {{ totalActivities }}
+        </small>
+        <small class="text-muted">
+          Completadas: {{ completedCount }} / {{ totalActivities }}
+        </small>
+      </div>
+      <div class="progress" style="height: 8px;">
+        <div
+          class="progress-bar bg-success"
+          role="progressbar"
+          [style.width.%]="progress"
+        ></div>
+      </div>
+    </div>
+
+    <!-- Main Activity Card -->
+    <div class="activity-card">
+      <div class="card">
+        <div class="card-body p-5">
+          <!-- Phrase Display -->
+          <div class="text-center mb-5">
+            <h1 class="phrase-text">{{ currentActivity?.phrase }}</h1>
+          </div>
+
+          <!-- Step 1: Listen to Model -->
+          <div class="step-section mb-4">
+            <h5 class="step-title">
+              <span class="step-number">1</span>
+              Escucha el modelo
+            </h5>
+            <button
+              class="btn btn-lg btn-primary w-100"
+              [disabled]="!currentActivity?.audioUrl || isPlayingModel()"
+              (click)="playModel()"
+            >
+              <span *ngIf="!isPlayingModel()">🔊 Reproducir Modelo</span>
+              <span *ngIf="isPlayingModel()">
+                <span class="spinner-border spinner-border-sm me-2"></span>
+                Reproduciendo...
+              </span>
+            </button>
+          </div>
+
+          <!-- Step 2: Record Your Voice -->
+          <div class="step-section mb-4">
+            <h5 class="step-title">
+              <span class="step-number">2</span>
+              Graba tu voz
+            </h5>
+            <div class="d-grid gap-2">
+              <button
+                *ngIf="!isRecording()"
+                class="btn btn-lg btn-danger w-100"
+                (click)="startRecording()"
+              >
+                🎤 Iniciar Grabación
+              </button>
+              <button
+                *ngIf="isRecording()"
+                class="btn btn-lg btn-warning w-100"
+                (click)="stopRecording()"
+              >
+                ⏹ Detener Grabación
+              </button>
+              <button
+                *ngIf="hasRecording() && !isRecording()"
+                class="btn btn-lg btn-outline-primary w-100"
+                [disabled]="isPlayingRecording()"
+                (click)="playRecording()"
+              >
+                <span *ngIf="!isPlayingRecording()">▶ Escuchar mi Grabación</span>
+                <span *ngIf="isPlayingRecording()">
+                  <span class="spinner-border spinner-border-sm me-2"></span>
+                  Reproduciendo...
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Step 3: Self-Evaluation -->
+          <div class="step-section">
+            <h5 class="step-title">
+              <span class="step-number">3</span>
+              Evalúa tu pronunciación
+            </h5>
+            <div class="rating-container">
+              <button
+                *ngFor="let star of [1, 2, 3, 4, 5]"
+                class="star-btn"
+                [class.active]="star <= rating()"
+                (click)="setRating(star)"
+              >
+                {{ star <= rating() ? '⭐' : '☆' }}
+              </button>
+            </div>
+            <div class="text-center mt-2">
+              <small class="text-muted">
+                <span *ngIf="rating() === 0">Selecciona una calificación</span>
+                <span *ngIf="rating() === 1">Necesita mejorar</span>
+                <span *ngIf="rating() === 2">Regular</span>
+                <span *ngIf="rating() === 3">Bueno</span>
+                <span *ngIf="rating() === 4">Muy bueno</span>
+                <span *ngIf="rating() === 5">¡Excelente!</span>
+              </small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="d-flex justify-content-between mt-4">
+      <button
+        class="btn btn-lg btn-outline-secondary"
+        [disabled]="currentIndex() === 0"
+        (click)="previousActivity()"
+      >
+        ← Anterior
+      </button>
+
+      <button
+        class="btn btn-lg btn-primary"
+        [disabled]="currentIndex() >= totalActivities - 1"
+        (click)="nextActivity()"
+      >
+        Siguiente →
+      </button>
+    </div>
+
+    <!-- Summary -->
+    <div *ngIf="completedCount === totalActivities && completedCount > 0" class="alert alert-success mt-4">
+      <h4>🎉 ¡Completaste todas las frases!</h4>
+      <p class="mb-0">
+        Has evaluado tu pronunciación en {{ totalActivities }} frases.
+        <button class="btn btn-sm btn-outline-success ms-3" (click)="restart()">
+          Practicar de Nuevo
+        </button>
+      </p>
+    </div>
+
+    <!-- Instructions -->
+    <div class="alert alert-info mt-4" *ngIf="completedCount === 0">
+      <strong>Instrucciones:</strong>
+      <ol class="mb-0 mt-2">
+        <li>Escucha el modelo de pronunciación</li>
+        <li>Graba tu voz repitiendo la frase</li>
+        <li>Escucha tu grabación y compárala con el modelo</li>
+        <li>Evalúa tu pronunciación con estrellas (1-5)</li>
+      </ol>
+    </div>
+  </div>
+</div>

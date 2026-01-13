@@ -21,6 +21,11 @@ app.use('/api/courses', require('./routes/course.routes'));
 app.use('/api/units', require('./routes/unit.routes'));
 app.use('/api/stories', require('./routes/story.routes'));
 app.use('/api/enrollments', require('./routes/enrollment.routes'));
+app.use('/api/questions', require('./routes/question.routes'));
+app.use('/api/question-responses', require('./routes/questionResponse.routes'));
+app.use('/api/vocabulary', require('./routes/vocabulary.routes'));
+app.use('/api/repetition-activities', require('./routes/repetitionActivity.routes'));
+app.use('/api/activity-configs', require('./routes/activityConfig.routes'));
 
 // Health check
 app.get('/health', (req, res) => {

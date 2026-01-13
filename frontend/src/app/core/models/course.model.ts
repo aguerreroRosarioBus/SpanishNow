@@ -33,6 +33,7 @@ export interface Story {
   audioNormalUrl?: string;
   order: number;
   questions?: Question[];
+  repetitionActivities?: RepetitionActivity[];
 }
 
 export interface Vocabulary {
@@ -40,6 +41,12 @@ export interface Vocabulary {
   unitId: number;
   word: string;
   translation: string;
+  example?: string;
+  partOfSpeech?: string;
+  audioUrl?: string;
+  imageUrl?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Question {
@@ -64,4 +71,52 @@ export interface Progress {
   enrollmentId: number;
   storyId: number;
   completed: boolean;
+  activitiesCompleted?: boolean;
+  // Granular activity tracking (new fields)
+  flashcardsViewed?: boolean;
+  questionsCompleted?: boolean;
+  matchingCompleted?: boolean;
+  listenRepeatCompleted?: boolean;
+}
+
+export interface QuestionResponse {
+  id: number;
+  progressId: number;
+  questionId: number;
+  studentAnswer: string;
+  isCorrect: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface QuestionSubmission {
+  questionId: number;
+  studentAnswer: string;
+}
+
+export interface QuestionResult {
+  questionId: number;
+  isCorrect: boolean;
+  correctAnswer?: string;
+}
+
+export interface SubmitResponsePayload {
+  progressId: number;
+  responses: QuestionSubmission[];
+}
+
+export interface SubmitResponseResult {
+  results: QuestionResult[];
+  allCorrect: boolean;
+  activitiesCompleted: boolean;
+}
+
+export interface RepetitionActivity {
+  id: number;
+  storyId: number;
+  phrase: string;
+  audioUrl?: string;
+  order: number;
+  createdAt?: string;
+  updatedAt?: string;
 }

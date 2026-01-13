@@ -54,6 +54,23 @@ export const routes: Routes = [
     // TODO: Agregar studentGuard cuando esté listo
   },
 
+  // Rutas de actividades de vocabulario
+  {
+    path: 'student/flashcard/:unitId',
+    loadComponent: () => import('./features/student/flashcard/flashcard.component').then(m => m.FlashcardComponent)
+    // TODO: Agregar studentGuard cuando esté listo
+  },
+  {
+    path: 'student/matching/:unitId',
+    loadComponent: () => import('./features/student/matching/matching.component').then(m => m.MatchingComponent)
+    // TODO: Agregar studentGuard cuando esté listo
+  },
+  {
+    path: 'student/listen-repeat/:storyId',
+    loadComponent: () => import('./features/student/listen-repeat/listen-repeat.component').then(m => m.ListenRepeatComponent)
+    // TODO: Agregar studentGuard cuando esté listo
+  },
+
   // Ruta 404 - página no encontrada
   {
     path: '**',

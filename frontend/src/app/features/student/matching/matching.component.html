@@ -1,0 +1,116 @@
+<app-navbar></app-navbar>
+
+<div class="container mt-4">
+  <!-- Loading -->
+  <div *ngIf="isLoading()" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status"></div>
+    <p class="text-muted mt-2">Cargando vocabulario...</p>
+  </div>
+
+  <!-- Error -->
+  <div *ngIf="errorMessage()" class="alert alert-warning">
+    {{ errorMessage() }}
+    <button class="btn btn-outline-secondary mt-3" (click)="goBack()">
+      ← Volver
+    </button>
+  </div>
+
+  <!-- Matching Game -->
+  <div *ngIf="!isLoading() && !errorMessage() && vocabulary().length > 0">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <button class="btn btn-outline-secondary" (click)="goBack()">
+        ← Volver
+      </button>
+      <h2 class="mb-0">Empareja las Palabras</h2>
+      <button class="btn btn-outline-primary" (click)="restart()">
+        🔄 Reiniciar
+      </button>
+    </div>
+
+    <!-- Stats -->
+    <div class="row mb-4">
+      <div class="col-md-4">
+        <div class="stat-card">
+          <div class="stat-value">{{ matches() }} / {{ vocabulary().length }}</div>
+          <div class="stat-label">Emparejadas</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="stat-card">
+          <div class="stat-value">{{ attempts() }}</div>
+          <div class="stat-label">Intentos</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="stat-card">
+          <div class="stat-value">{{ accuracy }}%</div>
+          <div class="stat-label">Precisión</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Instructions -->
+    <div class="alert alert-info mb-4" *ngIf="matches() === 0">
+      <strong>Instrucciones:</strong> Haz clic en una palabra en español y luego en su traducción correspondiente en inglés.
+    </div>
+
+    <!-- Celebration -->
+    <div *ngIf="showCelebration()" class="celebration-banner">
+      <h1>🎉 ¡Excelente Trabajo! 🎉</h1>
+      <p>Has completado todas las coincidencias con {{ accuracy }}% de precisión</p>
+    </div>
+
+    <!-- Matching Grid -->
+    <div class="row matching-grid">
+      <!-- Spanish Words Column -->
+      <div class="col-md-6">
+        <h4 class="text-center mb-3">Español</h4>
+        <div class="match-column">
+          <button
+            *ngFor="let word of words()"
+            class="match-item"
+            [class.matched]="word.matched"
+            [class.selected]="isSelected(word)"
+            [disabled]="word.matched"
+            (click)="selectItem(word)"
+          >
+            <span class="match-text">{{ word.text }}</span>
+            <span *ngIf="word.matched" class="match-icon">✓</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- English Translations Column -->
+      <div class="col-md-6">
+        <h4 class="text-center mb-3">English</h4>
+        <div class="match-column">
+          <button
+            *ngFor="let translation of translations()"
+            class="match-item"
+            [class.matched]="translation.matched"
+            [class.selected]="isSelected(translation)"
+            [disabled]="translation.matched"
+            (click)="selectItem(translation)"
+          >
+            <span class="match-text">{{ translation.text }}</span>
+            <span *ngIf="translation.matched" class="match-icon">✓</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Complete Message -->
+    <div *ngIf="isComplete()" class="text-center mt-4">
+      <div class="alert alert-success">
+        <h4>🎊 ¡Juego Completado! 🎊</h4>
+        <p class="mb-3">
+          Emparejaste todas las palabras en {{ attempts() }} intentos con {{ accuracy }}% de precisión.
+        </p>
+        <button class="btn btn-primary" (click)="restart()">
+          Jugar de Nuevo
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,138 @@
+<app-navbar></app-navbar>
+
+<div class="container mt-4">
+  <!-- Loading -->
+  <div *ngIf="isLoading()" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status"></div>
+    <p class="text-muted mt-2">Cargando vocabulario...</p>
+  </div>
+
+  <!-- Error -->
+  <div *ngIf="errorMessage()" class="alert alert-warning">
+    {{ errorMessage() }}
+    <button class="btn btn-outline-secondary mt-3" (click)="goBack()">
+      ← Volver
+    </button>
+  </div>
+
+  <!-- Flashcards -->
+  <div *ngIf="!isLoading() && !errorMessage() && vocabulary().length > 0">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <button class="btn btn-outline-secondary" (click)="goBack()">
+        ← Volver
+      </button>
+      <h2 class="mb-0">Tarjetas de Vocabulario</h2>
+      <div class="btn-group">
+        <button
+          class="btn btn-sm"
+          [class.btn-primary]="isRandomMode()"
+          [class.btn-outline-primary]="!isRandomMode()"
+          (click)="toggleRandomMode()"
+        >
+          🔀 {{ isRandomMode() ? 'Aleatorio' : 'Secuencial' }}
+        </button>
+        <button class="btn btn-sm btn-outline-secondary" (click)="restart()">
+          🔄 Reiniciar
+        </button>
+      </div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="mb-4">
+      <div class="d-flex justify-content-between mb-2">
+        <small class="text-muted">
+          Tarjeta {{ currentIndex() + 1 }} de {{ totalCards }}
+        </small>
+        <small class="text-muted">
+          {{ progress }}% completado
+        </small>
+      </div>
+      <div class="progress" style="height: 8px;">
+        <div
+          class="progress-bar bg-success"
+          role="progressbar"
+          [style.width.%]="progress"
+        ></div>
+      </div>
+    </div>
+
+    <!-- Flashcard -->
+    <div class="flashcard-container" (click)="flipCard()">
+      <div class="flashcard" [class.flipped]="isFlipped()">
+        <!-- Front (Word) -->
+        <div class="flashcard-face flashcard-front">
+          <div class="card-content">
+            <div class="word-display">
+              <h1 class="mb-3">{{ currentCard?.word }}</h1>
+              <span *ngIf="currentCard?.partOfSpeech" class="badge bg-secondary mb-3">
+                {{ currentCard?.partOfSpeech }}
+              </span>
+            </div>
+
+            <div *ngIf="currentCard?.imageUrl" class="image-container mb-3">
+              <img [src]="currentCard?.imageUrl" [alt]="currentCard?.word" class="img-fluid rounded">
+            </div>
+
+            <button
+              *ngIf="currentCard?.audioUrl"
+              class="btn btn-outline-primary btn-lg"
+              (click)="playAudio(); $event.stopPropagation()"
+            >
+              🔊 Escuchar Pronunciación
+            </button>
+
+            <p class="mt-4 text-muted">
+              <small>Haz clic para ver la traducción</small>
+            </p>
+          </div>
+        </div>
+
+        <!-- Back (Translation) -->
+        <div class="flashcard-face flashcard-back">
+          <div class="card-content">
+            <div class="translation-display">
+              <h1 class="mb-3">{{ currentCard?.translation }}</h1>
+
+              <div *ngIf="currentCard?.example" class="example-box">
+                <strong>Ejemplo:</strong>
+                <p class="mb-0">{{ currentCard?.example }}</p>
+              </div>
+            </div>
+
+            <p class="mt-4 text-muted">
+              <small>Haz clic para ver la palabra en español</small>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="d-flex justify-content-center gap-3 mt-4">
+      <button
+        *ngIf="!isRandomMode()"
+        class="btn btn-lg btn-outline-primary"
+        [disabled]="currentIndex() === 0"
+        (click)="previousCard()"
+      >
+        ← Anterior
+      </button>
+
+      <button
+        class="btn btn-lg btn-primary"
+        [disabled]="!isRandomMode() && currentIndex() >= totalCards - 1"
+        (click)="nextCard()"
+      >
+        {{ isRandomMode() ? 'Siguiente Aleatoria' : 'Siguiente' }} →
+      </button>
+    </div>
+
+    <!-- Stats -->
+    <div *ngIf="isRandomMode()" class="text-center mt-4">
+      <p class="text-muted">
+        Has revisado {{ playedIndices().size }} de {{ totalCards }} tarjetas
+      </p>
+    </div>
+  </div>
+</div>
