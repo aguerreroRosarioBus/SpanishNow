@@ -8,12 +8,12 @@ import { EnrollmentService } from '../../../core/services/enrollment.service';
   standalone: true,
   imports: [CommonModule, ListenRepeatComponent],
   template: `
-    <div class="modal fade" [class.show]="show" [style.display]="show ? 'block' : 'none'" tabindex="-1">
-      <div class="modal-dialog modal-xl">
+    <div class="modal fade" [class.show]="show" [style.display]="show ? 'block' : 'none'" tabindex="-1" (click)="onBackdropClick($event)">
+      <div class="modal-dialog modal-xl" (click)="$event.stopPropagation()">
         <div class="modal-content">
           <div class="modal-header bg-warning text-dark">
             <h5 class="modal-title">🎤 Listen & Repeat</h5>
-            <button type="button" class="btn-close" (click)="close.emit()" aria-label="Close"></button>
+            <button type="button" class="btn-close" (click)="onClose()" aria-label="Close"></button>
           </div>
           <div class="modal-body">
             <div class="alert alert-info mb-3">
@@ -43,6 +43,14 @@ export class ListenRepeatModalComponent {
   @Output() close = new EventEmitter<void>();
 
   private enrollmentService = inject(EnrollmentService);
+
+  onClose(): void {
+    this.close.emit();
+  }
+
+  onBackdropClick(event: MouseEvent): void {
+    this.close.emit();
+  }
 
   onListenRepeatCompleted(result: { totalPhrases: number; goodPerformance: number }): void {
     // Validate 3+ stars in 80% of phrases requirement

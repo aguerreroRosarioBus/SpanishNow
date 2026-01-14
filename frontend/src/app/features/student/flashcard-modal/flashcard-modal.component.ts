@@ -8,12 +8,12 @@ import { EnrollmentService } from '../../../core/services/enrollment.service';
   standalone: true,
   imports: [CommonModule, FlashcardComponent],
   template: `
-    <div class="modal fade" [class.show]="show" [style.display]="show ? 'block' : 'none'" tabindex="-1">
-      <div class="modal-dialog modal-xl">
+    <div class="modal fade" [class.show]="show" [style.display]="show ? 'block' : 'none'" tabindex="-1" (click)="onBackdropClick($event)">
+      <div class="modal-dialog modal-xl" (click)="$event.stopPropagation()">
         <div class="modal-content">
           <div class="modal-header bg-primary text-white">
             <h5 class="modal-title">📚 Flashcards de Vocabulario</h5>
-            <button type="button" class="btn-close btn-close-white" (click)="close.emit()" aria-label="Close"></button>
+            <button type="button" class="btn-close btn-close-white" (click)="onClose()" aria-label="Close"></button>
           </div>
           <div class="modal-body">
             <app-flashcard
@@ -40,6 +40,15 @@ export class FlashcardModalComponent {
   @Output() close = new EventEmitter<void>();
 
   private enrollmentService = inject(EnrollmentService);
+
+  onClose(): void {
+    this.close.emit();
+  }
+
+  onBackdropClick(event: MouseEvent): void {
+    // Close modal when clicking on backdrop (outside dialog)
+    this.close.emit();
+  }
 
   onAllViewed(): void {
     // Mark flashcards as viewed in progress tracking

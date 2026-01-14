@@ -5,6 +5,8 @@ import { AuthService } from '../../../core/services/auth.service';
 import { CourseService } from '../../../core/services/course.service';
 import { EnrollmentService } from '../../../core/services/enrollment.service';
 import { QuestionService } from '../../../core/services/question.service';
+import { VocabularyService } from '../../../core/services/vocabulary.service';
+import { RepetitionActivityService } from '../../../core/services/repetition-activity.service';
 import { ActivityConfigService, ActivityConfig } from '../../../core/services/activity-config.service';
 import { Course, Unit, Story, Question, Progress } from '../../../core/models/course.model';
 import { NavbarComponent } from '../../dashboard/navbar/navbar.component';
@@ -34,6 +36,8 @@ export class StoryPlayerComponent implements OnInit {
   private courseService = inject(CourseService);
   private enrollmentService = inject(EnrollmentService);
   private questionService = inject(QuestionService);
+  private vocabularyService = inject(VocabularyService);
+  private repetitionActivityService = inject(RepetitionActivityService);
   private activityConfigService = inject(ActivityConfigService);
 
   currentUser = this.authService.currentUser;
@@ -454,14 +458,101 @@ export class StoryPlayerComponent implements OnInit {
         this.showActivityModal.set(true);
         break;
       case 'flashcards':
-        this.showFlashcardModal.set(true);
+        this.checkAndShowFlashcards();
         break;
       case 'matching':
-        this.showMatchingModal.set(true);
+        this.checkAndShowMatching();
         break;
       case 'listen_repeat':
-        this.showListenRepeatModal.set(true);
+        this.checkAndShowListenRepeat();
         break;
+    }
+  }
+
+  checkAndShowFlashcards(): void {
+    const unitId = this.getCurrentUnit()?.id;
+    if (!unitId) {
+      this.skipCurrentActivity();
+      return;
+    }
+
+    // Check if vocabulary exists for this unit
+    this.vocabularyService.getVocabularyByUnit(unitId).subscribe({
+      next: (vocabulary) => {
+        if (vocabulary && vocabulary.length > 0) {
+          this.showFlashcardModal.set(true);
+        } else {
+          console.log('No flashcards available, skipping...');
+          this.skipCurrentActivity();
+        }
+      },
+      error: (error) => {
+        console.error('Error checking flashcards:', error);
+        this.skipCurrentActivity();
+      }
+    });
+  }
+
+  checkAndShowMatching(): void {
+    const unitId = this.getCurrentUnit()?.id;
+    if (!unitId) {
+      this.skipCurrentActivity();
+      return;
+    }
+
+    // Check if vocabulary exists for matching
+    this.vocabularyService.getVocabularyByUnit(unitId).subscribe({
+      next: (vocabulary) => {
+        if (vocabulary && vocabulary.length > 0) {
+          this.showMatchingModal.set(true);
+        } else {
+          console.log('No matching activity available, skipping...');
+          this.skipCurrentActivity();
+        }
+      },
+      error: (error) => {
+        console.error('Error checking matching:', error);
+        this.skipCurrentActivity();
+      }
+    });
+  }
+
+  checkAndShowListenRepeat(): void {
+    const storyId = this.currentStory()?.id;
+    if (!storyId) {
+      this.skipCurrentActivity();
+      return;
+    }
+
+    // Check if repetition activities exist
+    this.repetitionActivityService.getActivitiesByStory(storyId).subscribe({
+      next: (activities) => {
+        if (activities && activities.length > 0) {
+          this.showListenRepeatModal.set(true);
+        } else {
+          console.log('No listen & repeat activities available, skipping...');
+          this.skipCurrentActivity();
+        }
+      },
+      error: (error) => {
+        console.error('Error checking listen & repeat:', error);
+        this.skipCurrentActivity();
+      }
+    });
+  }
+
+  skipCurrentActivity(): void {
+    // Automatically skip to next activity
+    const nextIndex = this.currentActivityIndex() + 1;
+    const configs = this.activityConfigs();
+
+    if (nextIndex < configs.length) {
+      // More activities pending, skip to next
+      this.currentActivityIndex.set(nextIndex);
+      this.showActivity(configs[nextIndex].activityType);
+    } else {
+      // All activities completed (or skipped)
+      this.onAllActivitiesCompleted();
     }
   }
 
@@ -483,10 +574,17 @@ export class StoryPlayerComponent implements OnInit {
   }
 
   closeAllModals(): void {
+    console.log('Closing all modals');
     this.showActivityModal.set(false);
     this.showFlashcardModal.set(false);
     this.showMatchingModal.set(false);
     this.showListenRepeatModal.set(false);
+    this.showContinueDialog.set(false);
+
+    // Reset orchestrator state when manually closing
+    this.activityConfigs.set([]);
+    this.currentActivityIndex.set(0);
+    this.currentActivityType.set(null);
   }
 
   continueToNextActivity(): void {
@@ -501,6 +599,29 @@ export class StoryPlayerComponent implements OnInit {
   skipNextActivity(): void {
     this.showContinueDialog.set(false);
     // Student can resume later
+  }
+
+  resumeActivities(story: Story): void {
+    // Resume activities from where student left off
+    const progressId = this.getProgressForStory(story.id)?.id;
+    if (!progressId) {
+      alert('No se encontró progreso para esta historia');
+      return;
+    }
+
+    this.currentProgressId.set(progressId);
+    this.loadActivityConfigsAndStart(story.id);
+  }
+
+  hasPendingActivities(storyId: number): boolean {
+    const progress = this.getProgressForStory(storyId);
+    return progress?.completed === true && progress?.activitiesCompleted === false;
+  }
+
+  getPendingActivitiesCount(storyId: number): number {
+    // This would require checking which activities are actually pending
+    // For now, return a simple indicator
+    return this.hasPendingActivities(storyId) ? 1 : 0;
   }
 
   onAllActivitiesCompleted(): void {
