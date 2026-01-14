@@ -4,6 +4,7 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { CourseService } from '../../../core/services/course.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { Course } from '../../../core/models/course.model';
 import { NavbarComponent } from '../../dashboard/navbar/navbar.component';
 
@@ -17,6 +18,7 @@ import { NavbarComponent } from '../../dashboard/navbar/navbar.component';
 export class TeacherDashboardComponent implements OnInit {
   private authService = inject(AuthService);
   private courseService = inject(CourseService);
+  private toastService = inject(ToastService);
   private router = inject(Router);
   private fb = inject(FormBuilder);
 
@@ -92,13 +94,13 @@ export class TeacherDashboardComponent implements OnInit {
 
       // Validar que sea una imagen
       if (!file.type.startsWith('image/')) {
-        alert('Por favor selecciona un archivo de imagen válido');
+        this.toastService.warning('Por favor selecciona un archivo de imagen válido');
         return;
       }
 
       // Validar tamaño (máximo 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        alert('La imagen no debe superar los 5MB');
+        this.toastService.warning('La imagen no debe superar los 5MB');
         return;
       }
 

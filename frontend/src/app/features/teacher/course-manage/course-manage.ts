@@ -8,6 +8,7 @@ import { StoryService } from '../../../core/services/story.service';
 import { QuestionService } from '../../../core/services/question.service';
 import { VocabularyService } from '../../../core/services/vocabulary.service';
 import { RepetitionActivityService } from '../../../core/services/repetition-activity.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { Course, Unit, Story, Question, Vocabulary, RepetitionActivity } from '../../../core/models/course.model';
 import { NavbarComponent } from '../../dashboard/navbar/navbar.component';
 
@@ -25,6 +26,7 @@ export class CourseManageComponent implements OnInit {
   private questionService = inject(QuestionService);
   private vocabularyService = inject(VocabularyService);
   private repetitionActivityService = inject(RepetitionActivityService);
+  private toastService = inject(ToastService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private fb = inject(FormBuilder);
@@ -174,11 +176,11 @@ export class CourseManageComponent implements OnInit {
       next: (updatedCourse) => {
         this.course.set(updatedCourse);
         this.closeEditCourseModal();
-        alert('Curso actualizado exitosamente');
+        this.toastService.success('Curso actualizado exitosamente');
       },
       error: (error) => {
         console.error('Error updating course:', error);
-        alert('Error al actualizar el curso');
+        this.toastService.error('Error al actualizar el curso');
       }
     });
   }
@@ -229,7 +231,7 @@ export class CourseManageComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error creating unit:', error);
-        alert('Error al crear la unidad');
+        this.toastService.error('Error al crear la unidad');
       }
     });
   }
@@ -251,11 +253,11 @@ export class CourseManageComponent implements OnInit {
           current.map(u => u.id === updatedUnit.id ? { ...u, ...updatedUnit } : u)
         );
         this.closeEditUnitModal();
-        alert('Unidad actualizada exitosamente');
+        this.toastService.success('Unidad actualizada exitosamente');
       },
       error: (error) => {
         console.error('Error updating unit:', error);
-        alert('Error al actualizar la unidad');
+        this.toastService.error('Error al actualizar la unidad');
       }
     });
   }
@@ -271,7 +273,7 @@ export class CourseManageComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error deleting unit:', error);
-        alert('Error al eliminar la unidad');
+        this.toastService.error('Error al eliminar la unidad');
       }
     });
   }
@@ -324,13 +326,13 @@ export class CourseManageComponent implements OnInit {
       const file = input.files[0];
       // Validar tipo
       if (!file.type.startsWith('audio/')) {
-        alert('Por favor selecciona un archivo de audio válido');
+        this.toastService.warning('Por favor selecciona un archivo de audio válido');
         input.value = '';
         return;
       }
       // Validar tamaño (max 50MB)
       if (file.size > 50 * 1024 * 1024) {
-        alert('El archivo es muy grande. Máximo 50MB');
+        this.toastService.warning('El archivo es muy grande. Máximo 50MB');
         input.value = '';
         return;
       }
@@ -344,13 +346,13 @@ export class CourseManageComponent implements OnInit {
       const file = input.files[0];
       // Validar tipo
       if (!file.type.startsWith('audio/')) {
-        alert('Por favor selecciona un archivo de audio válido');
+        this.toastService.warning('Por favor selecciona un archivo de audio válido');
         input.value = '';
         return;
       }
       // Validar tamaño (max 50MB)
       if (file.size > 50 * 1024 * 1024) {
-        alert('El archivo es muy grande. Máximo 50MB');
+        this.toastService.warning('El archivo es muy grande. Máximo 50MB');
         input.value = '';
         return;
       }
@@ -391,7 +393,7 @@ export class CourseManageComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error creating story:', error);
-        alert('Error al crear la historia');
+        this.toastService.error('Error al crear la historia');
       }
     });
   }
@@ -429,11 +431,11 @@ export class CourseManageComponent implements OnInit {
           });
         });
         this.closeEditStoryModal();
-        alert('Historia actualizada exitosamente');
+        this.toastService.success('Historia actualizada exitosamente');
       },
       error: (error) => {
         console.error('Error updating story:', error);
-        alert('Error al actualizar la historia');
+        this.toastService.error('Error al actualizar la historia');
       }
     });
   }
@@ -459,7 +461,7 @@ export class CourseManageComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error deleting story:', error);
-        alert('Error al eliminar la historia');
+        this.toastService.error('Error al eliminar la historia');
       }
     });
   }
@@ -505,7 +507,7 @@ export class CourseManageComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error loading questions:', error);
-        alert('Error al cargar las preguntas');
+        this.toastService.error('Error al cargar las preguntas');
       }
     });
   }
@@ -538,7 +540,7 @@ export class CourseManageComponent implements OnInit {
       data.options = this.questionOptions.value.filter((opt: string) => opt.trim() !== '');
 
       if (data.options.length < 2) {
-        alert('Debes agregar al menos 2 opciones');
+        this.toastService.warning('Debes agregar al menos 2 opciones');
         this.isSubmittingQuestion.set(false);
         return;
       }
@@ -564,7 +566,7 @@ export class CourseManageComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error creating question:', error);
-        alert('Error al crear la pregunta');
+        this.toastService.error('Error al crear la pregunta');
         this.isSubmittingQuestion.set(false);
       }
     });
@@ -593,7 +595,7 @@ export class CourseManageComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error deleting question:', error);
-        alert('Error al eliminar la pregunta');
+        this.toastService.error('Error al eliminar la pregunta');
       }
     });
   }
@@ -676,11 +678,11 @@ export class CourseManageComponent implements OnInit {
         this.unitVocabulary.update(current => [...current, newVocab]);
         this.resetVocabularyForm();
         this.isSubmittingVocabulary.set(false);
-        alert('Vocabulario creado exitosamente');
+        this.toastService.success('Vocabulario creado exitosamente');
       },
       error: (error) => {
         console.error('Error creating vocabulary:', error);
-        alert('Error al crear vocabulario');
+        this.toastService.error('Error al crear vocabulario');
         this.isSubmittingVocabulary.set(false);
       }
     });
@@ -695,7 +697,7 @@ export class CourseManageComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error deleting vocabulary:', error);
-        alert('Error al eliminar vocabulario');
+        this.toastService.error('Error al eliminar vocabulario');
       }
     });
   }
@@ -758,11 +760,11 @@ export class CourseManageComponent implements OnInit {
         this.storyRepetitions.update(current => [...current, newActivity]);
         this.resetRepetitionForm();
         this.isSubmittingRepetition.set(false);
-        alert('Actividad de repetición creada exitosamente');
+        this.toastService.success('Actividad de repetición creada exitosamente');
       },
       error: (error: any) => {
         console.error('Error creating repetition activity:', error);
-        alert('Error al crear actividad de repetición');
+        this.toastService.error('Error al crear actividad de repetición');
         this.isSubmittingRepetition.set(false);
       }
     });
@@ -777,7 +779,7 @@ export class CourseManageComponent implements OnInit {
       },
       error: (error: any) => {
         console.error('Error deleting repetition activity:', error);
-        alert('Error al eliminar actividad de repetición');
+        this.toastService.error('Error al eliminar actividad de repetición');
       }
     });
   }
@@ -846,7 +848,7 @@ export class CourseManageComponent implements OnInit {
       })
       .catch(error => {
         console.error('Error reordering units:', error);
-        alert('Error al reordenar unidades');
+        this.toastService.error('Error al reordenar unidades');
         this.loadCourseDetails(); // Reload to reset order
       });
   }
@@ -870,7 +872,7 @@ export class CourseManageComponent implements OnInit {
 
     // Only allow reordering within same unit
     if (this.draggedStory.unitId !== targetUnitId) {
-      alert('Solo puedes reordenar historias dentro de la misma unidad');
+      this.toastService.warning('Solo puedes reordenar historias dentro de la misma unidad');
       this.draggedStory = null;
       return;
     }
@@ -918,7 +920,7 @@ export class CourseManageComponent implements OnInit {
       })
       .catch(error => {
         console.error('Error reordering stories:', error);
-        alert('Error al reordenar historias');
+        this.toastService.error('Error al reordenar historias');
         this.loadCourseDetails(); // Reload to reset order
       });
   }
@@ -973,7 +975,7 @@ export class CourseManageComponent implements OnInit {
       })
       .catch(error => {
         console.error('Error reordering repetition activities:', error);
-        alert('Error al reordenar actividades');
+        this.toastService.error('Error al reordenar actividades');
         this.loadRepetitionsForStory(this.selectedStory()!.id); // Reload to reset order
       });
   }
