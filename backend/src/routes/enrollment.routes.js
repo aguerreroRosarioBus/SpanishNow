@@ -46,6 +46,32 @@ router.post('/', authMiddleware, isStudent, async (req, res) => {
   }
 });
 
+// Reset course progress (delete all progress for an enrollment)
+// IMPORTANT: This route must come BEFORE /:enrollmentId/progress to avoid route conflicts
+router.delete('/:enrollmentId/reset-progress', authMiddleware, isStudent, async (req, res) => {
+  try {
+    const { enrollmentId } = req.params;
+
+    const enrollment = await Enrollment.findByPk(enrollmentId);
+    if (!enrollment) {
+      return res.status(404).json({ error: 'Enrollment not found' });
+    }
+
+    if (enrollment.studentId !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    // Delete all progress records for this enrollment
+    await Progress.destroy({
+      where: { enrollmentId }
+    });
+
+    res.json({ message: 'Course progress reset successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get progress for an enrollment
 router.get('/:enrollmentId/progress', authMiddleware, async (req, res) => {
   try {

@@ -15,13 +15,12 @@ import { ToastService } from '../../../core/services/toast.service';
         [class.toast-error]="toast.type === 'error'"
         [class.toast-warning]="toast.type === 'warning'"
         [class.toast-info]="toast.type === 'info'"
-        [@slideIn]
       >
         <div class="toast-content">
           <span class="toast-icon">{{ getIcon(toast.type) }}</span>
           <span class="toast-message">{{ toast.message }}</span>
         </div>
-        <button class="toast-close" (click)="toastService.remove(toast.id)" aria-label="Close">
+        <button type="button" class="toast-close" (click)="toastService.remove(toast.id)" aria-label="Close">
           ×
         </button>
       </div>
@@ -45,12 +44,11 @@ import { ToastService } from '../../../core/services/toast.service';
       justify-content: space-between;
       gap: 12px;
       padding: 16px 20px;
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-lg);
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       background: white;
       border-left: 4px solid;
       animation: slideIn 0.3s ease-out;
-      font-weight: 600;
       min-width: 320px;
     }
 
@@ -78,9 +76,10 @@ import { ToastService } from '../../../core/services/toast.service';
     }
 
     .toast-message {
-      font-size: 15px;
-      line-height: 1.4;
-      color: var(--color-text);
+      font-size: 14px;
+      line-height: 1.5;
+      color: #1a1a1a;
+      font-weight: 500;
     }
 
     .toast-close {
@@ -89,7 +88,7 @@ import { ToastService } from '../../../core/services/toast.service';
       font-size: 24px;
       line-height: 1;
       cursor: pointer;
-      color: var(--color-text-light);
+      color: #6c757d;
       padding: 0;
       width: 24px;
       height: 24px;
@@ -97,49 +96,56 @@ import { ToastService } from '../../../core/services/toast.service';
       align-items: center;
       justify-content: center;
       border-radius: 50%;
-      transition: all var(--transition-fast);
+      transition: all 0.2s ease;
       flex-shrink: 0;
+      pointer-events: auto;
+      position: relative;
+      z-index: 10;
     }
 
     .toast-close:hover {
       background-color: rgba(0, 0, 0, 0.05);
-      color: var(--color-text);
+      color: #2c3e50;
     }
 
     .toast-success {
-      border-left-color: var(--color-success);
-      background: linear-gradient(135deg, #E8F5E9 0%, #FFFFFF 100%);
+      border-left-color: #28a745;
+      background: #ffffff;
+      border: 1px solid #d4edda;
     }
 
     .toast-success .toast-icon {
-      color: var(--color-success);
+      color: #28a745;
     }
 
     .toast-error {
-      border-left-color: var(--color-danger);
-      background: linear-gradient(135deg, #FFEBEE 0%, #FFFFFF 100%);
+      border-left-color: #dc3545;
+      background: #ffffff;
+      border: 1px solid #f8d7da;
     }
 
     .toast-error .toast-icon {
-      color: var(--color-danger);
+      color: #dc3545;
     }
 
     .toast-warning {
-      border-left-color: var(--color-warning);
-      background: linear-gradient(135deg, #FFF9E6 0%, #FFFFFF 100%);
+      border-left-color: #ffc107;
+      background: #ffffff;
+      border: 1px solid #fff3cd;
     }
 
     .toast-warning .toast-icon {
-      color: var(--color-warning);
+      color: #f57c00;
     }
 
     .toast-info {
-      border-left-color: var(--color-info);
-      background: linear-gradient(135deg, #E1F5FE 0%, #FFFFFF 100%);
+      border-left-color: #17a2b8;
+      background: #ffffff;
+      border: 1px solid #d1ecf1;
     }
 
     .toast-info .toast-icon {
-      color: var(--color-info);
+      color: #17a2b8;
     }
 
     @media (max-width: 768px) {

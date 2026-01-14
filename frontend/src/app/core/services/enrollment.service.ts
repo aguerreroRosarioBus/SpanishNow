@@ -30,4 +30,8 @@ export class EnrollmentService {
       storyId
     });
   }
+
+  resetCourseProgress(enrollmentId: number): Observable<{ message: string }> {
+    return this.http.delete<{ message: string }>(`${this.apiUrl}/${enrollmentId}/reset-progress`);
+  }
 }

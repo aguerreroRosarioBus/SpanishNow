@@ -7,11 +7,12 @@ import { EnrollmentService } from '../../../core/services/enrollment.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { Course, Enrollment } from '../../../core/models/course.model';
 import { NavbarComponent } from '../../dashboard/navbar/navbar.component';
+import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-student-dashboard',
   standalone: true,
-  imports: [CommonModule, NavbarComponent, RouterLink],
+  imports: [CommonModule, NavbarComponent, RouterLink, ConfirmDialogComponent],
   templateUrl: './student-dashboard.component.html',
   styleUrl: './student-dashboard.component.scss'
 })
@@ -37,6 +38,16 @@ export class StudentDashboardComponent implements OnInit {
 
   // Vista activa: 'catalog' o 'my-courses'
   activeView = signal<'catalog' | 'my-courses'>('catalog');
+
+  // Confirm dialog state
+  showConfirmDialog = signal<boolean>(false);
+  confirmDialogData = signal<{
+    title: string;
+    message: string;
+    confirmText: string;
+    type: 'danger' | 'warning';
+    onConfirm: () => void;
+  } | null>(null);
 
   ngOnInit(): void {
     if (!this.authService.isStudent()) {
@@ -109,6 +120,47 @@ export class StudentDashboardComponent implements OnInit {
 
   switchView(view: 'catalog' | 'my-courses'): void {
     this.activeView.set(view);
+  }
+
+  // Confirm Dialog Helpers
+  showConfirm(title: string, message: string, confirmText: string, onConfirm: () => void, type: 'danger' | 'warning' = 'danger'): void {
+    this.confirmDialogData.set({ title, message, confirmText, type, onConfirm });
+    this.showConfirmDialog.set(true);
+  }
+
+  onConfirmDialogConfirmed(): void {
+    const data = this.confirmDialogData();
+    if (data) {
+      data.onConfirm();
+    }
+    this.closeConfirmDialog();
+  }
+
+  closeConfirmDialog(): void {
+    this.showConfirmDialog.set(false);
+    this.confirmDialogData.set(null);
+  }
+
+  // Reset course progress
+  resetCourseProgress(enrollment: Enrollment): void {
+    this.showConfirm(
+      'Reiniciar Progreso',
+      `¿Estás seguro de que quieres reiniciar tu progreso en "${enrollment.course?.title}"? Esto eliminará todas tus historias completadas y actividades realizadas.`,
+      'Reiniciar',
+      () => {
+        this.enrollmentService.resetCourseProgress(enrollment.id).subscribe({
+          next: () => {
+            this.toastService.success('Progreso del curso reiniciado exitosamente');
+            // No need to reload, progress is already reset on backend
+          },
+          error: (error) => {
+            console.error('Error resetting progress:', error);
+            this.toastService.error('Error al reiniciar el progreso del curso');
+          }
+        });
+      },
+      'warning'
+    );
   }
 
   logout(): void {

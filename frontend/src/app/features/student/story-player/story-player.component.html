@@ -20,21 +20,23 @@
 
           <div *ngIf="!isLoading() && currentUnit()">
             <!-- Unit Navigation -->
-            <div class="p-2 bg-white border-bottom d-flex justify-content-between align-items-center">
+            <div class="p-3 bg-white border-bottom d-flex justify-content-between align-items-center gap-2">
               <button
-                class="btn btn-sm btn-outline-primary"
+                class="btn btn-sm btn-outline-primary flex-shrink-0"
                 [disabled]="!canGoPreviousUnit()"
                 (click)="goToPreviousUnit()"
+                style="min-width: 90px;"
               >
                 ← Anterior
               </button>
-              <small class="text-muted fw-bold">
+              <small class="text-muted fw-bold text-center" style="font-size: 0.75rem; line-height: 1.2;">
                 {{ currentUnit()?.title || 'Unidad' }}
               </small>
               <button
-                class="btn btn-sm btn-outline-primary"
+                class="btn btn-sm btn-outline-primary flex-shrink-0"
                 [disabled]="!canGoNextUnit()"
                 (click)="goToNextUnit()"
+                style="min-width: 90px;"
               >
                 Siguiente →
               </button>
@@ -113,7 +115,7 @@
                       *ngIf="isStoryFullyCompleted(story.id)"
                       class="badge bg-success"
                     >
-                      ✓✓ 100%
+                      ✓ Completa
                     </span>
                     <span
                       *ngIf="isStoryCompleted(story.id) && !isStoryFullyCompleted(story.id) && !hasPendingActivities(story.id)"

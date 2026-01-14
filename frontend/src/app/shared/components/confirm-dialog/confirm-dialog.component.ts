@@ -40,6 +40,15 @@ import { CommonModule } from '@angular/common';
   styles: [`
     .modal {
       background-color: rgba(0, 0, 0, 0.5);
+      z-index: 10000;
+    }
+
+    .modal-backdrop {
+      z-index: 9999;
+    }
+
+    .modal-dialog {
+      z-index: 10001;
     }
   `]
 })

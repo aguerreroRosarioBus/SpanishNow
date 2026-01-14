@@ -169,10 +169,16 @@
               <div class="card-footer bg-transparent">
                 <a
                   [routerLink]="['/student/course', enrollment.courseId, 'play']"
-                  class="btn btn-success w-100"
+                  class="btn btn-success w-100 mb-2"
                 >
                   Continuar Aprendiendo →
                 </a>
+                <button
+                  class="btn btn-outline-warning w-100"
+                  (click)="resetCourseProgress(enrollment)"
+                >
+                  🔄 Reiniciar Progreso
+                </button>
               </div>
             </div>
           </div>
@@ -182,3 +188,15 @@
     </div>
   </div>
 </div>
+
+<!-- Confirm Dialog -->
+<app-confirm-dialog
+  *ngIf="confirmDialogData()"
+  [show]="showConfirmDialog()"
+  [title]="confirmDialogData()!.title"
+  [message]="confirmDialogData()!.message"
+  [confirmText]="confirmDialogData()!.confirmText"
+  [type]="confirmDialogData()!.type"
+  (confirmed)="onConfirmDialogConfirmed()"
+  (cancelled)="closeConfirmDialog()"
+></app-confirm-dialog>
