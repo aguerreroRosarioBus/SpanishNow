@@ -865,6 +865,18 @@
 <!-- Modal Backdrop -->
 <div
   class="modal-backdrop fade"
-  [class.show]="showCourseEditModal() || showUnitModal() || showUnitEditModal() || showStoryModal() || showStoryEditModal() || showQuestionModal() || showVocabularyModal() || showRepetitionModal()"
-  *ngIf="showCourseEditModal() || showUnitModal() || showUnitEditModal() || showStoryModal() || showStoryEditModal() || showQuestionModal() || showVocabularyModal() || showRepetitionModal()"
+  [class.show]="showCourseEditModal() || showUnitModal() || showUnitEditModal() || showStoryModal() || showStoryEditModal() || showQuestionModal() || showVocabularyModal() || showRepetitionModal() || showConfirmDialog()"
+  *ngIf="showCourseEditModal() || showUnitModal() || showUnitEditModal() || showStoryModal() || showStoryEditModal() || showQuestionModal() || showVocabularyModal() || showRepetitionModal() || showConfirmDialog()"
 ></div>
+
+<!-- Confirm Dialog -->
+<app-confirm-dialog
+  *ngIf="confirmDialogData()"
+  [show]="showConfirmDialog()"
+  [title]="confirmDialogData()!.title"
+  [message]="confirmDialogData()!.message"
+  [confirmText]="confirmDialogData()!.confirmText"
+  [type]="confirmDialogData()!.type"
+  (confirmed)="onConfirmDialogConfirmed()"
+  (cancelled)="closeConfirmDialog()"
+></app-confirm-dialog>

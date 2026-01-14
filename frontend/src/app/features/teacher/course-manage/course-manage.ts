@@ -11,11 +11,12 @@ import { RepetitionActivityService } from '../../../core/services/repetition-act
 import { ToastService } from '../../../core/services/toast.service';
 import { Course, Unit, Story, Question, Vocabulary, RepetitionActivity } from '../../../core/models/course.model';
 import { NavbarComponent } from '../../dashboard/navbar/navbar.component';
+import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-course-manage',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, NavbarComponent],
+  imports: [CommonModule, ReactiveFormsModule, NavbarComponent, ConfirmDialogComponent],
   templateUrl: './course-manage.html',
   styleUrl: './course-manage.scss',
 })
@@ -47,6 +48,17 @@ export class CourseManageComponent implements OnInit {
   showQuestionModal = signal<boolean>(false);
   showVocabularyModal = signal<boolean>(false);
   showRepetitionModal = signal<boolean>(false);
+
+  // Confirm dialog states
+  showConfirmDialog = signal<boolean>(false);
+  confirmDialogData = signal<{
+    title: string;
+    message: string;
+    confirmText: string;
+    type: 'danger' | 'warning';
+    onConfirm: () => void;
+  } | null>(null);
+
   selectedUnitId = signal<number | null>(null);
   selectedUnit = signal<Unit | null>(null);
   selectedStory = signal<Story | null>(null);
@@ -126,6 +138,25 @@ export class CourseManageComponent implements OnInit {
     } else {
       this.router.navigate(['/teacher/dashboard']);
     }
+  }
+
+  // Confirm Dialog Helper
+  showConfirm(title: string, message: string, confirmText: string, onConfirm: () => void, type: 'danger' | 'warning' = 'danger'): void {
+    this.confirmDialogData.set({ title, message, confirmText, type, onConfirm });
+    this.showConfirmDialog.set(true);
+  }
+
+  onConfirmDialogConfirmed(): void {
+    const data = this.confirmDialogData();
+    if (data) {
+      data.onConfirm();
+    }
+    this.closeConfirmDialog();
+  }
+
+  closeConfirmDialog(): void {
+    this.showConfirmDialog.set(false);
+    this.confirmDialogData.set(null);
   }
 
   loadCourseDetails(): void {
@@ -263,19 +294,24 @@ export class CourseManageComponent implements OnInit {
   }
 
   deleteUnit(unitId: number): void {
-    if (!confirm('¿Estás seguro de eliminar esta unidad? Se eliminarán todas sus historias.')) {
-      return;
-    }
-
-    this.unitService.deleteUnit(unitId).subscribe({
-      next: () => {
-        this.units.update(current => current.filter(u => u.id !== unitId));
+    this.showConfirm(
+      'Eliminar Unidad',
+      '¿Estás seguro de eliminar esta unidad? Se eliminarán todas sus historias.',
+      'Eliminar',
+      () => {
+        this.unitService.deleteUnit(unitId).subscribe({
+          next: () => {
+            this.units.update(current => current.filter(u => u.id !== unitId));
+            this.toastService.success('Unidad eliminada exitosamente');
+          },
+          error: (error) => {
+            console.error('Error deleting unit:', error);
+            this.toastService.error('Error al eliminar la unidad');
+          }
+        });
       },
-      error: (error) => {
-        console.error('Error deleting unit:', error);
-        this.toastService.error('Error al eliminar la unidad');
-      }
-    });
+      'danger'
+    );
   }
 
   // ===== STORY MANAGEMENT =====
@@ -441,29 +477,34 @@ export class CourseManageComponent implements OnInit {
   }
 
   deleteStory(unitId: number, storyId: number): void {
-    if (!confirm('¿Estás seguro de eliminar esta historia?')) {
-      return;
-    }
-
-    this.storyService.deleteStory(storyId).subscribe({
-      next: () => {
-        this.units.update(current => {
-          return current.map(unit => {
-            if (unit.id === unitId) {
-              return {
-                ...unit,
-                stories: (unit.stories || []).filter(s => s.id !== storyId)
-              };
-            }
-            return unit;
-          });
+    this.showConfirm(
+      'Eliminar Historia',
+      '¿Estás seguro de eliminar esta historia?',
+      'Eliminar',
+      () => {
+        this.storyService.deleteStory(storyId).subscribe({
+          next: () => {
+            this.units.update(current => {
+              return current.map(unit => {
+                if (unit.id === unitId) {
+                  return {
+                    ...unit,
+                    stories: (unit.stories || []).filter(s => s.id !== storyId)
+                  };
+                }
+                return unit;
+              });
+            });
+            this.toastService.success('Historia eliminada exitosamente');
+          },
+          error: (error) => {
+            console.error('Error deleting story:', error);
+            this.toastService.error('Error al eliminar la historia');
+          }
         });
       },
-      error: (error) => {
-        console.error('Error deleting story:', error);
-        this.toastService.error('Error al eliminar la historia');
-      }
-    });
+      'danger'
+    );
   }
 
   // ===== QUESTION MANAGEMENT =====
@@ -573,31 +614,36 @@ export class CourseManageComponent implements OnInit {
   }
 
   deleteQuestion(questionId: number): void {
-    if (!confirm('¿Estás seguro de eliminar esta pregunta?')) {
-      return;
-    }
+    this.showConfirm(
+      'Eliminar Pregunta',
+      '¿Estás seguro de eliminar esta pregunta?',
+      'Eliminar',
+      () => {
+        this.questionService.deleteQuestion(questionId).subscribe({
+          next: () => {
+            this.storyQuestions.update(current => current.filter(q => q.id !== questionId));
 
-    this.questionService.deleteQuestion(questionId).subscribe({
-      next: () => {
-        this.storyQuestions.update(current => current.filter(q => q.id !== questionId));
-
-        // Update the story in units
-        this.units.update(current => {
-          return current.map(unit => ({
-            ...unit,
-            stories: (unit.stories || []).map(s =>
-              s.id === this.selectedStory()!.id
-                ? { ...s, questions: (s.questions || []).filter(q => q.id !== questionId) }
-                : s
-            )
-          }));
+            // Update the story in units
+            this.units.update(current => {
+              return current.map(unit => ({
+                ...unit,
+                stories: (unit.stories || []).map(s =>
+                  s.id === this.selectedStory()!.id
+                    ? { ...s, questions: (s.questions || []).filter(q => q.id !== questionId) }
+                    : s
+                )
+              }));
+            });
+            this.toastService.success('Pregunta eliminada exitosamente');
+          },
+          error: (error) => {
+            console.error('Error deleting question:', error);
+            this.toastService.error('Error al eliminar la pregunta');
+          }
         });
       },
-      error: (error) => {
-        console.error('Error deleting question:', error);
-        this.toastService.error('Error al eliminar la pregunta');
-      }
-    });
+      'danger'
+    );
   }
 
   // ===== VOCABULARY MANAGEMENT =====
@@ -689,17 +735,24 @@ export class CourseManageComponent implements OnInit {
   }
 
   deleteVocabulary(id: number): void {
-    if (!confirm('¿Eliminar este vocabulario?')) return;
-
-    this.vocabularyService.deleteVocabulary(id).subscribe({
-      next: () => {
-        this.unitVocabulary.update(current => current.filter(v => v.id !== id));
+    this.showConfirm(
+      'Eliminar Vocabulario',
+      '¿Estás seguro de eliminar este vocabulario?',
+      'Eliminar',
+      () => {
+        this.vocabularyService.deleteVocabulary(id).subscribe({
+          next: () => {
+            this.unitVocabulary.update(current => current.filter(v => v.id !== id));
+            this.toastService.success('Vocabulario eliminado exitosamente');
+          },
+          error: (error) => {
+            console.error('Error deleting vocabulary:', error);
+            this.toastService.error('Error al eliminar vocabulario');
+          }
+        });
       },
-      error: (error) => {
-        console.error('Error deleting vocabulary:', error);
-        this.toastService.error('Error al eliminar vocabulario');
-      }
-    });
+      'danger'
+    );
   }
 
   // ===== REPETITION ACTIVITY MANAGEMENT =====
@@ -771,17 +824,24 @@ export class CourseManageComponent implements OnInit {
   }
 
   deleteRepetition(id: number): void {
-    if (!confirm('¿Eliminar esta actividad de repetición?')) return;
-
-    this.repetitionActivityService.deleteActivity(id).subscribe({
-      next: () => {
-        this.storyRepetitions.update(current => current.filter(r => r.id !== id));
+    this.showConfirm(
+      'Eliminar Actividad',
+      '¿Estás seguro de eliminar esta actividad de repetición?',
+      'Eliminar',
+      () => {
+        this.repetitionActivityService.deleteActivity(id).subscribe({
+          next: () => {
+            this.storyRepetitions.update(current => current.filter(r => r.id !== id));
+            this.toastService.success('Actividad de repetición eliminada exitosamente');
+          },
+          error: (error: any) => {
+            console.error('Error deleting repetition activity:', error);
+            this.toastService.error('Error al eliminar actividad de repetición');
+          }
+        });
       },
-      error: (error: any) => {
-        console.error('Error deleting repetition activity:', error);
-        this.toastService.error('Error al eliminar actividad de repetición');
-      }
-    });
+      'danger'
+    );
   }
 
   // ===== DRAG & DROP FUNCTIONALITY =====

@@ -303,24 +303,22 @@ export class StoryPlayerComponent implements OnInit {
       return;
     }
 
-    if (confirm('¿Has terminado de escuchar la historia?')) {
-      this.enrollmentService.markStoryCompleted(enrollmentId, story.id).subscribe({
-        next: (progress) => {
-          // Agregar a la lista de completadas
-          const completed = new Set(this.completedStories());
-          completed.add(story.id);
-          this.completedStories.set(completed);
+    this.enrollmentService.markStoryCompleted(enrollmentId, story.id).subscribe({
+      next: (progress) => {
+        // Agregar a la lista de completadas
+        const completed = new Set(this.completedStories());
+        completed.add(story.id);
+        this.completedStories.set(completed);
 
-          // Set progress ID and start sequential activities
-          this.currentProgressId.set(progress.id);
-          this.loadActivityConfigsAndStart(story.id);
-        },
-        error: (error) => {
-          console.error('Error marking story as completed:', error);
-          this.toastService.error('Error al marcar la historia como completada');
-        }
-      });
-    }
+        // Set progress ID and start sequential activities
+        this.currentProgressId.set(progress.id);
+        this.loadActivityConfigsAndStart(story.id);
+      },
+      error: (error) => {
+        console.error('Error marking story as completed:', error);
+        this.toastService.error('Error al marcar la historia como completada');
+      }
+    });
   }
 
   loadQuestionsForStory(storyId: number): void {
