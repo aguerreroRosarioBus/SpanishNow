@@ -4,6 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { CourseService } from '../../../core/services/course.service';
 import { EnrollmentService } from '../../../core/services/enrollment.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { Course, Enrollment } from '../../../core/models/course.model';
 import { NavbarComponent } from '../../dashboard/navbar/navbar.component';
 
@@ -18,6 +19,7 @@ export class StudentDashboardComponent implements OnInit {
   private authService = inject(AuthService);
   private courseService = inject(CourseService);
   private enrollmentService = inject(EnrollmentService);
+  private toastService = inject(ToastService);
   private router = inject(Router);
 
   currentUser = this.authService.currentUser;
@@ -93,9 +95,9 @@ export class StudentDashboardComponent implements OnInit {
         console.error('Error enrolling:', error);
 
         if (error.status === 400) {
-          alert('Ya estás inscrito en este curso');
+          this.toastService.warning('Ya estás inscrito en este curso');
         } else {
-          alert('Error al inscribirse. Intenta de nuevo.');
+          this.toastService.error('Error al inscribirse. Intenta de nuevo.');
         }
       }
     });

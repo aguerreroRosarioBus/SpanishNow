@@ -2,6 +2,7 @@ import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatchingComponent } from '../matching/matching.component';
 import { EnrollmentService } from '../../../core/services/enrollment.service';
+import { ToastService } from '../../../core/services/toast.service';
 
 @Component({
   selector: 'app-matching-modal',
@@ -43,6 +44,7 @@ export class MatchingModalComponent {
   @Output() close = new EventEmitter<void>();
 
   private enrollmentService = inject(EnrollmentService);
+  private toastService = inject(ToastService);
 
   onClose(): void {
     this.close.emit();
@@ -64,7 +66,7 @@ export class MatchingModalComponent {
 
       this.completed.emit();
     } else {
-      alert('Necesitas al menos 80% de precisión. Inténtalo de nuevo.');
+      this.toastService.warning('Necesitas al menos 80% de precisión. Inténtalo de nuevo.');
     }
   }
 }

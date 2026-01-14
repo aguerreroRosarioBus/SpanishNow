@@ -2,6 +2,7 @@ import { Component, inject, OnInit, Input, Output, EventEmitter, signal, OnDestr
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { RepetitionActivityService } from '../../../core/services/repetition-activity.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { RepetitionActivity } from '../../../core/models/course.model';
 import { NavbarComponent } from '../../dashboard/navbar/navbar.component';
 
@@ -16,6 +17,7 @@ export class ListenRepeatComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private repetitionService = inject(RepetitionActivityService);
+  private toastService = inject(ToastService);
 
   @Input() storyId?: number;
   @Output() completed = new EventEmitter<{ totalPhrases: number; goodPerformance: number }>(); // Emits phrase stats
@@ -123,7 +125,7 @@ export class ListenRepeatComponent implements OnInit, OnDestroy {
   playModel(): void {
     const activity = this.currentActivity;
     if (!activity || !activity.audioUrl) {
-      alert('Audio no disponible para esta frase');
+      this.toastService.warning('Audio no disponible para esta frase');
       return;
     }
 
@@ -138,7 +140,7 @@ export class ListenRepeatComponent implements OnInit, OnDestroy {
     });
 
     this.modelAudio.addEventListener('error', () => {
-      alert('Error al cargar el audio');
+      this.toastService.error('Error al cargar el audio');
       this.isPlayingModel.set(false);
     });
 
@@ -170,7 +172,7 @@ export class ListenRepeatComponent implements OnInit, OnDestroy {
       this.isRecording.set(true);
     } catch (error) {
       console.error('Error accessing microphone:', error);
-      alert('No se pudo acceder al micrófono. Por favor, verifica los permisos.');
+      this.toastService.error('No se pudo acceder al micrófono. Por favor, verifica los permisos.');
     }
   }
 

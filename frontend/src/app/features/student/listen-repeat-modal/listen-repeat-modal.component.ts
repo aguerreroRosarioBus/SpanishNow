@@ -2,6 +2,7 @@ import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ListenRepeatComponent } from '../listen-repeat/listen-repeat.component';
 import { EnrollmentService } from '../../../core/services/enrollment.service';
+import { ToastService } from '../../../core/services/toast.service';
 
 @Component({
   selector: 'app-listen-repeat-modal',
@@ -43,6 +44,7 @@ export class ListenRepeatModalComponent {
   @Output() close = new EventEmitter<void>();
 
   private enrollmentService = inject(EnrollmentService);
+  private toastService = inject(ToastService);
 
   onClose(): void {
     this.close.emit();
@@ -66,7 +68,7 @@ export class ListenRepeatModalComponent {
 
       this.completed.emit();
     } else {
-      alert('Necesitas 3+ estrellas en al menos 80% de las frases. Inténtalo de nuevo.');
+      this.toastService.warning('Necesitas 3+ estrellas en al menos 80% de las frases. Inténtalo de nuevo.');
     }
   }
 }

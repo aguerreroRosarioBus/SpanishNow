@@ -2,6 +2,7 @@ import { Component, inject, OnInit, Input, Output, EventEmitter, signal, effect 
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { VocabularyService } from '../../../core/services/vocabulary.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { Vocabulary } from '../../../core/models/course.model';
 import { NavbarComponent } from '../../dashboard/navbar/navbar.component';
 
@@ -16,6 +17,7 @@ export class FlashcardComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private vocabularyService = inject(VocabularyService);
+  private toastService = inject(ToastService);
 
   @Input() unitId?: number;
   @Output() allViewed = new EventEmitter<void>();
@@ -167,7 +169,7 @@ export class FlashcardComponent implements OnInit {
       const audio = new Audio(card.audioUrl);
       audio.play().catch(error => {
         console.error('Error playing audio:', error);
-        alert('Error al reproducir el audio');
+        this.toastService.error('Error al reproducir el audio');
       });
     }
   }

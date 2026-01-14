@@ -8,6 +8,7 @@ import { QuestionService } from '../../../core/services/question.service';
 import { VocabularyService } from '../../../core/services/vocabulary.service';
 import { RepetitionActivityService } from '../../../core/services/repetition-activity.service';
 import { ActivityConfigService, ActivityConfig } from '../../../core/services/activity-config.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { Course, Unit, Story, Question, Progress } from '../../../core/models/course.model';
 import { NavbarComponent } from '../../dashboard/navbar/navbar.component';
 import { ActivityModalComponent } from '../activity-modal/activity-modal.component';
@@ -39,6 +40,7 @@ export class StoryPlayerComponent implements OnInit {
   private vocabularyService = inject(VocabularyService);
   private repetitionActivityService = inject(RepetitionActivityService);
   private activityConfigService = inject(ActivityConfigService);
+  private toastService = inject(ToastService);
 
   currentUser = this.authService.currentUser;
 
@@ -244,7 +246,7 @@ export class StoryPlayerComponent implements OnInit {
     const audioUrl = this.currentSpeed() === 'slow' ? story.audioSlowUrl : story.audioNormalUrl;
 
     if (!audioUrl) {
-      alert('Audio no disponible para esta historia');
+      this.toastService.warning('Audio no disponible para esta historia');
       return;
     }
 
@@ -257,7 +259,7 @@ export class StoryPlayerComponent implements OnInit {
       });
 
       this.audioElement.addEventListener('error', () => {
-        alert('Error al cargar el audio');
+        this.toastService.error('Error al cargar el audio');
         this.isPlaying.set(false);
       });
     }
@@ -297,7 +299,7 @@ export class StoryPlayerComponent implements OnInit {
 
     // Verificar si ya está completada
     if (this.isStoryCompleted(story.id)) {
-      alert('Esta historia ya está marcada como completada');
+      this.toastService.info('Esta historia ya está marcada como completada');
       return;
     }
 
@@ -315,7 +317,7 @@ export class StoryPlayerComponent implements OnInit {
         },
         error: (error) => {
           console.error('Error marking story as completed:', error);
-          alert('Error al marcar la historia como completada');
+          this.toastService.error('Error al marcar la historia como completada');
         }
       });
     }
@@ -328,19 +330,19 @@ export class StoryPlayerComponent implements OnInit {
           this.currentStoryQuestions.set(questions);
           this.showActivityModal.set(true);
         } else {
-          alert('¡Historia completada! No hay actividades para esta historia.');
+          this.toastService.success('¡Historia completada! No hay actividades para esta historia.');
         }
       },
       error: (error) => {
         console.error('Error loading questions:', error);
-        alert('Error al cargar las actividades');
+        this.toastService.error('Error al cargar las actividades');
       }
     });
   }
 
   onActivitiesCompleted(success: boolean): void {
     if (success) {
-      alert('¡Excelente! Has completado todas las actividades correctamente.');
+      this.toastService.success('¡Excelente! Has completado todas las actividades correctamente.');
       this.showActivityModal.set(false);
       this.currentStoryQuestions.set([]);
       this.currentProgressId.set(null);
@@ -605,7 +607,7 @@ export class StoryPlayerComponent implements OnInit {
     // Resume activities from where student left off
     const progressId = this.getProgressForStory(story.id)?.id;
     if (!progressId) {
-      alert('No se encontró progreso para esta historia');
+      this.toastService.error('No se encontró progreso para esta historia');
       return;
     }
 
