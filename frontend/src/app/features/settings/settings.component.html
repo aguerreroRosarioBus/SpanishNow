@@ -44,17 +44,27 @@
         </div>
       </div>
 
-      <!-- Cambiar contraseña (placeholder) -->
+      <!-- Cambiar contraseña -->
       <div class="card mb-4">
         <div class="card-header">
           <h5 class="mb-0">Seguridad</h5>
         </div>
         <div class="card-body">
-          <button class="btn btn-outline-primary" disabled>
-            Cambiar Contraseña (Próximamente)
+          <p class="text-muted mb-3">
+            Cambia tu contraseña regularmente para mantener tu cuenta segura.
+          </p>
+          <button class="btn btn-outline-primary" (click)="openChangePasswordModal()">
+            <i class="bi bi-key me-2"></i>
+            Cambiar Contraseña
           </button>
         </div>
       </div>
     </div>
   </div>
 </div>
+
+<!-- Change Password Modal -->
+<app-change-password-modal
+  *ngIf="showChangePasswordModal()"
+  (close)="closeChangePasswordModal()">
+</app-change-password-modal>
