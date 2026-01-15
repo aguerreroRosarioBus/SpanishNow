@@ -6,22 +6,73 @@
         <p class="text-muted">Profesores de SpanishNow</p>
       </div>
 
-      <div class="alert alert-info">
-        <h5 class="alert-heading">Próximamente</h5>
-        <p class="mb-0">
-          Esta sección mostrará información sobre los profesores que imparten los cursos en los que estás inscrito.
-          Podrás ver sus perfiles, especializaciones y métodos de contacto.
-        </p>
+      <!-- Loading State -->
+      <div *ngIf="isLoading()" class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Cargando...</span>
+        </div>
+        <p class="mt-3 text-muted">Cargando profesores...</p>
       </div>
 
-      <!-- Placeholder card -->
-      <div class="card">
+      <!-- Error State -->
+      <div *ngIf="error()" class="alert alert-danger">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        {{ error() }}
+      </div>
+
+      <!-- Empty State -->
+      <div *ngIf="!isLoading() && !error() && teachers().length === 0" class="card">
         <div class="card-body text-center py-5">
           <div class="mb-3">
             <i class="bi bi-person-circle" style="font-size: 4rem; color: #6c757d;"></i>
           </div>
-          <h5 class="mb-2">Información de Maestros</h5>
-          <p class="text-muted mb-0">Esta funcionalidad estará disponible próximamente</p>
+          <h5 class="mb-2">No hay profesores registrados</h5>
+          <p class="text-muted mb-0">Aún no hay profesores en la plataforma</p>
+        </div>
+      </div>
+
+      <!-- Teachers List -->
+      <div *ngIf="!isLoading() && !error() && teachers().length > 0" class="row g-4">
+        <div *ngFor="let teacher of teachers()" class="col-md-6 col-lg-4">
+          <div class="card h-100 teacher-card">
+            <div class="card-body">
+              <!-- Avatar -->
+              <div class="text-center mb-3">
+                <div class="teacher-avatar">
+                  {{ teacher.name.charAt(0).toUpperCase() }}
+                </div>
+              </div>
+
+              <!-- Teacher Info -->
+              <div class="text-center">
+                <h5 class="card-title mb-2">{{ teacher.name }}</h5>
+                <p class="text-muted small mb-3">
+                  <i class="bi bi-envelope me-1"></i>
+                  {{ teacher.email }}
+                </p>
+
+                <!-- Stats -->
+                <div class="d-flex justify-content-center gap-3">
+                  <div class="teacher-stat">
+                    <div class="stat-value">{{ teacher.coursesCount }}</div>
+                    <div class="stat-label">
+                      {{ teacher.coursesCount === 1 ? 'Curso' : 'Cursos' }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card Footer -->
+            <div class="card-footer bg-transparent border-top-0">
+              <div class="d-flex justify-content-center">
+                <span class="badge bg-success">
+                  <i class="bi bi-check-circle me-1"></i>
+                  Profesor Activo
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
