@@ -4,6 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { CourseService } from '../../../core/services/course.service';
 import { EnrollmentService } from '../../../core/services/enrollment.service';
+import { ProgressService } from '../../../core/services/progress.service';
 import { QuestionService } from '../../../core/services/question.service';
 import { VocabularyService } from '../../../core/services/vocabulary.service';
 import { RepetitionActivityService } from '../../../core/services/repetition-activity.service';
@@ -36,6 +37,7 @@ export class StoryPlayerComponent implements OnInit {
   private authService = inject(AuthService);
   private courseService = inject(CourseService);
   private enrollmentService = inject(EnrollmentService);
+  private progressService = inject(ProgressService);
   private questionService = inject(QuestionService);
   private vocabularyService = inject(VocabularyService);
   private repetitionActivityService = inject(RepetitionActivityService);
@@ -400,6 +402,21 @@ export class StoryPlayerComponent implements OnInit {
     const enrollment = this.currentEnrollment();
     if (!enrollment) return;
 
+    // Mark granular progress if we have a progressId
+    const progressId = this.currentProgressId();
+    if (progressId && activityType === 'questions') {
+      this.progressService.markQuestionsCompleted(progressId).subscribe({
+        next: () => {
+          console.log('Granular progress updated: questionsCompleted =', true);
+        },
+        error: (error) => {
+          console.error('Error updating granular progress:', error);
+          // Continue even if granular tracking fails
+        }
+      });
+    }
+
+    // Complete unit-level activity tracking
     this.enrollmentService.completeUnitActivity(enrollment.id, activityType).subscribe({
       next: (updatedEnrollment) => {
         // Update local enrollment
