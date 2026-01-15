@@ -231,6 +231,30 @@ router.post('/progress/:progressId/matching-completed', authMiddleware, isStuden
   }
 });
 
+// Mark questions as completed for a progress record
+router.post('/progress/:progressId/questions-completed', authMiddleware, isStudent, async (req, res) => {
+  try {
+    const { progressId } = req.params;
+
+    const progress = await Progress.findByPk(progressId, {
+      include: [{ model: Enrollment, as: 'enrollment' }]
+    });
+
+    if (!progress) {
+      return res.status(404).json({ error: 'Progress record not found' });
+    }
+
+    if (progress.enrollment.studentId !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    await progress.update({ questionsCompleted: true });
+    res.json(progress);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Update activitiesCompleted flag (checks if all granular activities are done)
 router.post('/progress/:progressId/update-activities', authMiddleware, isStudent, async (req, res) => {
   try {
