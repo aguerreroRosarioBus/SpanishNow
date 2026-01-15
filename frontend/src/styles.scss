@@ -218,6 +218,79 @@ body {
 }
 
 /* ============================================
+   CONTRAST FIX - White text on green backgrounds
+   ============================================ */
+
+/* Card headers with green backgrounds */
+.card-header {
+  color: white !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Ensure all children of card-header are also white */
+.card-header h1,
+.card-header h2,
+.card-header h3,
+.card-header h4,
+.card-header h5,
+.card-header h6,
+.card-header p,
+.card-header span,
+.card-header a {
+  color: white !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Modal headers with green backgrounds */
+.modal-header {
+  color: white !important;
+}
+
+.modal-header .modal-title {
+  color: white !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Bootstrap bg-primary and bg-success utilities */
+.bg-primary,
+.bg-success {
+  color: white !important;
+}
+
+.bg-primary h1, .bg-primary h2, .bg-primary h3,
+.bg-primary h4, .bg-primary h5, .bg-primary h6,
+.bg-primary p, .bg-primary span, .bg-primary a,
+.bg-success h1, .bg-success h2, .bg-success h3,
+.bg-success h4, .bg-success h5, .bg-success h6,
+.bg-success p, .bg-success span, .bg-success a {
+  color: white !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+/* Badges with green backgrounds */
+.badge.bg-success,
+.badge.bg-primary {
+  color: white !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+/* Button text shadows for better readability */
+.btn-primary,
+.btn-success {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Progress bars text (if any) */
+.progress-bar {
+  color: white !important;
+}
+
+/* List group items with success background */
+.list-group-item-success {
+  color: var(--color-text) !important;
+}
+
+/* ============================================
    BADGES - Rounded Pills
    ============================================ */
 
