@@ -120,8 +120,24 @@ export class TeacherDashboardComponent implements OnInit {
       return;
     }
 
+    // Verificar autenticación antes de enviar
+    if (!this.authService.isAuthenticated()) {
+      this.toastService.error('Debes iniciar sesión para crear un curso');
+      this.router.navigate(['/auth/login']);
+      return;
+    }
+
+    if (!this.authService.isTeacher()) {
+      this.toastService.error('Solo los profesores pueden crear cursos');
+      this.router.navigate(['/']);
+      return;
+    }
+
     this.isCreating.set(true);
     this.errorMessage.set('');
+
+    console.log('Creating course with user:', this.currentUser());
+    console.log('Token exists:', !!this.authService.getToken());
 
     // Crear FormData para enviar al backend
     const formData = new FormData();
@@ -149,17 +165,30 @@ export class TeacherDashboardComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error creating course:', error);
+        console.error('Error status:', error.status);
+        console.error('Error message:', error.error);
 
         // Manejar errores de autenticación
-        if (error.status === 401 || error.status === 403) {
-          this.toastService.error('Tu sesión ha expirado. Por favor, inicia sesión de nuevo.');
+        if (error.status === 401) {
+          const errorMsg = error.error?.error || 'Tu sesión ha expirado';
+          this.toastService.error(`${errorMsg}. Por favor, inicia sesión de nuevo.`);
           this.authService.logout();
           this.router.navigate(['/auth/login']);
           return;
         }
 
-        this.errorMessage.set('Error al crear el curso. Intenta de nuevo.');
-        this.toastService.error('Error al crear el curso');
+        if (error.status === 403) {
+          const errorMsg = error.error?.error || 'No tienes permisos para realizar esta acción';
+          this.toastService.error(errorMsg);
+          this.authService.logout();
+          this.router.navigate(['/auth/login']);
+          return;
+        }
+
+        // Otros errores
+        const errorMsg = error.error?.error || 'Error al crear el curso. Intenta de nuevo.';
+        this.errorMessage.set(errorMsg);
+        this.toastService.error(errorMsg);
         this.isCreating.set(false);
       }
     });
