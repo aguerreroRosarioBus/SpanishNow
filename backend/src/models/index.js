@@ -50,8 +50,8 @@ Story.hasMany(RepetitionActivity, { foreignKey: 'storyId', as: 'repetitionActivi
 RepetitionActivity.belongsTo(Story, { foreignKey: 'storyId', as: 'story' });
 
 // ActivityConfig associations
-Story.hasMany(ActivityConfig, { foreignKey: 'storyId', as: 'activityConfigs', onDelete: 'CASCADE' });
-ActivityConfig.belongsTo(Story, { foreignKey: 'storyId', as: 'story' });
+Unit.hasMany(ActivityConfig, { foreignKey: 'unitId', as: 'activityConfigs', onDelete: 'CASCADE' });
+ActivityConfig.belongsTo(Unit, { foreignKey: 'unitId', as: 'unit' });
 
 module.exports = {
   User,
