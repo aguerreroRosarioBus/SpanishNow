@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { authGuard, teacherGuard, studentGuard } from './core/guards/auth.guard';
 
 /**
  * Configuración de rutas de la aplicación
@@ -33,54 +34,54 @@ export const routes: Routes = [
   // Rutas de profesor
   {
     path: 'teacher/dashboard',
-    loadComponent: () => import('./features/teacher/dashboard/teacher-dashboard.component').then(m => m.TeacherDashboardComponent)
-    // TODO: Agregar teacherGuard cuando esté listo
+    loadComponent: () => import('./features/teacher/dashboard/teacher-dashboard.component').then(m => m.TeacherDashboardComponent),
+    canActivate: [teacherGuard]
   },
   {
     path: 'teacher/course/:id/manage',
-    loadComponent: () => import('./features/teacher/course-manage/course-manage').then(m => m.CourseManageComponent)
-    // TODO: Agregar teacherGuard cuando esté listo
+    loadComponent: () => import('./features/teacher/course-manage/course-manage').then(m => m.CourseManageComponent),
+    canActivate: [teacherGuard]
   },
 
   // Rutas de alumno
   {
     path: 'student/dashboard',
-    loadComponent: () => import('./features/student/dashboard/student-dashboard.component').then(m => m.StudentDashboardComponent)
-    // TODO: Agregar studentGuard cuando esté listo
+    loadComponent: () => import('./features/student/dashboard/student-dashboard.component').then(m => m.StudentDashboardComponent),
+    canActivate: [studentGuard]
   },
   {
     path: 'student/course/:courseId/play',
-    loadComponent: () => import('./features/student/story-player/story-player.component').then(m => m.StoryPlayerComponent)
-    // TODO: Agregar studentGuard cuando esté listo
+    loadComponent: () => import('./features/student/story-player/story-player.component').then(m => m.StoryPlayerComponent),
+    canActivate: [studentGuard]
   },
 
   // Rutas de actividades de vocabulario
   {
     path: 'student/flashcard/:unitId',
-    loadComponent: () => import('./features/student/flashcard/flashcard.component').then(m => m.FlashcardComponent)
-    // TODO: Agregar studentGuard cuando esté listo
+    loadComponent: () => import('./features/student/flashcard/flashcard.component').then(m => m.FlashcardComponent),
+    canActivate: [studentGuard]
   },
   {
     path: 'student/matching/:unitId',
-    loadComponent: () => import('./features/student/matching/matching.component').then(m => m.MatchingComponent)
-    // TODO: Agregar studentGuard cuando esté listo
+    loadComponent: () => import('./features/student/matching/matching.component').then(m => m.MatchingComponent),
+    canActivate: [studentGuard]
   },
   {
     path: 'student/listen-repeat/:storyId',
-    loadComponent: () => import('./features/student/listen-repeat/listen-repeat.component').then(m => m.ListenRepeatComponent)
-    // TODO: Agregar studentGuard cuando esté listo
+    loadComponent: () => import('./features/student/listen-repeat/listen-repeat.component').then(m => m.ListenRepeatComponent),
+    canActivate: [studentGuard]
   },
 
   // Rutas de seguimiento y configuración (estudiantes)
   {
     path: 'student/progress',
-    loadComponent: () => import('./features/student/progress/progress.component').then(m => m.ProgressComponent)
-    // TODO: Agregar studentGuard cuando esté listo
+    loadComponent: () => import('./features/student/progress/progress.component').then(m => m.ProgressComponent),
+    canActivate: [studentGuard]
   },
   {
     path: 'teachers',
-    loadComponent: () => import('./features/student/teachers/teachers.component').then(m => m.TeachersComponent)
-    // TODO: Agregar authGuard cuando esté listo
+    loadComponent: () => import('./features/student/teachers/teachers.component').then(m => m.TeachersComponent),
+    canActivate: [authGuard]
   },
 
   // Rutas de información pública
@@ -96,8 +97,8 @@ export const routes: Routes = [
   // Ruta de configuración (compartida)
   {
     path: 'settings',
-    loadComponent: () => import('./features/settings/settings.component').then(m => m.SettingsComponent)
-    // TODO: Agregar authGuard cuando esté listo
+    loadComponent: () => import('./features/settings/settings.component').then(m => m.SettingsComponent),
+    canActivate: [authGuard]
   },
 
   // Ruta 404 - página no encontrada
