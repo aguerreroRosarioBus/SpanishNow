@@ -20,17 +20,13 @@
             <div class="col-sm-4 fw-bold">Email:</div>
             <div class="col-sm-8">{{ currentUser()?.email }}</div>
           </div>
-          <div class="row mb-3">
+          <div class="row">
             <div class="col-sm-4 fw-bold">Rol:</div>
             <div class="col-sm-8">
               <span class="badge" [class.bg-primary]="currentUser()?.role === 'student'" [class.bg-success]="currentUser()?.role === 'teacher'">
                 {{ currentUser()?.role === 'teacher' ? 'Profesor' : 'Estudiante' }}
               </span>
             </div>
-          </div>
-          <div class="row">
-            <div class="col-sm-4 fw-bold">Miembro desde:</div>
-            <div class="col-sm-8">{{ currentUser()?.createdAt | date:'longDate' }}</div>
           </div>
         </div>
       </div>
