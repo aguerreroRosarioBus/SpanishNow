@@ -20,6 +20,10 @@ export class StoryService {
     return this.http.put<Story>(`${this.apiUrl}/${id}`, data);
   }
 
+  updateStoryOrder(id: number, order: number): Observable<Story> {
+    return this.http.patch<Story>(`${this.apiUrl}/${id}/order`, { order });
+  }
+
   deleteStory(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }

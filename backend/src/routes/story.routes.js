@@ -98,6 +98,37 @@ router.post('/', authMiddleware, isTeacher, upload.fields([
   }
 });
 
+// Update story order only (teachers only) - accepts JSON
+router.patch('/:id/order', authMiddleware, isTeacher, async (req, res) => {
+  try {
+    const story = await Story.findByPk(req.params.id, {
+      include: [{
+        model: Unit,
+        as: 'unit',
+        include: [{ model: Course, as: 'course' }]
+      }]
+    });
+
+    if (!story) {
+      return res.status(404).json({ error: 'Story not found' });
+    }
+
+    if (story.unit.course.teacherId !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    const { order } = req.body;
+    if (order === undefined) {
+      return res.status(400).json({ error: 'Order is required' });
+    }
+
+    await story.update({ order });
+    res.json(story);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Update story (teachers only)
 router.put('/:id', authMiddleware, isTeacher, upload.fields([
   { name: 'audioSlow', maxCount: 1 },

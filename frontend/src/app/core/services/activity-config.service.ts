@@ -1,39 +1,38 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-
-export interface ActivityConfig {
-  id: number;
-  storyId: number;
-  activityType: 'flashcards' | 'questions' | 'matching' | 'listen_repeat';
-  isEnabled: boolean;
-  order: number;
-  createdAt?: string;
-  updatedAt?: string;
-}
+import { ActivityConfig } from '../models/course.model';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ActivityConfigService {
+  private http = inject(HttpClient);
   private apiUrl = `${environment.apiUrl}/activity-configs`;
 
-  constructor(private http: HttpClient) {}
-
   /**
-   * Get all activity configurations for a specific story
-   * @param storyId - The ID of the story
+   * Get all activity configurations for a specific unit
+   * @param unitId - The ID of the unit
    * @returns Observable of ActivityConfig array sorted by order
    */
-  getConfigsByStory(storyId: number): Observable<ActivityConfig[]> {
-    return this.http.get<ActivityConfig[]>(`${this.apiUrl}/story/${storyId}`);
+  getConfigsByUnit(unitId: number): Observable<ActivityConfig[]> {
+    return this.http.get<ActivityConfig[]>(`${this.apiUrl}/unit/${unitId}`);
   }
 
   /**
-   * Update a single activity configuration (enable/disable or change order)
+   * Create a new activity configuration
+   * @param data - The activity config data to create
+   * @returns Observable of created ActivityConfig
+   */
+  createConfig(data: Partial<ActivityConfig>): Observable<ActivityConfig> {
+    return this.http.post<ActivityConfig>(this.apiUrl, data);
+  }
+
+  /**
+   * Update an existing activity configuration
    * @param id - The activity config ID
-   * @param data - Partial data to update (isEnabled, order)
+   * @param data - Partial data to update
    * @returns Observable of updated ActivityConfig
    */
   updateConfig(id: number, data: Partial<ActivityConfig>): Observable<ActivityConfig> {
@@ -41,30 +40,21 @@ export class ActivityConfigService {
   }
 
   /**
-   * Reorder multiple activities at once (drag & drop)
-   * @param storyId - The story ID
-   * @param configs - Array of {id, order} pairs
-   * @returns Observable of all updated ActivityConfigs for the story
-   */
-  reorderActivities(storyId: number, configs: { id: number; order: number }[]): Observable<ActivityConfig[]> {
-    return this.http.put<ActivityConfig[]>(`${this.apiUrl}/story/${storyId}/reorder`, { configs });
-  }
-
-  /**
-   * Create a new activity configuration (rarely used, usually auto-created with story)
-   * @param config - The activity config to create
-   * @returns Observable of created ActivityConfig
-   */
-  createConfig(config: Omit<ActivityConfig, 'id' | 'createdAt' | 'updatedAt'>): Observable<ActivityConfig> {
-    return this.http.post<ActivityConfig>(this.apiUrl, config);
-  }
-
-  /**
-   * Delete an activity configuration (rarely used, usually just disabled instead)
+   * Delete an activity configuration
    * @param id - The activity config ID to delete
-   * @returns Observable of deletion result
+   * @returns Observable of void
    */
-  deleteConfig(id: number): Observable<{ message: string }> {
-    return this.http.delete<{ message: string }>(`${this.apiUrl}/${id}`);
+  deleteConfig(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  }
+
+  /**
+   * Batch update all activity configs for a unit
+   * @param unitId - The unit ID
+   * @param configs - Array of activity config data to save
+   * @returns Observable of all saved ActivityConfigs
+   */
+  batchUpdate(unitId: number, configs: Partial<ActivityConfig>[]): Observable<ActivityConfig[]> {
+    return this.http.post<ActivityConfig[]>(`${this.apiUrl}/unit/${unitId}/batch`, { configs });
   }
 }

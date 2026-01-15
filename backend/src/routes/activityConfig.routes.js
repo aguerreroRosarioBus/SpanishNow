@@ -92,6 +92,88 @@ router.put('/:id', authMiddleware, isTeacher, async (req, res) => {
   }
 });
 
+// POST - Batch update: crear/actualizar/eliminar múltiples configs de una unidad
+router.post('/unit/:unitId/batch', authMiddleware, isTeacher, async (req, res) => {
+  try {
+    const { configs } = req.body; // [{ id?, activityType, isEnabled, order, requiredStoryIds }, ...]
+
+    if (!configs || !Array.isArray(configs)) {
+      return res.status(400).json({ error: 'Invalid configs array' });
+    }
+
+    // Verificar ownership
+    const unit = await Unit.findByPk(req.params.unitId, {
+      include: [{
+        model: Course,
+        as: 'course',
+        attributes: ['id', 'teacherId']
+      }]
+    });
+
+    if (!unit) {
+      return res.status(404).json({ error: 'Unit not found' });
+    }
+
+    if (unit.course.teacherId !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized to modify this unit' });
+    }
+
+    // Obtener configs existentes
+    const existingConfigs = await ActivityConfig.findAll({
+      where: { unitId: req.params.unitId }
+    });
+
+    // Separar en crear/actualizar/eliminar
+    const configsToUpdate = configs.filter(c => c.id);
+    const configsToCreate = configs.filter(c => !c.id);
+    const existingIds = configsToUpdate.map(c => c.id);
+    const configsToDelete = existingConfigs.filter(c => !existingIds.includes(c.id));
+
+    // Actualizar existentes
+    await Promise.all(
+      configsToUpdate.map(c =>
+        ActivityConfig.update(
+          {
+            isEnabled: c.isEnabled,
+            order: c.order,
+            requiredStoryIds: c.requiredStoryIds || []
+          },
+          { where: { id: c.id, unitId: req.params.unitId } }
+        )
+      )
+    );
+
+    // Crear nuevos
+    await Promise.all(
+      configsToCreate.map(c =>
+        ActivityConfig.create({
+          unitId: req.params.unitId,
+          activityType: c.activityType,
+          isEnabled: c.isEnabled !== undefined ? c.isEnabled : true,
+          order: c.order,
+          requiredStoryIds: c.requiredStoryIds || []
+        })
+      )
+    );
+
+    // Eliminar obsoletos
+    await Promise.all(
+      configsToDelete.map(c => c.destroy())
+    );
+
+    // Devolver configuraciones actualizadas
+    const updated = await ActivityConfig.findAll({
+      where: { unitId: req.params.unitId },
+      order: [['order', 'ASC']]
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error('Error batch updating activity configs:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // PUT - Reordenar múltiples actividades (batch update)
 router.put('/unit/:unitId/reorder', authMiddleware, isTeacher, async (req, res) => {
   try {
