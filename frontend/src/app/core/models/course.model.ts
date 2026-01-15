@@ -64,6 +64,7 @@ export interface Enrollment {
   courseId: number;
   createdAt: string;
   course?: Course;
+  progress?: Progress[];
 }
 
 export interface Progress {

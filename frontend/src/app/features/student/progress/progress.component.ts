@@ -2,7 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { EnrollmentService } from '../../../core/services/enrollment.service';
-import { Enrollment } from '../../../core/models/course.model';
+import { Enrollment, Progress } from '../../../core/models/course.model';
 
 @Component({
   selector: 'app-progress',
@@ -49,5 +49,9 @@ export class ProgressComponent implements OnInit {
 
     const completedStories = enrollment.progress?.filter(p => p.completed).length || 0;
     return Math.round((completedStories / totalStories) * 100);
+  }
+
+  getCompletedCount(enrollment: Enrollment): number {
+    return enrollment.progress?.filter(p => p.completed).length || 0;
   }
 }
