@@ -150,6 +150,31 @@
           </button>
         </div>
 
+        <!-- Navigation After Submission (for reviewing answers) -->
+        <div *ngIf="submitted()" class="d-flex justify-content-between align-items-center mb-3">
+          <button
+            type="button"
+            class="btn btn-outline-secondary"
+            [disabled]="isFirstQuestion"
+            (click)="previousQuestion()"
+          >
+            ← Anterior
+          </button>
+
+          <small class="text-muted">
+            Pregunta {{ currentQuestionIndex() + 1 }} de {{ totalQuestions }}
+          </small>
+
+          <button
+            type="button"
+            class="btn btn-outline-secondary"
+            [disabled]="isLastQuestion"
+            (click)="nextQuestion()"
+          >
+            Siguiente →
+          </button>
+        </div>
+
         <!-- Results Summary -->
         <div *ngIf="submitted()" class="mt-4">
           <!-- All Correct -->
@@ -162,26 +187,16 @@
           <div *ngIf="hasIncorrectAnswers" class="text-center">
             <div class="alert alert-warning" role="alert">
               <strong>Algunas respuestas son incorrectas</strong>
-              <p class="mb-0">Revisa las preguntas marcadas en rojo e intenta nuevamente.</p>
+              <p class="mb-0">Usa los botones ← → para revisar tus respuestas e intenta nuevamente.</p>
             </div>
 
-            <div class="d-flex gap-3 justify-content-center">
-              <button
-                type="button"
-                class="btn btn-primary"
-                (click)="retryIncorrect()"
-              >
-                🔄 Reintentar Incorrectas
-              </button>
-
-              <button
-                type="button"
-                class="btn btn-outline-secondary"
-                (click)="currentQuestionIndex.set(0)"
-              >
-                Ver Todas las Preguntas
-              </button>
-            </div>
+            <button
+              type="button"
+              class="btn btn-primary btn-lg"
+              (click)="retryIncorrect()"
+            >
+              🔄 Reintentar Incorrectas
+            </button>
           </div>
         </div>
       </div>
