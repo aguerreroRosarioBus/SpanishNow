@@ -74,7 +74,7 @@
                   >
                     Gestionar Contenido
                   </a>
-                  <button class="btn btn-sm btn-outline-secondary">
+                  <button class="btn btn-sm btn-outline-secondary" (click)="openEditModal(course)">
                     Editar
                   </button>
                 </div>
@@ -187,6 +187,120 @@
         >
           <span *ngIf="isCreating()" class="spinner-border spinner-border-sm me-2"></span>
           {{ isCreating() ? 'Creando...' : 'Crear Curso' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para editar curso -->
+<div *ngIf="showEditModal()" class="modal d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <!-- Header -->
+      <div class="modal-header">
+        <h5 class="modal-title">Editar Curso</h5>
+        <button type="button" class="btn-close" (click)="closeEditModal()"></button>
+      </div>
+
+      <!-- Body con formulario -->
+      <div class="modal-body">
+        <form [formGroup]="editCourseForm" (ngSubmit)="updateCourse()">
+          <!-- Título -->
+          <div class="mb-3">
+            <label for="edit-title" class="form-label">Título del curso *</label>
+            <input
+              type="text"
+              class="form-control"
+              id="edit-title"
+              formControlName="title"
+              [class.is-invalid]="hasEditError('title')"
+              placeholder="Ej: Español para principiantes"
+            >
+            <div *ngIf="hasEditError('title')" class="invalid-feedback">
+              {{ getEditErrorMessage('title') }}
+            </div>
+          </div>
+
+          <!-- Descripción -->
+          <div class="mb-3">
+            <label for="edit-description" class="form-label">Descripción *</label>
+            <textarea
+              class="form-control"
+              id="edit-description"
+              formControlName="description"
+              [class.is-invalid]="hasEditError('description')"
+              rows="4"
+              placeholder="Describe brevemente de qué trata el curso y qué aprenderán los estudiantes"
+            ></textarea>
+            <div *ngIf="hasEditError('description')" class="invalid-feedback">
+              {{ getEditErrorMessage('description') }}
+            </div>
+          </div>
+
+          <!-- Nivel -->
+          <div class="mb-3">
+            <label for="edit-level" class="form-label">Nivel CEFR *</label>
+            <select
+              class="form-select"
+              id="edit-level"
+              formControlName="level"
+              [class.is-invalid]="hasEditError('level')"
+            >
+              <option *ngFor="let level of levels" [value]="level">{{ level }}</option>
+            </select>
+            <small class="form-text text-muted">
+              A1-A2: Básico | B1-B2: Intermedio | C1-C2: Avanzado
+            </small>
+            <div *ngIf="hasEditError('level')" class="invalid-feedback">
+              {{ getEditErrorMessage('level') }}
+            </div>
+          </div>
+
+          <!-- Imagen actual -->
+          <div *ngIf="editingCourse()?.imageUrl" class="mb-3">
+            <label class="form-label">Imagen actual</label>
+            <div>
+              <img [src]="editingCourse()?.imageUrl" alt="Imagen actual" class="img-thumbnail" style="max-height: 150px;">
+            </div>
+          </div>
+
+          <!-- Nueva imagen -->
+          <div class="mb-3">
+            <label for="edit-image" class="form-label">Cambiar imagen (opcional)</label>
+            <input
+              type="file"
+              class="form-control"
+              id="edit-image"
+              accept="image/*"
+              (change)="onEditImageSelected($event)"
+            >
+            <small class="form-text text-muted">
+              Formatos: JPG, PNG. Tamaño máximo: 5MB. Deja vacío para mantener la imagen actual.
+            </small>
+
+            <!-- Preview de la nueva imagen -->
+            <div *ngIf="editImagePreview" class="mt-3">
+              <p class="small text-muted mb-2">Nueva imagen:</p>
+              <img [src]="editImagePreview" alt="Preview" class="img-thumbnail" style="max-height: 200px;">
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Footer -->
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeEditModal()" [disabled]="isUpdating()">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          (click)="updateCourse()"
+          [disabled]="editCourseForm.invalid || isUpdating()"
+        >
+          <span *ngIf="isUpdating()" class="spinner-border spinner-border-sm me-2"></span>
+          {{ isUpdating() ? 'Guardando...' : 'Guardar Cambios' }}
         </button>
       </div>
     </div>

@@ -32,11 +32,25 @@ export class TeacherDashboardComponent implements OnInit {
   selectedImageFile: File | null = null;
   imagePreview: string | null = null;
 
+  // Edit modal state
+  showEditModal = signal<boolean>(false);
+  editingCourse = signal<Course | null>(null);
+  isUpdating = signal<boolean>(false);
+  editCourseForm: FormGroup;
+  selectedEditImageFile: File | null = null;
+  editImagePreview: string | null = null;
+
   // Niveles CEFR para el selector
   levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
   constructor() {
     this.courseForm = this.fb.group({
+      title: ['', [Validators.required, Validators.minLength(3)]],
+      description: ['', [Validators.required, Validators.minLength(10)]],
+      level: ['A1', [Validators.required]]
+    });
+
+    this.editCourseForm = this.fb.group({
       title: ['', [Validators.required, Validators.minLength(3)]],
       description: ['', [Validators.required, Validators.minLength(10)]],
       level: ['A1', [Validators.required]]
@@ -172,6 +186,135 @@ export class TeacherDashboardComponent implements OnInit {
 
   getErrorMessage(field: string): string {
     const control = this.courseForm.get(field);
+
+    if (control?.hasError('required')) {
+      const fieldNames: { [key: string]: string } = {
+        title: 'El título',
+        description: 'La descripción',
+        level: 'El nivel'
+      };
+      return `${fieldNames[field]} es requerido`;
+    }
+
+    if (control?.hasError('minlength')) {
+      const minLength = control.errors?.['minlength'].requiredLength;
+      return `Debe tener al menos ${minLength} caracteres`;
+    }
+
+    return '';
+  }
+
+  // Edit modal methods
+  openEditModal(course: Course): void {
+    this.editingCourse.set(course);
+    this.editCourseForm.patchValue({
+      title: course.title,
+      description: course.description,
+      level: course.level
+    });
+    this.selectedEditImageFile = null;
+    this.editImagePreview = null;
+    this.showEditModal.set(true);
+  }
+
+  closeEditModal(): void {
+    this.showEditModal.set(false);
+    this.editingCourse.set(null);
+    this.editCourseForm.reset();
+    this.selectedEditImageFile = null;
+    this.editImagePreview = null;
+  }
+
+  onEditImageSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+
+      // Validar que sea una imagen
+      if (!file.type.startsWith('image/')) {
+        this.toastService.warning('Por favor selecciona un archivo de imagen válido');
+        return;
+      }
+
+      // Validar tamaño (máximo 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        this.toastService.warning('La imagen no debe superar los 5MB');
+        return;
+      }
+
+      this.selectedEditImageFile = file;
+
+      // Crear preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        this.editImagePreview = e.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  updateCourse(): void {
+    if (this.editCourseForm.invalid || !this.editingCourse()) {
+      this.editCourseForm.markAllAsTouched();
+      return;
+    }
+
+    this.isUpdating.set(true);
+    this.errorMessage.set('');
+
+    // Crear FormData para enviar al backend
+    const formData = new FormData();
+    formData.append('title', this.editCourseForm.get('title')?.value);
+    formData.append('description', this.editCourseForm.get('description')?.value);
+    formData.append('level', this.editCourseForm.get('level')?.value);
+
+    if (this.selectedEditImageFile) {
+      formData.append('image', this.selectedEditImageFile);
+    }
+
+    const courseId = this.editingCourse()!.id;
+
+    this.courseService.updateCourse(courseId, formData).subscribe({
+      next: (updatedCourse) => {
+        console.log('Curso actualizado:', updatedCourse);
+
+        // Actualizar el curso en la lista
+        this.courses.update(current =>
+          current.map(c => c.id === courseId ? updatedCourse : c)
+        );
+
+        // Mostrar toast de éxito
+        this.toastService.success('Curso actualizado exitosamente');
+
+        // Cerrar modal y resetear
+        this.closeEditModal();
+        this.isUpdating.set(false);
+      },
+      error: (error) => {
+        console.error('Error updating course:', error);
+
+        // Manejar errores de autenticación
+        if (error.status === 401 || error.status === 403) {
+          this.toastService.error('Tu sesión ha expirado. Por favor, inicia sesión de nuevo.');
+          this.authService.logout();
+          this.router.navigate(['/auth/login']);
+          return;
+        }
+
+        this.errorMessage.set('Error al actualizar el curso. Intenta de nuevo.');
+        this.toastService.error('Error al actualizar el curso');
+        this.isUpdating.set(false);
+      }
+    });
+  }
+
+  hasEditError(field: string): boolean {
+    const control = this.editCourseForm.get(field);
+    return !!(control && control.invalid && control.touched);
+  }
+
+  getEditErrorMessage(field: string): string {
+    const control = this.editCourseForm.get(field);
 
     if (control?.hasError('required')) {
       const fieldNames: { [key: string]: string } = {
