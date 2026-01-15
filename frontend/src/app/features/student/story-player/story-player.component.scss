@@ -84,6 +84,48 @@
   }
 }
 
+// Navigation item wrapper with overlay button
+.nav-item-wrapper {
+  position: relative;
+
+  &:hover .repeat-activity-overlay {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+// Repeat activity button as overlay
+.repeat-activity-overlay {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 1rem;
+  opacity: 0;
+  visibility: hidden;
+  border: none;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+
+  &:hover {
+    transform: rotate(180deg);
+    background: rgba(255, 255, 255, 1);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+  }
+
+  &:active {
+    transform: rotate(180deg) scale(0.9);
+  }
+}
+
 // Responsive adjustments
 @media (max-width: 768px) {
   .breadcrumb {
