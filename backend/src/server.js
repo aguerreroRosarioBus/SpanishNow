@@ -18,8 +18,14 @@ const corsOptions = {
 
 // Middlewares
 app.use(cors(corsOptions));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ charset: 'utf-8' }));
+app.use(express.urlencoded({ extended: true, charset: 'utf-8' }));
+
+// Set charset for all responses
+app.use((req, res, next) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  next();
+});
 
 // Static files for uploads
 app.use('/uploads', express.static('uploads'));

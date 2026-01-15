@@ -1,13 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const { authMiddleware, isTeacher } = require('../middlewares/auth.middleware');
-const { ActivityConfig, Story, Unit, Course } = require('../models');
+const { ActivityConfig, Unit, Course } = require('../models');
 
-// GET - Obtener configuración de actividades para una historia
-router.get('/story/:storyId', async (req, res) => {
+// GET - Obtener configuración de actividades para una unidad
+router.get('/unit/:unitId', async (req, res) => {
   try {
     const configs = await ActivityConfig.findAll({
-      where: { storyId: req.params.storyId },
+      where: { unitId: req.params.unitId },
       order: [['order', 'ASC']]
     });
     res.json(configs);
@@ -17,37 +17,34 @@ router.get('/story/:storyId', async (req, res) => {
   }
 });
 
-// POST - Crear configuración de actividad (generalmente llamado automáticamente al crear historia)
+// POST - Crear configuración de actividad para una unidad
 router.post('/', authMiddleware, isTeacher, async (req, res) => {
   try {
-    const { storyId, activityType, isEnabled, order } = req.body;
+    const { unitId, activityType, isEnabled, order, requiredStoryIds } = req.body;
 
     // Verificar ownership
-    const story = await Story.findByPk(storyId, {
+    const unit = await Unit.findByPk(unitId, {
       include: [{
-        model: Unit,
-        as: 'unit',
-        include: [{
-          model: Course,
-          as: 'course',
-          attributes: ['id', 'teacherId']
-        }]
+        model: Course,
+        as: 'course',
+        attributes: ['id', 'teacherId']
       }]
     });
 
-    if (!story) {
-      return res.status(404).json({ error: 'Story not found' });
+    if (!unit) {
+      return res.status(404).json({ error: 'Unit not found' });
     }
 
-    if (story.unit.course.teacherId !== req.user.id) {
-      return res.status(403).json({ error: 'Not authorized to modify this story' });
+    if (unit.course.teacherId !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized to modify this unit' });
     }
 
     const config = await ActivityConfig.create({
-      storyId,
+      unitId,
       activityType,
-      isEnabled,
-      order
+      isEnabled: isEnabled !== undefined ? isEnabled : true,
+      order,
+      requiredStoryIds: requiredStoryIds || []
     });
 
     res.status(201).json(config);
@@ -57,54 +54,12 @@ router.post('/', authMiddleware, isTeacher, async (req, res) => {
   }
 });
 
-// PUT - Actualizar configuración (usado para habilitar/deshabilitar actividades)
+// PUT - Actualizar configuración (orden, habilitación, requisitos)
 router.put('/:id', authMiddleware, isTeacher, async (req, res) => {
   try {
-    const { isEnabled, order } = req.body;
+    const { isEnabled, order, requiredStoryIds } = req.body;
 
     const config = await ActivityConfig.findByPk(req.params.id, {
-      include: [{
-        model: Story,
-        as: 'story',
-        include: [{
-          model: Unit,
-          as: 'unit',
-          include: [{
-            model: Course,
-            as: 'course',
-            attributes: ['id', 'teacherId']
-          }]
-        }]
-      }]
-    });
-
-    if (!config) {
-      return res.status(404).json({ error: 'Activity config not found' });
-    }
-
-    if (config.story.unit.course.teacherId !== req.user.id) {
-      return res.status(403).json({ error: 'Not authorized to modify this config' });
-    }
-
-    await config.update({ isEnabled, order });
-    res.json(config);
-  } catch (error) {
-    console.error('Error updating activity config:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// PUT - Reordenar múltiples actividades (batch update)
-router.put('/story/:storyId/reorder', authMiddleware, isTeacher, async (req, res) => {
-  try {
-    const { configs } = req.body; // [{ id, order }, { id, order }, ...]
-
-    if (!configs || !Array.isArray(configs)) {
-      return res.status(400).json({ error: 'Invalid configs array' });
-    }
-
-    // Verificar ownership
-    const story = await Story.findByPk(req.params.storyId, {
       include: [{
         model: Unit,
         as: 'unit',
@@ -116,12 +71,51 @@ router.put('/story/:storyId/reorder', authMiddleware, isTeacher, async (req, res
       }]
     });
 
-    if (!story) {
-      return res.status(404).json({ error: 'Story not found' });
+    if (!config) {
+      return res.status(404).json({ error: 'Activity config not found' });
     }
 
-    if (story.unit.course.teacherId !== req.user.id) {
-      return res.status(403).json({ error: 'Not authorized to modify this story' });
+    if (config.unit.course.teacherId !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized to modify this config' });
+    }
+
+    const updateData = {};
+    if (isEnabled !== undefined) updateData.isEnabled = isEnabled;
+    if (order !== undefined) updateData.order = order;
+    if (requiredStoryIds !== undefined) updateData.requiredStoryIds = requiredStoryIds;
+
+    await config.update(updateData);
+    res.json(config);
+  } catch (error) {
+    console.error('Error updating activity config:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT - Reordenar múltiples actividades (batch update)
+router.put('/unit/:unitId/reorder', authMiddleware, isTeacher, async (req, res) => {
+  try {
+    const { configs } = req.body; // [{ id, order }, { id, order }, ...]
+
+    if (!configs || !Array.isArray(configs)) {
+      return res.status(400).json({ error: 'Invalid configs array' });
+    }
+
+    // Verificar ownership
+    const unit = await Unit.findByPk(req.params.unitId, {
+      include: [{
+        model: Course,
+        as: 'course',
+        attributes: ['id', 'teacherId']
+      }]
+    });
+
+    if (!unit) {
+      return res.status(404).json({ error: 'Unit not found' });
+    }
+
+    if (unit.course.teacherId !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized to modify this unit' });
     }
 
     // Batch update - actualizar orden de todas las actividades
@@ -129,14 +123,14 @@ router.put('/story/:storyId/reorder', authMiddleware, isTeacher, async (req, res
       configs.map(c =>
         ActivityConfig.update(
           { order: c.order },
-          { where: { id: c.id, storyId: req.params.storyId } }
+          { where: { id: c.id, unitId: req.params.unitId } }
         )
       )
     );
 
     // Devolver configuraciones actualizadas
     const updated = await ActivityConfig.findAll({
-      where: { storyId: req.params.storyId },
+      where: { unitId: req.params.unitId },
       order: [['order', 'ASC']]
     });
 
@@ -147,21 +141,17 @@ router.put('/story/:storyId/reorder', authMiddleware, isTeacher, async (req, res
   }
 });
 
-// DELETE - Eliminar configuración de actividad (normalmente no se usa, se deshabilita en su lugar)
+// DELETE - Eliminar configuración de actividad
 router.delete('/:id', authMiddleware, isTeacher, async (req, res) => {
   try {
     const config = await ActivityConfig.findByPk(req.params.id, {
       include: [{
-        model: Story,
-        as: 'story',
+        model: Unit,
+        as: 'unit',
         include: [{
-          model: Unit,
-          as: 'unit',
-          include: [{
-            model: Course,
-            as: 'course',
-            attributes: ['id', 'teacherId']
-          }]
+          model: Course,
+          as: 'course',
+          attributes: ['id', 'teacherId']
         }]
       }]
     });
@@ -170,7 +160,7 @@ router.delete('/:id', authMiddleware, isTeacher, async (req, res) => {
       return res.status(404).json({ error: 'Activity config not found' });
     }
 
-    if (config.story.unit.course.teacherId !== req.user.id) {
+    if (config.unit.course.teacherId !== req.user.id) {
       return res.status(403).json({ error: 'Not authorized to delete this config' });
     }
 

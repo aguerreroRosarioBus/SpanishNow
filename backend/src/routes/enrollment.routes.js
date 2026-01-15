@@ -1,14 +1,39 @@
 const express = require('express');
 const router = express.Router();
 const { authMiddleware, isStudent } = require('../middlewares/auth.middleware');
-const { Enrollment, Course, Progress, Story, Unit } = require('../models');
+const { Enrollment, Course, Progress, Story, Unit, ActivityConfig } = require('../models');
 
-// Get student enrollments
+// Get student enrollments with full course details and progress
 router.get('/my-courses', authMiddleware, isStudent, async (req, res) => {
   try {
     const enrollments = await Enrollment.findAll({
       where: { studentId: req.user.id },
-      include: [{ model: Course, as: 'course' }]
+      include: [
+        {
+          model: Course,
+          as: 'course',
+          include: [
+            {
+              model: Unit,
+              as: 'units',
+              include: [
+                {
+                  model: Story,
+                  as: 'stories'
+                },
+                {
+                  model: ActivityConfig,
+                  as: 'activityConfigs'
+                }
+              ]
+            }
+          ]
+        },
+        {
+          model: Progress,
+          as: 'progress'
+        }
+      ]
     });
 
     res.json(enrollments);
@@ -232,6 +257,78 @@ router.post('/progress/:progressId/update-activities', authMiddleware, isStudent
 
     await progress.update({ activitiesCompleted: allActivitiesCompleted });
     res.json(progress);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Complete a unit-level activity
+router.post('/:enrollmentId/complete-activity', authMiddleware, isStudent, async (req, res) => {
+  try {
+    const { enrollmentId } = req.params;
+    const { activityType } = req.body;
+
+    const enrollment = await Enrollment.findByPk(enrollmentId);
+    if (!enrollment) {
+      return res.status(404).json({ error: 'Enrollment not found' });
+    }
+
+    if (enrollment.studentId !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    const updateField = {
+      'questions': 'questionsCompleted',
+      'flashcards': 'flashcardsCompleted',
+      'matching': 'matchingCompleted',
+      'listen_repeat': 'listenRepeatCompleted'
+    };
+
+    if (!updateField[activityType]) {
+      return res.status(400).json({ error: 'Invalid activity type' });
+    }
+
+    await enrollment.update({
+      [updateField[activityType]]: true
+    });
+
+    res.json(enrollment);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Reset a unit-level activity (for repeating)
+router.post('/:enrollmentId/reset-activity', authMiddleware, isStudent, async (req, res) => {
+  try {
+    const { enrollmentId } = req.params;
+    const { activityType } = req.body;
+
+    const enrollment = await Enrollment.findByPk(enrollmentId);
+    if (!enrollment) {
+      return res.status(404).json({ error: 'Enrollment not found' });
+    }
+
+    if (enrollment.studentId !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    const updateField = {
+      'questions': 'questionsCompleted',
+      'flashcards': 'flashcardsCompleted',
+      'matching': 'matchingCompleted',
+      'listen_repeat': 'listenRepeatCompleted'
+    };
+
+    if (!updateField[activityType]) {
+      return res.status(400).json({ error: 'Invalid activity type' });
+    }
+
+    await enrollment.update({
+      [updateField[activityType]]: false
+    });
+
+    res.json(enrollment);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
