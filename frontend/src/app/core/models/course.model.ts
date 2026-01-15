@@ -22,6 +22,7 @@ export interface Unit {
   order: number;
   stories?: Story[];
   vocabulary?: Vocabulary[];
+  activityConfigs?: ActivityConfig[];
 }
 
 export interface Story {
@@ -65,6 +66,11 @@ export interface Enrollment {
   createdAt: string;
   course?: Course;
   progress?: Progress[];
+  // Unit-level activity completion flags
+  questionsCompleted?: boolean;
+  flashcardsCompleted?: boolean;
+  matchingCompleted?: boolean;
+  listenRepeatCompleted?: boolean;
 }
 
 export interface Progress {
@@ -118,6 +124,17 @@ export interface RepetitionActivity {
   phrase: string;
   audioUrl?: string;
   order: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ActivityConfig {
+  id: number;
+  unitId: number;
+  activityType: 'questions' | 'flashcards' | 'matching' | 'listen_repeat';
+  order: number;
+  isEnabled: boolean;
+  requiredStoryIds: number[];
   createdAt?: string;
   updatedAt?: string;
 }

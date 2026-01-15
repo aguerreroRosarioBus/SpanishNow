@@ -34,4 +34,19 @@ export class EnrollmentService {
   resetCourseProgress(enrollmentId: number): Observable<{ message: string }> {
     return this.http.delete<{ message: string }>(`${this.apiUrl}/${enrollmentId}/reset-progress`);
   }
+
+  // Unit-level activity completion methods
+  completeUnitActivity(enrollmentId: number, activityType: string): Observable<Enrollment> {
+    return this.http.post<Enrollment>(
+      `${this.apiUrl}/${enrollmentId}/complete-activity`,
+      { activityType }
+    );
+  }
+
+  resetUnitActivity(enrollmentId: number, activityType: string): Observable<Enrollment> {
+    return this.http.post<Enrollment>(
+      `${this.apiUrl}/${enrollmentId}/reset-activity`,
+      { activityType }
+    );
+  }
 }
