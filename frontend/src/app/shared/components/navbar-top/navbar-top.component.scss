@@ -18,6 +18,39 @@
   max-width: 100%;
 }
 
+// Hamburger Button (mobile only)
+.hamburger-button {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  flex-direction: column;
+  gap: 4px;
+  width: 32px;
+  height: 32px;
+  justify-content: center;
+  align-items: center;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+
+  &:active {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+}
+
+.hamburger-icon {
+  width: 20px;
+  height: 2px;
+  background-color: white;
+  display: block;
+  transition: all 0.3s;
+}
+
 // Logo/Brand
 .navbar-brand {
   font-size: 1.5rem;
@@ -190,9 +223,18 @@
 
 // Mobile Responsive
 @media (max-width: 768px) {
+  .hamburger-button {
+    display: flex;
+  }
+
+  .navbar-container {
+    padding: 0 1rem;
+    gap: 1rem;
+  }
+
   .navbar-nav {
     gap: 0.25rem;
-    margin-left: 1rem;
+    margin-left: auto;
   }
 
   .nav-link {

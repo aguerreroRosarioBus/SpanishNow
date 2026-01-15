@@ -1,0 +1,85 @@
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="mb-4">
+        <h1 class="h3">Mi Avance</h1>
+        <p class="text-muted">Seguimiento de tu progreso en todos los cursos</p>
+      </div>
+
+      <!-- Loading -->
+      <div *ngIf="isLoading()" class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Cargando...</span>
+        </div>
+        <p class="text-muted mt-2">Cargando tu progreso...</p>
+      </div>
+
+      <!-- Empty state -->
+      <div *ngIf="!isLoading() && myCourses().length === 0" class="card">
+        <div class="card-body text-center py-5">
+          <h2 class="h5 mb-3">No tienes cursos inscritos</h2>
+          <p class="text-muted mb-4">Inscríbete en un curso para comenzar a ver tu progreso</p>
+          <a [routerLink]="['/student/dashboard']" [queryParams]="{view: 'catalog'}" class="btn btn-primary">
+            Explorar Cursos
+          </a>
+        </div>
+      </div>
+
+      <!-- Progreso de cursos -->
+      <div *ngIf="!isLoading() && myCourses().length > 0" class="row g-4">
+        <div *ngFor="let enrollment of myCourses()" class="col-md-6 col-lg-4">
+          <div class="card h-100">
+            <div class="card-body">
+              <h5 class="card-title">{{ enrollment.course?.title }}</h5>
+              <span class="badge bg-primary mb-3">{{ enrollment.course?.level }}</span>
+
+              <!-- Progress bar -->
+              <div class="mb-3">
+                <div class="d-flex justify-content-between mb-1">
+                  <small class="text-muted">Progreso</small>
+                  <small class="fw-bold">{{ getProgressPercentage(enrollment) }}%</small>
+                </div>
+                <div class="progress" style="height: 12px;">
+                  <div
+                    class="progress-bar"
+                    [class.bg-success]="getProgressPercentage(enrollment) === 100"
+                    [class.bg-primary]="getProgressPercentage(enrollment) < 100"
+                    role="progressbar"
+                    [style.width.%]="getProgressPercentage(enrollment)"
+                    [attr.aria-valuenow]="getProgressPercentage(enrollment)"
+                    aria-valuemin="0"
+                    aria-valuemax="100">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Estadísticas -->
+              <div class="row g-2 mb-3">
+                <div class="col-6">
+                  <div class="card bg-light">
+                    <div class="card-body p-2 text-center">
+                      <div class="h5 mb-0">{{ enrollment.course?.units?.length || 0 }}</div>
+                      <small class="text-muted">Unidades</small>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="card bg-light">
+                    <div class="card-body p-2 text-center">
+                      <div class="h5 mb-0">{{ enrollment.progress?.filter(p => p.completed).length || 0 }}</div>
+                      <small class="text-muted">Completadas</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <a [routerLink]="['/student/course', enrollment.courseId, 'play']" class="btn btn-primary w-100">
+                Continuar
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -9,8 +9,21 @@
       <!-- VISTA: Catálogo de Cursos -->
       <div *ngIf="activeView() === 'catalog'">
         <div class="mb-4">
-          <h1 class="h3">Catálogo de Cursos</h1>
-          <p class="text-muted mb-0">Explora todos los cursos de español disponibles</p>
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h1 class="h3">Catálogo de Cursos</h1>
+              <p class="text-muted mb-0">
+                <span *ngIf="!currentLevelFilter()">Explora todos los cursos de español disponibles</span>
+                <span *ngIf="currentLevelFilter()">Cursos de nivel {{ currentLevelFilter() }}</span>
+              </p>
+            </div>
+            <button *ngIf="currentLevelFilter()"
+                    class="btn btn-outline-secondary btn-sm"
+                    [routerLink]="['/student/dashboard']"
+                    [queryParams]="{view: 'catalog'}">
+              ✕ Limpiar filtro
+            </button>
+          </div>
         </div>
 
         <!-- Loading spinner -->
@@ -29,9 +42,15 @@
           </div>
         </div>
 
+        <!-- Empty state cuando hay filtro pero no resultados -->
+        <div *ngIf="!isLoadingCatalog() && currentLevelFilter() && filteredCourses().length === 0 && allCourses().length > 0" class="alert alert-info">
+          <h5 class="alert-heading">No hay cursos de nivel {{ currentLevelFilter() }}</h5>
+          <p class="mb-0">Intenta con otro nivel o <a [routerLink]="['/student/dashboard']" [queryParams]="{view: 'catalog'}" class="alert-link">ver todos los cursos</a></p>
+        </div>
+
         <!-- Grid de cursos -->
-        <div *ngIf="!isLoadingCatalog() && allCourses().length > 0" class="row g-4">
-          <div *ngFor="let course of allCourses()" class="col-md-6 col-lg-4">
+        <div *ngIf="!isLoadingCatalog() && filteredCourses().length > 0" class="row g-4">
+          <div *ngFor="let course of filteredCourses()" class="col-md-6 col-lg-4">
             <div class="card h-100 shadow-sm">
               <!-- Imagen del curso -->
               <img

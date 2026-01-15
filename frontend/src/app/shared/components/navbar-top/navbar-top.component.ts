@@ -1,4 +1,4 @@
-import { Component, inject, signal, HostListener } from '@angular/core';
+import { Component, inject, signal, HostListener, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
@@ -19,6 +19,8 @@ export class NavbarTopComponent {
   showExploreDropdown = signal<boolean>(false);
   showUserDropdown = signal<boolean>(false);
 
+  @Output() sidebarToggle = new EventEmitter<void>();
+
   toggleExploreDropdown(): void {
     this.showExploreDropdown.update(v => !v);
     this.showUserDropdown.set(false);
@@ -27,6 +29,10 @@ export class NavbarTopComponent {
   toggleUserDropdown(): void {
     this.showUserDropdown.update(v => !v);
     this.showExploreDropdown.set(false);
+  }
+
+  toggleSidebar(): void {
+    this.sidebarToggle.emit();
   }
 
   // Cerrar dropdowns al hacer click fuera

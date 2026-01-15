@@ -1,0 +1,64 @@
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-lg-8 mx-auto">
+      <div class="mb-4">
+        <h1 class="h3">Configuración</h1>
+        <p class="text-muted">Administra tu cuenta y preferencias</p>
+      </div>
+
+      <!-- Información de la cuenta -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0">Información de la Cuenta</h5>
+        </div>
+        <div class="card-body">
+          <div class="row mb-3">
+            <div class="col-sm-4 fw-bold">Nombre:</div>
+            <div class="col-sm-8">{{ currentUser()?.name }}</div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-sm-4 fw-bold">Email:</div>
+            <div class="col-sm-8">{{ currentUser()?.email }}</div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-sm-4 fw-bold">Rol:</div>
+            <div class="col-sm-8">
+              <span class="badge" [class.bg-primary]="currentUser()?.role === 'student'" [class.bg-success]="currentUser()?.role === 'teacher'">
+                {{ currentUser()?.role === 'teacher' ? 'Profesor' : 'Estudiante' }}
+              </span>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-sm-4 fw-bold">Miembro desde:</div>
+            <div class="col-sm-8">{{ currentUser()?.createdAt | date:'longDate' }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preferencias (placeholder) -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0">Preferencias</h5>
+        </div>
+        <div class="card-body">
+          <div class="alert alert-info mb-0">
+            <i class="bi bi-info-circle me-2"></i>
+            Las opciones de configuración adicionales estarán disponibles próximamente.
+          </div>
+        </div>
+      </div>
+
+      <!-- Cambiar contraseña (placeholder) -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0">Seguridad</h5>
+        </div>
+        <div class="card-body">
+          <button class="btn btn-outline-primary" disabled>
+            Cambiar Contraseña (Próximamente)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

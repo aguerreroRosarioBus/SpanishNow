@@ -1,6 +1,6 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { CourseService } from '../../../core/services/course.service';
 import { EnrollmentService } from '../../../core/services/enrollment.service';
@@ -21,6 +21,7 @@ export class StudentDashboardComponent implements OnInit {
   private enrollmentService = inject(EnrollmentService);
   private toastService = inject(ToastService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
 
   currentUser = this.authService.currentUser;
 
@@ -38,6 +39,18 @@ export class StudentDashboardComponent implements OnInit {
   // Vista activa: 'catalog' o 'my-courses'
   activeView = signal<'catalog' | 'my-courses'>('my-courses');
 
+  // Filtro de nivel actual
+  currentLevelFilter = signal<string | null>(null);
+
+  // Cursos filtrados por nivel
+  filteredCourses = computed(() => {
+    const level = this.currentLevelFilter();
+    if (!level) {
+      return this.allCourses();
+    }
+    return this.allCourses().filter(course => course.level === level);
+  });
+
   // Confirm dialog state
   showConfirmDialog = signal<boolean>(false);
   confirmDialogData = signal<{
@@ -53,6 +66,22 @@ export class StudentDashboardComponent implements OnInit {
       this.router.navigate(['/auth/login']);
       return;
     }
+
+    // Escuchar cambios en query params
+    this.route.queryParams.subscribe(params => {
+      // Leer vista (catalog o my-courses)
+      if (params['view']) {
+        this.activeView.set(params['view']);
+      }
+
+      // Leer filtro de nivel
+      this.currentLevelFilter.set(params['level'] || null);
+
+      // Si hay nivel pero no vista, cambiar a catalog
+      if (params['level'] && !params['view']) {
+        this.activeView.set('catalog');
+      }
+    });
 
     this.loadCatalog();
     this.loadMyCourses();
