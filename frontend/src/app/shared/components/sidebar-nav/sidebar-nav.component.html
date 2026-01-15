@@ -1,0 +1,68 @@
+<aside class="sidebar-nav">
+  <!-- Sidebar para Estudiantes -->
+  <nav class="sidebar-menu" *ngIf="currentUser()?.role === 'student'">
+    <h6 class="sidebar-header">Mi Aprendizaje</h6>
+
+    <a class="sidebar-item"
+       [routerLink]="['/student/dashboard']"
+       routerLinkActive="active">
+      <span class="sidebar-icon">📚</span>
+      <span class="sidebar-label">Mis Cursos</span>
+    </a>
+
+    <a class="sidebar-item"
+       [routerLink]="['/student/progress']"
+       routerLinkActive="active">
+      <span class="sidebar-icon">📊</span>
+      <span class="sidebar-label">Mi Avance</span>
+    </a>
+
+    <div class="sidebar-divider"></div>
+
+    <h6 class="sidebar-header">Cuenta</h6>
+
+    <a class="sidebar-item"
+       [routerLink]="['/settings']"
+       routerLinkActive="active">
+      <span class="sidebar-icon">⚙️</span>
+      <span class="sidebar-label">Configuración</span>
+    </a>
+
+    <a class="sidebar-item"
+       [routerLink]="['/teachers']"
+       routerLinkActive="active">
+      <span class="sidebar-icon">👨‍🏫</span>
+      <span class="sidebar-label">Maestros</span>
+    </a>
+  </nav>
+
+  <!-- Sidebar para Profesores -->
+  <nav class="sidebar-menu" *ngIf="currentUser()?.role === 'teacher'">
+    <h6 class="sidebar-header">Enseñanza</h6>
+
+    <a class="sidebar-item"
+       [routerLink]="['/teacher/dashboard']"
+       routerLinkActive="active">
+      <span class="sidebar-icon">📚</span>
+      <span class="sidebar-label">Mis Cursos</span>
+    </a>
+
+    <a class="sidebar-item"
+       [routerLink]="['/teacher/create-course']"
+       routerLinkActive="active">
+      <span class="sidebar-icon">➕</span>
+      <span class="sidebar-label">Crear Curso</span>
+    </a>
+
+    <div class="sidebar-divider"></div>
+
+    <h6 class="sidebar-header">Cuenta</h6>
+
+    <a class="sidebar-item"
+       [routerLink]="['/settings']"
+       routerLinkActive="active">
+      <span class="sidebar-icon">⚙️</span>
+      <span class="sidebar-label">Configuración</span>
+    </a>
+  </nav>
+</aside>

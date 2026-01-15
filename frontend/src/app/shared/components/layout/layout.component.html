@@ -1,0 +1,23 @@
+<div class="app-layout">
+  <app-navbar-top></app-navbar-top>
+
+  <div class="layout-content">
+    <app-sidebar-nav
+      *ngIf="showSidebar()"
+      [class.open]="sidebarOpen()">
+    </app-sidebar-nav>
+
+    <main class="main-content">
+      <div class="content-wrapper">
+        <router-outlet></router-outlet>
+      </div>
+    </main>
+  </div>
+
+  <!-- Mobile sidebar overlay -->
+  <div
+    class="sidebar-overlay"
+    *ngIf="showSidebar() && sidebarOpen()"
+    (click)="toggleSidebar()">
+  </div>
+</div>

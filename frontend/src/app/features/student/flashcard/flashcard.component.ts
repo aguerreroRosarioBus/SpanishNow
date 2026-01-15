@@ -4,12 +4,11 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { VocabularyService } from '../../../core/services/vocabulary.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { Vocabulary } from '../../../core/models/course.model';
-import { NavbarComponent } from '../../dashboard/navbar/navbar.component';
 
 @Component({
   selector: 'app-flashcard',
   standalone: true,
-  imports: [CommonModule, NavbarComponent],
+  imports: [CommonModule],
   templateUrl: './flashcard.component.html',
   styleUrl: './flashcard.component.scss'
 })

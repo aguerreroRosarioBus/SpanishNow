@@ -1,34 +1,6 @@
-<!-- Navbar compartido -->
-<app-navbar></app-navbar>
-
 <div class="container-fluid mt-4">
   <div class="row">
     <div class="col-12">
-      <!-- Tabs para cambiar entre vistas -->
-      <ul class="nav nav-tabs mb-4">
-        <li class="nav-item">
-          <button
-            class="nav-link"
-            [class.active]="activeView() === 'catalog'"
-            (click)="switchView('catalog')"
-          >
-            Explorar Cursos
-          </button>
-        </li>
-        <li class="nav-item">
-          <button
-            class="nav-link"
-            [class.active]="activeView() === 'my-courses'"
-            (click)="switchView('my-courses')"
-          >
-            Mis Cursos
-            <span *ngIf="myCourses().length > 0" class="badge bg-primary ms-2">
-              {{ myCourses().length }}
-            </span>
-          </button>
-        </li>
-      </ul>
-
       <!-- Mensaje de error -->
       <div *ngIf="errorMessage()" class="alert alert-danger" role="alert">
         {{ errorMessage() }}

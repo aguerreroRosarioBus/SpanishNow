@@ -1,0 +1,68 @@
+<nav class="navbar-top">
+  <div class="navbar-container">
+    <!-- Logo -->
+    <a [routerLink]="currentUser()?.role === 'student' ? '/student/dashboard' : '/teacher/dashboard'"
+       class="navbar-brand">
+      🌎 SpanishNow
+    </a>
+
+    <!-- Navigation Links -->
+    <div class="navbar-nav">
+      <!-- Explorar Dropdown (solo estudiantes) -->
+      <div class="nav-item dropdown" *ngIf="currentUser()?.role === 'student'">
+        <button class="nav-link dropdown-toggle" (click)="toggleExploreDropdown()">
+          Explorar
+        </button>
+        <div class="dropdown-menu" [class.show]="showExploreDropdown()">
+          <a class="dropdown-item" [routerLink]="['/student/dashboard']" (click)="showExploreDropdown.set(false)">
+            📚 Todos los cursos
+          </a>
+          <div class="dropdown-divider"></div>
+          <h6 class="dropdown-header">Por nivel</h6>
+          <a class="dropdown-item" [routerLink]="['/student/dashboard']" [queryParams]="{level: 'A1'}" (click)="showExploreDropdown.set(false)">
+            A1 - Principiante
+          </a>
+          <a class="dropdown-item" [routerLink]="['/student/dashboard']" [queryParams]="{level: 'A2'}" (click)="showExploreDropdown.set(false)">
+            A2 - Elemental
+          </a>
+          <a class="dropdown-item" [routerLink]="['/student/dashboard']" [queryParams]="{level: 'B1'}" (click)="showExploreDropdown.set(false)">
+            B1 - Intermedio
+          </a>
+        </div>
+      </div>
+
+      <!-- Links informativos (opcional) -->
+      <a class="nav-link" href="#">Contacto</a>
+      <a class="nav-link" href="#">Acerca de</a>
+    </div>
+
+    <!-- User Menu -->
+    <div class="navbar-user">
+      <div class="dropdown">
+        <button class="user-avatar-button" (click)="toggleUserDropdown()">
+          <div class="user-avatar">
+            {{ currentUser()?.name?.charAt(0)?.toUpperCase() }}
+          </div>
+          <span class="user-name d-none d-md-inline">{{ currentUser()?.name }}</span>
+        </button>
+
+        <div class="dropdown-menu dropdown-menu-end" [class.show]="showUserDropdown()">
+          <div class="dropdown-header">
+            <strong>{{ currentUser()?.name }}</strong>
+            <small class="d-block text-muted">
+              {{ currentUser()?.role === 'teacher' ? 'Profesor' : 'Estudiante' }}
+            </small>
+          </div>
+          <div class="dropdown-divider"></div>
+          <a class="dropdown-item" [routerLink]="['/settings']" (click)="showUserDropdown.set(false)">
+            ⚙️ Configuración
+          </a>
+          <div class="dropdown-divider"></div>
+          <button class="dropdown-item text-danger" (click)="logout()">
+            🚪 Cerrar sesión
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>

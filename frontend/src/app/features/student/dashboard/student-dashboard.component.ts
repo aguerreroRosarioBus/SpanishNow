@@ -6,13 +6,12 @@ import { CourseService } from '../../../core/services/course.service';
 import { EnrollmentService } from '../../../core/services/enrollment.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { Course, Enrollment } from '../../../core/models/course.model';
-import { NavbarComponent } from '../../dashboard/navbar/navbar.component';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-student-dashboard',
   standalone: true,
-  imports: [CommonModule, NavbarComponent, RouterLink, ConfirmDialogComponent],
+  imports: [CommonModule, RouterLink, ConfirmDialogComponent],
   templateUrl: './student-dashboard.component.html',
   styleUrl: './student-dashboard.component.scss'
 })
@@ -37,7 +36,7 @@ export class StudentDashboardComponent implements OnInit {
   errorMessage = signal<string>('');
 
   // Vista activa: 'catalog' o 'my-courses'
-  activeView = signal<'catalog' | 'my-courses'>('catalog');
+  activeView = signal<'catalog' | 'my-courses'>('my-courses');
 
   // Confirm dialog state
   showConfirmDialog = signal<boolean>(false);

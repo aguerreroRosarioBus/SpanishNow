@@ -10,13 +10,12 @@ import { VocabularyService } from '../../../core/services/vocabulary.service';
 import { RepetitionActivityService } from '../../../core/services/repetition-activity.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { Course, Unit, Story, Question, Vocabulary, RepetitionActivity } from '../../../core/models/course.model';
-import { NavbarComponent } from '../../dashboard/navbar/navbar.component';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-course-manage',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, NavbarComponent, ConfirmDialogComponent],
+  imports: [CommonModule, ReactiveFormsModule, ConfirmDialogComponent],
   templateUrl: './course-manage.html',
   styleUrl: './course-manage.scss',
 })

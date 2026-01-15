@@ -10,7 +10,6 @@ import { RepetitionActivityService } from '../../../core/services/repetition-act
 import { ActivityConfigService, ActivityConfig } from '../../../core/services/activity-config.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { Course, Unit, Story, Question, Progress } from '../../../core/models/course.model';
-import { NavbarComponent } from '../../dashboard/navbar/navbar.component';
 import { ActivityModalComponent } from '../activity-modal/activity-modal.component';
 import { FlashcardModalComponent } from '../flashcard-modal/flashcard-modal.component';
 import { MatchingModalComponent } from '../matching-modal/matching-modal.component';
@@ -21,7 +20,6 @@ import { ListenRepeatModalComponent } from '../listen-repeat-modal/listen-repeat
   standalone: true,
   imports: [
     CommonModule,
-    NavbarComponent,
     ActivityModalComponent,
     FlashcardModalComponent,
     MatchingModalComponent,
