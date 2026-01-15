@@ -1,6 +1,7 @@
 import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ListenRepeatComponent } from '../listen-repeat/listen-repeat.component';
+import { ProgressService } from '../../../core/services/progress.service';
 import { ToastService } from '../../../core/services/toast.service';
 
 @Component({
@@ -47,9 +48,11 @@ import { ToastService } from '../../../core/services/toast.service';
 export class ListenRepeatModalComponent {
   @Input() storyId?: number;
   @Input() show = false;
+  @Input() progressId!: number;
   @Output() completed = new EventEmitter<void>();
   @Output() close = new EventEmitter<void>();
 
+  private progressService = inject(ProgressService);
   private toastService = inject(ToastService);
 
   onClose(): void {
@@ -64,7 +67,23 @@ export class ListenRepeatModalComponent {
     const accuracyPercentage = (result.goodPerformance / result.totalPhrases) * 100;
 
     if (accuracyPercentage >= 80) {
-      this.completed.emit();
+      // Mark listen & repeat as completed in progress tracking
+      if (this.progressId) {
+        this.progressService.markListenRepeatCompleted(this.progressId).subscribe({
+          next: (progress) => {
+            console.log('Listen & Repeat marked as completed:', progress);
+            this.toastService.success(`¡Completado con ${Math.round(accuracyPercentage)}% de frases exitosas!`);
+            this.completed.emit();
+          },
+          error: (error) => {
+            console.error('Error marking listen & repeat as completed:', error);
+            // Still emit completion even if tracking fails
+            this.completed.emit();
+          }
+        });
+      } else {
+        this.completed.emit();
+      }
     } else {
       this.toastService.warning('Necesitas 3+ estrellas en al menos 80% de las frases. Inténtalo de nuevo.');
     }

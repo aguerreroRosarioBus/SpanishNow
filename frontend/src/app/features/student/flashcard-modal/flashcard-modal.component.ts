@@ -1,7 +1,7 @@
 import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FlashcardComponent } from '../flashcard/flashcard.component';
-import { EnrollmentService } from '../../../core/services/enrollment.service';
+import { ProgressService } from '../../../core/services/progress.service';
 
 @Component({
   selector: 'app-flashcard-modal',
@@ -39,7 +39,7 @@ export class FlashcardModalComponent {
   @Output() completed = new EventEmitter<void>();
   @Output() close = new EventEmitter<void>();
 
-  private enrollmentService = inject(EnrollmentService);
+  private progressService = inject(ProgressService);
 
   onClose(): void {
     this.close.emit();
@@ -53,11 +53,19 @@ export class FlashcardModalComponent {
   onAllViewed(): void {
     // Mark flashcards as viewed in progress tracking
     if (this.progressId) {
-      // TODO: Create endpoint POST /api/progress/:progressId/flashcards-viewed
-      // For now, just emit completion
-      console.log('Flashcards viewed for progress:', this.progressId);
+      this.progressService.markFlashcardsViewed(this.progressId).subscribe({
+        next: (progress) => {
+          console.log('Flashcards marked as viewed:', progress);
+          this.completed.emit();
+        },
+        error: (error) => {
+          console.error('Error marking flashcards as viewed:', error);
+          // Still emit completion even if tracking fails
+          this.completed.emit();
+        }
+      });
+    } else {
+      this.completed.emit();
     }
-
-    this.completed.emit();
   }
 }
