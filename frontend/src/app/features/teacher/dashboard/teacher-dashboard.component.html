@@ -46,9 +46,9 @@
             <div class="card h-100 shadow-sm">
               <!-- Imagen del curso -->
               <img
-                [src]="course.imageUrl || 'https://via.placeholder.com/400x200?text=Curso+de+Español'"
+                [src]="course.imageUrl || 'https://placehold.co/400x200/1976d2/ffffff?text=📚+SpanishNow+|+Curso+de+Español'"
                 class="card-img-top"
-                [alt]="course.title"
+                [alt]="'Portada del curso de español: ' + course.title + ' (Nivel ' + course.level + ')'"
                 style="height: 200px; object-fit: cover;"
               >
 

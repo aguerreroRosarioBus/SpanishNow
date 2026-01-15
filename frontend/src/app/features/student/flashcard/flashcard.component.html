@@ -69,7 +69,10 @@
             </div>
 
             <div *ngIf="currentCard?.imageUrl" class="image-container mb-3">
-              <img [src]="currentCard?.imageUrl" [alt]="currentCard?.word" class="img-fluid rounded">
+              <img
+                [src]="currentCard?.imageUrl || 'https://placehold.co/300x200/4caf50/ffffff?text=📖+Vocabulario+|+SpanishNow'"
+                [alt]="'Imagen ilustrativa de la palabra en español: ' + (currentCard?.word || 'palabra') + (currentCard?.translation ? ' (' + currentCard?.translation + ')' : '')"
+                class="img-fluid rounded">
             </div>
 
             <button
