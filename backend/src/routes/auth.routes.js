@@ -3,6 +3,7 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const { User } = require('../models');
+const { authMiddleware } = require('../middlewares/auth.middleware');
 
 // Register
 router.post('/register',
@@ -89,6 +90,51 @@ router.post('/login',
         },
         token
       });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+// Change password
+router.post('/change-password',
+  authMiddleware,
+  [
+    body('currentPassword').notEmpty().withMessage('Current password is required'),
+    body('newPassword').isLength({ min: 6 }).withMessage('New password must be at least 6 characters')
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { currentPassword, newPassword } = req.body;
+
+      // Get user from database
+      const user = await User.findByPk(req.user.id);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      // Verify current password
+      const isMatch = await user.comparePassword(currentPassword);
+      if (!isMatch) {
+        return res.status(401).json({ error: 'Current password is incorrect' });
+      }
+
+      // Check if new password is different from current
+      const isSameAsOld = await user.comparePassword(newPassword);
+      if (isSameAsOld) {
+        return res.status(400).json({ error: 'New password must be different from current password' });
+      }
+
+      // Update password (will be hashed by User model hook)
+      user.password = newPassword;
+      await user.save();
+
+      res.json({ message: 'Password changed successfully' });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
