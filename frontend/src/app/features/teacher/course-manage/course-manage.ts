@@ -79,6 +79,9 @@ export class CourseManageComponent implements OnInit {
   previewItems = signal<Array<{ type: string; title: string; order: number; icon: string; id?: number; requiredStories?: number[]; activityType?: string }>>([]);
   draggedPreviewItem: { type: string; id?: number; activityType?: string } | null = null;
 
+  // Accordion state - track which units are expanded
+  expandedUnits = signal<Set<number>>(new Set());
+
   // Forms
   courseForm: FormGroup;
   unitForm: FormGroup;
@@ -203,6 +206,8 @@ export class CourseManageComponent implements OnInit {
       next: (course) => {
         this.course.set(course);
         this.units.set(course.units || []);
+        // Expand all units by default on initial load
+        this.expandAllUnits();
         this.isLoading.set(false);
       },
       error: (error) => {
@@ -1313,6 +1318,34 @@ export class CourseManageComponent implements OnInit {
         this.toastService.error('Error al guardar configuración de actividades');
       }
     });
+  }
+
+  // ===== ACCORDION METHODS =====
+
+  toggleUnit(unitId: number): void {
+    const expanded = this.expandedUnits();
+    const newExpanded = new Set(expanded);
+
+    if (newExpanded.has(unitId)) {
+      newExpanded.delete(unitId);
+    } else {
+      newExpanded.add(unitId);
+    }
+
+    this.expandedUnits.set(newExpanded);
+  }
+
+  isUnitExpanded(unitId: number): boolean {
+    return this.expandedUnits().has(unitId);
+  }
+
+  expandAllUnits(): void {
+    const allIds = this.units().map(u => u.id);
+    this.expandedUnits.set(new Set(allIds));
+  }
+
+  collapseAllUnits(): void {
+    this.expandedUnits.set(new Set());
   }
 
   goBack(): void {

@@ -1,0 +1,32 @@
+// Accordion animation
+.card-body {
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+  }
+  to {
+    opacity: 1;
+    max-height: 5000px;
+    overflow: visible;
+  }
+}
+
+// Unit header hover effect
+.card-header {
+  transition: all 0.2s ease;
+
+  &:hover {
+    filter: brightness(1.1);
+  }
+}
+
+// Collapse/expand icon transition
+.card-header h5 span {
+  transition: transform 0.3s ease;
+  display: inline-block;
+}

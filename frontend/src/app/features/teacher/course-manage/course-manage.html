@@ -50,6 +50,18 @@
             </div>
           </div>
 
+          <!-- Expand/Collapse All Controls -->
+          <div *ngIf="units().length > 0" class="col-12 mb-3">
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-outline-secondary" (click)="expandAllUnits()">
+                ▼ Expandir todas
+              </button>
+              <button class="btn btn-sm btn-outline-secondary" (click)="collapseAllUnits()">
+                ▶ Colapsar todas
+              </button>
+            </div>
+          </div>
+
           <!-- Units -->
           <div *ngFor="let unit of units()" class="col-12">
             <div class="card">
@@ -62,49 +74,53 @@
                 style="cursor: move;"
               >
                 <div class="d-flex justify-content-between align-items-center">
-                  <div class="d-flex align-items-center">
+                  <div class="d-flex align-items-center flex-grow-1">
                     <span class="me-3" style="font-size: 1.5rem; opacity: 0.7;">☰</span>
-                    <div>
-                      <h5 class="mb-0">{{ unit.title }}</h5>
+                    <div class="flex-grow-1" style="cursor: pointer;" (click)="toggleUnit(unit.id)">
+                      <h5 class="mb-0">
+                        <span class="me-2">{{ isUnitExpanded(unit.id) ? '▼' : '▶' }}</span>
+                        {{ unit.title }}
+                        <small class="ms-2 opacity-75">({{ unit.stories?.length || 0 }} historias)</small>
+                      </h5>
                     </div>
                   </div>
-                  <div>
+                  <div class="d-flex gap-2">
                     <button
-                      class="btn btn-sm btn-light me-2"
-                      (click)="openEditUnitModal(unit)"
+                      class="btn btn-sm btn-light"
+                      (click)="openEditUnitModal(unit); $event.stopPropagation()"
                       title="Editar unidad"
                     >
                       ✏️ Editar
                     </button>
                     <button
-                      class="btn btn-sm btn-light me-2"
-                      (click)="openVocabularyModal(unit)"
+                      class="btn btn-sm btn-light"
+                      (click)="openVocabularyModal(unit); $event.stopPropagation()"
                     >
                       📚 Vocabulario
                     </button>
                     <button
-                      class="btn btn-sm btn-info me-2"
-                      (click)="openActivityConfigModal(unit)"
+                      class="btn btn-sm btn-info"
+                      (click)="openActivityConfigModal(unit); $event.stopPropagation()"
                       title="Configurar actividades"
                     >
                       ⚙️ Actividades
                     </button>
                     <button
-                      class="btn btn-sm btn-light me-2"
-                      (click)="openStoryModal(unit.id)"
+                      class="btn btn-sm btn-light"
+                      (click)="openStoryModal(unit.id); $event.stopPropagation()"
                     >
-                      + Agregar Historia
+                      + Historia
                     </button>
                     <button
                       class="btn btn-sm btn-danger"
-                      (click)="deleteUnit(unit.id)"
+                      (click)="deleteUnit(unit.id); $event.stopPropagation()"
                     >
-                      Eliminar
+                      🗑️
                     </button>
                   </div>
                 </div>
               </div>
-              <div class="card-body">
+              <div class="card-body" *ngIf="isUnitExpanded(unit.id)">
                 <p class="mb-3">{{ unit.description }}</p>
 
                 <!-- Stories List -->
