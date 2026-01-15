@@ -140,13 +140,26 @@ export class TeacherDashboardComponent implements OnInit {
         // Agregar el nuevo curso a la lista
         this.courses.update(current => [...current, newCourse]);
 
+        // Mostrar toast de éxito
+        this.toastService.success('Curso creado exitosamente');
+
         // Cerrar modal y resetear
         this.closeCreateModal();
         this.isCreating.set(false);
       },
       error: (error) => {
         console.error('Error creating course:', error);
+
+        // Manejar errores de autenticación
+        if (error.status === 401 || error.status === 403) {
+          this.toastService.error('Tu sesión ha expirado. Por favor, inicia sesión de nuevo.');
+          this.authService.logout();
+          this.router.navigate(['/auth/login']);
+          return;
+        }
+
         this.errorMessage.set('Error al crear el curso. Intenta de nuevo.');
+        this.toastService.error('Error al crear el curso');
         this.isCreating.set(false);
       }
     });
