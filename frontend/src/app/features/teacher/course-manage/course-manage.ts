@@ -1,7 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
-import { FormBuilder, FormGroup, FormArray, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, FormArray, FormControl, ReactiveFormsModule, FormsModule, Validators } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { CourseService } from '../../../core/services/course.service';
 import { UnitService } from '../../../core/services/unit.service';
@@ -17,7 +17,7 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
 @Component({
   selector: 'app-course-manage',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ConfirmDialogComponent],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, ConfirmDialogComponent],
   templateUrl: './course-manage.html',
   styleUrl: './course-manage.scss',
 })
@@ -104,6 +104,50 @@ export class CourseManageComponent implements OnInit {
   vocabAudioFile: File | null = null;
   vocabImageFile: File | null = null;
   repetitionAudioFile: File | null = null;
+
+  // Audio recording for repetition activities
+  audioMethod: 'upload' | 'record' = 'upload';
+  isRecording = signal<boolean>(false);
+  recordedAudioBlob = signal<Blob | null>(null);
+  recordedAudioUrl = signal<string | null>(null);
+  private mediaRecorder: MediaRecorder | null = null;
+  private audioChunks: Blob[] = [];
+
+  // Audio recording for stories
+  audioSlowMethod: 'upload' | 'record' = 'upload';
+  audioNormalMethod: 'upload' | 'record' = 'upload';
+  isRecordingSlowAudio = signal<boolean>(false);
+  isRecordingNormalAudio = signal<boolean>(false);
+  recordedSlowAudioBlob = signal<Blob | null>(null);
+  recordedNormalAudioBlob = signal<Blob | null>(null);
+  recordedSlowAudioUrl = signal<string | null>(null);
+  recordedNormalAudioUrl = signal<string | null>(null);
+  private slowAudioRecorder: MediaRecorder | null = null;
+  private normalAudioRecorder: MediaRecorder | null = null;
+  private slowAudioChunks: Blob[] = [];
+  private normalAudioChunks: Blob[] = [];
+
+  // Audio recording for vocabulary
+  vocabAudioMethod: 'upload' | 'record' = 'upload';
+  isRecordingVocabAudio = signal<boolean>(false);
+  recordedVocabAudioBlob = signal<Blob | null>(null);
+  recordedVocabAudioUrl = signal<string | null>(null);
+  private vocabAudioRecorder: MediaRecorder | null = null;
+  private vocabAudioChunks: Blob[] = [];
+
+  // Audio recording for edit story
+  editAudioSlowMethod: 'upload' | 'record' = 'upload';
+  editAudioNormalMethod: 'upload' | 'record' = 'upload';
+  isRecordingEditSlowAudio = signal<boolean>(false);
+  isRecordingEditNormalAudio = signal<boolean>(false);
+  recordedEditSlowAudioBlob = signal<Blob | null>(null);
+  recordedEditNormalAudioBlob = signal<Blob | null>(null);
+  recordedEditSlowAudioUrl = signal<string | null>(null);
+  recordedEditNormalAudioUrl = signal<string | null>(null);
+  private editSlowAudioRecorder: MediaRecorder | null = null;
+  private editNormalAudioRecorder: MediaRecorder | null = null;
+  private editSlowAudioChunks: Blob[] = [];
+  private editNormalAudioChunks: Blob[] = [];
 
   constructor() {
     // Course form
@@ -385,6 +429,10 @@ export class CourseManageComponent implements OnInit {
     this.selectedUnitId.set(null);
     this.audioSlowFile = null;
     this.audioNormalFile = null;
+    this.clearRecordingSlowAudio();
+    this.clearRecordingNormalAudio();
+    this.audioSlowMethod = 'upload';
+    this.audioNormalMethod = 'upload';
   }
 
   closeEditStoryModal(): void {
@@ -394,6 +442,10 @@ export class CourseManageComponent implements OnInit {
     this.selectedUnitId.set(null);
     this.audioSlowFile = null;
     this.audioNormalFile = null;
+    this.clearRecordingEditSlowAudio();
+    this.clearRecordingEditNormalAudio();
+    this.editAudioSlowMethod = 'upload';
+    this.editAudioNormalMethod = 'upload';
     this.isEditMode.set(false);
   }
 
@@ -445,11 +497,20 @@ export class CourseManageComponent implements OnInit {
     formData.append('title', this.storyForm.get('title')?.value);
     formData.append('text', this.storyForm.get('text')?.value);
 
-    if (this.audioSlowFile) {
+    // Add slow audio from file upload or recording
+    if (this.audioSlowMethod === 'upload' && this.audioSlowFile) {
       formData.append('audioSlow', this.audioSlowFile);
+    } else if (this.audioSlowMethod === 'record' && this.recordedSlowAudioBlob()) {
+      const audioFile = new File([this.recordedSlowAudioBlob()!], 'audio-slow.webm', { type: 'audio/webm' });
+      formData.append('audioSlow', audioFile);
     }
-    if (this.audioNormalFile) {
+
+    // Add normal audio from file upload or recording
+    if (this.audioNormalMethod === 'upload' && this.audioNormalFile) {
       formData.append('audioNormal', this.audioNormalFile);
+    } else if (this.audioNormalMethod === 'record' && this.recordedNormalAudioBlob()) {
+      const audioFile = new File([this.recordedNormalAudioBlob()!], 'audio-normal.webm', { type: 'audio/webm' });
+      formData.append('audioNormal', audioFile);
     }
 
     this.storyService.createStory(formData).subscribe({
@@ -485,11 +546,20 @@ export class CourseManageComponent implements OnInit {
     formData.append('title', this.storyForm.get('title')?.value);
     formData.append('text', this.storyForm.get('text')?.value);
 
-    if (this.audioSlowFile) {
+    // Add slow audio from file upload or recording
+    if (this.editAudioSlowMethod === 'upload' && this.audioSlowFile) {
       formData.append('audioSlow', this.audioSlowFile);
+    } else if (this.editAudioSlowMethod === 'record' && this.recordedEditSlowAudioBlob()) {
+      const audioFile = new File([this.recordedEditSlowAudioBlob()!], 'audio-slow.webm', { type: 'audio/webm' });
+      formData.append('audioSlow', audioFile);
     }
-    if (this.audioNormalFile) {
+
+    // Add normal audio from file upload or recording
+    if (this.editAudioNormalMethod === 'upload' && this.audioNormalFile) {
       formData.append('audioNormal', this.audioNormalFile);
+    } else if (this.editAudioNormalMethod === 'record' && this.recordedEditNormalAudioBlob()) {
+      const audioFile = new File([this.recordedEditNormalAudioBlob()!], 'audio-normal.webm', { type: 'audio/webm' });
+      formData.append('audioNormal', audioFile);
     }
 
     this.storyService.updateStory(story.id, formData).subscribe({
@@ -701,6 +771,8 @@ export class CourseManageComponent implements OnInit {
     this.vocabularyForm.reset();
     this.vocabAudioFile = null;
     this.vocabImageFile = null;
+    this.clearRecordingVocabAudio();
+    this.vocabAudioMethod = 'upload';
   }
 
   resetVocabularyForm(): void {
@@ -752,8 +824,12 @@ export class CourseManageComponent implements OnInit {
     const partOfSpeech = this.vocabularyForm.get('partOfSpeech')?.value;
     if (partOfSpeech) formData.append('partOfSpeech', partOfSpeech);
 
-    if (this.vocabAudioFile) {
+    // Add audio from file upload or recording
+    if (this.vocabAudioMethod === 'upload' && this.vocabAudioFile) {
       formData.append('audio', this.vocabAudioFile);
+    } else if (this.vocabAudioMethod === 'record' && this.recordedVocabAudioBlob()) {
+      const audioFile = new File([this.recordedVocabAudioBlob()!], 'vocab-audio.webm', { type: 'audio/webm' });
+      formData.append('audio', audioFile);
     }
 
     if (this.vocabImageFile) {
@@ -809,11 +885,15 @@ export class CourseManageComponent implements OnInit {
     this.showRepetitionModal.set(false);
     this.repetitionForm.reset();
     this.repetitionAudioFile = null;
+    this.clearRecording();
+    this.audioMethod = 'upload';
   }
 
   resetRepetitionForm(): void {
     this.repetitionForm.reset();
     this.repetitionAudioFile = null;
+    this.clearRecording();
+    this.audioMethod = 'upload';
   }
 
   loadRepetitionsForStory(storyId: number): void {
@@ -845,8 +925,12 @@ export class CourseManageComponent implements OnInit {
     formData.append('storyId', story.id.toString());
     formData.append('phrase', this.repetitionForm.get('phrase')?.value);
 
-    if (this.repetitionAudioFile) {
+    // Add audio from file upload or recording
+    if (this.audioMethod === 'upload' && this.repetitionAudioFile) {
       formData.append('audio', this.repetitionAudioFile);
+    } else if (this.audioMethod === 'record' && this.recordedAudioBlob()) {
+      const audioFile = new File([this.recordedAudioBlob()!], 'recording.webm', { type: 'audio/webm' });
+      formData.append('audio', audioFile);
     }
 
     this.repetitionActivityService.createActivity(formData).subscribe({
@@ -883,6 +967,310 @@ export class CourseManageComponent implements OnInit {
       },
       'danger'
     );
+  }
+
+  // ===== AUDIO RECORDING FUNCTIONALITY =====
+
+  async startRecording(): Promise<void> {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      this.mediaRecorder = new MediaRecorder(stream);
+      this.audioChunks = [];
+
+      this.mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          this.audioChunks.push(event.data);
+        }
+      };
+
+      this.mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+        this.recordedAudioBlob.set(audioBlob);
+        const audioUrl = URL.createObjectURL(audioBlob);
+        this.recordedAudioUrl.set(audioUrl);
+
+        // Stop all tracks to release microphone
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      this.mediaRecorder.start();
+      this.isRecording.set(true);
+      this.toastService.success('Grabación iniciada');
+    } catch (error) {
+      console.error('Error accessing microphone:', error);
+      this.toastService.error('No se pudo acceder al micrófono. Por favor, permite el acceso.');
+    }
+  }
+
+  stopRecording(): void {
+    if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+      this.mediaRecorder.stop();
+      this.isRecording.set(false);
+      this.toastService.success('Grabación detenida');
+    }
+  }
+
+  clearRecording(): void {
+    if (this.recordedAudioUrl()) {
+      URL.revokeObjectURL(this.recordedAudioUrl()!);
+    }
+    this.recordedAudioBlob.set(null);
+    this.recordedAudioUrl.set(null);
+    this.audioChunks = [];
+    if (this.mediaRecorder) {
+      this.mediaRecorder = null;
+    }
+  }
+
+  // ===== AUDIO RECORDING FOR STORIES =====
+
+  async startRecordingSlowAudio(): Promise<void> {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      this.slowAudioRecorder = new MediaRecorder(stream);
+      this.slowAudioChunks = [];
+
+      this.slowAudioRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          this.slowAudioChunks.push(event.data);
+        }
+      };
+
+      this.slowAudioRecorder.onstop = () => {
+        const audioBlob = new Blob(this.slowAudioChunks, { type: 'audio/webm' });
+        this.recordedSlowAudioBlob.set(audioBlob);
+        const audioUrl = URL.createObjectURL(audioBlob);
+        this.recordedSlowAudioUrl.set(audioUrl);
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      this.slowAudioRecorder.start();
+      this.isRecordingSlowAudio.set(true);
+      this.toastService.success('Grabación de audio lento iniciada');
+    } catch (error) {
+      console.error('Error accessing microphone:', error);
+      this.toastService.error('No se pudo acceder al micrófono');
+    }
+  }
+
+  stopRecordingSlowAudio(): void {
+    if (this.slowAudioRecorder && this.slowAudioRecorder.state !== 'inactive') {
+      this.slowAudioRecorder.stop();
+      this.isRecordingSlowAudio.set(false);
+      this.toastService.success('Grabación de audio lento detenida');
+    }
+  }
+
+  clearRecordingSlowAudio(): void {
+    if (this.recordedSlowAudioUrl()) {
+      URL.revokeObjectURL(this.recordedSlowAudioUrl()!);
+    }
+    this.recordedSlowAudioBlob.set(null);
+    this.recordedSlowAudioUrl.set(null);
+    this.slowAudioChunks = [];
+    if (this.slowAudioRecorder) {
+      this.slowAudioRecorder = null;
+    }
+  }
+
+  async startRecordingNormalAudio(): Promise<void> {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      this.normalAudioRecorder = new MediaRecorder(stream);
+      this.normalAudioChunks = [];
+
+      this.normalAudioRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          this.normalAudioChunks.push(event.data);
+        }
+      };
+
+      this.normalAudioRecorder.onstop = () => {
+        const audioBlob = new Blob(this.normalAudioChunks, { type: 'audio/webm' });
+        this.recordedNormalAudioBlob.set(audioBlob);
+        const audioUrl = URL.createObjectURL(audioBlob);
+        this.recordedNormalAudioUrl.set(audioUrl);
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      this.normalAudioRecorder.start();
+      this.isRecordingNormalAudio.set(true);
+      this.toastService.success('Grabación de audio normal iniciada');
+    } catch (error) {
+      console.error('Error accessing microphone:', error);
+      this.toastService.error('No se pudo acceder al micrófono');
+    }
+  }
+
+  stopRecordingNormalAudio(): void {
+    if (this.normalAudioRecorder && this.normalAudioRecorder.state !== 'inactive') {
+      this.normalAudioRecorder.stop();
+      this.isRecordingNormalAudio.set(false);
+      this.toastService.success('Grabación de audio normal detenida');
+    }
+  }
+
+  clearRecordingNormalAudio(): void {
+    if (this.recordedNormalAudioUrl()) {
+      URL.revokeObjectURL(this.recordedNormalAudioUrl()!);
+    }
+    this.recordedNormalAudioBlob.set(null);
+    this.recordedNormalAudioUrl.set(null);
+    this.normalAudioChunks = [];
+    if (this.normalAudioRecorder) {
+      this.normalAudioRecorder = null;
+    }
+  }
+
+  // ===== VOCABULARY AUDIO RECORDING =====
+
+  async startRecordingVocabAudio(): Promise<void> {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      this.vocabAudioRecorder = new MediaRecorder(stream);
+      this.vocabAudioChunks = [];
+
+      this.vocabAudioRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          this.vocabAudioChunks.push(event.data);
+        }
+      };
+
+      this.vocabAudioRecorder.onstop = () => {
+        const audioBlob = new Blob(this.vocabAudioChunks, { type: 'audio/webm' });
+        this.recordedVocabAudioBlob.set(audioBlob);
+        const audioUrl = URL.createObjectURL(audioBlob);
+        this.recordedVocabAudioUrl.set(audioUrl);
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      this.vocabAudioRecorder.start();
+      this.isRecordingVocabAudio.set(true);
+      this.toastService.success('Grabación de audio iniciada');
+    } catch (error) {
+      console.error('Error accessing microphone:', error);
+      this.toastService.error('No se pudo acceder al micrófono');
+    }
+  }
+
+  stopRecordingVocabAudio(): void {
+    if (this.vocabAudioRecorder && this.vocabAudioRecorder.state !== 'inactive') {
+      this.vocabAudioRecorder.stop();
+      this.isRecordingVocabAudio.set(false);
+      this.toastService.success('Grabación de audio detenida');
+    }
+  }
+
+  clearRecordingVocabAudio(): void {
+    if (this.recordedVocabAudioUrl()) {
+      URL.revokeObjectURL(this.recordedVocabAudioUrl()!);
+    }
+    this.recordedVocabAudioBlob.set(null);
+    this.recordedVocabAudioUrl.set(null);
+    this.vocabAudioChunks = [];
+    if (this.vocabAudioRecorder) {
+      this.vocabAudioRecorder = null;
+    }
+  }
+
+  // ===== EDIT STORY AUDIO RECORDING =====
+
+  async startRecordingEditSlowAudio(): Promise<void> {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      this.editSlowAudioRecorder = new MediaRecorder(stream);
+      this.editSlowAudioChunks = [];
+
+      this.editSlowAudioRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          this.editSlowAudioChunks.push(event.data);
+        }
+      };
+
+      this.editSlowAudioRecorder.onstop = () => {
+        const audioBlob = new Blob(this.editSlowAudioChunks, { type: 'audio/webm' });
+        this.recordedEditSlowAudioBlob.set(audioBlob);
+        const audioUrl = URL.createObjectURL(audioBlob);
+        this.recordedEditSlowAudioUrl.set(audioUrl);
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      this.editSlowAudioRecorder.start();
+      this.isRecordingEditSlowAudio.set(true);
+      this.toastService.success('Grabación de audio lento iniciada');
+    } catch (error) {
+      console.error('Error accessing microphone:', error);
+      this.toastService.error('No se pudo acceder al micrófono');
+    }
+  }
+
+  stopRecordingEditSlowAudio(): void {
+    if (this.editSlowAudioRecorder && this.editSlowAudioRecorder.state !== 'inactive') {
+      this.editSlowAudioRecorder.stop();
+      this.isRecordingEditSlowAudio.set(false);
+      this.toastService.success('Grabación de audio lento detenida');
+    }
+  }
+
+  clearRecordingEditSlowAudio(): void {
+    if (this.recordedEditSlowAudioUrl()) {
+      URL.revokeObjectURL(this.recordedEditSlowAudioUrl()!);
+    }
+    this.recordedEditSlowAudioBlob.set(null);
+    this.recordedEditSlowAudioUrl.set(null);
+    this.editSlowAudioChunks = [];
+    if (this.editSlowAudioRecorder) {
+      this.editSlowAudioRecorder = null;
+    }
+  }
+
+  async startRecordingEditNormalAudio(): Promise<void> {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      this.editNormalAudioRecorder = new MediaRecorder(stream);
+      this.editNormalAudioChunks = [];
+
+      this.editNormalAudioRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          this.editNormalAudioChunks.push(event.data);
+        }
+      };
+
+      this.editNormalAudioRecorder.onstop = () => {
+        const audioBlob = new Blob(this.editNormalAudioChunks, { type: 'audio/webm' });
+        this.recordedEditNormalAudioBlob.set(audioBlob);
+        const audioUrl = URL.createObjectURL(audioBlob);
+        this.recordedEditNormalAudioUrl.set(audioUrl);
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      this.editNormalAudioRecorder.start();
+      this.isRecordingEditNormalAudio.set(true);
+      this.toastService.success('Grabación de audio normal iniciada');
+    } catch (error) {
+      console.error('Error accessing microphone:', error);
+      this.toastService.error('No se pudo acceder al micrófono');
+    }
+  }
+
+  stopRecordingEditNormalAudio(): void {
+    if (this.editNormalAudioRecorder && this.editNormalAudioRecorder.state !== 'inactive') {
+      this.editNormalAudioRecorder.stop();
+      this.isRecordingEditNormalAudio.set(false);
+      this.toastService.success('Grabación de audio normal detenida');
+    }
+  }
+
+  clearRecordingEditNormalAudio(): void {
+    if (this.recordedEditNormalAudioUrl()) {
+      URL.revokeObjectURL(this.recordedEditNormalAudioUrl()!);
+    }
+    this.recordedEditNormalAudioBlob.set(null);
+    this.recordedEditNormalAudioUrl.set(null);
+    this.editNormalAudioChunks = [];
+    if (this.editNormalAudioRecorder) {
+      this.editNormalAudioRecorder = null;
+    }
   }
 
   // ===== DRAG & DROP FUNCTIONALITY =====
@@ -1180,6 +1568,12 @@ export class CourseManageComponent implements OnInit {
       'listen_repeat': '🎧'
     };
     return icons[type] || '❓';
+  }
+
+  getOrderedStories(): Story[] {
+    const unit = this.selectedUnitForActivity();
+    if (!unit || !unit.stories) return [];
+    return [...unit.stories].sort((a, b) => a.order - b.order);
   }
 
   toggleStoryRequirement(activityType: string, storyId: number): void {

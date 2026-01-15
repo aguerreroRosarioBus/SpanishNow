@@ -79,34 +79,34 @@
                     <div class="flex-grow-1" style="cursor: pointer;" (click)="toggleUnit(unit.id)">
                       <h5 class="mb-0">
                         <span class="me-2">{{ isUnitExpanded(unit.id) ? '▼' : '▶' }}</span>
-                        {{ unit.title }}
+                        Unidad #{{ unit.order + 1 }} - {{ unit.title }}
                         <small class="ms-2 opacity-75">({{ unit.stories?.length || 0 }} historias)</small>
                       </h5>
                     </div>
                   </div>
                   <div class="d-flex gap-2">
                     <button
-                      class="btn btn-sm btn-light"
+                      class="btn btn-sm btn-secondary"
                       (click)="openEditUnitModal(unit); $event.stopPropagation()"
                       title="Editar unidad"
                     >
                       ✏️ Editar
                     </button>
                     <button
-                      class="btn btn-sm btn-light"
+                      class="btn btn-sm btn-secondary"
                       (click)="openVocabularyModal(unit); $event.stopPropagation()"
                     >
                       📚 Vocabulario
                     </button>
                     <button
-                      class="btn btn-sm btn-info"
+                      class="btn btn-sm btn-primary"
                       (click)="openActivityConfigModal(unit); $event.stopPropagation()"
                       title="Configurar actividades"
                     >
                       ⚙️ Actividades
                     </button>
                     <button
-                      class="btn btn-sm btn-light"
+                      class="btn btn-sm btn-success"
                       (click)="openStoryModal(unit.id); $event.stopPropagation()"
                     >
                       + Historia
@@ -139,7 +139,7 @@
                       <div class="d-flex justify-content-between align-items-start">
                         <div class="flex-grow-1">
                           <span class="me-2" style="opacity: 0.5;">☰</span>
-                          <strong>{{ story.title }}</strong>
+                          <strong>#{{ story.order + 1 }} - {{ story.title }}</strong>
                           <br>
                           <small class="text-muted">
                             {{ story.text.substring(0, 100) }}{{ story.text.length > 100 ? '...' : '' }}
@@ -149,31 +149,32 @@
                             {{ story.questions?.length || 0 }} pregunta(s)
                           </span>
                         </div>
-                        <div class="btn-group">
+                        <div class="d-flex gap-2">
                           <button
-                            class="btn btn-sm btn-outline-secondary"
+                            class="btn btn-sm btn-secondary"
                             (click)="openEditStoryModal(story, unit.id)"
                             title="Editar historia"
                           >
                             ✏️
                           </button>
                           <button
-                            class="btn btn-sm btn-outline-primary"
+                            class="btn btn-sm btn-primary"
                             (click)="openQuestionModal(story)"
                           >
                             📝 Preguntas
                           </button>
                           <button
-                            class="btn btn-sm btn-outline-info"
+                            class="btn btn-sm btn-primary"
                             (click)="openRepetitionModal(story)"
                           >
                             🎤 Listen & Repeat
                           </button>
                           <button
-                            class="btn btn-sm btn-outline-danger"
+                            class="btn btn-sm btn-danger"
                             (click)="deleteStory(unit.id, story.id)"
+                            title="Eliminar historia"
                           >
-                            Eliminar
+                            🗑️
                           </button>
                         </div>
                       </div>
@@ -321,28 +322,92 @@
 
           <!-- Audio Slow -->
           <div class="mb-3">
-            <label for="audioSlow" class="form-label">Audio Lento (Opcional)</label>
-            <input
-              type="file"
-              class="form-control"
-              id="audioSlow"
-              accept="audio/*"
-              (change)="onAudioSlowSelected($event)"
-            >
-            <small class="text-muted">Formato: MP3, WAV, OGG (máx 50MB)</small>
+            <label class="form-label">Audio Lento (Opcional)</label>
+
+            <!-- Botones para elegir método -->
+            <div class="btn-group w-100 mb-2" role="group">
+              <input type="radio" class="btn-check" name="audioSlowMethod" id="audioSlowMethodUpload" [value]="'upload'" [(ngModel)]="audioSlowMethod" [ngModelOptions]="{standalone: true}">
+              <label class="btn btn-outline-primary" for="audioSlowMethodUpload">📁 Subir archivo</label>
+
+              <input type="radio" class="btn-check" name="audioSlowMethod" id="audioSlowMethodRecord" [value]="'record'" [(ngModel)]="audioSlowMethod" [ngModelOptions]="{standalone: true}">
+              <label class="btn btn-outline-primary" for="audioSlowMethodRecord">🎤 Grabar</label>
+            </div>
+
+            <!-- Subir archivo -->
+            <div *ngIf="audioSlowMethod === 'upload'">
+              <input type="file" class="form-control" accept="audio/*" (change)="onAudioSlowSelected($event)">
+              <small class="text-muted d-block mt-1">Formato: MP3, WAV, OGG (máx 50MB)</small>
+            </div>
+
+            <!-- Grabar audio -->
+            <div *ngIf="audioSlowMethod === 'record'">
+              <div class="d-flex gap-2 mb-2">
+                <button type="button" class="btn btn-danger" *ngIf="!isRecordingSlowAudio() && !recordedSlowAudioBlob()" (click)="startRecordingSlowAudio()">
+                  ⏺ Iniciar Grabación
+                </button>
+                <button type="button" class="btn btn-success" *ngIf="isRecordingSlowAudio()" (click)="stopRecordingSlowAudio()">
+                  ⏹ Detener Grabación
+                </button>
+                <button type="button" class="btn btn-warning" *ngIf="recordedSlowAudioBlob() && !isRecordingSlowAudio()" (click)="clearRecordingSlowAudio()">
+                  🗑️ Borrar y grabar de nuevo
+                </button>
+              </div>
+
+              <div *ngIf="isRecordingSlowAudio()" class="alert alert-danger d-flex align-items-center">
+                <span class="spinner-grow spinner-grow-sm me-2" role="status"></span>
+                <span>Grabando audio lento... Habla despacio</span>
+              </div>
+
+              <div *ngIf="recordedSlowAudioUrl() && !isRecordingSlowAudio()" class="mt-2">
+                <audio [src]="recordedSlowAudioUrl()" controls class="w-100"></audio>
+                <small class="text-success d-block mt-1">✓ Audio lento grabado correctamente</small>
+              </div>
+            </div>
           </div>
 
           <!-- Audio Normal -->
           <div class="mb-3">
-            <label for="audioNormal" class="form-label">Audio Normal (Opcional)</label>
-            <input
-              type="file"
-              class="form-control"
-              id="audioNormal"
-              accept="audio/*"
-              (change)="onAudioNormalSelected($event)"
-            >
-            <small class="text-muted">Formato: MP3, WAV, OGG (máx 50MB)</small>
+            <label class="form-label">Audio Normal (Opcional)</label>
+
+            <!-- Botones para elegir método -->
+            <div class="btn-group w-100 mb-2" role="group">
+              <input type="radio" class="btn-check" name="audioNormalMethod" id="audioNormalMethodUpload" [value]="'upload'" [(ngModel)]="audioNormalMethod" [ngModelOptions]="{standalone: true}">
+              <label class="btn btn-outline-primary" for="audioNormalMethodUpload">📁 Subir archivo</label>
+
+              <input type="radio" class="btn-check" name="audioNormalMethod" id="audioNormalMethodRecord" [value]="'record'" [(ngModel)]="audioNormalMethod" [ngModelOptions]="{standalone: true}">
+              <label class="btn btn-outline-primary" for="audioNormalMethodRecord">🎤 Grabar</label>
+            </div>
+
+            <!-- Subir archivo -->
+            <div *ngIf="audioNormalMethod === 'upload'">
+              <input type="file" class="form-control" accept="audio/*" (change)="onAudioNormalSelected($event)">
+              <small class="text-muted d-block mt-1">Formato: MP3, WAV, OGG (máx 50MB)</small>
+            </div>
+
+            <!-- Grabar audio -->
+            <div *ngIf="audioNormalMethod === 'record'">
+              <div class="d-flex gap-2 mb-2">
+                <button type="button" class="btn btn-danger" *ngIf="!isRecordingNormalAudio() && !recordedNormalAudioBlob()" (click)="startRecordingNormalAudio()">
+                  ⏺ Iniciar Grabación
+                </button>
+                <button type="button" class="btn btn-success" *ngIf="isRecordingNormalAudio()" (click)="stopRecordingNormalAudio()">
+                  ⏹ Detener Grabación
+                </button>
+                <button type="button" class="btn btn-warning" *ngIf="recordedNormalAudioBlob() && !isRecordingNormalAudio()" (click)="clearRecordingNormalAudio()">
+                  🗑️ Borrar y grabar de nuevo
+                </button>
+              </div>
+
+              <div *ngIf="isRecordingNormalAudio()" class="alert alert-danger d-flex align-items-center">
+                <span class="spinner-grow spinner-grow-sm me-2" role="status"></span>
+                <span>Grabando audio normal... Habla a velocidad normal</span>
+              </div>
+
+              <div *ngIf="recordedNormalAudioUrl() && !isRecordingNormalAudio()" class="mt-2">
+                <audio [src]="recordedNormalAudioUrl()" controls class="w-100"></audio>
+                <small class="text-success d-block mt-1">✓ Audio normal grabado correctamente</small>
+              </div>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
@@ -563,8 +628,37 @@
             </div>
             <div class="col-md-6">
               <label class="form-label">Audio de pronunciación</label>
-              <input type="file" class="form-control" accept="audio/*" (change)="onVocabAudioSelected($event)">
-              <small class="text-muted">Archivo de audio con la pronunciación</small>
+
+              <!-- Botones para elegir método -->
+              <div class="btn-group w-100 mb-2" role="group">
+                <input type="radio" class="btn-check" name="vocabAudioMethod" id="vocabAudioMethodUpload" [value]="'upload'" [(ngModel)]="vocabAudioMethod" [ngModelOptions]="{standalone: true}">
+                <label class="btn btn-outline-primary" for="vocabAudioMethodUpload">📁 Subir archivo</label>
+
+                <input type="radio" class="btn-check" name="vocabAudioMethod" id="vocabAudioMethodRecord" [value]="'record'" [(ngModel)]="vocabAudioMethod" [ngModelOptions]="{standalone: true}">
+                <label class="btn btn-outline-primary" for="vocabAudioMethodRecord">🎤 Grabar</label>
+              </div>
+
+              <!-- Subir archivo -->
+              <div *ngIf="vocabAudioMethod === 'upload'">
+                <input type="file" class="form-control" accept="audio/*" (change)="onVocabAudioSelected($event)">
+                <small class="text-muted">Archivo de audio con la pronunciación</small>
+              </div>
+
+              <!-- Grabar audio -->
+              <div *ngIf="vocabAudioMethod === 'record'">
+                <button type="button" class="btn btn-danger w-100 mb-2" *ngIf="!isRecordingVocabAudio() && !recordedVocabAudioBlob()" (click)="startRecordingVocabAudio()">
+                  ⏺ Iniciar Grabación
+                </button>
+                <button type="button" class="btn btn-success w-100 mb-2" *ngIf="isRecordingVocabAudio()" (click)="stopRecordingVocabAudio()">
+                  ⏹ Detener Grabación
+                </button>
+                <div *ngIf="recordedVocabAudioUrl()" class="mt-2">
+                  <audio [src]="recordedVocabAudioUrl()" controls class="w-100 mb-2"></audio>
+                  <button type="button" class="btn btn-sm btn-warning w-100" (click)="clearRecordingVocabAudio()">
+                    🗑️ Limpiar Grabación
+                  </button>
+                </div>
+              </div>
             </div>
             <div class="col-md-6">
               <label class="form-label">Imagen</label>
@@ -650,8 +744,67 @@
             </div>
             <div class="col-12">
               <label class="form-label">Audio modelo *</label>
-              <input type="file" class="form-control" accept="audio/*" (change)="onRepetitionAudioSelected($event)">
-              <small class="text-muted">Audio con la pronunciación correcta que el estudiante escuchará</small>
+
+              <!-- Botones para elegir método -->
+              <div class="btn-group w-100 mb-2" role="group">
+                <input type="radio" class="btn-check" name="audioMethod" id="audioMethodUpload" [value]="'upload'" [(ngModel)]="audioMethod" [ngModelOptions]="{standalone: true}">
+                <label class="btn btn-outline-primary" for="audioMethodUpload">📁 Subir archivo</label>
+
+                <input type="radio" class="btn-check" name="audioMethod" id="audioMethodRecord" [value]="'record'" [(ngModel)]="audioMethod" [ngModelOptions]="{standalone: true}">
+                <label class="btn btn-outline-primary" for="audioMethodRecord">🎤 Grabar</label>
+              </div>
+
+              <!-- Subir archivo -->
+              <div *ngIf="audioMethod === 'upload'">
+                <input type="file" class="form-control" accept="audio/*" (change)="onRepetitionAudioSelected($event)">
+                <small class="text-muted d-block mt-1">Sube un archivo de audio con la pronunciación correcta</small>
+              </div>
+
+              <!-- Grabar audio -->
+              <div *ngIf="audioMethod === 'record'">
+                <div class="d-flex gap-2 mb-2">
+                  <button
+                    type="button"
+                    class="btn btn-danger"
+                    *ngIf="!isRecording() && !recordedAudioBlob()"
+                    (click)="startRecording()"
+                  >
+                    ⏺ Iniciar Grabación
+                  </button>
+
+                  <button
+                    type="button"
+                    class="btn btn-success"
+                    *ngIf="isRecording()"
+                    (click)="stopRecording()"
+                  >
+                    ⏹ Detener Grabación
+                  </button>
+
+                  <button
+                    type="button"
+                    class="btn btn-warning"
+                    *ngIf="recordedAudioBlob() && !isRecording()"
+                    (click)="clearRecording()"
+                  >
+                    🗑️ Borrar y grabar de nuevo
+                  </button>
+                </div>
+
+                <!-- Indicador de grabación -->
+                <div *ngIf="isRecording()" class="alert alert-danger d-flex align-items-center">
+                  <span class="spinner-grow spinner-grow-sm me-2" role="status"></span>
+                  <span>Grabando... Habla ahora</span>
+                </div>
+
+                <!-- Preview del audio grabado -->
+                <div *ngIf="recordedAudioUrl() && !isRecording()" class="mt-2">
+                  <audio [src]="recordedAudioUrl()" controls class="w-100"></audio>
+                  <small class="text-success d-block mt-1">✓ Audio grabado correctamente</small>
+                </div>
+
+                <small class="text-muted d-block mt-1">Graba tu pronunciación usando el micrófono</small>
+              </div>
             </div>
             <div class="col-12">
               <button
@@ -844,26 +997,73 @@
           </div>
           <div class="row">
             <div class="col-md-6 mb-3">
-              <label for="editAudioSlow" class="form-label">Audio Lento (opcional)</label>
-              <input
-                type="file"
-                class="form-control"
-                id="editAudioSlow"
-                accept="audio/*"
-                (change)="onAudioSlowSelected($event)"
-              />
-              <small class="text-muted">Deja vacío para mantener el audio actual</small>
+              <label class="form-label">Audio Lento (opcional)</label>
+
+              <!-- Botones para elegir método -->
+              <div class="btn-group w-100 mb-2" role="group">
+                <input type="radio" class="btn-check" name="editAudioSlowMethod" id="editAudioSlowMethodUpload" [value]="'upload'" [(ngModel)]="editAudioSlowMethod" [ngModelOptions]="{standalone: true}">
+                <label class="btn btn-outline-primary" for="editAudioSlowMethodUpload">📁 Subir archivo</label>
+
+                <input type="radio" class="btn-check" name="editAudioSlowMethod" id="editAudioSlowMethodRecord" [value]="'record'" [(ngModel)]="editAudioSlowMethod" [ngModelOptions]="{standalone: true}">
+                <label class="btn btn-outline-primary" for="editAudioSlowMethodRecord">🎤 Grabar</label>
+              </div>
+
+              <!-- Subir archivo -->
+              <div *ngIf="editAudioSlowMethod === 'upload'">
+                <input type="file" class="form-control" id="editAudioSlow" accept="audio/*" (change)="onAudioSlowSelected($event)">
+                <small class="text-muted">Deja vacío para mantener el audio actual</small>
+              </div>
+
+              <!-- Grabar audio -->
+              <div *ngIf="editAudioSlowMethod === 'record'">
+                <button type="button" class="btn btn-danger w-100 mb-2" *ngIf="!isRecordingEditSlowAudio() && !recordedEditSlowAudioBlob()" (click)="startRecordingEditSlowAudio()">
+                  ⏺ Iniciar Grabación
+                </button>
+                <button type="button" class="btn btn-success w-100 mb-2" *ngIf="isRecordingEditSlowAudio()" (click)="stopRecordingEditSlowAudio()">
+                  ⏹ Detener Grabación
+                </button>
+                <div *ngIf="recordedEditSlowAudioUrl()" class="mt-2">
+                  <audio [src]="recordedEditSlowAudioUrl()" controls class="w-100 mb-2"></audio>
+                  <button type="button" class="btn btn-sm btn-warning w-100" (click)="clearRecordingEditSlowAudio()">
+                    🗑️ Limpiar Grabación
+                  </button>
+                </div>
+              </div>
             </div>
+
             <div class="col-md-6 mb-3">
-              <label for="editAudioNormal" class="form-label">Audio Normal (opcional)</label>
-              <input
-                type="file"
-                class="form-control"
-                id="editAudioNormal"
-                accept="audio/*"
-                (change)="onAudioNormalSelected($event)"
-              />
-              <small class="text-muted">Deja vacío para mantener el audio actual</small>
+              <label class="form-label">Audio Normal (opcional)</label>
+
+              <!-- Botones para elegir método -->
+              <div class="btn-group w-100 mb-2" role="group">
+                <input type="radio" class="btn-check" name="editAudioNormalMethod" id="editAudioNormalMethodUpload" [value]="'upload'" [(ngModel)]="editAudioNormalMethod" [ngModelOptions]="{standalone: true}">
+                <label class="btn btn-outline-primary" for="editAudioNormalMethodUpload">📁 Subir archivo</label>
+
+                <input type="radio" class="btn-check" name="editAudioNormalMethod" id="editAudioNormalMethodRecord" [value]="'record'" [(ngModel)]="editAudioNormalMethod" [ngModelOptions]="{standalone: true}">
+                <label class="btn btn-outline-primary" for="editAudioNormalMethodRecord">🎤 Grabar</label>
+              </div>
+
+              <!-- Subir archivo -->
+              <div *ngIf="editAudioNormalMethod === 'upload'">
+                <input type="file" class="form-control" id="editAudioNormal" accept="audio/*" (change)="onAudioNormalSelected($event)">
+                <small class="text-muted">Deja vacío para mantener el audio actual</small>
+              </div>
+
+              <!-- Grabar audio -->
+              <div *ngIf="editAudioNormalMethod === 'record'">
+                <button type="button" class="btn btn-danger w-100 mb-2" *ngIf="!isRecordingEditNormalAudio() && !recordedEditNormalAudioBlob()" (click)="startRecordingEditNormalAudio()">
+                  ⏺ Iniciar Grabación
+                </button>
+                <button type="button" class="btn btn-success w-100 mb-2" *ngIf="isRecordingEditNormalAudio()" (click)="stopRecordingEditNormalAudio()">
+                  ⏹ Detener Grabación
+                </button>
+                <div *ngIf="recordedEditNormalAudioUrl()" class="mt-2">
+                  <audio [src]="recordedEditNormalAudioUrl()" controls class="w-100 mb-2"></audio>
+                  <button type="button" class="btn btn-sm btn-warning w-100" (click)="clearRecordingEditNormalAudio()">
+                    🗑️ Limpiar Grabación
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -917,8 +1117,8 @@
               No hay historias en esta unidad. Crea historias primero.
             </div>
             <ul class="list-unstyled mb-0" *ngIf="(selectedUnitForActivity()?.stories || []).length > 0">
-              <li *ngFor="let story of selectedUnitForActivity()?.stories">
-                <strong>H{{ story.id }}</strong>: {{ story.title }}
+              <li *ngFor="let story of getOrderedStories(); let i = index">
+                <strong>H{{ i + 1 }}</strong>: {{ story.title }}
               </li>
             </ul>
           </div>
@@ -953,7 +1153,7 @@
               <div class="card-body" *ngIf="activityConfigForms.questions.value.isEnabled">
                 <label class="form-label small text-muted">Requiere historias:</label>
                 <div class="d-flex flex-wrap gap-2">
-                  <div class="form-check" *ngFor="let story of selectedUnitForActivity()?.stories">
+                  <div class="form-check" *ngFor="let story of getOrderedStories(); let i = index">
                     <input
                       class="form-check-input"
                       type="checkbox"
@@ -962,7 +1162,7 @@
                       [id]="'questions-story-' + story.id"
                     />
                     <label class="form-check-label" [for]="'questions-story-' + story.id">
-                      H{{ story.id }}
+                      H{{ i + 1 }}
                     </label>
                   </div>
                   <small class="text-muted w-100" *ngIf="activityConfigForms.questions.value.requiredStoryIds?.length === 0">
@@ -995,7 +1195,7 @@
               <div class="card-body" *ngIf="activityConfigForms.flashcards.value.isEnabled">
                 <label class="form-label small text-muted">Requiere historias:</label>
                 <div class="d-flex flex-wrap gap-2">
-                  <div class="form-check" *ngFor="let story of selectedUnitForActivity()?.stories">
+                  <div class="form-check" *ngFor="let story of getOrderedStories(); let i = index">
                     <input
                       class="form-check-input"
                       type="checkbox"
@@ -1004,7 +1204,7 @@
                       [id]="'flashcards-story-' + story.id"
                     />
                     <label class="form-check-label" [for]="'flashcards-story-' + story.id">
-                      H{{ story.id }}
+                      H{{ i + 1 }}
                     </label>
                   </div>
                   <small class="text-muted w-100" *ngIf="activityConfigForms.flashcards.value.requiredStoryIds?.length === 0">
@@ -1037,7 +1237,7 @@
               <div class="card-body" *ngIf="activityConfigForms.matching.value.isEnabled">
                 <label class="form-label small text-muted">Requiere historias:</label>
                 <div class="d-flex flex-wrap gap-2">
-                  <div class="form-check" *ngFor="let story of selectedUnitForActivity()?.stories">
+                  <div class="form-check" *ngFor="let story of getOrderedStories(); let i = index">
                     <input
                       class="form-check-input"
                       type="checkbox"
@@ -1046,7 +1246,7 @@
                       [id]="'matching-story-' + story.id"
                     />
                     <label class="form-check-label" [for]="'matching-story-' + story.id">
-                      H{{ story.id }}
+                      H{{ i + 1 }}
                     </label>
                   </div>
                   <small class="text-muted w-100" *ngIf="activityConfigForms.matching.value.requiredStoryIds?.length === 0">
@@ -1079,7 +1279,7 @@
               <div class="card-body" *ngIf="activityConfigForms.listen_repeat.value.isEnabled">
                 <label class="form-label small text-muted">Requiere historias:</label>
                 <div class="d-flex flex-wrap gap-2">
-                  <div class="form-check" *ngFor="let story of selectedUnitForActivity()?.stories">
+                  <div class="form-check" *ngFor="let story of getOrderedStories(); let i = index">
                     <input
                       class="form-check-input"
                       type="checkbox"
@@ -1088,7 +1288,7 @@
                       [id]="'listenRepeat-story-' + story.id"
                     />
                     <label class="form-check-label" [for]="'listenRepeat-story-' + story.id">
-                      H{{ story.id }}
+                      H{{ i + 1 }}
                     </label>
                   </div>
                   <small class="text-muted w-100" *ngIf="activityConfigForms.listen_repeat.value.requiredStoryIds?.length === 0">
