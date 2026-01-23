@@ -1,61 +1,72 @@
-<aside class="sidebar-nav">
+<aside class="sidebar-nav" [class.collapsed]="isCollapsed()">
+  <!-- Botón de colapsar/expandir -->
+  <button class="sidebar-toggle" (click)="toggleSidebar()" title="{{ isCollapsed() ? 'Expandir' : 'Colapsar' }}">
+    <span class="toggle-icon">{{ isCollapsed() ? '→' : '←' }}</span>
+  </button>
+
   <!-- Sidebar para Estudiantes -->
   <nav class="sidebar-menu" *ngIf="currentUser()?.role === 'student'">
-    <h6 class="sidebar-header">Mi Aprendizaje</h6>
+    <h6 class="sidebar-header" *ngIf="!isCollapsed()">Mi Aprendizaje</h6>
 
     <a class="sidebar-item"
        [routerLink]="['/student/dashboard']"
-       routerLinkActive="active">
+       routerLinkActive="active"
+       [title]="isCollapsed() ? 'Mis Cursos' : ''">
       <span class="sidebar-icon">📚</span>
-      <span class="sidebar-label">Mis Cursos</span>
+      <span class="sidebar-label" *ngIf="!isCollapsed()">Mis Cursos</span>
     </a>
 
     <a class="sidebar-item"
        [routerLink]="['/student/progress']"
-       routerLinkActive="active">
+       routerLinkActive="active"
+       [title]="isCollapsed() ? 'Mi Avance' : ''">
       <span class="sidebar-icon">📊</span>
-      <span class="sidebar-label">Mi Avance</span>
+      <span class="sidebar-label" *ngIf="!isCollapsed()">Mi Avance</span>
     </a>
 
     <div class="sidebar-divider"></div>
 
-    <h6 class="sidebar-header">Cuenta</h6>
+    <h6 class="sidebar-header" *ngIf="!isCollapsed()">Cuenta</h6>
 
     <a class="sidebar-item"
        [routerLink]="['/settings']"
-       routerLinkActive="active">
+       routerLinkActive="active"
+       [title]="isCollapsed() ? 'Configuración' : ''">
       <span class="sidebar-icon">⚙️</span>
-      <span class="sidebar-label">Configuración</span>
+      <span class="sidebar-label" *ngIf="!isCollapsed()">Configuración</span>
     </a>
 
     <a class="sidebar-item"
        [routerLink]="['/teachers']"
-       routerLinkActive="active">
+       routerLinkActive="active"
+       [title]="isCollapsed() ? 'Maestros' : ''">
       <span class="sidebar-icon">👨‍🏫</span>
-      <span class="sidebar-label">Maestros</span>
+      <span class="sidebar-label" *ngIf="!isCollapsed()">Maestros</span>
     </a>
   </nav>
 
   <!-- Sidebar para Profesores -->
   <nav class="sidebar-menu" *ngIf="currentUser()?.role === 'teacher'">
-    <h6 class="sidebar-header">Enseñanza</h6>
+    <h6 class="sidebar-header" *ngIf="!isCollapsed()">Enseñanza</h6>
 
     <a class="sidebar-item"
        [routerLink]="['/teacher/dashboard']"
-       routerLinkActive="active">
+       routerLinkActive="active"
+       [title]="isCollapsed() ? 'Mis Cursos' : ''">
       <span class="sidebar-icon">📚</span>
-      <span class="sidebar-label">Mis Cursos</span>
+      <span class="sidebar-label" *ngIf="!isCollapsed()">Mis Cursos</span>
     </a>
 
     <div class="sidebar-divider"></div>
 
-    <h6 class="sidebar-header">Cuenta</h6>
+    <h6 class="sidebar-header" *ngIf="!isCollapsed()">Cuenta</h6>
 
     <a class="sidebar-item"
        [routerLink]="['/settings']"
-       routerLinkActive="active">
+       routerLinkActive="active"
+       [title]="isCollapsed() ? 'Configuración' : ''">
       <span class="sidebar-icon">⚙️</span>
-      <span class="sidebar-label">Configuración</span>
+      <span class="sidebar-label" *ngIf="!isCollapsed()">Configuración</span>
     </a>
   </nav>
 </aside>

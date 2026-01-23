@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
@@ -13,4 +13,9 @@ import { AuthService } from '../../../core/services/auth.service';
 export class SidebarNavComponent {
   private authService = inject(AuthService);
   currentUser = this.authService.currentUser;
+  isCollapsed = signal(false);
+
+  toggleSidebar() {
+    this.isCollapsed.update(value => !value);
+  }
 }
