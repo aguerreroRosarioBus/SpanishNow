@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { authMiddleware, isTeacher } = require('../middlewares/auth.middleware');
 const { Question, Story, Unit, Course } = require('../models');
+const cloudinary = require('../config/cloudinary');
+const upload = require('../middlewares/upload.middleware');
 
 // Get questions by story ID (public - for students to view)
 router.get('/story/:storyId', async (req, res) => {
@@ -18,7 +20,7 @@ router.get('/story/:storyId', async (req, res) => {
 });
 
 // Create question (teachers only, own courses)
-router.post('/', authMiddleware, isTeacher, async (req, res) => {
+router.post('/', authMiddleware, isTeacher, upload.single('audio'), async (req, res) => {
   try {
     const { storyId, questionText, answerType, options, correctAnswer } = req.body;
 
@@ -64,13 +66,29 @@ router.post('/', authMiddleware, isTeacher, async (req, res) => {
       return res.status(403).json({ error: 'Not authorized to add questions to this story' });
     }
 
+    let audioUrl = null;
+
+    // Upload audio if provided
+    if (req.file && process.env.CLOUDINARY_CLOUD_NAME) {
+      try {
+        const result = await cloudinary.uploader.upload(req.file.path, {
+          folder: 'spanishnow/questions/audio',
+          resource_type: 'video' // Cloudinary uses 'video' for audio files
+        });
+        audioUrl = result.secure_url;
+      } catch (cloudinaryError) {
+        console.warn('Cloudinary audio upload failed for question:', cloudinaryError.message);
+      }
+    }
+
     // Create question
     const question = await Question.create({
       storyId,
       questionText,
       answerType,
       options: answerType === 'choice' ? options : null,
-      correctAnswer
+      correctAnswer,
+      audioUrl
     });
 
     res.status(201).json(question);
@@ -80,7 +98,7 @@ router.post('/', authMiddleware, isTeacher, async (req, res) => {
 });
 
 // Update question (teachers only, own courses)
-router.put('/:id', authMiddleware, isTeacher, async (req, res) => {
+router.put('/:id', authMiddleware, isTeacher, upload.single('audio'), async (req, res) => {
   try {
     const question = await Question.findByPk(req.params.id, {
       include: [{
@@ -127,12 +145,28 @@ router.put('/:id', authMiddleware, isTeacher, async (req, res) => {
       }
     }
 
+    let audioUrl = question.audioUrl;
+
+    // Upload new audio if provided
+    if (req.file && process.env.CLOUDINARY_CLOUD_NAME) {
+      try {
+        const result = await cloudinary.uploader.upload(req.file.path, {
+          folder: 'spanishnow/questions/audio',
+          resource_type: 'video'
+        });
+        audioUrl = result.secure_url;
+      } catch (cloudinaryError) {
+        console.warn('Cloudinary audio upload failed for question:', cloudinaryError.message);
+      }
+    }
+
     // Update question
     await question.update({
       questionText: questionText || question.questionText,
       answerType: answerType || question.answerType,
       options: answerType === 'choice' ? (options || question.options) : null,
-      correctAnswer: correctAnswer || question.correctAnswer
+      correctAnswer: correctAnswer || question.correctAnswer,
+      audioUrl
     });
 
     res.json(question);

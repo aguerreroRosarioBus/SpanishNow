@@ -32,6 +32,11 @@ const Question = sequelize.define('Question', {
   correctAnswer: {
     type: DataTypes.STRING(200),
     allowNull: false
+  },
+  audioUrl: {
+    type: DataTypes.STRING(500),
+    allowNull: true,
+    comment: 'URL for question audio file'
   }
 }, {
   timestamps: true,
