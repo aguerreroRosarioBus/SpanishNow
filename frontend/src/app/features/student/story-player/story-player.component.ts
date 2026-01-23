@@ -284,14 +284,35 @@ export class StoryPlayerComponent implements OnInit {
       console.log('[showQuestionsActivity] First story:', firstStory.id, 'Progress:', progressRecord);
 
       if (progressRecord) {
+        // Progress record exists, use it
         this.currentProgressId.set(progressRecord.id);
+        this.currentStoryQuestions.set(allQuestions);
+        this.showActivityModal.set(true);
       } else {
-        console.warn('[showQuestionsActivity] No progress record found for story', firstStory.id);
-        this.currentProgressId.set(null);
-      }
+        // No progress record, create one
+        console.log('[showQuestionsActivity] Creating progress record for story', firstStory.id);
+        const enrollment = this.currentEnrollment();
+        if (!enrollment) {
+          console.error('[showQuestionsActivity] No enrollment found');
+          this.toastService.error('Error: No se encontró la inscripción');
+          return;
+        }
 
-      this.currentStoryQuestions.set(allQuestions);
-      this.showActivityModal.set(true);
+        this.progressService.markStoryCompleted(enrollment.id, firstStory.id).subscribe({
+          next: (newProgress) => {
+            console.log('[showQuestionsActivity] Created progress record:', newProgress);
+            this.currentProgressId.set(newProgress.id);
+            // Add to progressRecords array
+            this.progressRecords.update(records => [...records, newProgress]);
+            this.currentStoryQuestions.set(allQuestions);
+            this.showActivityModal.set(true);
+          },
+          error: (error) => {
+            console.error('[showQuestionsActivity] Error creating progress record:', error);
+            this.toastService.error('Error al crear el registro de progreso');
+          }
+        });
+      }
     } else {
       this.toastService.info('No hay preguntas disponibles para esta unidad');
     }
