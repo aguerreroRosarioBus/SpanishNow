@@ -22,9 +22,8 @@
                 class="btn btn-sm btn-outline-primary flex-shrink-0"
                 [disabled]="!canGoPreviousUnit()"
                 (click)="goToPreviousUnit()"
-                style="min-width: 90px;"
               >
-                ← Anterior
+                ←<span class="d-none d-md-inline ms-1">Anterior</span>
               </button>
               <small class="text-muted fw-bold text-center" style="font-size: 0.75rem; line-height: 1.2;">
                 {{ currentUnit()?.title || 'Unidad' }}
@@ -33,9 +32,8 @@
                 class="btn btn-sm btn-outline-primary flex-shrink-0"
                 [disabled]="!canGoNextUnit()"
                 (click)="goToNextUnit()"
-                style="min-width: 90px;"
               >
-                Siguiente →
+                <span class="d-none d-md-inline me-1">Siguiente</span>→
               </button>
             </div>
 
@@ -126,7 +124,7 @@
             [disabled]="!canGoPrevious()"
             (click)="goToPrevious()"
           >
-            ← Anterior
+            ←<span class="d-none d-md-inline ms-1">Anterior</span>
           </button>
 
           <h4 class="mb-0 text-center flex-grow-1">
@@ -138,7 +136,7 @@
             [disabled]="!canGoNext()"
             (click)="goToNext()"
           >
-            Siguiente →
+            <span class="d-none d-md-inline me-1">Siguiente</span>→
           </button>
         </div>
 
