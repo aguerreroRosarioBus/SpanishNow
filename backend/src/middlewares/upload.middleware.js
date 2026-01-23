@@ -14,22 +14,25 @@ const storage = multer.diskStorage({
 
 // File filter
 const fileFilter = (req, file, cb) => {
-  const allowedAudioTypes = /mp3|wav|ogg|m4a/;
-  const allowedImageTypes = /jpg|jpeg|png|gif/;
+  const allowedAudioTypes = /mp3|wav|ogg|m4a|mpeg|webm|aac|flac/;
+  const allowedImageTypes = /jpg|jpeg|png|gif|webp|svg/;
   const allowedDocTypes = /pdf/;
 
-  const extname = allowedAudioTypes.test(path.extname(file.originalname).toLowerCase()) ||
-                  allowedImageTypes.test(path.extname(file.originalname).toLowerCase()) ||
-                  allowedDocTypes.test(path.extname(file.originalname).toLowerCase());
+  const ext = path.extname(file.originalname).toLowerCase();
+  const isAudioExt = allowedAudioTypes.test(ext);
+  const isImageExt = allowedImageTypes.test(ext);
+  const isDocExt = allowedDocTypes.test(ext);
 
-  const mimetype = file.mimetype.startsWith('audio/') ||
-                   file.mimetype.startsWith('image/') ||
-                   file.mimetype === 'application/pdf';
+  const isAudioMime = file.mimetype.startsWith('audio/') || file.mimetype === 'video/mp4';
+  const isImageMime = file.mimetype.startsWith('image/');
+  const isDocMime = file.mimetype === 'application/pdf';
 
-  if (extname && mimetype) {
+  // Aceptar si es audio, imagen o PDF
+  if ((isAudioExt || isAudioMime) || (isImageExt || isImageMime) || (isDocExt || isDocMime)) {
     cb(null, true);
   } else {
-    cb(new Error('Only audio, image, and PDF files are allowed'));
+    console.error(`File rejected - Name: ${file.originalname}, MIME: ${file.mimetype}, Ext: ${ext}`);
+    cb(new Error(`File type not allowed: ${file.originalname} (${file.mimetype}). Allowed: audio, image, PDF`));
   }
 };
 
