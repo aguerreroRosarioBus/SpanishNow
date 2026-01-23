@@ -38,10 +38,10 @@ router.post('/', authMiddleware, isTeacher, upload.single('audio'), async (req, 
       });
     }
 
-    // Validate that correctAnswer exists for yes_no and choice questions
-    if ((answerType === 'yes_no' || answerType === 'choice') && !correctAnswer) {
+    // Validate that correctAnswer exists for all question types
+    if (!correctAnswer) {
       return res.status(400).json({
-        error: 'correctAnswer is required for yes_no and choice questions'
+        error: 'correctAnswer is required for all question types'
       });
     }
 
@@ -94,7 +94,7 @@ router.post('/', authMiddleware, isTeacher, upload.single('audio'), async (req, 
       questionText,
       answerType,
       options: answerType === 'choice' ? options : null,
-      correctAnswer: answerType === 'open_ended' ? null : correctAnswer,
+      correctAnswer,
       audioUrl
     });
 
@@ -152,14 +152,12 @@ router.put('/:id', authMiddleware, isTeacher, upload.single('audio'), async (req
       }
     }
 
-    // Validate correctAnswer for yes_no and choice questions
-    if ((finalAnswerType === 'yes_no' || finalAnswerType === 'choice')) {
-      const finalCorrectAnswer = correctAnswer !== undefined ? correctAnswer : question.correctAnswer;
-      if (!finalCorrectAnswer) {
-        return res.status(400).json({
-          error: 'correctAnswer is required for yes_no and choice questions'
-        });
-      }
+    // Validate correctAnswer for all question types
+    const finalCorrectAnswer = correctAnswer !== undefined ? correctAnswer : question.correctAnswer;
+    if (!finalCorrectAnswer) {
+      return res.status(400).json({
+        error: 'correctAnswer is required for all question types'
+      });
     }
 
     let audioUrl = question.audioUrl;
@@ -182,7 +180,7 @@ router.put('/:id', authMiddleware, isTeacher, upload.single('audio'), async (req
       questionText: questionText || question.questionText,
       answerType: finalAnswerType,
       options: finalAnswerType === 'choice' ? (options || question.options) : null,
-      correctAnswer: finalAnswerType === 'open_ended' ? null : (correctAnswer !== undefined ? correctAnswer : question.correctAnswer),
+      correctAnswer: correctAnswer !== undefined ? correctAnswer : question.correctAnswer,
       audioUrl
     };
 

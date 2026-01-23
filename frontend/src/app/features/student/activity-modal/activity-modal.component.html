@@ -141,10 +141,16 @@
               <div *ngIf="currentQuestion.answerType === 'open_ended'" class="alert alert-info mb-0" role="alert">
                 <strong>✓ Respuesta enviada</strong>
                 <p class="mb-0 mt-2">
-                  Tu respuesta: <em>"{{ currentAnswer }}"</em>
+                  <strong>Tu respuesta:</strong><br>
+                  <em>"{{ currentAnswer }}"</em>
+                </p>
+                <hr class="my-2">
+                <p class="mb-0">
+                  <strong>Respuesta sugerida:</strong><br>
+                  <em>"{{ currentQuestion.correctAnswer }}"</em>
                 </p>
                 <small class="text-muted d-block mt-2">
-                  El profesor revisará tu respuesta.
+                  Compara tu respuesta con la respuesta sugerida. ¿Cubriste los puntos principales?
                 </small>
               </div>
             </div>

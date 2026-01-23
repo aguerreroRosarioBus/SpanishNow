@@ -31,8 +31,8 @@ const Question = sequelize.define('Question', {
   },
   correctAnswer: {
     type: DataTypes.STRING(200),
-    allowNull: true,
-    comment: 'Correct answer for yes_no and choice questions. Optional for open_ended questions.'
+    allowNull: false,
+    comment: 'Correct answer for all question types. For open_ended, used for student self-correction.'
   },
   audioUrl: {
     type: DataTypes.STRING(500),

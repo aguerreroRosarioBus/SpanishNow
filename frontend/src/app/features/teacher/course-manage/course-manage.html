@@ -467,7 +467,7 @@
                   <option value="open_ended">Pregunta a Desarrollar</option>
                 </select>
                 <small class="text-muted d-block mt-1">
-                  Las preguntas a desarrollar permiten respuestas de texto libre sin respuesta correcta predefinida.
+                  Las preguntas a desarrollar permiten que el estudiante escriba su respuesta y luego la compare con la respuesta sugerida (autocorrección).
                 </small>
               </div>
 
@@ -499,14 +499,43 @@
 
               <div class="mb-3">
                 <label class="form-label">Audio de la Pregunta (opcional)</label>
-                <input
-                  type="file"
-                  class="form-control"
-                  id="questionAudio"
-                  accept="audio/*"
-                  (change)="onQuestionAudioSelected($event)"
-                >
-                <small class="text-muted">Sube un archivo de audio para que los estudiantes puedan escuchar la pregunta.</small>
+
+                <!-- Botones para elegir método -->
+                <div class="btn-group w-100 mb-2" role="group">
+                  <input type="radio" class="btn-check" name="questionAudioMethod" id="questionAudioMethodUpload" [value]="'upload'" [(ngModel)]="questionAudioMethod" [ngModelOptions]="{standalone: true}">
+                  <label class="btn btn-outline-primary" for="questionAudioMethodUpload">📁 Subir archivo</label>
+
+                  <input type="radio" class="btn-check" name="questionAudioMethod" id="questionAudioMethodRecord" [value]="'record'" [(ngModel)]="questionAudioMethod" [ngModelOptions]="{standalone: true}">
+                  <label class="btn btn-outline-primary" for="questionAudioMethodRecord">🎤 Grabar</label>
+                </div>
+
+                <!-- Subir archivo -->
+                <div *ngIf="questionAudioMethod === 'upload'">
+                  <input
+                    type="file"
+                    class="form-control"
+                    id="questionAudio"
+                    accept="audio/*"
+                    (change)="onQuestionAudioSelected($event)"
+                  >
+                  <small class="text-muted">Sube un archivo de audio para que los estudiantes puedan escuchar la pregunta.</small>
+                </div>
+
+                <!-- Grabar audio -->
+                <div *ngIf="questionAudioMethod === 'record'">
+                  <button type="button" class="btn btn-danger w-100 mb-2" *ngIf="!isRecordingQuestionAudio() && !recordedQuestionAudioBlob()" (click)="startRecordingQuestionAudio()">
+                    ⏺ Iniciar Grabación
+                  </button>
+                  <button type="button" class="btn btn-success w-100 mb-2" *ngIf="isRecordingQuestionAudio()" (click)="stopRecordingQuestionAudio()">
+                    ⏹ Detener Grabación
+                  </button>
+                  <div *ngIf="recordedQuestionAudioUrl()" class="mt-2">
+                    <audio [src]="recordedQuestionAudioUrl()" controls class="w-100 mb-2"></audio>
+                    <button type="button" class="btn btn-sm btn-warning w-100" (click)="clearRecordingQuestionAudio()">
+                      🗑️ Limpiar Grabación
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div *ngIf="questionForm.get('answerType')?.value !== 'open_ended'" class="mb-3">

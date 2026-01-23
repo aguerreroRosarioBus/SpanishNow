@@ -56,7 +56,7 @@ export interface Question {
   questionText: string;
   answerType: 'yes_no' | 'choice' | 'open_ended';
   options?: string[];
-  correctAnswer?: string;
+  correctAnswer: string;  // Required for all types, used for self-correction in open_ended
   audioUrl?: string;
 }
 
