@@ -92,7 +92,17 @@ export class ActivityModalComponent {
   }
 
   submitAnswers(): void {
-    if (!this.allQuestionsAnswered || !this.progressId || this.isSubmitting()) return;
+    console.log('[ActivityModal] submitAnswers called');
+    console.log('allQuestionsAnswered:', this.allQuestionsAnswered);
+    console.log('progressId:', this.progressId);
+    console.log('isSubmitting:', this.isSubmitting());
+    console.log('userAnswers size:', this.userAnswers().size);
+    console.log('totalQuestions:', this.totalQuestions);
+
+    if (!this.allQuestionsAnswered || !this.progressId || this.isSubmitting()) {
+      console.log('[ActivityModal] Submit blocked - validation failed');
+      return;
+    }
 
     this.isSubmitting.set(true);
     this.errorMessage.set('');
@@ -101,6 +111,8 @@ export class ActivityModalComponent {
     this.userAnswers().forEach((studentAnswer, questionId) => {
       responses.push({ questionId, studentAnswer });
     });
+
+    console.log('[ActivityModal] Submitting responses:', responses);
 
     this.questionResponseService.submitResponses({
       progressId: this.progressId,

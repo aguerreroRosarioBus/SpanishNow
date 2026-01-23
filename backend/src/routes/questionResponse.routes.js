@@ -73,8 +73,11 @@ router.post('/submit', authMiddleware, async (req, res) => {
         return res.status(400).json({ error: `Question ${questionId} not found` });
       }
 
-      // Compare answers (case-insensitive and accent-insensitive)
-      const isCorrect = normalizeText(studentAnswer) === normalizeText(question.correctAnswer);
+      // For open_ended questions, always mark as correct (they're for self-correction)
+      // For other types, compare answers (case-insensitive and accent-insensitive)
+      const isCorrect = question.answerType === 'open_ended'
+        ? true
+        : normalizeText(studentAnswer) === normalizeText(question.correctAnswer);
 
       if (!isCorrect) {
         allCorrect = false;
