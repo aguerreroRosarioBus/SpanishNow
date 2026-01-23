@@ -1101,25 +1101,46 @@
             <div class="col-md-6 mb-3">
               <label class="form-label">Audio Lento (opcional)</label>
 
-              <!-- Current Audio Player -->
-              <div *ngIf="selectedStory()?.audioSlowUrl" class="mb-3 p-3 bg-light rounded">
-                <small class="text-muted d-block mb-2">Audio actual:</small>
+              <!-- Current Audio Player with Delete Button -->
+              <div *ngIf="selectedStory()?.audioSlowUrl && !deleteAudioSlow" class="mb-3 p-3 bg-light rounded border">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <small class="text-muted">Audio actual:</small>
+                  <button type="button" class="btn btn-sm btn-outline-danger" (click)="markAudioSlowForDeletion()">
+                    🗑️ Eliminar audio
+                  </button>
+                </div>
                 <audio [src]="selectedStory()!.audioSlowUrl!" controls class="w-100"></audio>
+                <small class="text-muted d-block mt-2">Deja vacío abajo para mantener este audio</small>
+              </div>
+
+              <!-- Audio marked for deletion -->
+              <div *ngIf="deleteAudioSlow" class="mb-3 p-3 bg-danger bg-opacity-10 rounded border border-danger">
+                <div class="d-flex justify-content-between align-items-center">
+                  <small class="text-danger fw-bold">⚠️ Este audio se eliminará al guardar</small>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" (click)="cancelAudioSlowDeletion()">
+                    ↩️ Cancelar
+                  </button>
+                </div>
+              </div>
+
+              <!-- No current audio message -->
+              <div *ngIf="!selectedStory()?.audioSlowUrl" class="mb-3 p-2 bg-info bg-opacity-10 rounded border border-info">
+                <small class="text-info">No hay audio lento cargado</small>
               </div>
 
               <!-- Botones para elegir método -->
               <div class="btn-group w-100 mb-2" role="group">
                 <input type="radio" class="btn-check" name="editAudioSlowMethod" id="editAudioSlowMethodUpload" [value]="'upload'" [(ngModel)]="editAudioSlowMethod" [ngModelOptions]="{standalone: true}">
-                <label class="btn btn-outline-primary" for="editAudioSlowMethodUpload">📁 Subir archivo</label>
+                <label class="btn btn-outline-primary" for="editAudioSlowMethodUpload">📁 Subir nuevo</label>
 
                 <input type="radio" class="btn-check" name="editAudioSlowMethod" id="editAudioSlowMethodRecord" [value]="'record'" [(ngModel)]="editAudioSlowMethod" [ngModelOptions]="{standalone: true}">
-                <label class="btn btn-outline-primary" for="editAudioSlowMethodRecord">🎤 Grabar</label>
+                <label class="btn btn-outline-primary" for="editAudioSlowMethodRecord">🎤 Grabar nuevo</label>
               </div>
 
               <!-- Subir archivo -->
               <div *ngIf="editAudioSlowMethod === 'upload'">
                 <input type="file" class="form-control" id="editAudioSlow" accept="audio/*" (change)="onAudioSlowSelected($event)">
-                <small class="text-muted">Deja vacío para mantener el audio actual</small>
+                <small class="text-muted">Selecciona un nuevo archivo de audio</small>
               </div>
 
               <!-- Grabar audio -->
@@ -1142,25 +1163,46 @@
             <div class="col-md-6 mb-3">
               <label class="form-label">Audio Normal (opcional)</label>
 
-              <!-- Current Audio Player -->
-              <div *ngIf="selectedStory()?.audioNormalUrl" class="mb-3 p-3 bg-light rounded">
-                <small class="text-muted d-block mb-2">Audio actual:</small>
+              <!-- Current Audio Player with Delete Button -->
+              <div *ngIf="selectedStory()?.audioNormalUrl && !deleteAudioNormal" class="mb-3 p-3 bg-light rounded border">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <small class="text-muted">Audio actual:</small>
+                  <button type="button" class="btn btn-sm btn-outline-danger" (click)="markAudioNormalForDeletion()">
+                    🗑️ Eliminar audio
+                  </button>
+                </div>
                 <audio [src]="selectedStory()!.audioNormalUrl!" controls class="w-100"></audio>
+                <small class="text-muted d-block mt-2">Deja vacío abajo para mantener este audio</small>
+              </div>
+
+              <!-- Audio marked for deletion -->
+              <div *ngIf="deleteAudioNormal" class="mb-3 p-3 bg-danger bg-opacity-10 rounded border border-danger">
+                <div class="d-flex justify-content-between align-items-center">
+                  <small class="text-danger fw-bold">⚠️ Este audio se eliminará al guardar</small>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" (click)="cancelAudioNormalDeletion()">
+                    ↩️ Cancelar
+                  </button>
+                </div>
+              </div>
+
+              <!-- No current audio message -->
+              <div *ngIf="!selectedStory()?.audioNormalUrl" class="mb-3 p-2 bg-info bg-opacity-10 rounded border border-info">
+                <small class="text-info">No hay audio normal cargado</small>
               </div>
 
               <!-- Botones para elegir método -->
               <div class="btn-group w-100 mb-2" role="group">
                 <input type="radio" class="btn-check" name="editAudioNormalMethod" id="editAudioNormalMethodUpload" [value]="'upload'" [(ngModel)]="editAudioNormalMethod" [ngModelOptions]="{standalone: true}">
-                <label class="btn btn-outline-primary" for="editAudioNormalMethodUpload">📁 Subir archivo</label>
+                <label class="btn btn-outline-primary" for="editAudioNormalMethodUpload">📁 Subir nuevo</label>
 
                 <input type="radio" class="btn-check" name="editAudioNormalMethod" id="editAudioNormalMethodRecord" [value]="'record'" [(ngModel)]="editAudioNormalMethod" [ngModelOptions]="{standalone: true}">
-                <label class="btn btn-outline-primary" for="editAudioNormalMethodRecord">🎤 Grabar</label>
+                <label class="btn btn-outline-primary" for="editAudioNormalMethodRecord">🎤 Grabar nuevo</label>
               </div>
 
               <!-- Subir archivo -->
               <div *ngIf="editAudioNormalMethod === 'upload'">
                 <input type="file" class="form-control" id="editAudioNormal" accept="audio/*" (change)="onAudioNormalSelected($event)">
-                <small class="text-muted">Deja vacío para mantener el audio actual</small>
+                <small class="text-muted">Selecciona un nuevo archivo de audio</small>
               </div>
 
               <!-- Grabar audio -->

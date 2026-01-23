@@ -160,6 +160,10 @@ export class CourseManageComponent implements OnInit {
   private editSlowAudioChunks: Blob[] = [];
   private editNormalAudioChunks: Blob[] = [];
 
+  // Audio deletion flags
+  deleteAudioSlow: boolean = false;
+  deleteAudioNormal: boolean = false;
+
   constructor() {
     // Course form
     this.courseForm = this.fb.group({
@@ -457,7 +461,26 @@ export class CourseManageComponent implements OnInit {
     this.clearRecordingEditNormalAudio();
     this.editAudioSlowMethod = 'upload';
     this.editAudioNormalMethod = 'upload';
+    this.deleteAudioSlow = false;
+    this.deleteAudioNormal = false;
     this.isEditMode.set(false);
+  }
+
+  // Audio deletion methods
+  markAudioSlowForDeletion(): void {
+    this.deleteAudioSlow = true;
+  }
+
+  cancelAudioSlowDeletion(): void {
+    this.deleteAudioSlow = false;
+  }
+
+  markAudioNormalForDeletion(): void {
+    this.deleteAudioNormal = true;
+  }
+
+  cancelAudioNormalDeletion(): void {
+    this.deleteAudioNormal = false;
   }
 
   onAudioSlowSelected(event: Event): void {
@@ -563,6 +586,9 @@ export class CourseManageComponent implements OnInit {
     } else if (this.editAudioSlowMethod === 'record' && this.recordedEditSlowAudioBlob()) {
       const audioFile = new File([this.recordedEditSlowAudioBlob()!], 'audio-slow.webm', { type: 'audio/webm' });
       formData.append('audioSlow', audioFile);
+    } else if (this.deleteAudioSlow) {
+      // Send special marker to delete audio
+      formData.append('deleteAudioSlow', 'true');
     }
 
     // Add normal audio from file upload or recording
@@ -571,6 +597,9 @@ export class CourseManageComponent implements OnInit {
     } else if (this.editAudioNormalMethod === 'record' && this.recordedEditNormalAudioBlob()) {
       const audioFile = new File([this.recordedEditNormalAudioBlob()!], 'audio-normal.webm', { type: 'audio/webm' });
       formData.append('audioNormal', audioFile);
+    } else if (this.deleteAudioNormal) {
+      // Send special marker to delete audio
+      formData.append('deleteAudioNormal', 'true');
     }
 
     this.storyService.updateStory(story.id, formData).subscribe({

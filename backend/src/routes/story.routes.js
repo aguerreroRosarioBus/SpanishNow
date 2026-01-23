@@ -168,9 +168,18 @@ router.put('/:id', authMiddleware, isTeacher, upload.fields([
       return res.status(403).json({ error: 'Not authorized' });
     }
 
-    const { title, text } = req.body;
+    const { title, text, deleteAudioSlow, deleteAudioNormal } = req.body;
     let audioSlowUrl = story.audioSlowUrl;
     let audioNormalUrl = story.audioNormalUrl;
+
+    // Handle audio deletion
+    if (deleteAudioSlow === 'true') {
+      audioSlowUrl = null;
+    }
+
+    if (deleteAudioNormal === 'true') {
+      audioNormalUrl = null;
+    }
 
     // Solo subir a Cloudinary si está configurado
     if (req.files['audioSlow'] && process.env.CLOUDINARY_CLOUD_NAME) {
