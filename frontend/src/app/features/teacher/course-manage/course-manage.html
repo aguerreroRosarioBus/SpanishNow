@@ -538,8 +538,12 @@
                 </div>
               </div>
 
-              <div *ngIf="questionForm.get('answerType')?.value !== 'open_ended'" class="mb-3">
-                <label for="correctAnswer" class="form-label">Respuesta Correcta *</label>
+              <div class="mb-3">
+                <label for="correctAnswer" class="form-label">
+                  {{ questionForm.get('answerType')?.value === 'open_ended' ? 'Respuesta Sugerida *' : 'Respuesta Correcta *' }}
+                </label>
+
+                <!-- Yes/No input -->
                 <input
                   *ngIf="questionForm.get('answerType')?.value === 'yes_no'"
                   type="text"
@@ -548,6 +552,8 @@
                   formControlName="correctAnswer"
                   placeholder="Sí o No"
                 >
+
+                <!-- Multiple choice dropdown -->
                 <select
                   *ngIf="questionForm.get('answerType')?.value === 'choice'"
                   class="form-select"
@@ -559,9 +565,19 @@
                   </option>
                 </select>
 
-                <div *ngIf="questionForm.get('answerType')?.value === 'open_ended'" class="alert alert-info small mt-2">
-                  Las preguntas a desarrollar no requieren respuesta correcta. Los estudiantes escribirán sus respuestas libremente.
-                </div>
+                <!-- Open-ended textarea -->
+                <textarea
+                  *ngIf="questionForm.get('answerType')?.value === 'open_ended'"
+                  class="form-control"
+                  formControlName="correctAnswer"
+                  rows="4"
+                  placeholder="Escribe la respuesta sugerida que el estudiante podrá ver para comparar con su respuesta..."
+                ></textarea>
+
+                <!-- Help text -->
+                <small class="text-muted d-block mt-1" *ngIf="questionForm.get('answerType')?.value === 'open_ended'">
+                  El estudiante escribirá su respuesta y luego podrá compararla con esta respuesta sugerida para hacer autocorrección.
+                </small>
               </div>
 
               <div class="d-flex gap-2">
