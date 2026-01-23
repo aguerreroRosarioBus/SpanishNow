@@ -69,7 +69,7 @@ router.post('/', authMiddleware, isTeacher, upload.fields([
     // Solo subir a Cloudinary si está configurado
     if (req.files['audioSlow'] && process.env.CLOUDINARY_CLOUD_NAME) {
       try {
-        const result = await cloudinary.uploader.upload(req.files['audioSlow'][0].path, {
+        const result = await cloudinary.uploadFromBuffer(req.files['audioSlow'][0].buffer, {
           folder: 'spanishnow/audio',
           resource_type: 'video'
         });
@@ -81,7 +81,7 @@ router.post('/', authMiddleware, isTeacher, upload.fields([
 
     if (req.files['audioNormal'] && process.env.CLOUDINARY_CLOUD_NAME) {
       try {
-        const result = await cloudinary.uploader.upload(req.files['audioNormal'][0].path, {
+        const result = await cloudinary.uploadFromBuffer(req.files['audioNormal'][0].buffer, {
           folder: 'spanishnow/audio',
           resource_type: 'video'
         });
@@ -175,7 +175,7 @@ router.put('/:id', authMiddleware, isTeacher, upload.fields([
     // Solo subir a Cloudinary si está configurado
     if (req.files['audioSlow'] && process.env.CLOUDINARY_CLOUD_NAME) {
       try {
-        const result = await cloudinary.uploader.upload(req.files['audioSlow'][0].path, {
+        const result = await cloudinary.uploadFromBuffer(req.files['audioSlow'][0].buffer, {
           folder: 'spanishnow/audio',
           resource_type: 'video'
         });
@@ -187,7 +187,7 @@ router.put('/:id', authMiddleware, isTeacher, upload.fields([
 
     if (req.files['audioNormal'] && process.env.CLOUDINARY_CLOUD_NAME) {
       try {
-        const result = await cloudinary.uploader.upload(req.files['audioNormal'][0].path, {
+        const result = await cloudinary.uploadFromBuffer(req.files['audioNormal'][0].buffer, {
           folder: 'spanishnow/audio',
           resource_type: 'video'
         });

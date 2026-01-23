@@ -67,7 +67,7 @@ router.post('/', authMiddleware, isTeacher, upload.single('image'), async (req, 
     // Solo subir a Cloudinary si está configurado y hay archivo
     if (req.file && process.env.CLOUDINARY_CLOUD_NAME) {
       try {
-        const result = await cloudinary.uploader.upload(req.file.path, {
+        const result = await cloudinary.uploadFromBuffer(req.file.buffer, {
           folder: 'spanishnow/courses'
         });
         imageUrl = result.secure_url;

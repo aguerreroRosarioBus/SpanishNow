@@ -58,7 +58,7 @@ router.post('/', authMiddleware, isTeacher, upload.fields([
     if (req.files && req.files.audio && req.files.audio[0]) {
       if (process.env.CLOUDINARY_CLOUD_NAME) {
         try {
-          const result = await cloudinary.uploader.upload(req.files.audio[0].path, {
+          const result = await cloudinary.uploadFromBuffer(req.files.audio[0].buffer, {
             folder: 'spanishnow/vocabulary/audio',
             resource_type: 'video' // Cloudinary uses 'video' for audio files
           });
@@ -73,7 +73,7 @@ router.post('/', authMiddleware, isTeacher, upload.fields([
     if (req.files && req.files.image && req.files.image[0]) {
       if (process.env.CLOUDINARY_CLOUD_NAME) {
         try {
-          const result = await cloudinary.uploader.upload(req.files.image[0].path, {
+          const result = await cloudinary.uploadFromBuffer(req.files.image[0].buffer, {
             folder: 'spanishnow/vocabulary/images'
           });
           imageUrl = result.secure_url;
@@ -150,7 +150,7 @@ router.put('/:id', authMiddleware, isTeacher, upload.fields([
     if (req.files && req.files.image && req.files.image[0]) {
       if (process.env.CLOUDINARY_CLOUD_NAME) {
         try {
-          const result = await cloudinary.uploader.upload(req.files.image[0].path, {
+          const result = await cloudinary.uploadFromBuffer(req.files.image[0].buffer, {
             folder: 'spanishnow/vocabulary/images'
           });
           imageUrl = result.secure_url;
