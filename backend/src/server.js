@@ -11,10 +11,9 @@ const app = express();
 const corsOptions = {
   origin: [
     'http://localhost:4200',
-    'http://127.0.0.1:4200'
-    // TODO: Agregar URL de Vercel después del deploy:
-    // 'https://tu-app.vercel.app',
-    // 'https://*.vercel.app'  // Para preview deployments
+    'http://127.0.0.1:4200',
+    'https://spanish-now.vercel.app',
+    /^https:\/\/.*\.vercel\.app$/  // Permitir preview deployments de Vercel
   ],
   credentials: true,
   optionsSuccessStatus: 200,
