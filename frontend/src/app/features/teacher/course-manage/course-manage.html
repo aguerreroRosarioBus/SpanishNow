@@ -441,10 +441,10 @@
         <button type="button" class="btn-close" (click)="closeQuestionModal()"></button>
       </div>
       <div class="modal-body">
-        <!-- Create Question Form -->
+        <!-- Create/Edit Question Form -->
         <div class="card mb-4">
           <div class="card-header bg-primary text-white">
-            <h6 class="mb-0">Crear Nueva Pregunta</h6>
+            <h6 class="mb-0">{{ isEditingQuestion() ? 'Editar Pregunta' : 'Crear Nueva Pregunta' }}</h6>
           </div>
           <div class="card-body">
             <form [formGroup]="questionForm" (ngSubmit)="createQuestion()">
@@ -464,7 +464,11 @@
                 <select class="form-select" formControlName="answerType">
                   <option value="yes_no">Sí / No</option>
                   <option value="choice">Opción Múltiple</option>
+                  <option value="open_ended">Pregunta a Desarrollar</option>
                 </select>
+                <small class="text-muted d-block mt-1">
+                  Las preguntas a desarrollar permiten respuestas de texto libre sin respuesta correcta predefinida.
+                </small>
               </div>
 
               <!-- Multiple Choice Options -->
@@ -494,6 +498,18 @@
               </div>
 
               <div class="mb-3">
+                <label class="form-label">Audio de la Pregunta (opcional)</label>
+                <input
+                  type="file"
+                  class="form-control"
+                  id="questionAudio"
+                  accept="audio/*"
+                  (change)="onQuestionAudioSelected($event)"
+                >
+                <small class="text-muted">Sube un archivo de audio para que los estudiantes puedan escuchar la pregunta.</small>
+              </div>
+
+              <div *ngIf="questionForm.get('answerType')?.value !== 'open_ended'" class="mb-3">
                 <label for="correctAnswer" class="form-label">Respuesta Correcta *</label>
                 <input
                   *ngIf="questionForm.get('answerType')?.value === 'yes_no'"
@@ -513,19 +529,36 @@
                     {{ opt.value }}
                   </option>
                 </select>
+
+                <div *ngIf="questionForm.get('answerType')?.value === 'open_ended'" class="alert alert-info small mt-2">
+                  Las preguntas a desarrollar no requieren respuesta correcta. Los estudiantes escribirán sus respuestas libremente.
+                </div>
               </div>
 
-              <button
-                type="submit"
-                class="btn btn-success"
-                [disabled]="questionForm.invalid || isSubmittingQuestion()"
-              >
-                <span *ngIf="!isSubmittingQuestion()">✓ Crear Pregunta</span>
-                <span *ngIf="isSubmittingQuestion()">
-                  <span class="spinner-border spinner-border-sm me-2"></span>
-                  Creando...
-                </span>
-              </button>
+              <div class="d-flex gap-2">
+                <button
+                  *ngIf="isEditingQuestion()"
+                  type="button"
+                  class="btn btn-secondary"
+                  (click)="cancelEditQuestion()"
+                  [disabled]="isSubmittingQuestion()"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  class="btn btn-success"
+                  [disabled]="questionForm.invalid || isSubmittingQuestion()"
+                >
+                  <span *ngIf="!isSubmittingQuestion()">
+                    {{ isEditingQuestion() ? '✓ Guardar Cambios' : '✓ Crear Pregunta' }}
+                  </span>
+                  <span *ngIf="isSubmittingQuestion()">
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                    {{ isEditingQuestion() ? 'Guardando...' : 'Creando...' }}
+                  </span>
+                </button>
+              </div>
             </form>
           </div>
         </div>
@@ -541,17 +574,33 @@
             </div>
 
             <div *ngIf="storyQuestions().length > 0" class="list-group">
-              <div *ngFor="let question of storyQuestions(); let i = index" class="list-group-item">
+              <div
+                *ngFor="let question of storyQuestions(); let i = index"
+                class="list-group-item"
+                [class.list-group-item-warning]="isEditingQuestion() && editingQuestionId() === question.id"
+              >
                 <div class="d-flex justify-content-between align-items-start">
                   <div class="flex-grow-1">
                     <strong>{{ i + 1 }}. {{ question.questionText }}</strong>
                     <br>
                     <span class="badge bg-secondary mt-2">
-                      {{ question.answerType === 'yes_no' ? 'Sí/No' : 'Opción Múltiple' }}
+                      {{
+                        question.answerType === 'yes_no' ? 'Sí/No' :
+                        question.answerType === 'choice' ? 'Opción Múltiple' :
+                        'A Desarrollar'
+                      }}
                     </span>
-                    <span class="badge bg-success mt-2 ms-2">
+                    <span *ngIf="question.correctAnswer" class="badge bg-success mt-2 ms-2">
                       ✓ {{ question.correctAnswer }}
                     </span>
+                    <span *ngIf="question.audioUrl" class="badge bg-info mt-2 ms-2">
+                      🔊 Con Audio
+                    </span>
+
+                    <!-- Audio Player -->
+                    <div *ngIf="question.audioUrl" class="mt-2">
+                      <audio [src]="question.audioUrl" controls class="w-100" style="max-width: 300px;"></audio>
+                    </div>
                     <div *ngIf="question.answerType === 'choice' && question.options" class="mt-2">
                       <small class="text-muted">Opciones:</small>
                       <ul class="small mb-0">
@@ -559,12 +608,20 @@
                       </ul>
                     </div>
                   </div>
-                  <button
-                    class="btn btn-sm btn-outline-danger"
-                    (click)="deleteQuestion(question.id)"
-                  >
-                    Eliminar
-                  </button>
+                  <div class="btn-group">
+                    <button
+                      class="btn btn-sm btn-outline-primary"
+                      (click)="editQuestion(question)"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      class="btn btn-sm btn-outline-danger"
+                      (click)="deleteQuestion(question.id)"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

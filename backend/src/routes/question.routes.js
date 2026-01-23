@@ -167,7 +167,7 @@ router.put('/:id', authMiddleware, isTeacher, upload.single('audio'), async (req
     // Upload new audio if provided
     if (req.file && process.env.CLOUDINARY_CLOUD_NAME) {
       try {
-        const result = await cloudinary.uploader.upload(req.file.path, {
+        const result = await cloudinary.uploadFromBuffer(req.file.buffer, {
           folder: 'spanishnow/questions/audio',
           resource_type: 'video'
         });

@@ -72,6 +72,8 @@ export class CourseManageComponent implements OnInit {
   isSubmittingQuestion = signal<boolean>(false);
   isSubmittingVocabulary = signal<boolean>(false);
   isSubmittingRepetition = signal<boolean>(false);
+  isEditingQuestion = signal<boolean>(false);
+  editingQuestionId = signal<number | null>(null);
 
   // Activity Config states
   selectedUnitForActivity = signal<Unit | null>(null);
@@ -104,6 +106,7 @@ export class CourseManageComponent implements OnInit {
   vocabAudioFile: File | null = null;
   vocabImageFile: File | null = null;
   repetitionAudioFile: File | null = null;
+  questionAudioFile: File | null = null;
 
   // Audio recording for repetition activities
   audioMethod: 'upload' | 'record' = 'upload';
@@ -173,7 +176,18 @@ export class CourseManageComponent implements OnInit {
       questionText: ['', [Validators.required, Validators.minLength(5)]],
       answerType: ['yes_no', Validators.required],
       options: this.fb.array([]),
-      correctAnswer: ['', Validators.required]
+      correctAnswer: ['']
+    });
+
+    // Watch answerType changes to update validators
+    this.questionForm.get('answerType')?.valueChanges.subscribe((type) => {
+      const correctAnswerControl = this.questionForm.get('correctAnswer');
+      if (type === 'open_ended') {
+        correctAnswerControl?.clearValidators();
+      } else {
+        correctAnswerControl?.setValidators([Validators.required]);
+      }
+      correctAnswerControl?.updateValueAndValidity();
     });
 
     // Vocabulary form
@@ -674,6 +688,62 @@ export class CourseManageComponent implements OnInit {
     }
   }
 
+  onQuestionAudioSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+      // Validate type
+      if (!file.type.startsWith('audio/')) {
+        this.toastService.warning('Por favor selecciona un archivo de audio válido');
+        input.value = '';
+        return;
+      }
+      // Validate size (max 50MB)
+      if (file.size > 50 * 1024 * 1024) {
+        this.toastService.warning('El archivo es muy grande. Máximo 50MB');
+        input.value = '';
+        return;
+      }
+      this.questionAudioFile = file;
+    }
+  }
+
+  editQuestion(question: Question): void {
+    this.isEditingQuestion.set(true);
+    this.editingQuestionId.set(question.id);
+    this.questionAudioFile = null;
+
+    // Populate form with question data
+    this.questionForm.patchValue({
+      questionText: question.questionText,
+      answerType: question.answerType,
+      correctAnswer: question.correctAnswer || ''
+    });
+
+    // Clear and populate options for choice questions
+    this.questionOptions.clear();
+    if (question.answerType === 'choice' && question.options) {
+      question.options.forEach((option: string) => {
+        this.questionOptions.push(new FormControl(option, Validators.required));
+      });
+    }
+
+    // Scroll to form
+    setTimeout(() => {
+      const formElement = document.querySelector('.card-header.bg-primary');
+      if (formElement) {
+        formElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+  }
+
+  cancelEditQuestion(): void {
+    this.isEditingQuestion.set(false);
+    this.editingQuestionId.set(null);
+    this.questionAudioFile = null;
+    this.resetQuestionForm();
+  }
+
   createQuestion(): void {
     if (this.questionForm.invalid || !this.selectedStory()) return;
 
@@ -684,7 +754,7 @@ export class CourseManageComponent implements OnInit {
       storyId: this.selectedStory()!.id,
       questionText: this.questionForm.get('questionText')?.value,
       answerType: answerType,
-      correctAnswer: this.questionForm.get('correctAnswer')?.value
+      correctAnswer: answerType === 'open_ended' ? null : this.questionForm.get('correctAnswer')?.value
     };
 
     // Add options for multiple choice
@@ -698,11 +768,47 @@ export class CourseManageComponent implements OnInit {
       }
     }
 
-    this.questionService.createQuestion(data).subscribe({
-      next: (newQuestion) => {
-        this.storyQuestions.update(current => [...current, newQuestion]);
+    // Check if we're editing or creating
+    const isEditing = this.isEditingQuestion();
+    const questionId = this.editingQuestionId();
+
+    let request$;
+
+    if (this.questionAudioFile) {
+      // Use FormData when there's an audio file
+      if (isEditing && questionId) {
+        request$ = this.questionService.updateQuestionWithAudio(questionId, data, this.questionAudioFile);
+      } else {
+        request$ = this.questionService.createQuestionWithAudio(data, this.questionAudioFile);
+      }
+    } else {
+      // Use regular JSON when there's no audio file
+      if (isEditing && questionId) {
+        request$ = this.questionService.updateQuestion(questionId, data);
+      } else {
+        request$ = this.questionService.createQuestion(data);
+      }
+    }
+
+    request$.subscribe({
+      next: (question) => {
+        if (isEditing && questionId) {
+          // Update existing question
+          this.storyQuestions.update(current =>
+            current.map(q => q.id === questionId ? question : q)
+          );
+          this.toastService.success('Pregunta actualizada exitosamente');
+        } else {
+          // Add new question
+          this.storyQuestions.update(current => [...current, question]);
+          this.toastService.success('Pregunta creada exitosamente');
+        }
+
         this.resetQuestionForm();
         this.isSubmittingQuestion.set(false);
+        this.isEditingQuestion.set(false);
+        this.editingQuestionId.set(null);
+        this.questionAudioFile = null;
 
         // Update the story in units
         this.units.update(current => {
@@ -710,15 +816,20 @@ export class CourseManageComponent implements OnInit {
             ...unit,
             stories: (unit.stories || []).map(s =>
               s.id === this.selectedStory()!.id
-                ? { ...s, questions: [...(s.questions || []), newQuestion] }
+                ? {
+                    ...s,
+                    questions: isEditing
+                      ? (s.questions || []).map(q => q.id === questionId ? question : q)
+                      : [...(s.questions || []), question]
+                  }
                 : s
             )
           }));
         });
       },
       error: (error) => {
-        console.error('Error creating question:', error);
-        this.toastService.error('Error al crear la pregunta');
+        console.error(`Error ${isEditing ? 'updating' : 'creating'} question:`, error);
+        this.toastService.error(`Error al ${isEditing ? 'actualizar' : 'crear'} la pregunta`);
         this.isSubmittingQuestion.set(false);
       }
     });
