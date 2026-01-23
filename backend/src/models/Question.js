@@ -20,7 +20,7 @@ const Question = sequelize.define('Question', {
     allowNull: false
   },
   answerType: {
-    type: DataTypes.ENUM('yes_no', 'choice'),
+    type: DataTypes.ENUM('yes_no', 'choice', 'open_ended'),
     allowNull: false,
     defaultValue: 'yes_no'
   },
@@ -31,7 +31,8 @@ const Question = sequelize.define('Question', {
   },
   correctAnswer: {
     type: DataTypes.STRING(200),
-    allowNull: false
+    allowNull: true,
+    comment: 'Correct answer for yes_no and choice questions. Optional for open_ended questions.'
   },
   audioUrl: {
     type: DataTypes.STRING(500),

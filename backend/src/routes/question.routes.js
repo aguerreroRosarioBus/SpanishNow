@@ -25,16 +25,23 @@ router.post('/', authMiddleware, isTeacher, upload.single('audio'), async (req, 
     const { storyId, questionText, answerType, options, correctAnswer } = req.body;
 
     // Validate required fields
-    if (!storyId || !questionText || !answerType || !correctAnswer) {
+    if (!storyId || !questionText || !answerType) {
       return res.status(400).json({
-        error: 'Missing required fields: storyId, questionText, answerType, correctAnswer'
+        error: 'Missing required fields: storyId, questionText, answerType'
       });
     }
 
     // Validate answerType
-    if (!['yes_no', 'choice'].includes(answerType)) {
+    if (!['yes_no', 'choice', 'open_ended'].includes(answerType)) {
       return res.status(400).json({
-        error: 'answerType must be either "yes_no" or "choice"'
+        error: 'answerType must be "yes_no", "choice", or "open_ended"'
+      });
+    }
+
+    // Validate that correctAnswer exists for yes_no and choice questions
+    if ((answerType === 'yes_no' || answerType === 'choice') && !correctAnswer) {
+      return res.status(400).json({
+        error: 'correctAnswer is required for yes_no and choice questions'
       });
     }
 
@@ -87,7 +94,7 @@ router.post('/', authMiddleware, isTeacher, upload.single('audio'), async (req, 
       questionText,
       answerType,
       options: answerType === 'choice' ? options : null,
-      correctAnswer,
+      correctAnswer: answerType === 'open_ended' ? null : correctAnswer,
       audioUrl
     });
 
@@ -128,9 +135,9 @@ router.put('/:id', authMiddleware, isTeacher, upload.single('audio'), async (req
     const { questionText, answerType, options, correctAnswer } = req.body;
 
     // Validate answerType if provided
-    if (answerType && !['yes_no', 'choice'].includes(answerType)) {
+    if (answerType && !['yes_no', 'choice', 'open_ended'].includes(answerType)) {
       return res.status(400).json({
-        error: 'answerType must be either "yes_no" or "choice"'
+        error: 'answerType must be "yes_no", "choice", or "open_ended"'
       });
     }
 
@@ -141,6 +148,16 @@ router.put('/:id', authMiddleware, isTeacher, upload.single('audio'), async (req
       if (!finalOptions || !Array.isArray(finalOptions) || finalOptions.length < 2) {
         return res.status(400).json({
           error: 'choice questions must have at least 2 options'
+        });
+      }
+    }
+
+    // Validate correctAnswer for yes_no and choice questions
+    if ((finalAnswerType === 'yes_no' || finalAnswerType === 'choice')) {
+      const finalCorrectAnswer = correctAnswer !== undefined ? correctAnswer : question.correctAnswer;
+      if (!finalCorrectAnswer) {
+        return res.status(400).json({
+          error: 'correctAnswer is required for yes_no and choice questions'
         });
       }
     }
@@ -161,13 +178,15 @@ router.put('/:id', authMiddleware, isTeacher, upload.single('audio'), async (req
     }
 
     // Update question
-    await question.update({
+    const updateData = {
       questionText: questionText || question.questionText,
-      answerType: answerType || question.answerType,
-      options: answerType === 'choice' ? (options || question.options) : null,
-      correctAnswer: correctAnswer || question.correctAnswer,
+      answerType: finalAnswerType,
+      options: finalAnswerType === 'choice' ? (options || question.options) : null,
+      correctAnswer: finalAnswerType === 'open_ended' ? null : (correctAnswer !== undefined ? correctAnswer : question.correctAnswer),
       audioUrl
-    });
+    };
+
+    await question.update(updateData);
 
     res.json(question);
   } catch (error) {
