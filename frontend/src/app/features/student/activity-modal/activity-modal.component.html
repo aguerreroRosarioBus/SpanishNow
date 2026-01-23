@@ -55,6 +55,14 @@
           <div class="card-body">
             <h5 class="card-title mb-4">{{ currentQuestion.questionText }}</h5>
 
+            <!-- Audio Player for Question -->
+            <div *ngIf="currentQuestion.audioUrl" class="mb-4">
+              <audio controls class="w-100">
+                <source [src]="currentQuestion.audioUrl" type="audio/mpeg">
+                Tu navegador no soporta el elemento de audio.
+              </audio>
+            </div>
+
             <!-- Yes/No Questions -->
             <div *ngIf="currentQuestion.answerType === 'yes_no'" class="d-grid gap-3">
               <button
@@ -91,24 +99,53 @@
               </button>
             </div>
 
+            <!-- Open-Ended Questions -->
+            <div *ngIf="currentQuestion.answerType === 'open_ended'" class="mb-3">
+              <textarea
+                class="form-control"
+                rows="6"
+                placeholder="Escribe tu respuesta aquí..."
+                [disabled]="submitted()"
+                [value]="currentAnswer || ''"
+                (input)="selectAnswer($any($event.target).value)"
+              ></textarea>
+              <small class="text-muted d-block mt-2">
+                Escribe una respuesta completa y detallada.
+              </small>
+            </div>
+
             <!-- Feedback after submission -->
             <div *ngIf="submitted()" class="mt-4">
-              <div
-                *ngIf="isQuestionCorrect(currentQuestion.id)"
-                class="alert alert-success mb-0"
-                role="alert"
-              >
-                <strong>✓ ¡Correcto!</strong>
+              <!-- Feedback for yes_no and choice questions -->
+              <div *ngIf="currentQuestion.answerType !== 'open_ended'">
+                <div
+                  *ngIf="isQuestionCorrect(currentQuestion.id)"
+                  class="alert alert-success mb-0"
+                  role="alert"
+                >
+                  <strong>✓ ¡Correcto!</strong>
+                </div>
+                <div
+                  *ngIf="isQuestionIncorrect(currentQuestion.id)"
+                  class="alert alert-danger mb-0"
+                  role="alert"
+                >
+                  <strong>✗ Incorrecto</strong>
+                  <p class="mb-0 mt-2">
+                    La respuesta correcta es: <strong>{{ getResultForQuestion(currentQuestion.id)?.correctAnswer }}</strong>
+                  </p>
+                </div>
               </div>
-              <div
-                *ngIf="isQuestionIncorrect(currentQuestion.id)"
-                class="alert alert-danger mb-0"
-                role="alert"
-              >
-                <strong>✗ Incorrecto</strong>
+
+              <!-- Feedback for open_ended questions -->
+              <div *ngIf="currentQuestion.answerType === 'open_ended'" class="alert alert-info mb-0" role="alert">
+                <strong>✓ Respuesta enviada</strong>
                 <p class="mb-0 mt-2">
-                  La respuesta correcta es: <strong>{{ getResultForQuestion(currentQuestion.id)?.correctAnswer }}</strong>
+                  Tu respuesta: <em>"{{ currentAnswer }}"</em>
                 </p>
+                <small class="text-muted d-block mt-2">
+                  El profesor revisará tu respuesta.
+                </small>
               </div>
             </div>
           </div>

@@ -999,6 +999,12 @@
             <div class="col-md-6 mb-3">
               <label class="form-label">Audio Lento (opcional)</label>
 
+              <!-- Current Audio Player -->
+              <div *ngIf="selectedStory()?.audioSlowUrl" class="mb-3 p-3 bg-light rounded">
+                <small class="text-muted d-block mb-2">Audio actual:</small>
+                <audio [src]="selectedStory()!.audioSlowUrl!" controls class="w-100"></audio>
+              </div>
+
               <!-- Botones para elegir método -->
               <div class="btn-group w-100 mb-2" role="group">
                 <input type="radio" class="btn-check" name="editAudioSlowMethod" id="editAudioSlowMethodUpload" [value]="'upload'" [(ngModel)]="editAudioSlowMethod" [ngModelOptions]="{standalone: true}">
@@ -1033,6 +1039,12 @@
 
             <div class="col-md-6 mb-3">
               <label class="form-label">Audio Normal (opcional)</label>
+
+              <!-- Current Audio Player -->
+              <div *ngIf="selectedStory()?.audioNormalUrl" class="mb-3 p-3 bg-light rounded">
+                <small class="text-muted d-block mb-2">Audio actual:</small>
+                <audio [src]="selectedStory()!.audioNormalUrl!" controls class="w-100"></audio>
+              </div>
 
               <!-- Botones para elegir método -->
               <div class="btn-group w-100 mb-2" role="group">
