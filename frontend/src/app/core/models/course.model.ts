@@ -54,9 +54,10 @@ export interface Question {
   id: number;
   storyId: number;
   questionText: string;
-  answerType: 'yes_no' | 'choice';
+  answerType: 'yes_no' | 'choice' | 'open_ended';
   options?: string[];
-  correctAnswer: string;
+  correctAnswer?: string;
+  audioUrl?: string;
 }
 
 export interface Enrollment {
