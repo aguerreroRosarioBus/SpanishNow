@@ -30,7 +30,24 @@ router.post('/', authMiddleware, isTeacher, upload.fields([
   try {
     const { unitId, title, text } = req.body;
 
-    const unit = await Unit.findByPk(unitId, {
+    // Validate required fields
+    if (!unitId || !title || !text) {
+      return res.status(400).json({
+        error: 'Missing required fields: unitId, title, text',
+        received: { unitId, title, text }
+      });
+    }
+
+    // Validate unitId is a valid number
+    const parsedUnitId = parseInt(unitId, 10);
+    if (isNaN(parsedUnitId)) {
+      return res.status(400).json({
+        error: 'unitId must be a valid number',
+        received: unitId
+      });
+    }
+
+    const unit = await Unit.findByPk(parsedUnitId, {
       include: [{ model: Course, as: 'course' }]
     });
 
@@ -43,7 +60,7 @@ router.post('/', authMiddleware, isTeacher, upload.fields([
     }
 
     // Calcular automáticamente el order basado en historias existentes en la unidad
-    const existingStories = await Story.count({ where: { unitId } });
+    const existingStories = await Story.count({ where: { unitId: parsedUnitId } });
     const order = existingStories;
 
     let audioSlowUrl = null;
@@ -75,7 +92,7 @@ router.post('/', authMiddleware, isTeacher, upload.fields([
     }
 
     const story = await Story.create({
-      unitId,
+      unitId: parsedUnitId,
       title,
       text,
       audioSlowUrl,
