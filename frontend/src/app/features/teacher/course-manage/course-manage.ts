@@ -783,7 +783,7 @@ export class CourseManageComponent implements OnInit {
       storyId: this.selectedStory()!.id,
       questionText: this.questionForm.get('questionText')?.value,
       answerType: answerType,
-      correctAnswer: answerType === 'open_ended' ? null : this.questionForm.get('correctAnswer')?.value
+      correctAnswer: this.questionForm.get('correctAnswer')?.value
     };
 
     // Add options for multiple choice
