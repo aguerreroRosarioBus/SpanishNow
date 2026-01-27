@@ -55,8 +55,8 @@
               >
                 <button
                   class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3"
-                  [class.active]="currentItem()?.id === item.id"
-                  [class.list-group-item-success]="item.completed && currentItem()?.id !== item.id"
+                  [class.active]="currentItem().id === item.id"
+                  [class.list-group-item-success]="item.completed && currentItem().id !== item.id"
                   [disabled]="!item.canAccess"
                   [class.disabled]="!item.canAccess"
                   (click)="selectItem(item)"
@@ -131,7 +131,7 @@
           </button>
 
           <h4 class="mb-0 text-center flex-grow-1" style="font-size: 1.1rem; min-width: 0;">
-            {{ currentItem()?.title }}
+            {{ currentItem().title }}
           </h4>
 
           <button
@@ -145,7 +145,7 @@
         </div>
 
         <!-- Story Content -->
-        <div *ngIf="currentItem()?.type === 'story' && currentItem()?.story" class="card">
+        <div *ngIf="currentItem().type === 'story' && currentItem().story" class="card">
           <div class="card-body">
             <!-- Audio Player -->
             <div class="mb-4 bg-light p-3 rounded">
@@ -186,11 +186,11 @@
 
             <!-- Story Text -->
             <div class="story-text">
-              <p class="lead">{{ currentItem()?.story?.text }}</p>
+              <p class="lead">{{ currentItem().story?.text }}</p>
             </div>
 
             <!-- Complete Story Button -->
-            <div class="mt-4 text-center" *ngIf="!currentItem()?.completed">
+            <div class="mt-4 text-center" *ngIf="!currentItem().completed">
               <button
                 class="btn btn-primary btn-lg"
                 (click)="markStoryAsCompleted()"
@@ -199,7 +199,7 @@
               </button>
             </div>
 
-            <div class="mt-4 text-center" *ngIf="currentItem()?.completed">
+            <div class="mt-4 text-center" *ngIf="currentItem().completed">
               <div class="alert alert-success">
                 <strong>✓ Historia completada</strong>
               </div>
@@ -208,12 +208,12 @@
         </div>
 
         <!-- Activity Placeholder -->
-        <div *ngIf="currentItem()?.type === 'activity'" class="card">
+        <div *ngIf="currentItem().type === 'activity'" class="card">
           <div class="card-body text-center py-5">
             <div style="font-size: 3rem;" class="mb-3">
-              {{ getActivityIcon(currentItem()?.activityType!) }}
+              {{ getActivityIcon(currentItem().activityType!) }}
             </div>
-            <h5>{{ currentItem()?.title }}</h5>
+            <h5>{{ currentItem().title }}</h5>
             <p class="text-muted mb-4">Haz clic en "Comenzar" para iniciar la actividad</p>
             <button
               class="btn btn-primary btn-lg"
