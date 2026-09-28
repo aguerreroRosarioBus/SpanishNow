@@ -22,7 +22,6 @@ export interface Unit {
   order: number;
   stories?: Story[];
   vocabulary?: Vocabulary[];
-  activityConfigs?: ActivityConfig[];
 }
 
 export interface Story {
@@ -35,6 +34,7 @@ export interface Story {
   order: number;
   questions?: Question[];
   repetitionActivities?: RepetitionActivity[];
+  activityConfigs?: ActivityConfig[];
 }
 
 export interface Vocabulary {
@@ -131,7 +131,7 @@ export interface RepetitionActivity {
 
 export interface ActivityConfig {
   id: number;
-  unitId: number;
+  storyId: number;
   activityType: 'questions' | 'flashcards' | 'matching' | 'listen_repeat';
   order: number;
   isEnabled: boolean;

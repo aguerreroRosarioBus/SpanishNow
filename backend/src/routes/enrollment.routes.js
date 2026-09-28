@@ -19,11 +19,13 @@ router.get('/my-courses', authMiddleware, isStudent, async (req, res) => {
               include: [
                 {
                   model: Story,
-                  as: 'stories'
-                },
-                {
-                  model: ActivityConfig,
-                  as: 'activityConfigs'
+                  as: 'stories',
+                  include: [
+                    {
+                      model: ActivityConfig,
+                      as: 'activityConfigs'
+                    }
+                  ]
                 }
               ]
             }

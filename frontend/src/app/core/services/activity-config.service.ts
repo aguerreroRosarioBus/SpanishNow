@@ -12,12 +12,12 @@ export class ActivityConfigService {
   private apiUrl = `${environment.apiUrl}/activity-configs`;
 
   /**
-   * Get all activity configurations for a specific unit
-   * @param unitId - The ID of the unit
+   * Get all activity configurations for a specific story
+   * @param storyId - The ID of the story
    * @returns Observable of ActivityConfig array sorted by order
    */
-  getConfigsByUnit(unitId: number): Observable<ActivityConfig[]> {
-    return this.http.get<ActivityConfig[]>(`${this.apiUrl}/unit/${unitId}`);
+  getConfigsByStory(storyId: number): Observable<ActivityConfig[]> {
+    return this.http.get<ActivityConfig[]>(`${this.apiUrl}/story/${storyId}`);
   }
 
   /**
@@ -49,12 +49,22 @@ export class ActivityConfigService {
   }
 
   /**
-   * Batch update all activity configs for a unit
-   * @param unitId - The unit ID
+   * Batch update all activity configs for a story
+   * @param storyId - The story ID
    * @param configs - Array of activity config data to save
    * @returns Observable of all saved ActivityConfigs
    */
-  batchUpdate(unitId: number, configs: Partial<ActivityConfig>[]): Observable<ActivityConfig[]> {
-    return this.http.post<ActivityConfig[]>(`${this.apiUrl}/unit/${unitId}/batch`, { configs });
+  batchUpdate(storyId: number, configs: Partial<ActivityConfig>[]): Observable<ActivityConfig[]> {
+    return this.http.post<ActivityConfig[]>(`${this.apiUrl}/story/${storyId}/batch`, { configs });
+  }
+
+  /**
+   * Reorder activity configs for a story
+   * @param storyId - The story ID
+   * @param configs - Array of {id, order} to reorder
+   * @returns Observable of all updated ActivityConfigs
+   */
+  reorder(storyId: number, configs: Array<{id: number, order: number}>): Observable<ActivityConfig[]> {
+    return this.http.put<ActivityConfig[]>(`${this.apiUrl}/story/${storyId}/reorder`, { configs });
   }
 }

@@ -186,7 +186,11 @@
 
             <!-- Story Text -->
             <div class="story-text">
-              <p class="lead">{{ currentItem().story?.text }}</p>
+              <app-tooltip-display
+                [targetType]="'story'"
+                [targetId]="currentItem().story!.id"
+                [text]="currentItem().story!.text"
+              />
             </div>
 
             <!-- Complete Story Button -->

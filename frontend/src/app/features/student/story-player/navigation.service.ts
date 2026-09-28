@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { NavigationItem, ActivityType } from './navigation-item.model';
-import { Unit, Progress, Enrollment, ActivityConfig } from '../../../core/models/course.model';
+import { Unit, Progress, Enrollment, ActivityConfig, Story } from '../../../core/models/course.model';
 
 @Injectable()
 export class NavigationService {
@@ -22,9 +22,12 @@ export class NavigationService {
       (progressRecords || []).filter(p => p.completed).map(p => p.storyId)
     );
 
-    // STEP 1: Add all stories
+    // For each story, add: Story + its activities (based on activityConfigs)
     if (unit.stories) {
-      for (const story of unit.stories) {
+      const sortedStories = [...unit.stories].sort((a, b) => a.order - b.order);
+
+      for (const story of sortedStories) {
+        // Add the story itself
         items.push({
           id: `story-${story.id}`,
           type: 'story',
@@ -32,42 +35,38 @@ export class NavigationService {
           order: story.order,
           story: story,
           completed: completedStoryIds.has(story.id),
-          canAccess: this.canAccessStory(story, unit.stories, completedStoryIds)
+          canAccess: this.canAccessStory(story, sortedStories, completedStoryIds)
         });
+
+        // Add activities for this story (if it has activityConfigs)
+        if (story.activityConfigs && story.activityConfigs.length > 0) {
+          const enabledConfigs = story.activityConfigs.filter(ac => ac.isEnabled);
+          const sortedConfigs = [...enabledConfigs].sort((a, b) => a.order - b.order);
+
+          for (const config of sortedConfigs) {
+            items.push({
+              id: `activity-${config.activityType}-story-${story.id}`,
+              type: 'activity',
+              title: this.getActivityTitle(config.activityType),
+              order: story.order + (config.order / 1000), // Insert between stories
+              activityType: config.activityType,
+              storyId: story.id,
+              unitId: unit.id,
+              config: config,
+              completed: this.isActivityCompleted(config.activityType, enrollment),
+              canAccess: this.canAccessActivity(config, completedStoryIds)
+            });
+          }
+        }
       }
     }
 
-    // STEP 2: Add all enabled activities from activityConfigs
-    if (unit.activityConfigs && unit.activityConfigs.length > 0) {
-      console.log('[NavigationService] Found activityConfigs:', unit.activityConfigs);
-      const enabledConfigs = unit.activityConfigs.filter(ac => ac.isEnabled);
-
-      for (const config of enabledConfigs) {
-        items.push({
-          id: `activity-${config.activityType}-unit-${unit.id}`,
-          type: 'activity',
-          title: this.getActivityTitle(config.activityType),
-          order: config.order,
-          activityType: config.activityType,
-          unitId: unit.id,
-          config: config,
-          completed: this.isActivityCompleted(config.activityType, enrollment),
-          canAccess: this.canAccessActivity(config, completedStoryIds)
-        });
-      }
-    } else {
-      console.log('[NavigationService] No activityConfigs found for unit:', unit.id);
-    }
-
-    // STEP 3: Sort by order field (mixes stories and activities)
+    // Sort by order field (stories and activities mixed)
     return items.sort((a, b) => a.order - b.order);
   }
 
-  canAccessStory(story: any, allStories: any[], completedStoryIds: Set<number>): boolean {
-    // Sort stories by order to find the actual first story
-    const sortedStories = [...allStories].sort((a, b) => a.order - b.order);
-
-    // First story (lowest order) is always accessible
+  canAccessStory(story: Story, sortedStories: Story[], completedStoryIds: Set<number>): boolean {
+    // First story is always accessible
     if (sortedStories.length === 0 || story.id === sortedStories[0].id) {
       return true;
     }
@@ -85,15 +84,9 @@ export class NavigationService {
   }
 
   canAccessActivity(config: ActivityConfig, completedStoryIds: Set<number>): boolean {
-    // If no requirements, always accessible
-    if (!config.requiredStoryIds || config.requiredStoryIds.length === 0) {
-      return true;
-    }
-
-    // Check that ALL required stories are completed
-    return config.requiredStoryIds.every(storyId =>
-      completedStoryIds.has(storyId)
-    );
+    // Activity is accessible if its parent story is completed
+    // (requiredStoryIds is deprecated with per-story activities)
+    return completedStoryIds.has(config.storyId);
   }
 
   isActivityCompleted(activityType: string, enrollment: Enrollment): boolean {

@@ -47,6 +47,7 @@ app.use('/api/question-responses', require('./routes/questionResponse.routes'));
 app.use('/api/vocabulary', require('./routes/vocabulary.routes'));
 app.use('/api/repetition-activities', require('./routes/repetitionActivity.routes'));
 app.use('/api/activity-configs', require('./routes/activityConfig.routes'));
+app.use('/api/tooltips', require('./routes/tooltip.routes'));
 
 // Health check
 app.get('/health', (req, res) => {

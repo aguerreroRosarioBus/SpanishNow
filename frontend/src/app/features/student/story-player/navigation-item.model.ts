@@ -16,6 +16,7 @@ export interface NavigationItem {
 
   // Activity-specific fields
   activityType?: ActivityType;
-  unitId?: number;
+  storyId?: number; // The story this activity belongs to
+  unitId?: number; // Kept for convenience
   config?: ActivityConfig;
 }

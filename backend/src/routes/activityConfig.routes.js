@@ -1,13 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const { authMiddleware, isTeacher } = require('../middlewares/auth.middleware');
-const { ActivityConfig, Unit, Course } = require('../models');
+const { ActivityConfig, Story, Unit, Course } = require('../models');
 
-// GET - Obtener configuración de actividades para una unidad
-router.get('/unit/:unitId', async (req, res) => {
+// GET - Obtener configuración de actividades para una historia
+router.get('/story/:storyId', async (req, res) => {
   try {
     const configs = await ActivityConfig.findAll({
-      where: { unitId: req.params.unitId },
+      where: { storyId: req.params.storyId },
       order: [['order', 'ASC']]
     });
     res.json(configs);
@@ -17,30 +17,34 @@ router.get('/unit/:unitId', async (req, res) => {
   }
 });
 
-// POST - Crear configuración de actividad para una unidad
+// POST - Crear configuración de actividad para una historia
 router.post('/', authMiddleware, isTeacher, async (req, res) => {
   try {
-    const { unitId, activityType, isEnabled, order, requiredStoryIds } = req.body;
+    const { storyId, activityType, isEnabled, order, requiredStoryIds } = req.body;
 
     // Verificar ownership
-    const unit = await Unit.findByPk(unitId, {
+    const story = await Story.findByPk(storyId, {
       include: [{
-        model: Course,
-        as: 'course',
-        attributes: ['id', 'teacherId']
+        model: Unit,
+        as: 'unit',
+        include: [{
+          model: Course,
+          as: 'course',
+          attributes: ['id', 'teacherId']
+        }]
       }]
     });
 
-    if (!unit) {
-      return res.status(404).json({ error: 'Unit not found' });
+    if (!story) {
+      return res.status(404).json({ error: 'Story not found' });
     }
 
-    if (unit.course.teacherId !== req.user.id) {
-      return res.status(403).json({ error: 'Not authorized to modify this unit' });
+    if (story.unit.course.teacherId !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized to modify this story' });
     }
 
     const config = await ActivityConfig.create({
-      unitId,
+      storyId,
       activityType,
       isEnabled: isEnabled !== undefined ? isEnabled : true,
       order,
@@ -61,12 +65,16 @@ router.put('/:id', authMiddleware, isTeacher, async (req, res) => {
 
     const config = await ActivityConfig.findByPk(req.params.id, {
       include: [{
-        model: Unit,
-        as: 'unit',
+        model: Story,
+        as: 'story',
         include: [{
-          model: Course,
-          as: 'course',
-          attributes: ['id', 'teacherId']
+          model: Unit,
+          as: 'unit',
+          include: [{
+            model: Course,
+            as: 'course',
+            attributes: ['id', 'teacherId']
+          }]
         }]
       }]
     });
@@ -75,7 +83,7 @@ router.put('/:id', authMiddleware, isTeacher, async (req, res) => {
       return res.status(404).json({ error: 'Activity config not found' });
     }
 
-    if (config.unit.course.teacherId !== req.user.id) {
+    if (config.story.unit.course.teacherId !== req.user.id) {
       return res.status(403).json({ error: 'Not authorized to modify this config' });
     }
 
@@ -92,8 +100,8 @@ router.put('/:id', authMiddleware, isTeacher, async (req, res) => {
   }
 });
 
-// POST - Batch update: crear/actualizar/eliminar múltiples configs de una unidad
-router.post('/unit/:unitId/batch', authMiddleware, isTeacher, async (req, res) => {
+// POST - Batch update: crear/actualizar/eliminar múltiples configs de una historia
+router.post('/story/:storyId/batch', authMiddleware, isTeacher, async (req, res) => {
   try {
     const { configs } = req.body; // [{ id?, activityType, isEnabled, order, requiredStoryIds }, ...]
 
@@ -102,25 +110,29 @@ router.post('/unit/:unitId/batch', authMiddleware, isTeacher, async (req, res) =
     }
 
     // Verificar ownership
-    const unit = await Unit.findByPk(req.params.unitId, {
+    const story = await Story.findByPk(req.params.storyId, {
       include: [{
-        model: Course,
-        as: 'course',
-        attributes: ['id', 'teacherId']
+        model: Unit,
+        as: 'unit',
+        include: [{
+          model: Course,
+          as: 'course',
+          attributes: ['id', 'teacherId']
+        }]
       }]
     });
 
-    if (!unit) {
-      return res.status(404).json({ error: 'Unit not found' });
+    if (!story) {
+      return res.status(404).json({ error: 'Story not found' });
     }
 
-    if (unit.course.teacherId !== req.user.id) {
-      return res.status(403).json({ error: 'Not authorized to modify this unit' });
+    if (story.unit.course.teacherId !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized to modify this story' });
     }
 
     // Obtener configs existentes
     const existingConfigs = await ActivityConfig.findAll({
-      where: { unitId: req.params.unitId }
+      where: { storyId: req.params.storyId }
     });
 
     // Separar en crear/actualizar/eliminar
@@ -138,7 +150,7 @@ router.post('/unit/:unitId/batch', authMiddleware, isTeacher, async (req, res) =
             order: c.order,
             requiredStoryIds: c.requiredStoryIds || []
           },
-          { where: { id: c.id, unitId: req.params.unitId } }
+          { where: { id: c.id, storyId: req.params.storyId } }
         )
       )
     );
@@ -147,7 +159,7 @@ router.post('/unit/:unitId/batch', authMiddleware, isTeacher, async (req, res) =
     await Promise.all(
       configsToCreate.map(c =>
         ActivityConfig.create({
-          unitId: req.params.unitId,
+          storyId: req.params.storyId,
           activityType: c.activityType,
           isEnabled: c.isEnabled !== undefined ? c.isEnabled : true,
           order: c.order,
@@ -163,7 +175,7 @@ router.post('/unit/:unitId/batch', authMiddleware, isTeacher, async (req, res) =
 
     // Devolver configuraciones actualizadas
     const updated = await ActivityConfig.findAll({
-      where: { unitId: req.params.unitId },
+      where: { storyId: req.params.storyId },
       order: [['order', 'ASC']]
     });
 
@@ -175,7 +187,7 @@ router.post('/unit/:unitId/batch', authMiddleware, isTeacher, async (req, res) =
 });
 
 // PUT - Reordenar múltiples actividades (batch update)
-router.put('/unit/:unitId/reorder', authMiddleware, isTeacher, async (req, res) => {
+router.put('/story/:storyId/reorder', authMiddleware, isTeacher, async (req, res) => {
   try {
     const { configs } = req.body; // [{ id, order }, { id, order }, ...]
 
@@ -184,20 +196,24 @@ router.put('/unit/:unitId/reorder', authMiddleware, isTeacher, async (req, res) 
     }
 
     // Verificar ownership
-    const unit = await Unit.findByPk(req.params.unitId, {
+    const story = await Story.findByPk(req.params.storyId, {
       include: [{
-        model: Course,
-        as: 'course',
-        attributes: ['id', 'teacherId']
+        model: Unit,
+        as: 'unit',
+        include: [{
+          model: Course,
+          as: 'course',
+          attributes: ['id', 'teacherId']
+        }]
       }]
     });
 
-    if (!unit) {
-      return res.status(404).json({ error: 'Unit not found' });
+    if (!story) {
+      return res.status(404).json({ error: 'Story not found' });
     }
 
-    if (unit.course.teacherId !== req.user.id) {
-      return res.status(403).json({ error: 'Not authorized to modify this unit' });
+    if (story.unit.course.teacherId !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized to modify this story' });
     }
 
     // Batch update - actualizar orden de todas las actividades
@@ -205,14 +221,14 @@ router.put('/unit/:unitId/reorder', authMiddleware, isTeacher, async (req, res) 
       configs.map(c =>
         ActivityConfig.update(
           { order: c.order },
-          { where: { id: c.id, unitId: req.params.unitId } }
+          { where: { id: c.id, storyId: req.params.storyId } }
         )
       )
     );
 
     // Devolver configuraciones actualizadas
     const updated = await ActivityConfig.findAll({
-      where: { unitId: req.params.unitId },
+      where: { storyId: req.params.storyId },
       order: [['order', 'ASC']]
     });
 
@@ -228,12 +244,16 @@ router.delete('/:id', authMiddleware, isTeacher, async (req, res) => {
   try {
     const config = await ActivityConfig.findByPk(req.params.id, {
       include: [{
-        model: Unit,
-        as: 'unit',
+        model: Story,
+        as: 'story',
         include: [{
-          model: Course,
-          as: 'course',
-          attributes: ['id', 'teacherId']
+          model: Unit,
+          as: 'unit',
+          include: [{
+            model: Course,
+            as: 'course',
+            attributes: ['id', 'teacherId']
+          }]
         }]
       }]
     });
@@ -242,7 +262,7 @@ router.delete('/:id', authMiddleware, isTeacher, async (req, res) => {
       return res.status(404).json({ error: 'Activity config not found' });
     }
 
-    if (config.unit.course.teacherId !== req.user.id) {
+    if (config.story.unit.course.teacherId !== req.user.id) {
       return res.status(403).json({ error: 'Not authorized to delete this config' });
     }
 

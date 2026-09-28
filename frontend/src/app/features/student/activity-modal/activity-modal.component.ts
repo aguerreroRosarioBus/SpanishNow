@@ -2,11 +2,12 @@ import { Component, Input, Output, EventEmitter, signal, effect, inject, Writabl
 import { CommonModule } from '@angular/common';
 import { Question, QuestionSubmission, QuestionResult } from '../../../core/models/course.model';
 import { QuestionResponseService } from '../../../core/services/question-response.service';
+import { TooltipDisplayComponent } from '../../../shared/components/tooltip-display/tooltip-display.component';
 
 @Component({
   selector: 'app-activity-modal',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TooltipDisplayComponent],
   templateUrl: './activity-modal.component.html',
   styleUrl: './activity-modal.component.scss'
 })

@@ -7,14 +7,14 @@ const ActivityConfig = sequelize.define('ActivityConfig', {
     primaryKey: true,
     autoIncrement: true
   },
-  unitId: {
+  storyId: {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'units',
+      model: 'stories',
       key: 'id'
     },
-    comment: 'Foreign key to units table'
+    comment: 'Foreign key to stories table'
   },
   activityType: {
     type: DataTypes.ENUM('flashcards', 'questions', 'matching', 'listen_repeat'),
@@ -25,7 +25,7 @@ const ActivityConfig = sequelize.define('ActivityConfig', {
     type: DataTypes.BOOLEAN,
     allowNull: false,
     defaultValue: true,
-    comment: 'Whether this activity is enabled for the unit'
+    comment: 'Whether this activity is enabled for the story'
   },
   order: {
     type: DataTypes.INTEGER,
@@ -42,8 +42,8 @@ const ActivityConfig = sequelize.define('ActivityConfig', {
   tableName: 'activity_configs',
   indexes: [
     {
-      fields: ['unitId'],
-      name: 'idx_activity_configs_unit'
+      fields: ['storyId'],
+      name: 'idx_activity_configs_story'
     },
     {
       fields: ['order'],
@@ -51,8 +51,8 @@ const ActivityConfig = sequelize.define('ActivityConfig', {
     },
     {
       unique: true,
-      fields: ['unitId', 'activityType'],
-      name: 'unique_unit_activity'
+      fields: ['storyId', 'activityType'],
+      name: 'unique_story_activity'
     }
   ]
 });

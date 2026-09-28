@@ -9,6 +9,7 @@ const Progress = require('./Progress');
 const QuestionResponse = require('./QuestionResponse');
 const RepetitionActivity = require('./RepetitionActivity');
 const ActivityConfig = require('./ActivityConfig');
+const Tooltip = require('./Tooltip');
 
 // Define associations
 User.hasMany(Course, { foreignKey: 'teacherId', as: 'courses' });
@@ -50,8 +51,12 @@ Story.hasMany(RepetitionActivity, { foreignKey: 'storyId', as: 'repetitionActivi
 RepetitionActivity.belongsTo(Story, { foreignKey: 'storyId', as: 'story' });
 
 // ActivityConfig associations
-Unit.hasMany(ActivityConfig, { foreignKey: 'unitId', as: 'activityConfigs', onDelete: 'CASCADE' });
-ActivityConfig.belongsTo(Unit, { foreignKey: 'unitId', as: 'unit' });
+Story.hasMany(ActivityConfig, { foreignKey: 'storyId', as: 'activityConfigs', onDelete: 'CASCADE' });
+ActivityConfig.belongsTo(Story, { foreignKey: 'storyId', as: 'story' });
+
+// Tooltip associations
+User.hasMany(Tooltip, { foreignKey: 'createdBy', as: 'tooltips' });
+Tooltip.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
 
 module.exports = {
   User,
@@ -64,5 +69,6 @@ module.exports = {
   Progress,
   QuestionResponse,
   RepetitionActivity,
-  ActivityConfig
+  ActivityConfig,
+  Tooltip
 };

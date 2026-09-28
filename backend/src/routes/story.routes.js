@@ -216,6 +216,21 @@ router.put('/:id', authMiddleware, isTeacher, upload.fields([
 
     await story.update(updateData);
 
+    // Validate tooltips if text changed
+    if (text !== undefined && text !== story.text) {
+      const { Tooltip } = require('../models');
+      const tooltips = await Tooltip.findAll({
+        where: { targetType: 'story', targetId: story.id, isActive: true }
+      });
+
+      for (const tooltip of tooltips) {
+        const extractedText = text.substring(tooltip.startOffset, tooltip.endOffset);
+        if (extractedText !== tooltip.selectedText) {
+          await tooltip.update({ isActive: false });
+        }
+      }
+    }
+
     res.json(story);
   } catch (error) {
     res.status(500).json({ error: error.message });

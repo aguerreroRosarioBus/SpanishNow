@@ -186,6 +186,21 @@ router.put('/:id', authMiddleware, isTeacher, upload.single('audio'), async (req
 
     await question.update(updateData);
 
+    // Validate tooltips if questionText changed
+    if (questionText !== undefined && questionText !== question.questionText) {
+      const { Tooltip } = require('../models');
+      const tooltips = await Tooltip.findAll({
+        where: { targetType: 'question', targetId: question.id, isActive: true }
+      });
+
+      for (const tooltip of tooltips) {
+        const extractedText = questionText.substring(tooltip.startOffset, tooltip.endOffset);
+        if (extractedText !== tooltip.selectedText) {
+          await tooltip.update({ isActive: false });
+        }
+      }
+    }
+
     res.json(question);
   } catch (error) {
     res.status(500).json({ error: error.message });

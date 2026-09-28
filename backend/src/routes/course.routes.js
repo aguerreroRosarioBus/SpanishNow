@@ -33,11 +33,11 @@ router.get('/:id', async (req, res) => {
               as: 'stories',
               include: [
                 { model: Question, as: 'questions' },
-                { model: RepetitionActivity, as: 'repetitionActivities' }
+                { model: RepetitionActivity, as: 'repetitionActivities' },
+                { model: ActivityConfig, as: 'activityConfigs', order: [['order', 'ASC']] }
               ],
               order: [['order', 'ASC']]
-            },
-            { model: ActivityConfig, as: 'activityConfigs', order: [['order', 'ASC']] }
+            }
           ],
           order: [['order', 'ASC']]
         }

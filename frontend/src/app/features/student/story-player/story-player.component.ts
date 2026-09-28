@@ -16,6 +16,7 @@ import { ActivityModalComponent } from '../activity-modal/activity-modal.compone
 import { FlashcardModalComponent } from '../flashcard-modal/flashcard-modal.component';
 import { MatchingModalComponent } from '../matching-modal/matching-modal.component';
 import { ListenRepeatModalComponent } from '../listen-repeat-modal/listen-repeat-modal.component';
+import { TooltipDisplayComponent } from '../../../shared/components/tooltip-display/tooltip-display.component';
 
 @Component({
   selector: 'app-story-player',
@@ -25,7 +26,8 @@ import { ListenRepeatModalComponent } from '../listen-repeat-modal/listen-repeat
     ActivityModalComponent,
     FlashcardModalComponent,
     MatchingModalComponent,
-    ListenRepeatModalComponent
+    ListenRepeatModalComponent,
+    TooltipDisplayComponent
   ],
   providers: [NavigationService],
   templateUrl: './story-player.component.html',
@@ -170,8 +172,7 @@ export class StoryPlayerComponent implements OnInit {
 
     console.log('[StoryPlayer] Building navigation items:', {
       unit: unit?.id,
-      hasActivityConfigs: !!unit?.activityConfigs,
-      activityConfigsCount: unit?.activityConfigs?.length || 0,
+      storiesCount: unit?.stories?.length || 0,
       enrollment: enrollment?.id,
       progressCount: progress?.length || 0
     });
@@ -239,82 +240,71 @@ export class StoryPlayerComponent implements OnInit {
   }
 
   openActivityModal(item: NavigationItem): void {
-    if (!item.unitId || !item.activityType) return;
+    if (!item.storyId || !item.activityType) return;
 
     switch (item.activityType) {
       case 'questions':
-        this.showQuestionsActivity(item.unitId);
+        this.showQuestionsActivity(item.storyId);
         break;
       case 'flashcards':
-        this.showFlashcardsActivity(item.unitId);
+        this.showFlashcardsActivity(item.unitId!); // Flashcards still at unit level
         break;
       case 'matching':
-        this.showMatchingActivity(item.unitId);
+        this.showMatchingActivity(item.unitId!); // Matching still at unit level
         break;
       case 'listen_repeat':
-        this.showListenRepeatActivity(item.unitId);
+        this.showListenRepeatActivity(item.storyId);
         break;
     }
   }
 
-  // Activity methods - now work at UNIT level
-  showQuestionsActivity(unitId: number): void {
+  // Activity methods - Questions now work at STORY level
+  showQuestionsActivity(storyId: number): void {
     const unit = this.currentUnit();
-    console.log('[showQuestionsActivity] Unit:', unit);
-    console.log('[showQuestionsActivity] Stories:', unit?.stories);
-
     if (!unit || !unit.stories) return;
 
-    // Collect ALL questions from ALL stories in the unit
-    const allQuestions: Question[] = [];
-    unit.stories.forEach(story => {
-      console.log('[showQuestionsActivity] Story:', story.title, 'Questions:', story.questions);
-      if (story.questions) {
-        allQuestions.push(...story.questions);
-      }
-    });
+    // Find the specific story
+    const story = unit.stories.find(s => s.id === storyId);
+    if (!story) {
+      this.toastService.error('Historia no encontrada');
+      return;
+    }
 
-    console.log('[showQuestionsActivity] Total questions:', allQuestions.length, allQuestions);
+    // Get questions only from THIS story
+    const questions = story.questions || [];
 
-    if (allQuestions.length > 0) {
-      // Find a progressId from any story in the unit (use first story's progress)
-      const firstStory = unit.stories[0];
-      const progressRecord = this.progressRecords().find(p => p.storyId === firstStory.id);
-
-      console.log('[showQuestionsActivity] First story:', firstStory.id, 'Progress:', progressRecord);
+    if (questions.length > 0) {
+      // Find or create progress record for THIS story
+      const progressRecord = this.progressRecords().find(p => p.storyId === storyId);
 
       if (progressRecord) {
         // Progress record exists, use it
         this.currentProgressId.set(progressRecord.id);
-        this.currentStoryQuestions.set(allQuestions);
+        this.currentStoryQuestions.set(questions);
         this.showActivityModal.set(true);
       } else {
         // No progress record, create one
-        console.log('[showQuestionsActivity] Creating progress record for story', firstStory.id);
         const enrollment = this.currentEnrollment();
         if (!enrollment) {
-          console.error('[showQuestionsActivity] No enrollment found');
           this.toastService.error('Error: No se encontró la inscripción');
           return;
         }
 
-        this.progressService.markStoryCompleted(enrollment.id, firstStory.id).subscribe({
+        this.progressService.markStoryCompleted(enrollment.id, storyId).subscribe({
           next: (newProgress) => {
-            console.log('[showQuestionsActivity] Created progress record:', newProgress);
             this.currentProgressId.set(newProgress.id);
-            // Add to progressRecords array
             this.progressRecords.update(records => [...records, newProgress]);
-            this.currentStoryQuestions.set(allQuestions);
+            this.currentStoryQuestions.set(questions);
             this.showActivityModal.set(true);
           },
           error: (error) => {
-            console.error('[showQuestionsActivity] Error creating progress record:', error);
+            console.error('Error creating progress record:', error);
             this.toastService.error('Error al crear el registro de progreso');
           }
         });
       }
     } else {
-      this.toastService.info('No hay preguntas disponibles para esta unidad');
+      this.toastService.info('No hay preguntas disponibles para esta historia');
     }
   }
 
@@ -354,21 +344,23 @@ export class StoryPlayerComponent implements OnInit {
     });
   }
 
-  showListenRepeatActivity(unitId: number): void {
+  showListenRepeatActivity(storyId: number): void {
     const unit = this.currentUnit();
     if (!unit || !unit.stories) return;
 
-    // Get first story with repetition activities
-    // TODO: In the future, combine ALL repetition activities from unit
-    const storyWithActivities = unit.stories.find(s =>
-      s.repetitionActivities && s.repetitionActivities.length > 0
-    );
+    // Find the specific story
+    const story = unit.stories.find(s => s.id === storyId);
+    if (!story) {
+      this.toastService.error('Historia no encontrada');
+      return;
+    }
 
-    if (storyWithActivities) {
-      this.listenRepeatStoryId.set(storyWithActivities.id);
+    // Check if this story has repetition activities
+    if (story.repetitionActivities && story.repetitionActivities.length > 0) {
+      this.listenRepeatStoryId.set(story.id);
       this.showListenRepeatModal.set(true);
     } else {
-      this.toastService.info('No hay actividades de escuchar y repetir disponibles');
+      this.toastService.info('No hay actividades de escuchar y repetir disponibles para esta historia');
     }
   }
 

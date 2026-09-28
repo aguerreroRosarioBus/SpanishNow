@@ -13,11 +13,12 @@ import { ActivityConfigService } from '../../../core/services/activity-config.se
 import { ToastService } from '../../../core/services/toast.service';
 import { Course, Unit, Story, Question, Vocabulary, RepetitionActivity, ActivityConfig } from '../../../core/models/course.model';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { TooltipEditorComponent } from '../../../shared/components/tooltip-editor/tooltip-editor.component';
 
 @Component({
   selector: 'app-course-manage',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, ConfirmDialogComponent],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, ConfirmDialogComponent, TooltipEditorComponent],
   templateUrl: './course-manage.html',
   styleUrl: './course-manage.scss',
 })
@@ -50,7 +51,8 @@ export class CourseManageComponent implements OnInit {
   showQuestionModal = signal<boolean>(false);
   showVocabularyModal = signal<boolean>(false);
   showRepetitionModal = signal<boolean>(false);
-  showActivityConfigModal = signal<boolean>(false);
+  showTooltipModal = signal<boolean>(false);
+  showQuestionTooltipModal = signal<boolean>(false);
 
   // Confirm dialog states
   showConfirmDialog = signal<boolean>(false);
@@ -65,6 +67,7 @@ export class CourseManageComponent implements OnInit {
   selectedUnitId = signal<number | null>(null);
   selectedUnit = signal<Unit | null>(null);
   selectedStory = signal<Story | null>(null);
+  selectedQuestion = signal<Question | null>(null);
   isEditMode = signal<boolean>(false);
   storyQuestions = signal<Question[]>([]);
   unitVocabulary = signal<Vocabulary[]>([]);
@@ -75,14 +78,9 @@ export class CourseManageComponent implements OnInit {
   isEditingQuestion = signal<boolean>(false);
   editingQuestionId = signal<number | null>(null);
 
-  // Activity Config states
-  selectedUnitForActivity = signal<Unit | null>(null);
-  activityConfigs = signal<ActivityConfig[]>([]);
-  previewItems = signal<Array<{ type: string; title: string; order: number; icon: string; id?: number; requiredStories?: number[]; activityType?: string }>>([]);
-  draggedPreviewItem: { type: string; id?: number; activityType?: string } | null = null;
-
-  // Accordion state - track which units are expanded
+  // Accordion state - track which units and stories are expanded
   expandedUnits = signal<Set<number>>(new Set());
+  expandedStories = signal<Set<number>>(new Set());
 
   // Forms
   courseForm: FormGroup;
@@ -91,14 +89,6 @@ export class CourseManageComponent implements OnInit {
   questionForm: FormGroup;
   vocabularyForm: FormGroup;
   repetitionForm: FormGroup;
-
-  // Activity Config forms (one per type)
-  activityConfigForms: {
-    questions: FormGroup;
-    flashcards: FormGroup;
-    matching: FormGroup;
-    listen_repeat: FormGroup;
-  };
 
   // File uploads
   audioSlowFile: File | null = null;
@@ -202,25 +192,6 @@ export class CourseManageComponent implements OnInit {
     // Repetition activity form
     this.repetitionForm = this.fb.group({
       phrase: ['', [Validators.required, Validators.minLength(3)]]
-    });
-
-    // Activity Config forms
-    this.activityConfigForms = {
-      questions: this.createActivityConfigForm('questions'),
-      flashcards: this.createActivityConfigForm('flashcards'),
-      matching: this.createActivityConfigForm('matching'),
-      listen_repeat: this.createActivityConfigForm('listen_repeat')
-    };
-  }
-
-  createActivityConfigForm(activityType: string): FormGroup {
-    return this.fb.group({
-      id: [null],
-      unitId: [null],
-      activityType: [activityType],
-      order: [null],
-      isEnabled: [false],
-      requiredStoryIds: [[]]
     });
   }
 
@@ -1035,6 +1006,37 @@ export class CourseManageComponent implements OnInit {
     this.audioMethod = 'upload';
   }
 
+  // ===== TOOLTIP MANAGEMENT =====
+
+  openTooltipModal(story: Story): void {
+    this.selectedStory.set(story);
+    this.showTooltipModal.set(true);
+  }
+
+  closeTooltipModal(): void {
+    this.showTooltipModal.set(false);
+    this.selectedStory.set(null);
+  }
+
+  onTooltipsChanged(tooltips: any[]): void {
+    // Optional: Update story in units array with tooltip count
+    console.log('Tooltips updated:', tooltips);
+  }
+
+  openQuestionTooltipModal(question: Question): void {
+    this.selectedQuestion.set(question);
+    this.showQuestionTooltipModal.set(true);
+  }
+
+  closeQuestionTooltipModal(): void {
+    this.showQuestionTooltipModal.set(false);
+    this.selectedQuestion.set(null);
+  }
+
+  onQuestionTooltipsChanged(tooltips: any[]): void {
+    console.log('Question tooltips updated:', tooltips);
+  }
+
   resetRepetitionForm(): void {
     this.repetitionForm.reset();
     this.repetitionAudioFile = null;
@@ -1668,247 +1670,56 @@ export class CourseManageComponent implements OnInit {
 
   // ===== ACTIVITY CONFIG MANAGEMENT =====
 
-  openActivityConfigModal(unit: Unit): void {
-    this.selectedUnitForActivity.set(unit);
-    this.loadActivityConfigs(unit.id);
-    this.showActivityConfigModal.set(true);
+  isActivityEnabledForStory(story: Story, activityType: string): boolean {
+    const configs = story.activityConfigs || [];
+    const config = configs.find(c => c.activityType === activityType);
+    return config ? config.isEnabled : false;
   }
 
-  closeActivityConfigModal(): void {
-    this.showActivityConfigModal.set(false);
-    this.selectedUnitForActivity.set(null);
-    this.activityConfigs.set([]);
-    this.previewItems.set([]);
-    // Reset forms
-    Object.values(this.activityConfigForms).forEach(form => {
-      form.reset({ isEnabled: false, requiredStoryIds: [] });
-    });
-  }
+  toggleActivityForStory(story: Story, activityType: string): void {
+    const configs = story.activityConfigs || [];
+    const config = configs.find(c => c.activityType === activityType);
 
-  loadActivityConfigs(unitId: number): void {
-    this.activityConfigService.getConfigsByUnit(unitId).subscribe({
-      next: (configs) => {
-        this.activityConfigs.set(configs);
-        // Populate forms with existing data
-        configs.forEach(config => {
-          const form = this.activityConfigForms[config.activityType as keyof typeof this.activityConfigForms];
-          if (form) {
-            form.patchValue(config);
+    if (config) {
+      // Update existing config
+      this.activityConfigService.updateConfig(config.id, { isEnabled: !config.isEnabled }).subscribe({
+        next: (updated) => {
+          // Update the local story object
+          const idx = configs.findIndex(c => c.id === config.id);
+          if (idx !== -1) {
+            configs[idx] = updated;
           }
-        });
-        // Build preview
-        this.buildPreviewItems();
-      },
-      error: (error) => {
-        console.error('Error loading activity configs:', error);
-        this.toastService.error('Error al cargar configuración de actividades');
-        // Still build preview with just stories
-        this.buildPreviewItems();
-      }
-    });
-  }
-
-  buildPreviewItems(): void {
-    const unit = this.selectedUnitForActivity();
-    if (!unit) return;
-
-    const items: Array<{ type: string; title: string; order: number; icon: string; id?: number; requiredStories?: number[]; activityType?: string }> = [];
-
-    // Add stories
-    (unit.stories || []).forEach(story => {
-      items.push({
-        type: 'story',
-        title: story.title,
-        order: story.order,
-        icon: '📖',
-        id: story.id
-      });
-    });
-
-    // Add enabled activities
-    Object.keys(this.activityConfigForms).forEach(activityType => {
-      const form = this.activityConfigForms[activityType as keyof typeof this.activityConfigForms];
-      if (form.value.isEnabled) {
-        const order = form.value.order !== null ? form.value.order : 9999;
-        items.push({
-          type: 'activity',
-          title: this.getActivityTitle(activityType),
-          order: order,
-          icon: this.getActivityIcon(activityType),
-          activityType: activityType,
-          requiredStories: form.value.requiredStoryIds || []
-        });
-      }
-    });
-
-    // Sort by order
-    items.sort((a, b) => a.order - b.order);
-
-    this.previewItems.set(items);
-  }
-
-  getActivityTitle(type: string): string {
-    const titles: { [key: string]: string } = {
-      'questions': 'Preguntas de comprensión',
-      'flashcards': 'Tarjetas de vocabulario',
-      'matching': 'Emparejar vocabulario',
-      'listen_repeat': 'Escuchar y repetir'
-    };
-    return titles[type] || type;
-  }
-
-  getActivityIcon(type: string): string {
-    const icons: { [key: string]: string } = {
-      'questions': '🎯',
-      'flashcards': '🃏',
-      'matching': '🔗',
-      'listen_repeat': '🎧'
-    };
-    return icons[type] || '❓';
-  }
-
-  getOrderedStories(): Story[] {
-    const unit = this.selectedUnitForActivity();
-    if (!unit || !unit.stories) return [];
-    return [...unit.stories].sort((a, b) => a.order - b.order);
-  }
-
-  toggleStoryRequirement(activityType: string, storyId: number): void {
-    const form = this.activityConfigForms[activityType as keyof typeof this.activityConfigForms];
-    const current = form.value.requiredStoryIds || [];
-
-    if (current.includes(storyId)) {
-      // Remove
-      form.patchValue({
-        requiredStoryIds: current.filter((id: number) => id !== storyId)
+          this.toastService.success('Actividad actualizada');
+        },
+        error: (error) => {
+          console.error('Error updating activity config:', error);
+          this.toastService.error('Error al actualizar actividad');
+        }
       });
     } else {
-      // Add
-      form.patchValue({
-        requiredStoryIds: [...current, storyId]
+      // Create new config (shouldn't happen if configs are created automatically)
+      const maxOrder = Math.max(...configs.map(c => c.order), 0);
+      this.activityConfigService.createConfig({
+        storyId: story.id,
+        activityType: activityType as 'questions' | 'flashcards' | 'matching' | 'listen_repeat',
+        isEnabled: true,
+        order: maxOrder + 100,
+        requiredStoryIds: []
+      }).subscribe({
+        next: (created) => {
+          // Add to story's activityConfigs
+          if (!story.activityConfigs) {
+            story.activityConfigs = [];
+          }
+          story.activityConfigs.push(created);
+          this.toastService.success('Actividad creada');
+        },
+        error: (error) => {
+          console.error('Error creating activity config:', error);
+          this.toastService.error('Error al crear actividad');
+        }
       });
     }
-    this.buildPreviewItems();
-  }
-
-  onActivityEnabledChange(activityType: string): void {
-    const form = this.activityConfigForms[activityType as keyof typeof this.activityConfigForms];
-
-    // If enabling, set a default order if not set
-    if (form.value.isEnabled && form.value.order === null) {
-      // Find the highest order and add 1
-      const unit = this.selectedUnitForActivity();
-      if (unit) {
-        const maxStoryOrder = Math.max(...(unit.stories || []).map(s => s.order), 0);
-        const maxActivityOrder = Math.max(
-          ...Object.values(this.activityConfigForms)
-            .filter(f => f.value.isEnabled && f.value.order !== null)
-            .map(f => f.value.order),
-          0
-        );
-        const maxOrder = Math.max(maxStoryOrder, maxActivityOrder);
-        form.patchValue({ order: maxOrder + 1 });
-      }
-    }
-
-    this.buildPreviewItems();
-  }
-
-  // Drag & Drop for preview items
-  onPreviewDragStart(event: DragEvent, item: { type: string; id?: number; activityType?: string }): void {
-    this.draggedPreviewItem = item;
-    if (event.dataTransfer) {
-      event.dataTransfer.effectAllowed = 'move';
-    }
-  }
-
-  onPreviewDrop(event: DragEvent, targetItem: { type: string; id?: number; activityType?: string }): void {
-    event.preventDefault();
-    event.stopPropagation();
-
-    if (!this.draggedPreviewItem) return;
-
-    // Can't drop on itself
-    if (
-      this.draggedPreviewItem.type === targetItem.type &&
-      this.draggedPreviewItem.id === targetItem.id &&
-      this.draggedPreviewItem.activityType === targetItem.activityType
-    ) {
-      this.draggedPreviewItem = null;
-      return;
-    }
-
-    const items = [...this.previewItems()];
-    const draggedIndex = items.findIndex(i =>
-      (i.type === 'story' && i.id === this.draggedPreviewItem!.id && this.draggedPreviewItem!.type === 'story') ||
-      (i.type === 'activity' && i.activityType === this.draggedPreviewItem!.activityType && this.draggedPreviewItem!.type === 'activity')
-    );
-    const targetIndex = items.findIndex(i =>
-      (i.type === 'story' && i.id === targetItem.id && targetItem.type === 'story') ||
-      (i.type === 'activity' && i.activityType === targetItem.activityType && targetItem.type === 'activity')
-    );
-
-    if (draggedIndex === -1 || targetIndex === -1) {
-      this.draggedPreviewItem = null;
-      return;
-    }
-
-    // Reorder items
-    const [removed] = items.splice(draggedIndex, 1);
-    items.splice(targetIndex, 0, removed);
-
-    // Recalculate order values (0, 1, 2, 3...)
-    items.forEach((item, index) => {
-      const newOrder = index;
-      item.order = newOrder;
-
-      // Update form for activities
-      if (item.type === 'activity' && item.activityType) {
-        const form = this.activityConfigForms[item.activityType as keyof typeof this.activityConfigForms];
-        if (form) {
-          form.patchValue({ order: newOrder });
-        }
-      }
-      // Note: Stories order is not editable from this modal, they are read-only references
-    });
-
-    this.previewItems.set(items);
-    this.draggedPreviewItem = null;
-  }
-
-  saveActivityConfigs(): void {
-    const unit = this.selectedUnitForActivity();
-    if (!unit) return;
-
-    // Gather all enabled configs from forms
-    const configs: Partial<ActivityConfig>[] = [];
-
-    Object.keys(this.activityConfigForms).forEach(activityType => {
-      const form = this.activityConfigForms[activityType as keyof typeof this.activityConfigForms];
-      if (form.value.isEnabled) {
-        configs.push({
-          id: form.value.id || undefined,
-          unitId: unit.id,
-          activityType: form.value.activityType,
-          order: form.value.order,
-          isEnabled: form.value.isEnabled,
-          requiredStoryIds: form.value.requiredStoryIds || []
-        });
-      }
-    });
-
-    // Save via batch update
-    this.activityConfigService.batchUpdate(unit.id, configs).subscribe({
-      next: (savedConfigs) => {
-        this.toastService.success('Configuración de actividades guardada exitosamente');
-        this.activityConfigs.set(savedConfigs);
-        this.closeActivityConfigModal();
-      },
-      error: (error) => {
-        console.error('Error saving activity configs:', error);
-        this.toastService.error('Error al guardar configuración de actividades');
-      }
-    });
   }
 
   // ===== ACCORDION METHODS =====
@@ -1933,6 +1744,46 @@ export class CourseManageComponent implements OnInit {
   expandAllUnits(): void {
     const allIds = this.units().map(u => u.id);
     this.expandedUnits.set(new Set(allIds));
+  }
+
+  toggleStory(storyId: number): void {
+    const expanded = this.expandedStories();
+    const newExpanded = new Set(expanded);
+
+    if (newExpanded.has(storyId)) {
+      newExpanded.delete(storyId);
+    } else {
+      newExpanded.add(storyId);
+    }
+
+    this.expandedStories.set(newExpanded);
+  }
+
+  isStoryExpanded(storyId: number): boolean {
+    return this.expandedStories().has(storyId);
+  }
+
+  collapseAllStories(): void {
+    this.expandedStories.set(new Set());
+  }
+
+  getActiveActivitiesCount(story: Story): number {
+    const configs = story.activityConfigs || [];
+    return configs.filter(c => c.isEnabled).length;
+  }
+
+  getQuestionsCount(story: Story): number {
+    return story.questions?.length || 0;
+  }
+
+  getTooltipsCount(story: Story): number {
+    // Assuming tooltips are stored somewhere accessible from story
+    // For now return 0, you can implement this when tooltip data is available
+    return 0;
+  }
+
+  getAudiosCount(story: Story): number {
+    return story.repetitionActivities?.length || 0;
   }
 
   collapseAllUnits(): void {

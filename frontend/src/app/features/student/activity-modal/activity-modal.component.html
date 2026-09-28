@@ -53,7 +53,14 @@
         <!-- Question Card -->
         <div *ngIf="currentQuestion" class="card border-primary mb-4">
           <div class="card-body">
-            <h5 class="card-title mb-4">{{ currentQuestion.questionText }}</h5>
+            <div class="mb-4">
+              <app-tooltip-display
+                *ngIf="currentQuestion"
+                [targetType]="'question'"
+                [targetId]="currentQuestion.id"
+                [text]="currentQuestion.questionText"
+              />
+            </div>
 
             <!-- Audio Player for Question -->
             <div *ngIf="currentQuestion.audioUrl" class="mb-4">

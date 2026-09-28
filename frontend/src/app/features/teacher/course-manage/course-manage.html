@@ -99,13 +99,6 @@
                       📚 Vocabulario
                     </button>
                     <button
-                      class="btn btn-sm btn-primary"
-                      (click)="openActivityConfigModal(unit); $event.stopPropagation()"
-                      title="Configurar actividades"
-                    >
-                      ⚙️ Actividades
-                    </button>
-                    <button
                       class="btn btn-sm btn-success"
                       (click)="openStoryModal(unit.id); $event.stopPropagation()"
                     >
@@ -129,53 +122,185 @@
                   <div class="list-group">
                     <div
                       *ngFor="let story of unit.stories"
-                      class="list-group-item"
+                      class="list-group-item p-0 border"
                       draggable="true"
                       (dragstart)="onStoryDragStart($event, story, unit.id)"
                       (dragover)="onDragOver($event)"
                       (drop)="onStoryDrop($event, story, unit.id)"
-                      style="cursor: move;"
                     >
-                      <div class="d-flex justify-content-between align-items-start">
-                        <div class="flex-grow-1">
-                          <span class="me-2" style="opacity: 0.5;">☰</span>
-                          <strong>#{{ story.order + 1 }} - {{ story.title }}</strong>
-                          <br>
-                          <small class="text-muted">
-                            {{ story.text.substring(0, 100) }}{{ story.text.length > 100 ? '...' : '' }}
-                          </small>
-                          <br>
-                          <span class="badge bg-info text-dark mt-2">
-                            {{ story.questions?.length || 0 }} pregunta(s)
+                      <!-- Header (Always Visible) -->
+                      <div
+                        class="d-flex justify-content-between align-items-center p-3 cursor-pointer"
+                        (click)="toggleStory(story.id)"
+                        style="cursor: pointer; user-select: none;"
+                      >
+                        <div class="d-flex align-items-center gap-3 flex-grow-1">
+                          <!-- Collapse/Expand Icon -->
+                          <span style="font-size: 1.2rem; opacity: 0.6;">
+                            {{ isStoryExpanded(story.id) ? '▼' : '▶' }}
                           </span>
+
+                          <!-- Story Title and Summary -->
+                          <div>
+                            <strong>📖 #{{ story.order + 1 }} - {{ story.title }}</strong>
+                            <div class="text-muted small mt-1">
+                              📊 {{ getQuestionsCount(story) }} preguntas |
+                              🎮 {{ getActiveActivitiesCount(story) }}/4 actividades
+                              <span *ngIf="getActiveActivitiesCount(story) === 4" class="text-success">✓</span>
+                            </div>
+                          </div>
                         </div>
-                        <div class="d-flex gap-2">
-                          <button
-                            class="btn btn-sm btn-secondary"
-                            (click)="openEditStoryModal(story, unit.id)"
-                            title="Editar historia"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            class="btn btn-sm btn-primary"
-                            (click)="openQuestionModal(story)"
-                          >
-                            📝 Preguntas
-                          </button>
-                          <button
-                            class="btn btn-sm btn-primary"
-                            (click)="openRepetitionModal(story)"
-                          >
-                            🎤 Listen & Repeat
-                          </button>
-                          <button
-                            class="btn btn-sm btn-danger"
-                            (click)="deleteStory(unit.id, story.id)"
-                            title="Eliminar historia"
-                          >
-                            🗑️
-                          </button>
+
+                        <!-- Delete Button (Always visible) -->
+                        <button
+                          class="btn btn-sm btn-danger"
+                          (click)="deleteStory(unit.id, story.id); $event.stopPropagation()"
+                          title="Eliminar historia"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+
+                      <!-- Expanded Content -->
+                      <div *ngIf="isStoryExpanded(story.id)" class="border-top">
+                        <!-- Story Preview -->
+                        <div class="p-3 bg-light">
+                          <small class="text-muted">
+                            {{ story.text.substring(0, 150) }}{{ story.text.length > 150 ? '...' : '' }}
+                          </small>
+                        </div>
+
+                        <!-- Content Management Section -->
+                        <div class="p-3 border-bottom">
+                          <h6 class="text-secondary mb-3">📝 CONTENIDO</h6>
+                          <div class="d-flex gap-2 flex-wrap">
+                            <button
+                              class="btn btn-sm btn-outline-secondary"
+                              (click)="openEditStoryModal(story, unit.id); $event.stopPropagation()"
+                            >
+                              ✏️ Editar Texto
+                            </button>
+                            <button
+                              class="btn btn-sm btn-outline-primary"
+                              (click)="openQuestionModal(story); $event.stopPropagation()"
+                            >
+                              📝 Preguntas: {{ getQuestionsCount(story) }}
+                            </button>
+                            <button
+                              class="btn btn-sm btn-outline-info"
+                              (click)="openTooltipModal(story); $event.stopPropagation()"
+                            >
+                              💡 Tooltips: {{ getTooltipsCount(story) }}
+                            </button>
+                            <button
+                              class="btn btn-sm btn-outline-success"
+                              (click)="openRepetitionModal(story); $event.stopPropagation()"
+                            >
+                              🎤 Audios: {{ getAudiosCount(story) }}
+                            </button>
+                          </div>
+                        </div>
+
+                        <!-- Activities Configuration Section -->
+                        <div class="p-3">
+                          <h6 class="text-secondary mb-3">🎮 ACTIVIDADES DEL ALUMNO</h6>
+                          <p class="small text-muted mb-3">
+                            Activa/desactiva las actividades que verán los estudiantes después de leer esta historia:
+                          </p>
+
+                          <div class="row g-3">
+                            <!-- Questions Activity -->
+                            <div class="col-md-6">
+                              <div
+                                class="d-flex align-items-center justify-content-between p-3 border rounded"
+                                [class.bg-light]="!isActivityEnabledForStory(story, 'questions')"
+                                [class.border-success]="isActivityEnabledForStory(story, 'questions')"
+                              >
+                                <div class="d-flex align-items-center">
+                                  <span class="me-3" style="font-size: 1.5rem;">🎯</span>
+                                  <span>Preguntas</span>
+                                </div>
+                                <div class="form-check form-switch">
+                                  <input
+                                    class="form-check-input"
+                                    type="checkbox"
+                                    [checked]="isActivityEnabledForStory(story, 'questions')"
+                                    (change)="toggleActivityForStory(story, 'questions'); $event.stopPropagation()"
+                                    [id]="'activity-questions-' + story.id"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            <!-- Flashcards Activity -->
+                            <div class="col-md-6">
+                              <div
+                                class="d-flex align-items-center justify-content-between p-3 border rounded"
+                                [class.bg-light]="!isActivityEnabledForStory(story, 'flashcards')"
+                                [class.border-success]="isActivityEnabledForStory(story, 'flashcards')"
+                              >
+                                <div class="d-flex align-items-center">
+                                  <span class="me-3" style="font-size: 1.5rem;">🃏</span>
+                                  <span>Flashcards</span>
+                                </div>
+                                <div class="form-check form-switch">
+                                  <input
+                                    class="form-check-input"
+                                    type="checkbox"
+                                    [checked]="isActivityEnabledForStory(story, 'flashcards')"
+                                    (change)="toggleActivityForStory(story, 'flashcards'); $event.stopPropagation()"
+                                    [id]="'activity-flashcards-' + story.id"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            <!-- Matching Activity -->
+                            <div class="col-md-6">
+                              <div
+                                class="d-flex align-items-center justify-content-between p-3 border rounded"
+                                [class.bg-light]="!isActivityEnabledForStory(story, 'matching')"
+                                [class.border-success]="isActivityEnabledForStory(story, 'matching')"
+                              >
+                                <div class="d-flex align-items-center">
+                                  <span class="me-3" style="font-size: 1.5rem;">🔗</span>
+                                  <span>Emparejar</span>
+                                </div>
+                                <div class="form-check form-switch">
+                                  <input
+                                    class="form-check-input"
+                                    type="checkbox"
+                                    [checked]="isActivityEnabledForStory(story, 'matching')"
+                                    (change)="toggleActivityForStory(story, 'matching'); $event.stopPropagation()"
+                                    [id]="'activity-matching-' + story.id"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            <!-- Listen & Repeat Activity -->
+                            <div class="col-md-6">
+                              <div
+                                class="d-flex align-items-center justify-content-between p-3 border rounded"
+                                [class.bg-light]="!isActivityEnabledForStory(story, 'listen_repeat')"
+                                [class.border-success]="isActivityEnabledForStory(story, 'listen_repeat')"
+                              >
+                                <div class="d-flex align-items-center">
+                                  <span class="me-3" style="font-size: 1.5rem;">🎧</span>
+                                  <span>Escuchar</span>
+                                </div>
+                                <div class="form-check form-switch">
+                                  <input
+                                    class="form-check-input"
+                                    type="checkbox"
+                                    [checked]="isActivityEnabledForStory(story, 'listen_repeat')"
+                                    (change)="toggleActivityForStory(story, 'listen_repeat'); $event.stopPropagation()"
+                                    [id]="'activity-listen_repeat-' + story.id"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -655,6 +780,13 @@
                   </div>
                   <div class="btn-group">
                     <button
+                      class="btn btn-sm btn-outline-info"
+                      (click)="openQuestionTooltipModal(question)"
+                      title="Gestionar Tooltips"
+                    >
+                      💡
+                    </button>
+                    <button
                       class="btn btn-sm btn-outline-primary"
                       (click)="editQuestion(question)"
                     >
@@ -964,6 +1096,68 @@
   </div>
 </div>
 
+<!-- Tooltip Management Modal -->
+<div
+  class="modal fade"
+  [class.show]="showTooltipModal()"
+  [style.display]="showTooltipModal() ? 'block' : 'none'"
+  tabindex="-1"
+>
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">💡 Gestionar Tooltips: {{ selectedStory()?.title }}</h5>
+        <button type="button" class="btn-close" (click)="closeTooltipModal()"></button>
+      </div>
+      <div class="modal-body">
+        <app-tooltip-editor
+          *ngIf="selectedStory()"
+          [targetType]="'story'"
+          [targetId]="selectedStory()!.id"
+          [text]="selectedStory()!.text"
+          (tooltipsChanged)="onTooltipsChanged($event)"
+        />
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeTooltipModal()">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Question Tooltip Management Modal -->
+<div
+  class="modal fade"
+  [class.show]="showQuestionTooltipModal()"
+  [style.display]="showQuestionTooltipModal() ? 'block' : 'none'"
+  tabindex="-1"
+>
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">💡 Gestionar Tooltips: Pregunta</h5>
+        <button type="button" class="btn-close" (click)="closeQuestionTooltipModal()"></button>
+      </div>
+      <div class="modal-body">
+        <app-tooltip-editor
+          *ngIf="selectedQuestion()"
+          [targetType]="'question'"
+          [targetId]="selectedQuestion()!.id"
+          [text]="selectedQuestion()!.questionText"
+          (tooltipsChanged)="onQuestionTooltipsChanged($event)"
+        />
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeQuestionTooltipModal()">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Edit Course Modal -->
 <div
   class="modal fade"
@@ -1236,290 +1430,11 @@
   </div>
 </div>
 
-<!-- Activity Config Modal -->
-<div
-  class="modal fade"
-  [class.show]="showActivityConfigModal()"
-  [style.display]="showActivityConfigModal() ? 'block' : 'none'"
-  tabindex="-1"
->
-  <div class="modal-dialog modal-xl modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header bg-info text-white">
-        <h5 class="modal-title">
-          ⚙️ Configurar Actividades - {{ selectedUnitForActivity()?.title }}
-        </h5>
-        <button type="button" class="btn-close btn-close-white" (click)="closeActivityConfigModal()"></button>
-      </div>
-
-      <div class="modal-body">
-        <!-- Instructions -->
-        <div class="alert alert-info">
-          <strong>¿Cómo funciona?</strong>
-          <ul class="mb-0 mt-2">
-            <li>Activa las actividades que quieres que vean los estudiantes</li>
-            <li>Selecciona qué historias deben completar antes de desbloquear cada actividad</li>
-            <li>Arrastra y suelta en el preview para ordenar historias y actividades</li>
-          </ul>
-        </div>
-
-        <!-- Stories in this unit -->
-        <div class="card mb-4">
-          <div class="card-header bg-light">
-            <h6 class="mb-0">📖 Historias de esta unidad:</h6>
-          </div>
-          <div class="card-body">
-            <div *ngIf="(selectedUnitForActivity()?.stories || []).length === 0" class="text-muted text-center py-3">
-              No hay historias en esta unidad. Crea historias primero.
-            </div>
-            <ul class="list-unstyled mb-0" *ngIf="(selectedUnitForActivity()?.stories || []).length > 0">
-              <li *ngFor="let story of getOrderedStories(); let i = index">
-                <strong>H{{ i + 1 }}</strong>: {{ story.title }}
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        <!-- Activity Configuration -->
-        <div class="row">
-          <!-- Left Column: Activity Toggles -->
-          <div class="col-md-6">
-            <h6 class="mb-3">Actividades Disponibles:</h6>
-
-            <!-- Questions -->
-            <div class="card mb-3" [formGroup]="activityConfigForms.questions">
-              <div class="card-header d-flex align-items-center justify-content-between">
-                <div class="d-flex align-items-center">
-                  <span class="me-2" style="font-size: 1.5rem;">🎯</span>
-                  <strong>Preguntas de comprensión</strong>
-                </div>
-                <div class="form-check form-switch">
-                  <input
-                    class="form-check-input"
-                    type="checkbox"
-                    formControlName="isEnabled"
-                    (change)="onActivityEnabledChange('questions')"
-                    id="questionsEnabled"
-                  />
-                  <label class="form-check-label" for="questionsEnabled">
-                    {{ activityConfigForms.questions.value.isEnabled ? 'Habilitada' : 'Deshabilitada' }}
-                  </label>
-                </div>
-              </div>
-              <div class="card-body" *ngIf="activityConfigForms.questions.value.isEnabled">
-                <label class="form-label small text-muted">Requiere historias:</label>
-                <div class="d-flex flex-wrap gap-2">
-                  <div class="form-check" *ngFor="let story of getOrderedStories(); let i = index">
-                    <input
-                      class="form-check-input"
-                      type="checkbox"
-                      [checked]="activityConfigForms.questions.value.requiredStoryIds?.includes(story.id)"
-                      (change)="toggleStoryRequirement('questions', story.id)"
-                      [id]="'questions-story-' + story.id"
-                    />
-                    <label class="form-check-label" [for]="'questions-story-' + story.id">
-                      H{{ i + 1 }}
-                    </label>
-                  </div>
-                  <small class="text-muted w-100" *ngIf="activityConfigForms.questions.value.requiredStoryIds?.length === 0">
-                    Sin requisitos (se desbloquea inmediatamente)
-                  </small>
-                </div>
-              </div>
-            </div>
-
-            <!-- Flashcards -->
-            <div class="card mb-3" [formGroup]="activityConfigForms.flashcards">
-              <div class="card-header d-flex align-items-center justify-content-between">
-                <div class="d-flex align-items-center">
-                  <span class="me-2" style="font-size: 1.5rem;">🃏</span>
-                  <strong>Tarjetas de vocabulario</strong>
-                </div>
-                <div class="form-check form-switch">
-                  <input
-                    class="form-check-input"
-                    type="checkbox"
-                    formControlName="isEnabled"
-                    (change)="onActivityEnabledChange('flashcards')"
-                    id="flashcardsEnabled"
-                  />
-                  <label class="form-check-label" for="flashcardsEnabled">
-                    {{ activityConfigForms.flashcards.value.isEnabled ? 'Habilitada' : 'Deshabilitada' }}
-                  </label>
-                </div>
-              </div>
-              <div class="card-body" *ngIf="activityConfigForms.flashcards.value.isEnabled">
-                <label class="form-label small text-muted">Requiere historias:</label>
-                <div class="d-flex flex-wrap gap-2">
-                  <div class="form-check" *ngFor="let story of getOrderedStories(); let i = index">
-                    <input
-                      class="form-check-input"
-                      type="checkbox"
-                      [checked]="activityConfigForms.flashcards.value.requiredStoryIds?.includes(story.id)"
-                      (change)="toggleStoryRequirement('flashcards', story.id)"
-                      [id]="'flashcards-story-' + story.id"
-                    />
-                    <label class="form-check-label" [for]="'flashcards-story-' + story.id">
-                      H{{ i + 1 }}
-                    </label>
-                  </div>
-                  <small class="text-muted w-100" *ngIf="activityConfigForms.flashcards.value.requiredStoryIds?.length === 0">
-                    Sin requisitos (se desbloquea inmediatamente)
-                  </small>
-                </div>
-              </div>
-            </div>
-
-            <!-- Matching -->
-            <div class="card mb-3" [formGroup]="activityConfigForms.matching">
-              <div class="card-header d-flex align-items-center justify-content-between">
-                <div class="d-flex align-items-center">
-                  <span class="me-2" style="font-size: 1.5rem;">🔗</span>
-                  <strong>Emparejar vocabulario</strong>
-                </div>
-                <div class="form-check form-switch">
-                  <input
-                    class="form-check-input"
-                    type="checkbox"
-                    formControlName="isEnabled"
-                    (change)="onActivityEnabledChange('matching')"
-                    id="matchingEnabled"
-                  />
-                  <label class="form-check-label" for="matchingEnabled">
-                    {{ activityConfigForms.matching.value.isEnabled ? 'Habilitada' : 'Deshabilitada' }}
-                  </label>
-                </div>
-              </div>
-              <div class="card-body" *ngIf="activityConfigForms.matching.value.isEnabled">
-                <label class="form-label small text-muted">Requiere historias:</label>
-                <div class="d-flex flex-wrap gap-2">
-                  <div class="form-check" *ngFor="let story of getOrderedStories(); let i = index">
-                    <input
-                      class="form-check-input"
-                      type="checkbox"
-                      [checked]="activityConfigForms.matching.value.requiredStoryIds?.includes(story.id)"
-                      (change)="toggleStoryRequirement('matching', story.id)"
-                      [id]="'matching-story-' + story.id"
-                    />
-                    <label class="form-check-label" [for]="'matching-story-' + story.id">
-                      H{{ i + 1 }}
-                    </label>
-                  </div>
-                  <small class="text-muted w-100" *ngIf="activityConfigForms.matching.value.requiredStoryIds?.length === 0">
-                    Sin requisitos (se desbloquea inmediatamente)
-                  </small>
-                </div>
-              </div>
-            </div>
-
-            <!-- Listen & Repeat -->
-            <div class="card mb-3" [formGroup]="activityConfigForms.listen_repeat">
-              <div class="card-header d-flex align-items-center justify-content-between">
-                <div class="d-flex align-items-center">
-                  <span class="me-2" style="font-size: 1.5rem;">🎧</span>
-                  <strong>Escuchar y repetir</strong>
-                </div>
-                <div class="form-check form-switch">
-                  <input
-                    class="form-check-input"
-                    type="checkbox"
-                    formControlName="isEnabled"
-                    (change)="onActivityEnabledChange('listen_repeat')"
-                    id="listenRepeatEnabled"
-                  />
-                  <label class="form-check-label" for="listenRepeatEnabled">
-                    {{ activityConfigForms.listen_repeat.value.isEnabled ? 'Habilitada' : 'Deshabilitada' }}
-                  </label>
-                </div>
-              </div>
-              <div class="card-body" *ngIf="activityConfigForms.listen_repeat.value.isEnabled">
-                <label class="form-label small text-muted">Requiere historias:</label>
-                <div class="d-flex flex-wrap gap-2">
-                  <div class="form-check" *ngFor="let story of getOrderedStories(); let i = index">
-                    <input
-                      class="form-check-input"
-                      type="checkbox"
-                      [checked]="activityConfigForms.listen_repeat.value.requiredStoryIds?.includes(story.id)"
-                      (change)="toggleStoryRequirement('listen_repeat', story.id)"
-                      [id]="'listenRepeat-story-' + story.id"
-                    />
-                    <label class="form-check-label" [for]="'listenRepeat-story-' + story.id">
-                      H{{ i + 1 }}
-                    </label>
-                  </div>
-                  <small class="text-muted w-100" *ngIf="activityConfigForms.listen_repeat.value.requiredStoryIds?.length === 0">
-                    Sin requisitos (se desbloquea inmediatamente)
-                  </small>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Right Column: Preview with Drag & Drop -->
-          <div class="col-md-6">
-            <h6 class="mb-3">Vista Previa:</h6>
-
-            <div class="card bg-light border-primary">
-              <div class="card-header bg-primary text-white">
-                <small>Arrastra para reordenar</small>
-              </div>
-              <div class="card-body" style="max-height: 600px; overflow-y: auto;">
-                <div *ngIf="previewItems().length === 0" class="text-muted text-center py-4">
-                  Habilita actividades para verlas aquí
-                </div>
-
-                <div
-                  *ngFor="let item of previewItems(); let i = index"
-                  class="alert mb-2 d-flex align-items-center justify-content-between"
-                  [ngClass]="{
-                    'alert-primary': item.type === 'story',
-                    'alert-success': item.type === 'activity'
-                  }"
-                  draggable="true"
-                  (dragstart)="onPreviewDragStart($event, item)"
-                  (dragover)="onDragOver($event)"
-                  (drop)="onPreviewDrop($event, item)"
-                  style="cursor: move;"
-                >
-                  <div class="d-flex align-items-center">
-                    <span class="me-2" style="font-size: 1.2rem; opacity: 0.6;">☰</span>
-                    <span class="me-2" style="font-size: 1.3rem;">{{ item.icon }}</span>
-                    <div>
-                      <strong>{{ i + 1 }}. {{ item.title }}</strong>
-                      <div *ngIf="item.type === 'activity' && item.requiredStories && item.requiredStories.length > 0">
-                        <small class="badge bg-warning text-dark">
-                          Requiere: H{{ item.requiredStories.join(', H') }}
-                        </small>
-                      </div>
-                      <div *ngIf="item.type === 'activity' && (!item.requiredStories || item.requiredStories.length === 0)">
-                        <small class="badge bg-success">Sin requisitos</small>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" (click)="closeActivityConfigModal()">
-          Cancelar
-        </button>
-        <button type="button" class="btn btn-primary" (click)="saveActivityConfigs()">
-          💾 Guardar Configuración
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- Modal Backdrop -->
 <div
   class="modal-backdrop fade"
-  [class.show]="showCourseEditModal() || showUnitModal() || showUnitEditModal() || showStoryModal() || showStoryEditModal() || showQuestionModal() || showVocabularyModal() || showRepetitionModal() || showActivityConfigModal() || showConfirmDialog()"
-  *ngIf="showCourseEditModal() || showUnitModal() || showUnitEditModal() || showStoryModal() || showStoryEditModal() || showQuestionModal() || showVocabularyModal() || showRepetitionModal() || showActivityConfigModal() || showConfirmDialog()"
+  [class.show]="showCourseEditModal() || showUnitModal() || showUnitEditModal() || showStoryModal() || showStoryEditModal() || showQuestionModal() || showVocabularyModal() || showRepetitionModal() || showTooltipModal() || showQuestionTooltipModal() || showConfirmDialog()"
+  *ngIf="showCourseEditModal() || showUnitModal() || showUnitEditModal() || showStoryModal() || showStoryEditModal() || showQuestionModal() || showVocabularyModal() || showRepetitionModal() || showTooltipModal() || showQuestionTooltipModal() || showConfirmDialog()"
 ></div>
 
 <!-- Confirm Dialog -->
