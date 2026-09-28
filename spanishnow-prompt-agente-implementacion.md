@@ -4,6 +4,8 @@
 **Repositorio:** `/Users/andresguerrero/Repos/SpanishNow/`  
 **Informe de relevo:** `/Users/andresguerrero/Documents/Codex/2026-09-27/co/outputs/spanishnow-relevo-implementacion.md`
 
+**Base Git ya resguardada:** `backup/pre-tprs-2026-09-27` apunta al commit `e44da98`, que contiene los dos commits locales previos y el trabajo que estaba sin confirmar. La rama de implementación es `feat/tprs-lesson-flow` y nace de ese commit. Antes de L0, comprueba que el checkout incluye `e44da98` en su historial y que el estado local está documentado. Si falta ese commit, detente: no empieces desde `origin/main`, no restablezcas archivos y no recrees el respaldo a ciegas. No hace falta repetir el commit de resguardo.
+
 ## Uso
 
 Entrega este documento y el plan al agente. En cada ejecución indica **una sola etapa**: `Ejecuta L0`, `Ejecuta S1`, `Ejecuta L2`, `Ejecuta L3`, `Ejecuta S4` o `Ejecuta SR`. Usa **GPT-6 Luna, esfuerzo medio** para las etapas L y **GPT-6 Sol, esfuerzo medio** para las etapas S. El orden normal es **L0 → S1 → L2 → L3 → S4**. Ante un bloqueo durante L2 o L3: **L2/L3 → SR → reanudar L2/L3**. No saltes S1 ni S4. No encargues dos etapas en un mismo turno.
