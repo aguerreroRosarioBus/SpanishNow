@@ -10,12 +10,16 @@ $success: #2f7d4f;
 $info: #2f6f9f;
 $warning: #f5b942;
 $danger: #b3372f;
-$light: #fff8f1;
+$light: #f6ece0;
 $dark: #2b2b2b;
 
-$body-bg: #fff8f1;
+$body-bg: #fbf3ea;
+$card-bg: #ffffff;
+$list-group-bg: #ffffff;
+$modal-content-bg: #ffffff;
+$dropdown-bg: #ffffff;
 $body-color: #2b2b2b;
-$body-secondary-color: #6b625b;
+$body-secondary-color: #5a514a;
 $border-color: #eadfd3;
 $link-color: #c94a14;
 $link-hover-color: #a53c0f;
@@ -74,16 +78,16 @@ $input-btn-focus-color: rgba(232, 99, 43, 0.25);
 
   /* Neutros cálidos */
   --color-bg: #ffffff;
-  --color-bg-light: #fff8f1; /* fondo de página (crema) */
+  --color-bg-light: #fbf3ea; /* fondo de página (crema) */
   --color-bg-dark: #f3e7da; /* arena */
   --color-text: #2b2b2b;
-  --color-text-light: #6b625b;
+  --color-text-light: #5a514a;
   --color-text-lighter: #8f857c;
-  --color-border: #eadfd3;
+  --color-border: #e6d8c8;
 
   /* Sombras suaves y cálidas */
   --shadow-sm: 0 1px 2px rgba(74, 40, 15, 0.06);
-  --shadow-md: 0 1px 2px rgba(74, 40, 15, 0.05), 0 6px 20px rgba(74, 40, 15, 0.07);
+  --shadow-md: 0 1px 2px rgba(74, 40, 15, 0.08), 0 6px 20px rgba(74, 40, 15, 0.09);
   --shadow-lg: 0 2px 4px rgba(74, 40, 15, 0.06), 0 14px 32px rgba(74, 40, 15, 0.12);
   --shadow-primary: 0 6px 16px rgba(201, 74, 20, 0.28);
   --shadow-secondary: 0 6px 16px rgba(201, 59, 53, 0.25);
@@ -156,7 +160,7 @@ h1, h2, h3, h4, h5, h6,
   font-weight: 600;
   font-size: 1rem;
   padding: 0.7rem 1.6rem;
-  border: 2px solid transparent;
+  --bs-btn-border-width: 2px;
   transition: background-color var(--transition-fast), border-color var(--transition-fast),
     box-shadow var(--transition-fast), transform var(--transition-fast), color var(--transition-fast);
 }
@@ -271,7 +275,7 @@ h1, h2, h3, h4, h5, h6,
 .btn:disabled,
 .btn.disabled {
   box-shadow: none;
-  opacity: 0.55;
+  opacity: 0.6;
 }
 
 /* ============================================
@@ -279,11 +283,12 @@ h1, h2, h3, h4, h5, h6,
    ============================================ */
 
 .card {
-  --bs-card-border-width: 0;
+  --bs-card-border-width: 1px;
+  --bs-card-border-color: var(--color-border);
   --bs-card-border-radius: var(--radius-lg);
   --bs-card-inner-border-radius: var(--radius-lg);
   --bs-card-cap-bg: transparent;
-  border: 0;
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
   overflow: hidden;

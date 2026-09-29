@@ -1,52 +1,60 @@
 .sidebar-nav {
-  width: 250px;
+  width: 240px;
   background-color: #fff;
   border-right: 1px solid var(--color-border);
   height: 100%;
   overflow-y: auto;
   flex-shrink: 0;
-  transition: width 0.3s ease;
+  transition: width 0.25s ease;
   position: relative;
+  z-index: 5;
 
   &.collapsed {
-    width: 70px;
+    width: 72px;
+    overflow: visible; // permite que el tooltip sobresalga del riel
 
     .sidebar-item {
       justify-content: center;
-      padding: 0.75rem 0.5rem;
+      padding: 0.75rem 0;
+      margin: 0.15rem 0.6rem;
     }
 
     .sidebar-divider {
-      margin: 1rem 0.5rem;
+      margin: 1rem 0.9rem;
     }
   }
 }
 
 .sidebar-menu {
-  padding: 3.5rem 0 1.5rem 0;
+  padding: 3.75rem 0.75rem 1.5rem;
 }
 
 .sidebar-header {
-  padding: 0.5rem 1.5rem;
-  font-size: 0.75rem;
-  color: var(--color-text-light);
-  font-weight: 700;
+  padding: 0 0.75rem;
+  margin: 1.25rem 0 0.4rem;
+  font-family: var(--font-heading);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-text-lighter);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 0.5rem;
-  margin-top: 0.5rem;
+  letter-spacing: 0.08em;
+
+  &:first-child {
+    margin-top: 0;
+  }
 }
 
 .sidebar-item {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.75rem 1.5rem;
+  padding: 0.7rem 0.75rem;
+  margin: 0.15rem 0;
   color: var(--color-text);
   text-decoration: none;
-  transition: all 0.15s ease;
+  border-radius: var(--radius-md);
+  transition: background-color 0.15s ease, color 0.15s ease;
   cursor: pointer;
-  border-left: 3px solid transparent;
 
   &:hover {
     background-color: var(--color-primary-soft);
@@ -57,80 +65,112 @@
     background-color: var(--color-primary-soft);
     color: var(--color-primary);
     font-weight: 700;
-    border-left-color: var(--color-primary);
-
-    .sidebar-icon {
-      filter: none;
-    }
   }
 }
 
+// Iconos de línea: solo con el menú colapsado (abierto, el texto basta)
 .sidebar-icon {
-  font-size: 1.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
+  display: none;
+  width: 22px;
+  height: 22px;
   flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sidebar-nav.collapsed .sidebar-icon {
+  display: block;
+  box-sizing: border-box;
+  width: 42px;
+  height: 42px;
+  padding: 10px;
+  border-radius: var(--radius-md);
+  background: var(--tile, var(--color-brand));
+  stroke: #fff;
+  box-shadow: 0 2px 6px rgba(74, 40, 15, 0.18);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+// Un color de la marca por sección
+.sidebar-item[href$='/dashboard'] { --tile: var(--color-brand); }
+.sidebar-item[href$='/progress'] { --tile: var(--color-amber); }
+.sidebar-item[href$='/settings'] { --tile: var(--color-coral); }
+.sidebar-item[href$='/teachers'] { --tile: var(--color-success); }
+.sidebar-item[href$='/progress'] .sidebar-icon { stroke: var(--color-text); }
+
+.sidebar-nav.collapsed .sidebar-item {
+  &:hover,
+  &.active {
+    background: transparent;
+  }
+
+  &:hover .sidebar-icon {
+    transform: translateY(-1px);
+  }
+
+  &.active .sidebar-icon {
+    box-shadow: 0 0 0 3px var(--color-primary-light), 0 2px 6px rgba(74, 40, 15, 0.18);
+  }
 }
 
 .sidebar-label {
-  font-size: 0.95rem;
+  font-size: 0.98rem;
   font-weight: 500;
 }
 
 .sidebar-divider {
   height: 1px;
   background-color: var(--color-border);
-  margin: 1rem 1.5rem;
+  margin: 1rem 0.75rem;
 }
 
 .sidebar-toggle {
   position: absolute;
-  top: 1rem;
-  right: 0.5rem;
-  background-color: #fff;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  top: 0.9rem;
+  right: 0.75rem;
+  background-color: transparent;
+  border: 0;
+  border-radius: var(--radius-full);
   width: 32px;
   height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease;
   z-index: 10;
-  color: var(--color-text-light);
+  color: var(--color-text-lighter);
 
   &:hover {
     background-color: var(--color-primary-soft);
     color: var(--color-primary);
-    border-color: var(--color-primary);
   }
 
   .toggle-icon {
     font-size: 1rem;
-    font-weight: bold;
   }
 }
 
-// Mobile Responsive
+// Móvil: cajón lateral (lo abre la hamburguesa de la navbar)
 @media (max-width: 768px) {
   .sidebar-nav {
     position: fixed;
-    left: -250px;
-    top: 64px; // Height of navbar-top
+    left: -240px;
+    top: 64px;
     bottom: 0;
     z-index: 999;
-    transition: left 0.3s ease, width 0.3s ease;
-    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+    transition: left 0.25s ease, width 0.25s ease;
+    box-shadow: var(--shadow-lg);
 
     &.open {
       left: 0;
     }
 
     &.collapsed {
-      left: -70px;
+      left: -72px;
 
       &.open {
         left: 0;
@@ -139,7 +179,6 @@
   }
 }
 
-// Scrollbar styling
 .sidebar-nav::-webkit-scrollbar {
   width: 6px;
 }
@@ -151,8 +190,68 @@
 .sidebar-nav::-webkit-scrollbar-thumb {
   background: var(--color-bg-dark);
   border-radius: 3px;
+}
 
-  &:hover {
-    background: #e0cdb8;
+// Tooltip del riel colapsado (aparece al instante, también con el teclado)
+.sidebar-nav.collapsed .sidebar-item {
+  position: relative;
+
+  &[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: calc(100% + 12px);
+    top: 50%;
+    transform: translateY(-50%) translateX(-4px);
+    padding: 0.4rem 0.75rem;
+    background: var(--color-text);
+    color: #fff;
+    font-family: var(--font-heading);
+    font-size: 0.85rem;
+    font-weight: 500;
+    white-space: nowrap;
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-lg);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s;
+    z-index: 20;
+  }
+
+  &[data-tooltip]::before {
+    content: '';
+    position: absolute;
+    left: calc(100% + 6px);
+    top: 50%;
+    transform: translateY(-50%);
+    border: 6px solid transparent;
+    border-right-color: var(--color-text);
+    border-left-width: 0;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.15s ease, visibility 0.15s;
+    z-index: 20;
+  }
+
+  &:hover::after,
+  &:focus-visible::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(-50%) translateX(0);
+  }
+
+  &:hover::before,
+  &:focus-visible::before {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+// Sin hover en táctil: el tooltip no aplica
+@media (hover: none) {
+  .sidebar-nav.collapsed .sidebar-item::after,
+  .sidebar-nav.collapsed .sidebar-item::before {
+    display: none;
   }
 }

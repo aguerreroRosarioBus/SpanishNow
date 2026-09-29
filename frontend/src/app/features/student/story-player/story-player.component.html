@@ -1,11 +1,11 @@
 <div class="container-fluid mt-4">
-  <div class="row">
+  <div class="row player-row">
     <!-- Sidebar with Navigation Items -->
     <div class="col-md-3">
       <div class="card">
         <div class="card-header bg-primary text-white">
           <h6 class="mb-0">
-            <span class="me-2">📚</span>
+            <span class="me-2 icon-decor">📚</span>
             {{ course()?.title }}
           </h6>
         </div>
@@ -17,7 +17,7 @@
 
           <div *ngIf="!isLoading() && currentUnit()">
             <!-- Unit Navigation -->
-            <div class="p-3 bg-white border-bottom d-flex justify-content-between align-items-center gap-1">
+            <div class="p-3 bg-white border-bottom d-flex justify-content-between align-items-center gap-1 unit-nav">
               <button
                 class="btn btn-sm btn-outline-primary flex-shrink-0 px-2 py-1"
                 [disabled]="!canGoPreviousUnit()"
@@ -26,7 +26,7 @@
               >
                 ←<span class="d-none d-lg-inline ms-1">Anterior</span>
               </button>
-              <small class="text-muted fw-bold text-center flex-grow-1" style="font-size: 0.7rem; line-height: 1.2; min-width: 0;">
+              <small class="text-muted fw-bold text-center flex-grow-1 unit-nav-title" style="font-size: 0.7rem; line-height: 1.2; min-width: 0;">
                 {{ currentUnit()?.title || 'Unidad' }}
               </small>
               <button
@@ -64,7 +64,7 @@
                 >
                   <div class="d-flex align-items-center flex-grow-1">
                     <!-- Icon -->
-                    <span class="me-2" style="font-size: 1.2rem;">
+                    <span class="me-2 item-icon" style="font-size: 1.2rem;">
                       <ng-container *ngIf="item.type === 'story'">📖</ng-container>
                       <ng-container *ngIf="item.type === 'activity'">
                         {{ getActivityIcon(item.activityType!) }}

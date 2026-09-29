@@ -1,6 +1,6 @@
 <aside class="sidebar-nav" [class.collapsed]="isCollapsed()">
   <!-- Botón de colapsar/expandir -->
-  <button class="sidebar-toggle" (click)="toggleSidebar()" title="{{ isCollapsed() ? 'Expandir' : 'Colapsar' }}">
+  <button class="sidebar-toggle" (click)="toggleSidebar()" [attr.aria-label]="isCollapsed() ? 'Expandir menú' : 'Colapsar menú'" title="{{ isCollapsed() ? 'Expandir' : 'Colapsar' }}">
     <span class="toggle-icon">{{ isCollapsed() ? '→' : '←' }}</span>
   </button>
 
@@ -11,16 +11,18 @@
     <a class="sidebar-item"
        [routerLink]="['/student/dashboard']"
        routerLinkActive="active"
-       [title]="isCollapsed() ? 'Mis Cursos' : ''">
-      <span class="sidebar-icon">📚</span>
+       [attr.data-tooltip]="isCollapsed() ? 'Mis Cursos' : null"
+       [attr.aria-label]="isCollapsed() ? 'Mis Cursos' : null">
+      <svg class="sidebar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zm0 0A2 2 0 0 0 6 21h13"/></svg>
       <span class="sidebar-label" *ngIf="!isCollapsed()">Mis Cursos</span>
     </a>
 
     <a class="sidebar-item"
        [routerLink]="['/student/progress']"
        routerLinkActive="active"
-       [title]="isCollapsed() ? 'Mi Avance' : ''">
-      <span class="sidebar-icon">📊</span>
+       [attr.data-tooltip]="isCollapsed() ? 'Mi Avance' : null"
+       [attr.aria-label]="isCollapsed() ? 'Mi Avance' : null">
+      <svg class="sidebar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
       <span class="sidebar-label" *ngIf="!isCollapsed()">Mi Avance</span>
     </a>
 
@@ -31,16 +33,18 @@
     <a class="sidebar-item"
        [routerLink]="['/settings']"
        routerLinkActive="active"
-       [title]="isCollapsed() ? 'Configuración' : ''">
-      <span class="sidebar-icon">⚙️</span>
+       [attr.data-tooltip]="isCollapsed() ? 'Configuración' : null"
+       [attr.aria-label]="isCollapsed() ? 'Configuración' : null">
+      <svg class="sidebar-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
       <span class="sidebar-label" *ngIf="!isCollapsed()">Configuración</span>
     </a>
 
     <a class="sidebar-item"
        [routerLink]="['/teachers']"
        routerLinkActive="active"
-       [title]="isCollapsed() ? 'Maestros' : ''">
-      <span class="sidebar-icon">👨‍🏫</span>
+       [attr.data-tooltip]="isCollapsed() ? 'Maestros' : null"
+       [attr.aria-label]="isCollapsed() ? 'Maestros' : null">
+      <svg class="sidebar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg>
       <span class="sidebar-label" *ngIf="!isCollapsed()">Maestros</span>
     </a>
   </nav>
@@ -52,8 +56,9 @@
     <a class="sidebar-item"
        [routerLink]="['/teacher/dashboard']"
        routerLinkActive="active"
-       [title]="isCollapsed() ? 'Mis Cursos' : ''">
-      <span class="sidebar-icon">📚</span>
+       [attr.data-tooltip]="isCollapsed() ? 'Mis Cursos' : null"
+       [attr.aria-label]="isCollapsed() ? 'Mis Cursos' : null">
+      <svg class="sidebar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zm0 0A2 2 0 0 0 6 21h13"/></svg>
       <span class="sidebar-label" *ngIf="!isCollapsed()">Mis Cursos</span>
     </a>
 
@@ -64,8 +69,9 @@
     <a class="sidebar-item"
        [routerLink]="['/settings']"
        routerLinkActive="active"
-       [title]="isCollapsed() ? 'Configuración' : ''">
-      <span class="sidebar-icon">⚙️</span>
+       [attr.data-tooltip]="isCollapsed() ? 'Configuración' : null"
+       [attr.aria-label]="isCollapsed() ? 'Configuración' : null">
+      <svg class="sidebar-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
       <span class="sidebar-label" *ngIf="!isCollapsed()">Configuración</span>
     </a>
   </nav>
