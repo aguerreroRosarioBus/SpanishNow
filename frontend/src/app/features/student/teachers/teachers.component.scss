@@ -13,7 +13,7 @@
   width: 80px;
   height: 80px;
   margin: 0 auto;
-  background: linear-gradient(135deg, #1976d2 0%, #42a5f5 100%);
+  background: linear-gradient(135deg, var(--color-brand) 0%, var(--color-primary) 100%);
   color: white;
   border-radius: 50%;
   display: flex;
@@ -30,13 +30,13 @@
   .stat-value {
     font-size: 1.5rem;
     font-weight: 700;
-    color: #1976d2;
+    color: var(--color-primary);
     margin-bottom: 0.25rem;
   }
 
   .stat-label {
     font-size: 0.875rem;
-    color: #6c757d;
+    color: var(--color-text-light);
     text-transform: uppercase;
     font-weight: 500;
   }

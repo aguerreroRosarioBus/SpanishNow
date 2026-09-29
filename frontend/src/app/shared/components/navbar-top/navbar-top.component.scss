@@ -1,12 +1,14 @@
 .navbar-top {
-  background-color: #1976d2;
+  background-color: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--color-border);
   height: 64px;
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   z-index: 1000;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-sm);
 }
 
 .navbar-container {
@@ -35,36 +37,54 @@
   transition: background-color 0.2s;
 
   &:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: var(--color-primary-soft);
   }
 
   &:active {
-    background-color: rgba(255, 255, 255, 0.2);
+    background-color: var(--color-primary-light);
   }
 }
 
 .hamburger-icon {
   width: 20px;
   height: 2px;
-  background-color: white;
+  background-color: var(--color-text);
   display: block;
   transition: all 0.3s;
 }
 
 // Logo/Brand
 .navbar-brand {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: white;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
   text-decoration: none;
-  transition: opacity 0.2s;
   white-space: nowrap;
   flex-shrink: 0;
+  padding: 0;
 
   &:hover {
     opacity: 0.9;
-    color: white;
   }
+}
+
+.brand-mark {
+  display: block;
+}
+
+.brand-divider {
+  width: 1.5px;
+  height: 34px;
+  background: var(--color-text);
+}
+
+.brand-word {
+  font-family: 'Jost', var(--font-heading);
+  font-weight: 300;
+  font-size: 1.2rem;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--color-text);
 }
 
 // Navigation Links
@@ -84,19 +104,24 @@
 .nav-link {
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.95);
+  color: var(--color-text);
   text-decoration: none;
   padding: 0.5rem 1rem;
-  border-radius: 6px;
+  border-radius: var(--radius-full);
   cursor: pointer;
+  font-family: var(--font-heading);
   font-size: 0.95rem;
   font-weight: 500;
-  transition: all 0.2s;
+  transition: background-color 0.2s, color 0.2s;
   white-space: nowrap;
 
   &:hover {
-    background-color: rgba(255, 255, 255, 0.15);
-    color: white;
+    background-color: var(--color-primary-soft);
+    color: var(--color-primary);
+  }
+
+  &.router-link-active {
+    color: var(--color-primary);
   }
 }
 
@@ -119,8 +144,9 @@
   top: calc(100% + 0.5rem);
   left: 0;
   background: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
   min-width: 200px;
   padding: 0.5rem 0;
   opacity: 0;
@@ -144,7 +170,7 @@
 .dropdown-header {
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
-  color: #6c757d;
+  color: var(--color-text-light);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -154,7 +180,7 @@
   display: block;
   width: 100%;
   padding: 0.5rem 1rem;
-  color: #212529;
+  color: var(--color-text);
   text-decoration: none;
   background: none;
   border: none;
@@ -164,21 +190,21 @@
   font-size: 0.95rem;
 
   &:hover {
-    background-color: #f8f9fa;
+    background-color: var(--color-primary-soft);
   }
 
   &.text-danger {
-    color: #dc3545;
+    color: var(--color-danger);
 
     &:hover {
-      background-color: #fff5f5;
+      background-color: var(--color-danger-soft);
     }
   }
 }
 
 .dropdown-divider {
   height: 1px;
-  background-color: #e9ecef;
+  background-color: var(--color-border);
   margin: 0.5rem 0;
 }
 
@@ -195,11 +221,11 @@
   border: none;
   cursor: pointer;
   padding: 0.5rem;
-  border-radius: 8px;
+  border-radius: var(--radius-full);
   transition: background-color 0.2s;
 
   &:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: var(--color-primary-soft);
   }
 }
 
@@ -207,17 +233,18 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: white;
-  color: #0d6efd;
+  background: var(--color-primary);
+  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
+  font-family: var(--font-heading);
+  font-weight: 600;
   font-size: 1rem;
 }
 
 .user-name {
-  color: white;
+  color: var(--color-text);
   font-size: 0.95rem;
 }
 
@@ -242,8 +269,8 @@
     font-size: 0.9rem;
   }
 
-  .navbar-brand {
-    font-size: 1.25rem;
+  .brand-word {
+    font-size: 1rem;
   }
 
   .user-name {

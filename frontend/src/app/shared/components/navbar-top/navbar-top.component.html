@@ -1,7 +1,7 @@
 <nav class="navbar-top">
   <div class="navbar-container">
     <!-- Hamburger menu (mobile) -->
-    <button class="hamburger-button" (click)="toggleSidebar()" type="button" aria-label="Toggle sidebar">
+    <button class="hamburger-button" (click)="toggleSidebar()" type="button" aria-label="Abrir menú">
       <span class="hamburger-icon"></span>
       <span class="hamburger-icon"></span>
       <span class="hamburger-icon"></span>
@@ -10,7 +10,9 @@
     <!-- Logo -->
     <a [routerLink]="currentUser()?.role === 'student' ? '/student/dashboard' : '/teacher/dashboard'"
        class="navbar-brand">
-      🌎 SpanishNow
+      <img src="logo-mark.svg" alt="" class="brand-mark" width="44" height="42">
+      <span class="brand-divider" aria-hidden="true"></span>
+      <span class="brand-word">SPANISH<br>NOW</span>
     </a>
 
     <!-- Navigation Links -->

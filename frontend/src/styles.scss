@@ -1,562 +1,575 @@
-/* You can add global styles to this file, and also import other style files */
+/* ============================================
+   SPANISHNOW DESIGN SYSTEM
+   Cálido, claro y editorial. Paleta tomada del logo.
+   ============================================ */
 
-/* Importar Bootstrap desde node_modules */
+/* ---- Bootstrap: variables (antes del import) ---- */
+$primary: #c94a14; // naranja de marca oscurecido: texto blanco con contraste AA
+$secondary: #6b625b;
+$success: #2f7d4f;
+$info: #2f6f9f;
+$warning: #f5b942;
+$danger: #b3372f;
+$light: #fff8f1;
+$dark: #2b2b2b;
+
+$body-bg: #fff8f1;
+$body-color: #2b2b2b;
+$body-secondary-color: #6b625b;
+$border-color: #eadfd3;
+$link-color: #c94a14;
+$link-hover-color: #a53c0f;
+
+$font-family-sans-serif: 'Nunito Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+$headings-font-family: 'Poppins', 'Nunito Sans', sans-serif;
+$headings-font-weight: 600;
+$headings-color: #2b2b2b;
+$font-size-base: 1.0625rem; // 17px
+$line-height-base: 1.6;
+
+$border-radius: 0.75rem;
+$border-radius-sm: 0.5rem;
+$border-radius-lg: 1rem;
+$border-radius-pill: 50rem;
+
+$focus-ring-color: rgba(232, 99, 43, 0.35);
+$input-focus-border-color: #e8632b;
+$input-btn-focus-color: rgba(232, 99, 43, 0.25);
+
 @import '../node_modules/bootstrap/scss/bootstrap';
 
 /* ============================================
-   DUOLINGO-INSPIRED DESIGN SYSTEM
+   DESIGN TOKENS
+   Único punto de verdad: los componentes deben usar estas variables.
    ============================================ */
 
 :root {
-  /* Primary Colors - Duolingo Style */
-  --color-primary: #58CC02;
-  --color-primary-hover: #4CAF00;
-  --color-primary-dark: #3D8B00;
-  --color-primary-light: #89E219;
+  /* Marca (logo) */
+  --color-brand: #e8632b;
+  --color-coral: #e5544e;
+  --color-amber: #f5b942;
 
-  /* Secondary Colors */
-  --color-secondary: #1CB0F6;
-  --color-secondary-hover: #1899D6;
-  --color-secondary-dark: #1577B3;
+  /* Acción: naranja con contraste suficiente para texto blanco */
+  --color-primary: #c94a14;
+  --color-primary-hover: #a53c0f;
+  --color-primary-dark: #8a320d;
+  --color-primary-light: #fde6d8;
+  --color-primary-soft: #fff1e8;
 
-  /* Accent Colors */
-  --color-success: #58CC02;
-  --color-warning: #FFC800;
-  --color-danger: #FF4B4B;
-  --color-info: #1CB0F6;
-  --color-purple: #CE82FF;
+  /* Secundarios (alias mantenidos por compatibilidad) */
+  --color-secondary: #c93b35;
+  --color-secondary-hover: #ae302b;
+  --color-secondary-dark: #8f2622;
 
-  /* Neutral Colors */
-  --color-bg: #FFFFFF;
-  --color-bg-light: #F7F7F7;
-  --color-bg-dark: #E5E5E5;
-  --color-text: #3C3C3C;
-  --color-text-light: #777777;
-  --color-text-lighter: #AFAFAF;
-  --color-border: #E5E5E5;
+  /* Semánticos */
+  --color-success: #2f7d4f;
+  --color-success-soft: #e3f2e8;
+  --color-warning: #f5b942;
+  --color-warning-soft: #fff3d6;
+  --color-danger: #b3372f;
+  --color-danger-soft: #fbe6e3;
+  --color-info: #2f6f9f;
+  --color-info-soft: #e3eef7;
+  --color-purple: #8b5e9e;
 
-  /* Shadows - Layered like Duolingo */
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
-  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.15), 0 4px 8px rgba(0, 0, 0, 0.1);
-  --shadow-primary: 0 4px 0 var(--color-primary-dark);
-  --shadow-secondary: 0 4px 0 var(--color-secondary-dark);
-  --shadow-success: 0 4px 0 var(--color-primary-dark);
-  --shadow-warning: 0 4px 0 #CC9900;
-  --shadow-danger: 0 4px 0 #CC3333;
+  /* Neutros cálidos */
+  --color-bg: #ffffff;
+  --color-bg-light: #fff8f1; /* fondo de página (crema) */
+  --color-bg-dark: #f3e7da; /* arena */
+  --color-text: #2b2b2b;
+  --color-text-light: #6b625b;
+  --color-text-lighter: #8f857c;
+  --color-border: #eadfd3;
 
-  /* Border Radius - Very rounded like Duolingo */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
+  /* Sombras suaves y cálidas */
+  --shadow-sm: 0 1px 2px rgba(74, 40, 15, 0.06);
+  --shadow-md: 0 1px 2px rgba(74, 40, 15, 0.05), 0 6px 20px rgba(74, 40, 15, 0.07);
+  --shadow-lg: 0 2px 4px rgba(74, 40, 15, 0.06), 0 14px 32px rgba(74, 40, 15, 0.12);
+  --shadow-primary: 0 6px 16px rgba(201, 74, 20, 0.28);
+  --shadow-secondary: 0 6px 16px rgba(201, 59, 53, 0.25);
+  --shadow-success: 0 6px 16px rgba(47, 125, 79, 0.25);
+  --shadow-warning: 0 6px 16px rgba(245, 185, 66, 0.35);
+  --shadow-danger: 0 6px 16px rgba(179, 55, 47, 0.25);
+
+  /* Radios */
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
   --radius-full: 9999px;
 
-  /* Spacing */
+  /* Espaciado */
   --spacing-xs: 4px;
   --spacing-sm: 8px;
   --spacing-md: 16px;
   --spacing-lg: 24px;
   --spacing-xl: 32px;
 
-  /* Transitions */
+  /* Tipografía */
+  --font-heading: 'Poppins', 'Nunito Sans', sans-serif;
+  --font-body: 'Nunito Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-hand: 'Caveat', cursive;
+
+  /* Transiciones */
   --transition-fast: 150ms ease;
-  --transition-base: 250ms ease;
+  --transition-base: 220ms ease;
   --transition-slow: 350ms ease;
+
+  /* Bootstrap: alinear los colores de tema */
+  --bs-primary-rgb: 201, 74, 20;
 }
 
 /* ============================================
-   GLOBAL OVERRIDES
+   BASE
    ============================================ */
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  font-family: var(--font-body);
   background-color: var(--color-bg-light);
   color: var(--color-text);
-  font-weight: 500;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6,
+.h1, .h2, .h3, .h4, .h5, .h6 {
+  font-family: var(--font-heading);
+  letter-spacing: -0.01em;
+}
+
+.text-muted {
+  color: var(--color-text-light) !important;
+}
+
+:focus-visible {
+  outline: 3px solid rgba(232, 99, 43, 0.55);
+  outline-offset: 2px;
 }
 
 /* ============================================
-   BUTTONS - Duolingo Style
+   BOTONES: planos, redondeados, sin efecto 3D
    ============================================ */
 
 .btn {
-  border-radius: var(--radius-md);
-  font-weight: 700;
-  text-transform: none;
-  border: none;
-  transition: all var(--transition-base);
-  padding: 12px 24px;
-  font-size: 16px;
-  position: relative;
-  top: 0;
+  border-radius: var(--radius-full);
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 1rem;
+  padding: 0.7rem 1.6rem;
+  border: 2px solid transparent;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast),
+    box-shadow var(--transition-fast), transform var(--transition-fast), color var(--transition-fast);
 }
 
 .btn:active {
-  top: 4px;
+  transform: translateY(1px);
 }
 
 .btn-primary {
-  background-color: var(--color-primary);
-  color: white;
+  --bs-btn-bg: var(--color-primary);
+  --bs-btn-border-color: var(--color-primary);
+  --bs-btn-color: #fff;
+  --bs-btn-hover-bg: var(--color-primary-hover);
+  --bs-btn-hover-border-color: var(--color-primary-hover);
+  --bs-btn-hover-color: #fff;
+  --bs-btn-active-bg: var(--color-primary-dark);
+  --bs-btn-active-border-color: var(--color-primary-dark);
+  --bs-btn-active-color: #fff;
   box-shadow: var(--shadow-primary);
 }
 
 .btn-primary:hover {
-  background-color: var(--color-primary-hover);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-primary), var(--shadow-md);
-}
-
-.btn-primary:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 0 var(--color-primary-dark);
+  box-shadow: var(--shadow-primary);
+  transform: translateY(-1px);
 }
 
 .btn-secondary {
-  background-color: var(--color-secondary);
-  color: white;
-  box-shadow: var(--shadow-secondary);
-}
-
-.btn-secondary:hover {
-  background-color: var(--color-secondary-hover);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-secondary), var(--shadow-md);
+  --bs-btn-bg: var(--color-bg-dark);
+  --bs-btn-border-color: var(--color-bg-dark);
+  --bs-btn-color: var(--color-text);
+  --bs-btn-hover-bg: #ead9c6;
+  --bs-btn-hover-border-color: #ead9c6;
+  --bs-btn-hover-color: var(--color-text);
+  --bs-btn-active-bg: #e0cdb8;
+  --bs-btn-active-border-color: #e0cdb8;
+  --bs-btn-active-color: var(--color-text);
 }
 
 .btn-success {
-  background-color: var(--color-success);
-  color: white;
+  --bs-btn-bg: var(--color-success);
+  --bs-btn-border-color: var(--color-success);
+  --bs-btn-hover-bg: #256640;
+  --bs-btn-hover-border-color: #256640;
+  --bs-btn-active-bg: #1f5535;
+  --bs-btn-active-border-color: #1f5535;
+  --bs-btn-color: #fff;
+  --bs-btn-hover-color: #fff;
+  --bs-btn-active-color: #fff;
   box-shadow: var(--shadow-success);
 }
 
-.btn-success:hover {
-  background-color: var(--color-primary-hover);
-  transform: translateY(-2px);
-}
-
 .btn-warning {
-  background-color: var(--color-warning);
-  color: var(--color-text);
+  --bs-btn-bg: var(--color-warning);
+  --bs-btn-border-color: var(--color-warning);
+  --bs-btn-color: var(--color-text);
+  --bs-btn-hover-bg: #eba82a;
+  --bs-btn-hover-border-color: #eba82a;
+  --bs-btn-hover-color: var(--color-text);
+  --bs-btn-active-bg: #dd9a1f;
+  --bs-btn-active-border-color: #dd9a1f;
+  --bs-btn-active-color: var(--color-text);
   box-shadow: var(--shadow-warning);
 }
 
 .btn-danger {
-  background-color: var(--color-danger);
-  color: white;
+  --bs-btn-bg: var(--color-danger);
+  --bs-btn-border-color: var(--color-danger);
+  --bs-btn-hover-bg: #952d26;
+  --bs-btn-hover-border-color: #952d26;
+  --bs-btn-active-bg: #7d251f;
+  --bs-btn-active-border-color: #7d251f;
+  --bs-btn-color: #fff;
+  --bs-btn-hover-color: #fff;
+  --bs-btn-active-color: #fff;
   box-shadow: var(--shadow-danger);
 }
 
 .btn-outline-primary {
-  border: 3px solid var(--color-border);
-  color: var(--color-text);
-  background-color: white;
-  box-shadow: var(--shadow-sm);
-}
-
-.btn-outline-primary:hover {
-  border-color: var(--color-primary);
-  background-color: var(--color-primary-light);
-  color: white;
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  --bs-btn-color: var(--color-primary);
+  --bs-btn-border-color: var(--color-primary);
+  --bs-btn-bg: transparent;
+  --bs-btn-hover-bg: var(--color-primary);
+  --bs-btn-hover-border-color: var(--color-primary);
+  --bs-btn-hover-color: #fff;
+  --bs-btn-active-bg: var(--color-primary-hover);
+  --bs-btn-active-border-color: var(--color-primary-hover);
+  --bs-btn-active-color: #fff;
 }
 
 .btn-outline-secondary {
-  border: 3px solid var(--color-border);
-  color: var(--color-text);
-  background-color: white;
-}
-
-.btn-outline-secondary:hover {
-  border-color: var(--color-secondary);
-  background-color: var(--color-secondary);
-  color: white;
+  --bs-btn-color: var(--color-text);
+  --bs-btn-border-color: var(--color-border);
+  --bs-btn-bg: #fff;
+  --bs-btn-hover-bg: var(--color-bg-dark);
+  --bs-btn-hover-border-color: var(--color-bg-dark);
+  --bs-btn-hover-color: var(--color-text);
+  --bs-btn-active-bg: #ead9c6;
+  --bs-btn-active-border-color: #ead9c6;
+  --bs-btn-active-color: var(--color-text);
 }
 
 .btn-sm {
-  padding: 8px 16px;
-  font-size: 14px;
-  border-radius: var(--radius-sm);
+  padding: 0.4rem 1rem;
+  font-size: 0.9rem;
 }
 
 .btn-lg {
-  padding: 16px 32px;
-  font-size: 18px;
-  border-radius: var(--radius-lg);
+  padding: 0.9rem 2rem;
+  font-size: 1.1rem;
+}
+
+.btn:disabled,
+.btn.disabled {
+  box-shadow: none;
+  opacity: 0.55;
 }
 
 /* ============================================
-   CARDS - Rounded and Elevated
+   TARJETAS: blancas, sombra difusa, sin cabecera de color
    ============================================ */
 
 .card {
+  --bs-card-border-width: 0;
+  --bs-card-border-radius: var(--radius-lg);
+  --bs-card-inner-border-radius: var(--radius-lg);
+  --bs-card-cap-bg: transparent;
+  border: 0;
   border-radius: var(--radius-lg);
-  border: none;
   box-shadow: var(--shadow-md);
   overflow: hidden;
-  background-color: white;
-  transition: all var(--transition-base);
-}
-
-.card:hover {
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-2px);
+  background-color: var(--color-bg);
 }
 
 .card-header {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
-  border: none;
-  padding: var(--spacing-lg);
-  font-weight: 700;
-  font-size: 18px;
+  background: transparent;
+  border: 0;
+  padding: var(--spacing-lg) var(--spacing-lg) 0;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 1.15rem;
+  color: var(--color-text);
 }
 
 .card-body {
   padding: var(--spacing-lg);
 }
 
-/* ============================================
-   CONTRAST FIX - White text on green backgrounds
-   ============================================ */
-
-/* Card headers with green backgrounds */
-.card-header {
-  color: white !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+/* Tarjeta interactiva: elevación solo al pasar el cursor cuando se pide */
+.card-interactive {
+  transition: box-shadow var(--transition-base), transform var(--transition-base);
+  cursor: pointer;
 }
 
-/* Ensure all children of card-header are also white */
-.card-header h1,
-.card-header h2,
-.card-header h3,
-.card-header h4,
-.card-header h5,
-.card-header h6,
-.card-header p,
-.card-header span,
-.card-header a {
-  color: white !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+.card-interactive:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
 }
 
-/* Modal headers with green backgrounds */
-.modal-header {
-  color: white !important;
+/* Cabeceras de color (se conservan para usos explícitos con bg-*) */
+.card-header.bg-primary,
+.card-header.bg-success,
+.card-header.bg-info,
+.card-header.bg-danger,
+.modal-header.bg-primary {
+  color: #fff;
+  padding: var(--spacing-md) var(--spacing-lg);
 }
 
-.modal-header .modal-title {
-  color: white !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-}
-
-/* Bootstrap bg-primary and bg-success utilities */
-.bg-primary,
-.bg-success {
-  color: white !important;
-}
-
-.bg-primary h1, .bg-primary h2, .bg-primary h3,
-.bg-primary h4, .bg-primary h5, .bg-primary h6,
-.bg-primary p, .bg-primary span, .bg-primary a,
-.bg-success h1, .bg-success h2, .bg-success h3,
-.bg-success h4, .bg-success h5, .bg-success h6,
-.bg-success p, .bg-success span, .bg-success a {
-  color: white !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
-}
-
-/* Badges with green backgrounds */
-.badge.bg-success,
-.badge.bg-primary {
-  color: white !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
-}
-
-/* Button text shadows for better readability */
-.btn-primary,
-.btn-success {
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-/* Progress bars text (if any) */
-.progress-bar {
-  color: white !important;
-}
-
-/* List group items with success background */
-.list-group-item-success {
-  color: var(--color-text) !important;
+.card-header.bg-primary h1, .card-header.bg-primary h2, .card-header.bg-primary h3,
+.card-header.bg-primary h4, .card-header.bg-primary h5, .card-header.bg-primary h6,
+.card-header.bg-success h1, .card-header.bg-success h2, .card-header.bg-success h3,
+.card-header.bg-success h4, .card-header.bg-success h5, .card-header.bg-success h6 {
+  color: #fff;
 }
 
 /* ============================================
-   BADGES - Rounded Pills
+   BADGES: píldoras suaves
    ============================================ */
 
 .badge {
   border-radius: var(--radius-full);
-  padding: 6px 14px;
-  font-weight: 700;
-  font-size: 13px;
-  letter-spacing: 0.3px;
-}
-
-.badge.bg-success {
-  background-color: var(--color-success) !important;
-  box-shadow: 0 2px 4px rgba(88, 204, 2, 0.3);
+  padding: 0.4em 0.9em;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
 }
 
 .badge.bg-warning {
-  background-color: var(--color-warning) !important;
   color: var(--color-text) !important;
-  box-shadow: 0 2px 4px rgba(255, 200, 0, 0.3);
-}
-
-.badge.bg-primary {
-  background-color: var(--color-primary) !important;
-  box-shadow: 0 2px 4px rgba(88, 204, 2, 0.3);
-}
-
-.badge.bg-info {
-  background-color: var(--color-info) !important;
-  box-shadow: 0 2px 4px rgba(28, 176, 246, 0.3);
 }
 
 /* ============================================
-   PROGRESS BARS - Rounded
+   PROGRESO
    ============================================ */
 
 .progress {
+  --bs-progress-height: 0.75rem;
+  --bs-progress-bg: var(--color-bg-dark);
+  --bs-progress-border-radius: var(--radius-full);
+  height: 0.75rem;
   border-radius: var(--radius-full);
   background-color: var(--color-bg-dark);
-  height: 16px !important;
-  overflow: visible;
 }
 
 .progress-bar {
   border-radius: var(--radius-full);
-  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+  background: linear-gradient(90deg, var(--color-amber) 0%, var(--color-brand) 100%);
+  color: var(--color-text);
   transition: width var(--transition-slow);
-  position: relative;
-  overflow: visible;
-}
-
-.progress-bar::after {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 4px;
-  right: 4px;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: var(--radius-full);
 }
 
 /* ============================================
-   FORMS - Rounded Inputs
+   FORMULARIOS
    ============================================ */
 
 .form-control,
 .form-select {
   border-radius: var(--radius-md);
-  border: 2px solid var(--color-border);
-  padding: 12px 16px;
-  font-size: 16px;
-  transition: all var(--transition-fast);
-  font-weight: 500;
+  border: 1.5px solid var(--color-border);
+  padding: 0.7rem 1rem;
+  font-size: 1rem;
+  background-color: #fff;
+  color: var(--color-text);
 }
 
 .form-control:focus,
 .form-select:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(88, 204, 2, 0.1);
-  outline: none;
+  border-color: var(--color-brand);
+  box-shadow: 0 0 0 4px rgba(232, 99, 43, 0.15);
 }
 
 .form-label {
   font-weight: 700;
   color: var(--color-text);
-  margin-bottom: var(--spacing-sm);
+  margin-bottom: 0.4rem;
+}
+
+.form-check-input:checked {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
 }
 
 /* ============================================
-   LIST GROUPS - Rounded Items
+   LISTAS
    ============================================ */
 
 .list-group {
+  --bs-list-group-border-color: var(--color-border);
   border-radius: var(--radius-md);
 }
 
 .list-group-item {
-  border: none;
-  border-bottom: 2px solid var(--color-border);
-  padding: var(--spacing-md);
-  transition: all var(--transition-fast);
-  font-weight: 500;
-}
-
-.list-group-item:last-child {
-  border-bottom: none;
-}
-
-.list-group-item:hover {
-  background-color: var(--color-bg-light);
-  transform: translateX(4px);
+  padding: 0.9rem 1.1rem;
+  border-color: var(--color-border);
 }
 
 .list-group-item.active {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
-  border: none;
+  background-color: var(--color-primary-soft);
+  border-color: var(--color-border);
+  color: var(--color-primary-dark);
   font-weight: 700;
-  box-shadow: var(--shadow-md);
+}
+
+.list-group-item-action:hover {
+  background-color: var(--color-primary-soft);
 }
 
 .list-group-item-success {
-  background-color: rgba(88, 204, 2, 0.1);
+  background-color: var(--color-success-soft);
   border-left: 4px solid var(--color-success);
+  color: var(--color-text);
 }
 
 /* ============================================
-   ALERTS - Rounded and Colorful
+   ALERTAS: fondo suave, sin degradados
    ============================================ */
 
 .alert {
-  border-radius: var(--radius-lg);
-  border: none;
-  padding: var(--spacing-lg);
+  border: 0;
+  border-left: 4px solid transparent;
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
   font-weight: 600;
-  box-shadow: var(--shadow-sm);
 }
 
-.alert-success {
-  background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
-  color: var(--color-primary-dark);
-}
-
-.alert-warning {
-  background: linear-gradient(135deg, #FFF9E6 0%, #FFECB3 100%);
-  color: #CC9900;
-}
-
-.alert-danger {
-  background: linear-gradient(135deg, #FFEBEE 0%, #FFCDD2 100%);
-  color: #CC3333;
-}
-
-.alert-info {
-  background: linear-gradient(135deg, #E1F5FE 0%, #B3E5FC 100%);
-  color: var(--color-secondary-dark);
-}
+.alert-success { background: var(--color-success-soft); border-left-color: var(--color-success); color: #1f5535; }
+.alert-warning { background: var(--color-warning-soft); border-left-color: var(--color-warning); color: #6b4a00; }
+.alert-danger  { background: var(--color-danger-soft);  border-left-color: var(--color-danger);  color: #7d251f; }
+.alert-info    { background: var(--color-info-soft);    border-left-color: var(--color-info);    color: #1f4f73; }
 
 /* ============================================
-   MODALS - Rounded and Elevated
+   MODALES
    ============================================ */
 
 .modal-content {
+  border: 0;
   border-radius: var(--radius-xl);
-  border: none;
   box-shadow: var(--shadow-lg);
   overflow: hidden;
 }
 
 .modal-header {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
-  border: none;
-  padding: var(--spacing-lg) var(--spacing-xl);
+  background: transparent;
+  border: 0;
+  padding: var(--spacing-lg) var(--spacing-xl) var(--spacing-sm);
 }
 
 .modal-header .modal-title {
-  font-weight: 700;
-  font-size: 22px;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 1.35rem;
+  color: var(--color-text);
 }
 
 .modal-body {
-  padding: var(--spacing-xl);
+  padding: var(--spacing-md) var(--spacing-xl);
 }
 
 .modal-footer {
-  border: none;
-  padding: var(--spacing-lg) var(--spacing-xl);
-  background-color: var(--color-bg-light);
+  border: 0;
+  padding: var(--spacing-md) var(--spacing-xl) var(--spacing-lg);
+  background: transparent;
 }
 
 /* ============================================
-   NAVBAR - Modern and Clean
+   COMPONENTES DEL SISTEMA (usar en las pantallas nuevas)
    ============================================ */
 
-.navbar {
+/* Superficie: tarjeta plana con sombra suave */
+.surface {
+  background: var(--color-bg);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
-  background: white !important;
-  padding: var(--spacing-md) var(--spacing-lg);
+  padding: var(--spacing-lg);
 }
 
-.navbar-brand {
-  font-weight: 800;
-  font-size: 24px;
-  color: var(--color-primary) !important;
+/* Icono en cuadrado redondeado de color */
+.icon-tile {
+  --tile-color: var(--color-brand);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-md);
+  background: var(--tile-color);
+  color: #fff;
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.icon-tile--coral { --tile-color: var(--color-coral); }
+.icon-tile--amber { --tile-color: var(--color-amber); color: var(--color-text); }
+.icon-tile--green { --tile-color: var(--color-success); }
+
+/* Tarjetas pastel por nivel */
+.tone-amber { background: linear-gradient(135deg, #fff3d6 0%, #fde4a3 100%); }
+.tone-coral { background: linear-gradient(135deg, #fde8e4 0%, #fbcfc8 100%); }
+.tone-sand  { background: linear-gradient(135deg, #fff8f1 0%, #f3e7da 100%); }
+
+/* Texto manuscrito de acento */
+.hand {
+  font-family: var(--font-hand);
+  font-size: 1.4em;
+  line-height: 1.1;
+}
+
+/* Enlace tipo "Ver todos →" */
+.link-arrow {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.link-arrow:hover {
+  color: var(--color-primary-hover);
+  text-decoration: underline;
 }
 
 /* ============================================
-   UTILITIES
+   UTILIDADES
    ============================================ */
 
-.rounded-pill {
-  border-radius: var(--radius-full) !important;
-}
-
-.rounded-lg {
-  border-radius: var(--radius-lg) !important;
-}
-
-.shadow-duo {
-  box-shadow: var(--shadow-md);
-}
-
-.shadow-duo-lg {
-  box-shadow: var(--shadow-lg);
-}
-
-/* Smooth transitions for everything */
-* {
-  transition: background-color var(--transition-fast),
-              border-color var(--transition-fast),
-              color var(--transition-fast);
-}
-
-/* Remove transitions for position and transform to avoid conflicts */
-button, a, .card {
-  transition: all var(--transition-base);
-}
+.rounded-pill { border-radius: var(--radius-full) !important; }
+.rounded-lg { border-radius: var(--radius-lg) !important; }
+.shadow-soft { box-shadow: var(--shadow-md); }
+.shadow-soft-lg { box-shadow: var(--shadow-lg); }
 
 /* ============================================
-   MODAL CLOSE BUTTON FIX
+   BOTÓN CERRAR (modales)
    ============================================ */
 
 .btn-close {
-  background: transparent url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23000'%3e%3cpath d='M.293.293a1 1 0 011.414 0L8 6.586 14.293.293a1 1 0 111.414 1.414L9.414 8l6.293 6.293a1 1 0 01-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 01-1.414-1.414L6.586 8 .293 1.707a1 1 0 010-1.414z'/%3e%3c/svg%3e") center/1em auto no-repeat !important;
-  border: 0 !important;
-  border-radius: var(--radius-sm) !important;
-  opacity: 0.7 !important;
-  width: 1em !important;
-  height: 1em !important;
-  padding: 0.5em !important;
-  box-shadow: none !important;
-  position: relative !important;
-  top: 0 !important;
+  border-radius: var(--radius-sm);
+  opacity: 0.6;
+  transform: none !important;
 }
 
 .btn-close:hover {
-  opacity: 1 !important;
-  background-color: rgba(0, 0, 0, 0.1) !important;
-  transform: none !important;
-}
-
-.btn-close:active {
-  top: 0 !important;
-  transform: none !important;
+  opacity: 1;
+  background-color: rgba(74, 40, 15, 0.08);
 }
 
 .btn-close-white {
-  filter: invert(1) grayscale(100%) brightness(200%) !important;
+  filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }

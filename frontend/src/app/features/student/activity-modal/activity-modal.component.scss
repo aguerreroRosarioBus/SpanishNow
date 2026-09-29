@@ -8,24 +8,13 @@
   animation: slideUp 0.3s ease-out;
 }
 
-.modal-content {
-  border: none;
-  border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-}
-
-.modal-header {
-  border-top-left-radius: 12px;
-  border-top-right-radius: 12px;
-  padding: 1.25rem 1.5rem;
-}
 
 .modal-body {
   padding: 2rem 1.5rem;
 }
 
 .progress {
-  background-color: #e9ecef;
+  background-color: var(--color-bg-dark);
   border-radius: 8px;
   overflow: hidden;
 
@@ -35,9 +24,8 @@
 }
 
 .card {
-  border-width: 2px;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1.5px solid var(--color-border);
+  box-shadow: none;
 
   .card-body {
     padding: 2rem;
@@ -45,25 +33,9 @@
 
   .card-title {
     font-size: 1.25rem;
-    font-weight: 500;
-    color: #2c3e50;
+    font-weight: 600;
+    color: var(--color-text);
     line-height: 1.6;
-  }
-}
-
-.btn {
-  font-weight: 500;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-
-  &:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  }
-
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.6;
   }
 }
 
@@ -72,55 +44,21 @@
   font-size: 1.1rem;
 }
 
-.btn-outline-primary {
-  border-width: 2px;
-
-  &:hover:not(:disabled) {
-    background-color: #0d6efd;
-    border-color: #0d6efd;
-    color: white;
-  }
-}
-
-.btn-primary {
-  background-color: #0d6efd;
-  border-color: #0d6efd;
-  color: white;
-}
-
-.btn-success {
-  background-color: #198754;
-  border-color: #198754;
-  color: white;
-}
-
-.btn-danger {
-  background-color: #dc3545;
-  border-color: #dc3545;
-  color: white;
-}
-
-.btn-outline-secondary {
-  border-width: 2px;
-}
 
 .alert {
-  border-radius: 8px;
-  border: none;
-
   &.alert-success {
-    background-color: #d1e7dd;
-    color: #0f5132;
+    background-color: var(--color-success-soft);
+    color: #1f5535;
   }
 
   &.alert-danger {
-    background-color: #f8d7da;
-    color: #842029;
+    background-color: var(--color-danger-soft);
+    color: #7d251f;
   }
 
   &.alert-warning {
-    background-color: #fff3cd;
-    color: #664d03;
+    background-color: var(--color-warning-soft);
+    color: #6b4a00;
   }
 }
 

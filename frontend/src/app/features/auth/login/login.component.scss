@@ -1,1 +1,53 @@
-// Sin estilos custom por ahora - solo Bootstrap
+// Pantalla de acceso: fondo cálido y tarjeta centrada con el sello del logo
+:host {
+  display: block;
+  min-height: 100%;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(245, 185, 66, 0.22), transparent 42%),
+    radial-gradient(circle at 92% 90%, rgba(229, 84, 78, 0.14), transparent 40%),
+    var(--color-bg-light);
+}
+
+.card {
+  position: relative;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  margin-top: 2.5rem;
+  overflow: visible;
+}
+
+// Sello del logo sobresaliendo de la tarjeta (solo decoración)
+.card::before {
+  content: '';
+  position: absolute;
+  top: -34px;
+  left: 50%;
+  width: 72px;
+  height: 68px;
+  transform: translateX(-50%);
+  background: url('/logo-mark.svg') center / contain no-repeat;
+  filter: drop-shadow(0 6px 10px rgba(74, 40, 15, 0.2));
+}
+
+.card-body {
+  padding: 3rem 2.25rem 2.25rem !important;
+}
+
+h2 {
+  font-size: 1.8rem;
+  letter-spacing: 0.02em;
+}
+
+.btn-primary {
+  padding: 0.8rem;
+}
+
+a {
+  color: var(--color-primary);
+  font-weight: 600;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
