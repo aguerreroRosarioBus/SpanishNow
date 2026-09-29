@@ -207,11 +207,13 @@
                   </div>
                   <div *ngSwitchCase="'full_story'">
                     <h5 class="mt-2">Historia completa</h5>
-                    <div class="btn-group btn-group-sm mb-3" role="group" aria-label="Velocidad de audio">
-                      <button class="btn" [class.btn-primary]="currentSpeed() === 'slow'" [class.btn-outline-secondary]="currentSpeed() !== 'slow'" (click)="switchLessonAudioSpeed('slow')">Lento</button>
-                      <button class="btn" [class.btn-primary]="currentSpeed() === 'normal'" [class.btn-outline-secondary]="currentSpeed() !== 'normal'" (click)="switchLessonAudioSpeed('normal')">Normal</button>
+                    <div class="d-flex flex-wrap align-items-center gap-3 mb-3 audio-controls">
+                      <div class="btn-group btn-group-sm" role="group" aria-label="Velocidad de audio">
+                        <button class="btn" [class.btn-primary]="currentSpeed() === 'slow'" [class.btn-outline-secondary]="currentSpeed() !== 'slow'" (click)="switchLessonAudioSpeed('slow')">Lento</button>
+                        <button class="btn" [class.btn-primary]="currentSpeed() === 'normal'" [class.btn-outline-secondary]="currentSpeed() !== 'normal'" (click)="switchLessonAudioSpeed('normal')">Normal</button>
+                      </div>
+                      <button class="btn btn-outline-primary btn-sm" (click)="toggleLessonAudio()" [disabled]="!lessonAudioUrl()">{{ isPlaying() ? 'Pausar audio' : 'Reproducir audio' }}</button>
                     </div>
-                    <button class="btn btn-outline-primary btn-sm ms-2" (click)="toggleLessonAudio()" [disabled]="!lessonAudioUrl()">{{ isPlaying() ? 'Pausar audio' : 'Reproducir audio' }}</button>
                     <div class="story-text mt-3">
                       <app-tooltip-display [targetType]="'story'" [targetId]="lesson.story.id" [text]="lesson.story.fullStoryText" />
                     </div>

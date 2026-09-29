@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterOutlet, Router, NavigationEnd } from '@angular/router';
+import { RouterOutlet, RouterLink, Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { NavbarTopComponent } from '../navbar-top/navbar-top.component';
 import { SidebarNavComponent } from '../sidebar-nav/sidebar-nav.component';
@@ -8,12 +8,13 @@ import { SidebarNavComponent } from '../sidebar-nav/sidebar-nav.component';
 @Component({
   selector: 'app-layout',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, NavbarTopComponent, SidebarNavComponent],
+  imports: [CommonModule, RouterOutlet, RouterLink, NavbarTopComponent, SidebarNavComponent],
   templateUrl: './layout.component.html',
   styleUrl: './layout.component.scss'
 })
 export class LayoutComponent {
   private router = inject(Router);
+  readonly year = new Date().getFullYear();
   showSidebar = signal<boolean>(true);
   sidebarOpen = signal<boolean>(false);
 

@@ -158,8 +158,10 @@ h1, h2, h3, h4, h5, h6,
   border-radius: var(--radius-full);
   font-family: var(--font-heading);
   font-weight: 600;
-  font-size: 1rem;
-  padding: 0.7rem 1.6rem;
+  // Tamaños vía variables de Bootstrap para que .btn-sm/.btn-lg y .btn-group-sm respeten la escala
+  --bs-btn-padding-y: 0.7rem;
+  --bs-btn-padding-x: 1.6rem;
+  --bs-btn-font-size: 1rem;
   --bs-btn-border-width: 2px;
   transition: background-color var(--transition-fast), border-color var(--transition-fast),
     box-shadow var(--transition-fast), transform var(--transition-fast), color var(--transition-fast);
@@ -262,14 +264,29 @@ h1, h2, h3, h4, h5, h6,
   --bs-btn-active-color: var(--color-text);
 }
 
-.btn-sm {
-  padding: 0.4rem 1rem;
-  font-size: 0.9rem;
+.btn-sm,
+.btn-group-sm > .btn {
+  --bs-btn-padding-y: 0.4rem;
+  --bs-btn-padding-x: 1rem;
+  --bs-btn-font-size: 0.9rem;
 }
 
-.btn-lg {
-  padding: 0.9rem 2rem;
-  font-size: 1.1rem;
+.btn-lg,
+.btn-group-lg > .btn {
+  --bs-btn-padding-y: 0.9rem;
+  --bs-btn-padding-x: 2rem;
+  --bs-btn-font-size: 1.1rem;
+}
+
+// Grupo segmentado (p. ej. Lento / Normal): bordes unidos, extremos redondeados
+.btn-group > .btn:not(:first-child) {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.btn-group > .btn:not(:last-child) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 .btn:disabled,

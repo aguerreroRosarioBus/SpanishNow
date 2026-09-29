@@ -11,6 +11,20 @@
       <div class="content-wrapper">
         <router-outlet></router-outlet>
       </div>
+
+      <footer class="app-footer">
+        <div class="footer-inner">
+          <a class="footer-brand" routerLink="/">
+            <img src="logo-mark.svg" alt="" width="28" height="27">
+            <span>SpanishNow</span>
+          </a>
+          <nav class="footer-links" aria-label="Enlaces del sitio">
+            <a routerLink="/about">Acerca de</a>
+            <a routerLink="/contact">Contacto</a>
+          </nav>
+          <small class="footer-copy">© {{ year }} SpanishNow. Aprende español a tu ritmo.</small>
+        </div>
+      </footer>
     </main>
   </div>
 
