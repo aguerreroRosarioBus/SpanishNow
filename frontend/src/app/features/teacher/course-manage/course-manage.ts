@@ -14,11 +14,12 @@ import { ToastService } from '../../../core/services/toast.service';
 import { Course, Unit, Story, Question, Vocabulary, RepetitionActivity, ActivityConfig } from '../../../core/models/course.model';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { TooltipEditorComponent } from '../../../shared/components/tooltip-editor/tooltip-editor.component';
+import { LessonComposerComponent } from '../lesson-composer/lesson-composer.component';
 
 @Component({
   selector: 'app-course-manage',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, ConfirmDialogComponent, TooltipEditorComponent],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, ConfirmDialogComponent, TooltipEditorComponent, LessonComposerComponent],
   templateUrl: './course-manage.html',
   styleUrl: './course-manage.scss',
 })
@@ -38,6 +39,8 @@ export class CourseManageComponent implements OnInit {
   courseId = signal<number>(0);
   course = signal<Course | null>(null);
   units = signal<Unit[]>([]);
+  lessonComposerStory = signal<Story | null>(null);
+  lessonComposerUnit = signal<Unit | null>(null);
 
   isLoading = signal<boolean>(false);
   errorMessage = signal<string>('');
@@ -207,6 +210,30 @@ export class CourseManageComponent implements OnInit {
     } else {
       this.router.navigate(['/teacher/dashboard']);
     }
+  }
+
+  openLessonComposer(story: Story, unit: Unit): void {
+    this.lessonComposerStory.set(story);
+    this.lessonComposerUnit.set(unit);
+  }
+
+  closeLessonComposer(): void {
+    this.lessonComposerStory.set(null);
+    this.lessonComposerUnit.set(null);
+  }
+
+  manageQuestionsFromComposer(): void {
+    const story = this.lessonComposerStory();
+    if (!story) return;
+    this.closeLessonComposer();
+    this.openQuestionModal(story);
+  }
+
+  manageVocabularyFromComposer(): void {
+    const unit = this.lessonComposerUnit();
+    if (!unit) return;
+    this.closeLessonComposer();
+    this.openVocabularyModal(unit);
   }
 
   // Confirm Dialog Helper

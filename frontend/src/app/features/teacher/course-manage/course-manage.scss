@@ -16,12 +16,24 @@
   }
 }
 
-// Unit header hover effect
-.card-header {
-  transition: all 0.2s ease;
+// Cabeceras de unidad: sobrias en el modo docente (arena en lugar de naranja sólido)
+.card-header.bg-primary {
+  background-color: var(--color-primary-soft) !important;
+  color: var(--color-text) !important;
+  border-bottom: 1px solid var(--color-border);
+  transition: background-color 0.2s ease;
 
   &:hover {
-    filter: brightness(1.1);
+    background-color: var(--color-primary-light) !important;
+  }
+
+  h1, h2, h3, h4, h5, h6, small, span, p {
+    color: var(--color-text) !important;
+  }
+
+  .text-white-50,
+  .text-white {
+    color: var(--color-text-light) !important;
   }
 }
 

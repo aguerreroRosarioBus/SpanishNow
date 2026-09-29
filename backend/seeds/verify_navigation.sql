@@ -1,20 +1,9 @@
--- Verify navigation order for all units
-
-SELECT
-    CONCAT('Unit ', unitId) as Unit,
-    'Story' as Type,
-    id as ID,
-    title as Name,
-    `order` as OrderNum
-FROM stories
-WHERE courseId = 1
-UNION ALL
-SELECT
-    CONCAT('Unit ', unitId) as Unit,
-    'Activity' as Type,
-    id as ID,
-    activityType as Name,
-    `order` as OrderNum
-FROM activity_configs
-WHERE unitId IN (SELECT id FROM units WHERE courseId = 1)
-ORDER BY Unit, OrderNum;
+-- Story-level navigation audit. Activities are reported within their story.
+SELECT u.id AS unitId, u.title AS unitTitle, s.id AS storyId,
+       s.title AS storyTitle, s.`order` AS storyOrder,
+       ac.activityType, ac.`order` AS activityOrder, ac.isEnabled
+FROM units u
+JOIN stories s ON s.unitId = u.id
+LEFT JOIN activity_configs ac ON ac.storyId = s.id
+WHERE u.courseId = 1
+ORDER BY u.`order`, s.`order`, ac.`order`;

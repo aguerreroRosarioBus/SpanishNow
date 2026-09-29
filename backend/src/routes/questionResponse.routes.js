@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authMiddleware } = require('../middlewares/auth.middleware');
-const { QuestionResponse, Question, Progress, Enrollment } = require('../models');
+const { QuestionResponse, Question, Progress, Enrollment, Story, Unit } = require('../models');
 const { Op } = require('sequelize');
 
 // Helper function to normalize text for comparison (case-insensitive, accent-insensitive)
@@ -30,7 +30,7 @@ router.post('/submit', authMiddleware, async (req, res) => {
       include: [{
         model: Enrollment,
         as: 'enrollment',
-        attributes: ['id', 'studentId']
+        attributes: ['id', 'studentId', 'courseId']
       }]
     });
 
@@ -43,9 +43,16 @@ router.post('/submit', authMiddleware, async (req, res) => {
     }
 
     // Get all questions for validation
-    const questionIds = responses.map(r => r.questionId);
+    const questionIds = responses.map(r => r && r.questionId);
+    if (new Set(questionIds.map(Number)).size !== questionIds.length || responses.some(r => !r || !Number.isInteger(Number(r.questionId)) || typeof r.studentAnswer !== 'string' || !r.studentAnswer.trim() || r.studentAnswer.length > 200)) {
+      return res.status(400).json({ error: 'Invalid or duplicate question response' });
+    }
+    const story = await Story.findByPk(progress.storyId, { include: [{ model: Unit, as: 'unit' }] });
+    if (!story || story.unit.courseId !== progress.enrollment.courseId) {
+      return res.status(403).json({ error: 'Progress does not belong to the enrolled course' });
+    }
     const questions = await Question.findAll({
-      where: { id: { [Op.in]: questionIds } }
+      where: { id: { [Op.in]: questionIds }, storyId: progress.storyId }
     });
 
     if (questions.length !== questionIds.length) {
@@ -68,7 +75,7 @@ router.post('/submit', authMiddleware, async (req, res) => {
         });
       }
 
-      const question = questionMap.get(questionId);
+      const question = questionMap.get(Number(questionId));
       if (!question) {
         return res.status(400).json({ error: `Question ${questionId} not found` });
       }
@@ -101,13 +108,13 @@ router.post('/submit', authMiddleware, async (req, res) => {
 
     // Update progress if all answers are correct
     if (allCorrect) {
-      await progress.update({ activitiesCompleted: true });
+      await progress.update({ questionsCompleted: true });
     }
 
     res.json({
       results,
       allCorrect,
-      activitiesCompleted: allCorrect
+      questionsCompleted: allCorrect
     });
   } catch (error) {
     console.error('Error submitting responses:', error);

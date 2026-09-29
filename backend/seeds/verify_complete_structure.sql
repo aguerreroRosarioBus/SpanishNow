@@ -25,7 +25,8 @@ SELECT
     ac.`order` as actOrder,
     ac.requiredStoryIds
 FROM units u
-LEFT JOIN activity_configs ac ON u.id = ac.unitId
+LEFT JOIN stories s ON s.unitId = u.id
+LEFT JOIN activity_configs ac ON s.id = ac.storyId
 WHERE u.courseId = 1
 ORDER BY u.`order`, ac.`order`;
 
@@ -33,21 +34,21 @@ ORDER BY u.`order`, ac.`order`;
 SELECT '=== UNIT 1 NAVIGATION ===' as info;
 SELECT 'Story' as type, id, title as name, `order` FROM stories WHERE unitId = 1
 UNION ALL
-SELECT 'Activity' as type, id, activityType as name, `order` FROM activity_configs WHERE unitId = 1
+SELECT 'Activity' as type, id, activityType as name, `order` FROM activity_configs WHERE storyId IN (SELECT id FROM stories WHERE unitId = 1)
 ORDER BY `order`;
 
 -- Navigation order for Unit 2
 SELECT '=== UNIT 2 NAVIGATION ===' as info;
 SELECT 'Story' as type, id, title as name, `order` FROM stories WHERE unitId = 2
 UNION ALL
-SELECT 'Activity' as type, id, activityType as name, `order` FROM activity_configs WHERE unitId = 2
+SELECT 'Activity' as type, id, activityType as name, `order` FROM activity_configs WHERE storyId IN (SELECT id FROM stories WHERE unitId = 2)
 ORDER BY `order`;
 
 -- Navigation order for Unit 3
 SELECT '=== UNIT 3 NAVIGATION ===' as info;
 SELECT 'Story' as type, id, title as name, `order` FROM stories WHERE unitId = 3
 UNION ALL
-SELECT 'Activity' as type, id, activityType as name, `order` FROM activity_configs WHERE unitId = 3
+SELECT 'Activity' as type, id, activityType as name, `order` FROM activity_configs WHERE storyId IN (SELECT id FROM stories WHERE unitId = 3)
 ORDER BY `order`;
 
 -- Enrollment info

@@ -175,6 +175,12 @@
                           <h6 class="text-secondary mb-3">📝 CONTENIDO</h6>
                           <div class="d-flex gap-2 flex-wrap">
                             <button
+                              class="btn btn-sm btn-primary"
+                              (click)="openLessonComposer(story, unit); $event.stopPropagation()"
+                            >
+                              🧩 Componer lección TPRS
+                            </button>
+                            <button
                               class="btn btn-sm btn-outline-secondary"
                               (click)="openEditStoryModal(story, unit.id); $event.stopPropagation()"
                             >
@@ -1448,3 +1454,13 @@
   (confirmed)="onConfirmDialogConfirmed()"
   (cancelled)="closeConfirmDialog()"
 ></app-confirm-dialog>
+
+<app-lesson-composer
+  *ngIf="lessonComposerStory() && lessonComposerUnit()"
+  [story]="lessonComposerStory()!"
+  [unit]="lessonComposerUnit()!"
+  [courseUnits]="units()"
+  (closed)="closeLessonComposer()"
+  (manageQuestions)="manageQuestionsFromComposer()"
+  (manageVocabulary)="manageVocabularyFromComposer()"
+></app-lesson-composer>

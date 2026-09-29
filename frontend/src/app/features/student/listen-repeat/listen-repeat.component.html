@@ -151,8 +151,16 @@
       </button>
 
       <button
+        *ngIf="currentIndex() === totalActivities - 1"
         class="btn btn-lg btn-primary"
-        [disabled]="currentIndex() >= totalActivities - 1"
+        [disabled]="completedCount !== totalActivities"
+        (click)="checkCompletion()"
+      >
+        Finalizar actividad
+      </button>
+      <button
+        *ngIf="currentIndex() < totalActivities - 1"
+        class="btn btn-lg btn-primary"
         (click)="nextActivity()"
       >
         Siguiente →

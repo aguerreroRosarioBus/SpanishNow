@@ -8,7 +8,8 @@ export class NavigationService {
   buildNavigationItems(
     unit: Unit,
     progressRecords: Progress[],
-    enrollment: Enrollment
+    enrollment: Enrollment,
+    lessonCompletedStoryIds: ReadonlySet<number> = new Set()
   ): NavigationItem[] {
     const items: NavigationItem[] = [];
 
@@ -18,9 +19,10 @@ export class NavigationService {
     }
 
     // Create map of completed story IDs for quick lookup
-    const completedStoryIds = new Set(
-      (progressRecords || []).filter(p => p.completed).map(p => p.storyId)
-    );
+    const completedStoryIds = new Set<number>([
+      ...(progressRecords || []).filter(p => p.completed).map(p => p.storyId),
+      ...lessonCompletedStoryIds
+    ]);
 
     // For each story, add: Story + its activities (based on activityConfigs)
     if (unit.stories) {

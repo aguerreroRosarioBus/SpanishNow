@@ -32,7 +32,7 @@ router.get('/:id', async (req, res) => {
               model: Story,
               as: 'stories',
               include: [
-                { model: Question, as: 'questions' },
+                { model: Question, as: 'questions', attributes: ['id', 'storyId', 'questionText', 'answerType', 'options', 'audioUrl'] },
                 { model: RepetitionActivity, as: 'repetitionActivities' },
                 { model: ActivityConfig, as: 'activityConfigs', order: [['order', 'ASC']] }
               ],

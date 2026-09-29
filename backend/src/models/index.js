@@ -10,6 +10,11 @@ const QuestionResponse = require('./QuestionResponse');
 const RepetitionActivity = require('./RepetitionActivity');
 const ActivityConfig = require('./ActivityConfig');
 const Tooltip = require('./Tooltip');
+const LessonPlan = require('./LessonPlan');
+const LessonBlock = require('./LessonBlock');
+const LessonProgress = require('./LessonProgress');
+const LessonAnswer = require('./LessonAnswer');
+const LessonReinforcement = require('./LessonReinforcement');
 
 // Define associations
 User.hasMany(Course, { foreignKey: 'teacherId', as: 'courses' });
@@ -58,6 +63,16 @@ ActivityConfig.belongsTo(Story, { foreignKey: 'storyId', as: 'story' });
 User.hasMany(Tooltip, { foreignKey: 'createdBy', as: 'tooltips' });
 Tooltip.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
 
+Story.hasMany(LessonPlan, { foreignKey: 'storyId', as: 'lessonPlans' });
+LessonPlan.belongsTo(Story, { foreignKey: 'storyId', as: 'story' });
+LessonPlan.hasMany(LessonBlock, { foreignKey: 'planId', as: 'blocks' });
+LessonBlock.belongsTo(LessonPlan, { foreignKey: 'planId', as: 'plan' });
+Enrollment.hasMany(LessonProgress, { foreignKey: 'enrollmentId', as: 'lessonProgress' });
+LessonProgress.belongsTo(Enrollment, { foreignKey: 'enrollmentId', as: 'enrollment' });
+LessonProgress.belongsTo(LessonPlan, { foreignKey: 'planId', as: 'plan' });
+LessonProgress.hasMany(LessonAnswer, { foreignKey: 'lessonProgressId', as: 'answers' });
+LessonProgress.hasMany(LessonReinforcement, { foreignKey: 'lessonProgressId', as: 'reinforcements' });
+
 module.exports = {
   User,
   Course,
@@ -70,5 +85,10 @@ module.exports = {
   QuestionResponse,
   RepetitionActivity,
   ActivityConfig,
-  Tooltip
+  Tooltip,
+  LessonPlan,
+  LessonBlock,
+  LessonProgress,
+  LessonAnswer,
+  LessonReinforcement
 };

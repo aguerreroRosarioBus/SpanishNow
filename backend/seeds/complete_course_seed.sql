@@ -77,13 +77,14 @@ ON DUPLICATE KEY UPDATE
   translation = VALUES(translation),
   updatedAt = NOW();
 
--- Unit 1 Activity Configs
-DELETE FROM activity_configs WHERE unitId = 1;
-INSERT INTO activity_configs (unitId, activityType, `order`, isEnabled, requiredStoryIds, createdAt, updatedAt) VALUES
-(1, 'questions', 200, 1, JSON_ARRAY(1), NOW(), NOW()),
-(1, 'flashcards', 400, 1, JSON_ARRAY(1, 2), NOW(), NOW()),
-(1, 'matching', 600, 1, JSON_ARRAY(), NOW(), NOW()),
-(1, 'listen_repeat', 700, 1, JSON_ARRAY(1, 2, 3), NOW(), NOW());
+-- Story-level defaults. INSERT IGNORE preserves teacher changes on repeat runs.
+INSERT IGNORE INTO activity_configs (storyId, activityType, `order`, isEnabled, requiredStoryIds, createdAt, updatedAt) VALUES
+(1, 'questions', 0, 1, JSON_ARRAY(), NOW(), NOW()),
+(1, 'flashcards', 1, 1, JSON_ARRAY(), NOW(), NOW()),
+(2, 'questions', 0, 1, JSON_ARRAY(), NOW(), NOW()),
+(2, 'listen_repeat', 1, 1, JSON_ARRAY(), NOW(), NOW()),
+(3, 'questions', 0, 1, JSON_ARRAY(), NOW(), NOW()),
+(3, 'matching', 1, 1, JSON_ARRAY(), NOW(), NOW());
 
 -- ==============================================
 -- UNIT 2: La Familia y Los Animales
@@ -143,13 +144,13 @@ ON DUPLICATE KEY UPDATE
   translation = VALUES(translation),
   updatedAt = NOW();
 
--- Unit 2 Activity Configs
-DELETE FROM activity_configs WHERE unitId = 2;
-INSERT INTO activity_configs (unitId, activityType, `order`, isEnabled, requiredStoryIds, createdAt, updatedAt) VALUES
-(2, 'questions', 200, 1, JSON_ARRAY(4), NOW(), NOW()),
-(2, 'matching', 400, 1, JSON_ARRAY(), NOW(), NOW()),
-(2, 'flashcards', 600, 1, JSON_ARRAY(4, 5, 6), NOW(), NOW()),
-(2, 'listen_repeat', 700, 1, JSON_ARRAY(4, 5, 6), NOW(), NOW());
+INSERT IGNORE INTO activity_configs (storyId, activityType, `order`, isEnabled, requiredStoryIds, createdAt, updatedAt) VALUES
+(4, 'questions', 0, 1, JSON_ARRAY(), NOW(), NOW()),
+(4, 'matching', 1, 1, JSON_ARRAY(), NOW(), NOW()),
+(5, 'questions', 0, 1, JSON_ARRAY(), NOW(), NOW()),
+(5, 'flashcards', 1, 1, JSON_ARRAY(), NOW(), NOW()),
+(6, 'questions', 0, 1, JSON_ARRAY(), NOW(), NOW()),
+(6, 'listen_repeat', 1, 1, JSON_ARRAY(), NOW(), NOW());
 
 -- ==============================================
 -- UNIT 3: Comida y Números
@@ -212,13 +213,13 @@ ON DUPLICATE KEY UPDATE
   translation = VALUES(translation),
   updatedAt = NOW();
 
--- Unit 3 Activity Configs
-DELETE FROM activity_configs WHERE unitId = 3;
-INSERT INTO activity_configs (unitId, activityType, `order`, isEnabled, requiredStoryIds, createdAt, updatedAt) VALUES
-(3, 'matching', 200, 1, JSON_ARRAY(), NOW(), NOW()),
-(3, 'questions', 400, 1, JSON_ARRAY(7, 8), NOW(), NOW()),
-(3, 'flashcards', 600, 1, JSON_ARRAY(7, 8, 9), NOW(), NOW()),
-(3, 'listen_repeat', 700, 1, JSON_ARRAY(7, 8, 9), NOW(), NOW());
+INSERT IGNORE INTO activity_configs (storyId, activityType, `order`, isEnabled, requiredStoryIds, createdAt, updatedAt) VALUES
+(7, 'questions', 0, 1, JSON_ARRAY(), NOW(), NOW()),
+(7, 'matching', 1, 1, JSON_ARRAY(), NOW(), NOW()),
+(8, 'questions', 0, 1, JSON_ARRAY(), NOW(), NOW()),
+(8, 'flashcards', 1, 1, JSON_ARRAY(), NOW(), NOW()),
+(9, 'questions', 0, 1, JSON_ARRAY(), NOW(), NOW()),
+(9, 'listen_repeat', 1, 1, JSON_ARRAY(), NOW(), NOW());
 
 -- ==============================================
 -- ENROLLMENT
@@ -234,69 +235,12 @@ ON DUPLICATE KEY UPDATE
 -- VERIFICATION QUERY
 -- ==============================================
 
--- Show the complete navigation for each unit
-SELECT
-    'UNIT 1' as info,
-    CONCAT('Order ', LPAD(`order`, 3, '0')) as position,
-    'Story' as type,
-    title as name,
-    NULL as requires
-FROM stories
-WHERE unitId = 1
-UNION ALL
-SELECT
-    'UNIT 1' as info,
-    CONCAT('Order ', LPAD(`order`, 3, '0')) as position,
-    'Activity' as type,
-    activityType as name,
-    IF(JSON_LENGTH(requiredStoryIds) > 0,
-       CONCAT('Stories: ', CAST(requiredStoryIds AS CHAR)),
-       'No requirements') as requires
-FROM activity_configs
-WHERE unitId = 1
-
-UNION ALL
-
-SELECT
-    'UNIT 2' as info,
-    CONCAT('Order ', LPAD(`order`, 3, '0')) as position,
-    'Story' as type,
-    title as name,
-    NULL as requires
-FROM stories
-WHERE unitId = 2
-UNION ALL
-SELECT
-    'UNIT 2' as info,
-    CONCAT('Order ', LPAD(`order`, 3, '0')) as position,
-    'Activity' as type,
-    activityType as name,
-    IF(JSON_LENGTH(requiredStoryIds) > 0,
-       CONCAT('Stories: ', CAST(requiredStoryIds AS CHAR)),
-       'No requirements') as requires
-FROM activity_configs
-WHERE unitId = 2
-
-UNION ALL
-
-SELECT
-    'UNIT 3' as info,
-    CONCAT('Order ', LPAD(`order`, 3, '0')) as position,
-    'Story' as type,
-    title as name,
-    NULL as requires
-FROM stories
-WHERE unitId = 3
-UNION ALL
-SELECT
-    'UNIT 3' as info,
-    CONCAT('Order ', LPAD(`order`, 3, '0')) as position,
-    'Activity' as type,
-    activityType as name,
-    IF(JSON_LENGTH(requiredStoryIds) > 0,
-       CONCAT('Stories: ', CAST(requiredStoryIds AS CHAR)),
-       'No requirements') as requires
-FROM activity_configs
-WHERE unitId = 3
-
-ORDER BY info, position;
+-- Show activities beneath each story; they no longer occupy unit-wide slots.
+SELECT u.id AS unitId, u.title AS unitTitle, s.id AS storyId,
+       s.title AS storyTitle, s.`order` AS storyOrder,
+       ac.activityType, ac.`order` AS activityOrder, ac.isEnabled
+FROM units u
+JOIN stories s ON s.unitId = u.id
+LEFT JOIN activity_configs ac ON ac.storyId = s.id
+WHERE u.courseId = 1
+ORDER BY u.`order`, s.`order`, ac.`order`;

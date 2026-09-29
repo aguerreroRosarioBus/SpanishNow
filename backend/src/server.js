@@ -26,14 +26,14 @@ app.use(cors(corsOptions));
 app.use(express.json({ charset: 'utf-8' }));
 app.use(express.urlencoded({ extended: true, charset: 'utf-8' }));
 
-// Set charset for all responses
+// Static files need their media type (audio, images) instead of JSON.
+app.use('/uploads', express.static('uploads'));
+
+// Set charset for API responses
 app.use((req, res, next) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   next();
 });
-
-// Static files for uploads
-app.use('/uploads', express.static('uploads'));
 
 // Routes
 app.use('/api/auth', require('./routes/auth.routes'));
@@ -41,6 +41,7 @@ app.use('/api/users', require('./routes/user.routes'));
 app.use('/api/courses', require('./routes/course.routes'));
 app.use('/api/units', require('./routes/unit.routes'));
 app.use('/api/stories', require('./routes/story.routes'));
+app.use('/api/lesson-plans', require('./routes/lessonPlan.routes'));
 app.use('/api/enrollments', require('./routes/enrollment.routes'));
 app.use('/api/questions', require('./routes/question.routes'));
 app.use('/api/question-responses', require('./routes/questionResponse.routes'));

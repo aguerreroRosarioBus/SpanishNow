@@ -6,10 +6,23 @@ const cloudinary = require('../config/cloudinary');
 const upload = require('../middlewares/upload.middleware');
 
 // Get questions by story ID (public - for students to view)
-router.get('/story/:storyId', async (req, res) => {
+router.get('/story/:storyId', authMiddleware, async (req, res) => {
   try {
+    const story = await Story.findByPk(req.params.storyId, {
+      include: [{ model: Unit, as: 'unit', include: [{ model: Course, as: 'course' }] }]
+    });
+    if (!story) return res.status(404).json({ error: 'Story not found' });
+    const owner = req.user.role === 'teacher' && story.unit.course.teacherId === req.user.id;
+    if (!owner) {
+      const { Enrollment } = require('../models');
+      const enrollment = req.user.role === 'student' && await Enrollment.findOne({
+        where: { studentId: req.user.id, courseId: story.unit.courseId }
+      });
+      if (!enrollment) return res.status(403).json({ error: 'Not authorized' });
+    }
     const questions = await Question.findAll({
       where: { storyId: req.params.storyId },
+      attributes: owner ? undefined : ['id', 'storyId', 'questionText', 'answerType', 'options', 'audioUrl'],
       order: [['createdAt', 'ASC']]
     });
 

@@ -67,6 +67,7 @@ export interface Enrollment {
   createdAt: string;
   course?: Course;
   progress?: Progress[];
+  lessonProgress?: Array<{ storyId: number; planId: number; narrativeCompleted: boolean }>;
   // Unit-level activity completion flags
   questionsCompleted?: boolean;
   flashcardsCompleted?: boolean;

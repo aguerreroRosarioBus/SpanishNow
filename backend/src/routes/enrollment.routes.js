@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authMiddleware, isStudent } = require('../middlewares/auth.middleware');
-const { Enrollment, Course, Progress, Story, Unit, ActivityConfig } = require('../models');
+const { Enrollment, Course, Progress, Story, Unit, ActivityConfig, LessonProgress } = require('../models');
 
 // Get student enrollments with full course details and progress
 router.get('/my-courses', authMiddleware, isStudent, async (req, res) => {
@@ -34,6 +34,11 @@ router.get('/my-courses', authMiddleware, isStudent, async (req, res) => {
         {
           model: Progress,
           as: 'progress'
+        },
+        {
+          model: LessonProgress,
+          as: 'lessonProgress',
+          attributes: ['storyId', 'planId', 'narrativeCompleted']
         }
       ]
     });
@@ -139,6 +144,10 @@ router.post('/progress', authMiddleware, isStudent, async (req, res) => {
     if (enrollment.studentId !== req.user.id) {
       return res.status(403).json({ error: 'Not authorized' });
     }
+
+    const story = await Story.findByPk(storyId, { include: [{ model: Unit, as: 'unit' }] });
+    if (!story) return res.status(404).json({ error: 'Story not found' });
+    if (story.unit.courseId !== enrollment.courseId) return res.status(403).json({ error: 'Story is outside this enrollment' });
 
     const existingProgress = await Progress.findOne({
       where: { enrollmentId, storyId }

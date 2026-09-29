@@ -190,23 +190,30 @@ export class TooltipDisplayComponent implements OnInit, AfterViewInit {
   }
 
   renderTextWithTooltips(): void {
-    const tooltips = [...this.tooltips()].sort((a, b) => a.startOffset - b.startOffset);
+    const content = this.text || '';
+    const tooltips = [...this.tooltips()]
+      .filter(t => Number.isInteger(t.startOffset) && Number.isInteger(t.endOffset) &&
+        t.startOffset >= 0 && t.endOffset > t.startOffset && t.endOffset <= content.length &&
+        content.substring(t.startOffset, t.endOffset) === t.selectedText)
+      .sort((a, b) => a.startOffset - b.startOffset);
     let html = '';
     let lastIndex = 0;
 
     for (const tooltip of tooltips) {
+      if (tooltip.startOffset < lastIndex) continue;
       // Add text before tooltip
-      html += this.escapeHtml(this.text.substring(lastIndex, tooltip.startOffset));
+      html += this.escapeHtml(content.substring(lastIndex, tooltip.startOffset));
 
       // Add highlighted text with tooltip
       const highlightedText = this.escapeHtml(tooltip.selectedText);
-      html += `<span class="tooltip-highlight highlight-${tooltip.highlightColor}" data-tooltip-id="${tooltip.id}">${highlightedText}</span>`;
+      const color = ['yellow', 'blue', 'green', 'pink'].includes(tooltip.highlightColor) ? tooltip.highlightColor : 'yellow';
+      html += `<span class="tooltip-highlight highlight-${color}" data-tooltip-id="${Number(tooltip.id)}">${highlightedText}</span>`;
 
       lastIndex = tooltip.endOffset;
     }
 
     // Add remaining text
-    html += this.escapeHtml(this.text.substring(lastIndex));
+    html += this.escapeHtml(content.substring(lastIndex));
 
     // Bypass security to preserve data-tooltip-id attributes
     this.renderedText.set(this.sanitizer.bypassSecurityTrustHtml(html));

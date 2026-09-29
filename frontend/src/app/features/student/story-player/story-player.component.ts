@@ -17,6 +17,7 @@ import { FlashcardModalComponent } from '../flashcard-modal/flashcard-modal.comp
 import { MatchingModalComponent } from '../matching-modal/matching-modal.component';
 import { ListenRepeatModalComponent } from '../listen-repeat-modal/listen-repeat-modal.component';
 import { TooltipDisplayComponent } from '../../../shared/components/tooltip-display/tooltip-display.component';
+import { StudentLesson, StudentLessonBlock, StudentLessonService, StudentAnswerResult } from '../../../core/services/student-lesson.service';
 
 @Component({
   selector: 'app-story-player',
@@ -45,6 +46,7 @@ export class StoryPlayerComponent implements OnInit {
   private repetitionActivityService = inject(RepetitionActivityService);
   private navigationService = inject(NavigationService);
   private toastService = inject(ToastService);
+  private studentLessonService = inject(StudentLessonService);
 
   currentUser = this.authService.currentUser;
 
@@ -84,6 +86,30 @@ export class StoryPlayerComponent implements OnInit {
   showListenRepeatModal = signal<boolean>(false);
   listenRepeatStoryId = signal<number | undefined>(undefined);
 
+  // TPRS lesson assigned to this student/story. The API keeps the revision stable.
+  studentLesson = signal<StudentLesson | null>(null);
+  lessonLoading = signal(false);
+  lessonError = signal('');
+  activeLessonBlocks = computed(() => (this.studentLesson()?.blocks || [])
+    .filter(block => block.active && block.phase !== 'later' && !['flashcards', 'matching', 'listen_repeat'].includes(block.type))
+    .slice().sort((a, b) => a.position - b.position));
+  reinforcementBlocks = computed(() => (this.studentLesson()?.blocks || [])
+    .filter(block => block.active && block.phase === 'after' && ['flashcards', 'matching', 'listen_repeat'].includes(block.type))
+    .slice().sort((a, b) => a.position - b.position));
+  hasOptionalReinforcements = computed(() => this.reinforcementBlocks().length > 0);
+  currentLessonBlock = computed(() => {
+    const blocks = this.activeLessonBlocks();
+    const lastBlockKey = this.studentLesson()?.progress.lastBlockKey;
+    return blocks.find(block => block.blockKey === lastBlockKey) ||
+      (this.reinforcementBlocks().some(block => block.blockKey === lastBlockKey) ? blocks[blocks.length - 1] : null) || null;
+  });
+  currentLessonBlockIndex = computed(() => this.activeLessonBlocks().findIndex(block => block.blockKey === this.currentLessonBlock()?.blockKey));
+  answerText = signal('');
+  answerResult = signal<StudentAnswerResult | null>(null);
+  reinforcementOpen = signal<string | null>(null);
+  activeReinforcementBlock = signal<StudentLessonBlock | null>(null);
+  narrativeCompleted = computed(() => Boolean(this.studentLesson()?.progress.narrativeCompleted));
+
   ngOnInit(): void {
     if (!this.authService.isStudent()) {
       this.router.navigate(['/auth/login']);
@@ -117,6 +143,9 @@ export class StoryPlayerComponent implements OnInit {
           if (p.completed) {
             completed.add(p.storyId);
           }
+        });
+        (enrollment.lessonProgress || []).forEach(p => {
+          if (p.narrativeCompleted) completed.add(p.storyId);
         });
         this.completedStories.set(completed);
         this.progressRecords.set(enrollment.progress || []);
@@ -185,8 +214,23 @@ export class StoryPlayerComponent implements OnInit {
     const items = this.navigationService.buildNavigationItems(
       unit,
       progress,
-      enrollment
-    );
+      enrollment,
+      this.completedStories()
+    ).filter(item => item.type === 'story');
+
+    // TPRS completion lives in LessonProgress, not the legacy Enrollment progress.
+    // Merge its locally known completion into navigation without writing a legacy record.
+    const completedIds = new Set([...this.completedStories()]);
+    let previousStoryCompleted = true;
+    for (const item of items) {
+      if (item.type === 'story') {
+        item.completed = item.completed || completedIds.has(item.story!.id);
+        item.canAccess = previousStoryCompleted;
+        previousStoryCompleted = item.completed;
+      } else if (item.storyId) {
+        item.canAccess = completedIds.has(item.storyId) || (progress || []).some(record => record.storyId === item.storyId && record.completed);
+      }
+    }
 
     console.log('[StoryPlayer] Built navigation items:', items);
     this.navigationItems.set(items);
@@ -232,11 +276,170 @@ export class StoryPlayerComponent implements OnInit {
     }
 
     if (item.type === 'story') {
-      // Story already loaded in item.story
+      this.loadStudentLesson(item.story!.id);
     } else if (item.type === 'activity') {
+      this.studentLesson.set(null);
       // Open activity modal automatically
       this.openActivityModal(item);
     }
+  }
+
+  private loadStudentLesson(storyId: number): void {
+    this.lessonLoading.set(true);
+    this.lessonError.set('');
+    this.answerResult.set(null);
+    this.studentLessonService.getStory(storyId).subscribe({
+      next: lesson => {
+        this.studentLesson.set(lesson);
+        this.lessonLoading.set(false);
+        if (lesson.progress.narrativeCompleted) this.markLessonStoryCompleteLocally(lesson.storyId);
+        const blocks = lesson.blocks.filter(block => block.active && block.phase !== 'later').sort((a, b) => a.position - b.position);
+        if (!blocks.length) {
+          this.lessonError.set('Esta revisión no contiene bloques disponibles.');
+          return;
+        }
+        if (!lesson.progress.lastBlockKey) this.persistCurrentBlock(blocks[0]);
+      },
+      error: error => {
+        console.error('Error loading assigned lesson:', error);
+        this.lessonError.set(error?.error?.error || 'No se pudo cargar la lección publicada. Intenta nuevamente.');
+        this.lessonLoading.set(false);
+      }
+    });
+  }
+
+  retryLoadLesson(): void {
+    const storyId = this.currentItem()?.story?.id;
+    if (storyId) this.loadStudentLesson(storyId);
+  }
+
+  private persistCurrentBlock(block: StudentLessonBlock): void {
+    const lesson = this.studentLesson();
+    if (!lesson) return;
+    this.audioElement?.pause();
+    this.audioElement = null;
+    this.isPlaying.set(false);
+    this.studentLessonService.setCurrentBlock(lesson.progress.id, block.blockKey).subscribe({
+      next: progress => {
+        this.studentLesson.update(current => current ? { ...current, progress: { ...current.progress, lastBlockKey: progress.lastBlockKey, narrativeCompleted: progress.narrativeCompleted } } : current);
+        this.answerText.set('');
+        this.answerResult.set(null);
+      },
+      error: error => {
+        this.lessonError.set(error?.error?.error || 'No se pudo guardar tu avance. Vuelve a intentar.');
+      }
+    });
+  }
+
+  goToLessonBlock(offset: number): void {
+    const index = this.currentLessonBlockIndex() + offset;
+    const block = this.activeLessonBlocks()[index];
+    if (block) this.persistCurrentBlock(block);
+  }
+
+  submitLessonAnswer(): void {
+    const lesson = this.studentLesson();
+    const block = this.currentLessonBlock();
+    const answer = this.answerText().trim();
+    if (!lesson || !block?.questionId || !answer) return;
+    this.lessonError.set('');
+    this.studentLessonService.answer(lesson.progress.id, block.blockKey, block.questionId, answer).subscribe({
+      next: result => {
+        this.answerResult.set(result);
+        this.studentLesson.update(current => current ? { ...current, progress: {
+          ...current.progress,
+          answers: [...current.progress.answers, { blockKey: result.blockKey, questionId: result.questionId, studentAnswer: answer, isCorrect: result.isCorrect, attempt: result.attempt }]
+        } } : current);
+      },
+      error: error => this.lessonError.set(error?.error?.error || 'No se pudo comprobar la respuesta. Intenta nuevamente.')
+    });
+  }
+
+  completeNarrative(): void {
+    const lesson = this.studentLesson();
+    if (!lesson) return;
+    this.studentLessonService.completeNarrative(lesson.progress.id).subscribe({
+      next: () => {
+        this.studentLesson.update(current => current ? { ...current, progress: { ...current.progress, narrativeCompleted: true } } : current);
+        this.markLessonStoryCompleteLocally(lesson.storyId);
+        this.toastService.success('Lectura completada. Los refuerzos son opcionales.');
+      },
+      error: error => this.lessonError.set(error?.error?.error || 'Completa primero los bloques narrativos.')
+    });
+  }
+
+  toggleReinforcement(block: StudentLessonBlock): void {
+    this.reinforcementOpen.set(this.reinforcementOpen() === block.blockKey ? null : block.blockKey);
+  }
+
+  openReinforcement(block: StudentLessonBlock): void {
+    const unit = this.currentUnit();
+    const storyId = this.studentLesson()?.storyId;
+    if (!unit || !storyId) return;
+    this.activeReinforcementBlock.set(block);
+    if (block.type === 'flashcards') this.showFlashcardsActivity(unit.id);
+    else if (block.type === 'matching') this.showMatchingActivity(unit.id);
+    else if (block.type === 'listen_repeat') this.showListenRepeatActivity(storyId);
+  }
+
+  onReinforcementModalCompleted(): void {
+    const block = this.activeReinforcementBlock();
+    if (block) this.markReinforcementComplete(block);
+  }
+
+  markReinforcementComplete(block: StudentLessonBlock): void {
+    const lesson = this.studentLesson();
+    if (!lesson) return;
+    this.studentLessonService.completeReinforcement(lesson.progress.id, block.blockKey).subscribe({
+      next: () => {
+        this.studentLesson.update(current => current ? { ...current, progress: {
+          ...current.progress,
+          reinforcements: [...current.progress.reinforcements.filter(item => item.blockKey !== block.blockKey), { blockKey: block.blockKey, completed: true }]
+        } } : current);
+        this.closeAllModals();
+        this.toastService.success('Refuerzo completado para esta historia.');
+      },
+      error: error => this.lessonError.set(error?.error?.error || 'No se pudo guardar el refuerzo.')
+    });
+  }
+
+  isReinforcementComplete(blockKey: string): boolean {
+    return Boolean(this.studentLesson()?.progress.reinforcements.some(item => item.blockKey === blockKey && item.completed));
+  }
+
+  setAnswer(value: string): void { this.answerText.set(value); }
+
+  lessonAudioUrl(): string | null {
+    const story = this.studentLesson()?.story;
+    return this.currentSpeed() === 'slow' ? story?.audioSlowUrl || null : story?.audioNormalUrl || null;
+  }
+
+  switchLessonAudioSpeed(speed: 'slow' | 'normal'): void {
+    const wasPlaying = this.isPlaying();
+    if (this.audioElement) { this.audioElement.pause(); this.audioElement = null; }
+    this.currentSpeed.set(speed);
+    this.isPlaying.set(false);
+    if (wasPlaying) setTimeout(() => this.toggleLessonAudio(), 100);
+  }
+
+  private markLessonStoryCompleteLocally(storyId: number): void {
+    const completed = new Set(this.completedStories());
+    completed.add(storyId);
+    this.completedStories.set(completed);
+    this.buildNavigationItems();
+  }
+
+  toggleLessonAudio(blockAudioUrl?: string | null): void {
+    const url = blockAudioUrl || this.lessonAudioUrl();
+    if (!url) { this.toastService.warning('Audio no disponible para esta historia'); return; }
+    if (!this.audioElement || this.audioElement.src !== new URL(url, document.baseURI).href) {
+      this.audioElement?.pause();
+      this.audioElement = new Audio(url);
+      this.audioElement.addEventListener('ended', () => this.isPlaying.set(false));
+      this.audioElement.addEventListener('error', () => { this.lessonError.set('No se pudo cargar el audio.'); this.isPlaying.set(false); });
+    }
+    if (this.isPlaying()) { this.audioElement.pause(); this.isPlaying.set(false); }
+    else { this.audioElement.play().then(() => this.isPlaying.set(true)).catch(() => this.lessonError.set('No se pudo iniciar el audio.')); }
   }
 
   openActivityModal(item: NavigationItem): void {
@@ -482,6 +685,7 @@ export class StoryPlayerComponent implements OnInit {
     this.showFlashcardModal.set(false);
     this.showMatchingModal.set(false);
     this.showListenRepeatModal.set(false);
+    this.activeReinforcementBlock.set(null);
   }
 
   // Audio player
