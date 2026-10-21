@@ -675,7 +675,7 @@ npm start
 ```bash
 npm start          # Iniciar servidor producción
 npm run dev        # Iniciar con nodemon (hot reload)
-npm run db:init    # Inicializar/actualizar tablas DB
+npm run db:init    # Inicializar/actualizar tablas DB (solo desarrollo; migraciones y reconstrucción: backend/docs/database.md)
 ```
 
 ### Frontend

@@ -1,0 +1,23 @@
+{
+  "id": 8,
+  "unitId": 3,
+  "order": 300,
+  "title": "El Mercado de Frutas",
+  "text": "María va al mercado. En el mercado hay muchas frutas: manzanas, naranjas, plátanos, fresas. María compra cinco manzanas y tres naranjas. Las manzanas cuestan dos euros. Las naranjas cuestan un euro. María paga tres euros en total.",
+  "questions": [
+    {
+      "id": 13,
+      "text": "¿Cuántas manzanas compra María?",
+      "type": "choice",
+      "options": ["Tres", "Cinco", "Diez"],
+      "correct": "Cinco"
+    },
+    {
+      "id": 14,
+      "text": "¿Cuánto cuestan las manzanas?",
+      "type": "choice",
+      "options": ["Un euro", "Dos euros", "Tres euros"],
+      "correct": "Dos euros"
+    }
+  ]
+}

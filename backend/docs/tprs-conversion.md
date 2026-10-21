@@ -1,5 +1,7 @@
 # Conversión de historias a lecciones TPRS
 
+> Migraciones, `adopt`, semillas curadas y reconstrucción de bases: ver `database.md`. Donde este documento menciona `db:migrate:tprs:test` o la aplicación manual de migraciones, hoy se usa el runner (`npm run db:migrate:adopt` y `npm run db:migrate`).
+
 ## Estado del piloto
 
 El contenido canónico de «María en la Fiesta» y «El Primer Día de Clase» procede de `seeds/complete_course_seed.sql`. La prueba S4 se realizó solo en `spanishnow_tprs_test`: historia 1, revisión 4, plan 7; historia 2, revisión 2, plan 8. La primera presenta `Me llamo` y `Mucho gusto` antes de narrar. Sus tres keyframes y pausas son:

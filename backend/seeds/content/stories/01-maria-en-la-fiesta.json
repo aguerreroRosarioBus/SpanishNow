@@ -1,0 +1,46 @@
+{
+  "id": 1,
+  "unitId": 1,
+  "order": 100,
+  "title": "María en la Fiesta",
+  "text": "María va a una fiesta. En la fiesta hay muchas personas. María ve a Juan. María dice: \"Hola, ¿cómo te llamas?\". Juan responde: \"Me llamo Juan, ¿y tú?\". María dice: \"Yo me llamo María, mucho gusto\". Juan y María son amigos ahora.",
+  "questions": [
+    {
+      "id": 1,
+      "text": "¿Dónde está María?",
+      "type": "choice",
+      "options": ["En una fiesta", "En casa", "En la escuela"],
+      "correct": "En una fiesta"
+    },
+    {
+      "id": 2,
+      "text": "¿Cómo se llama el amigo de María?",
+      "type": "choice",
+      "options": ["Pedro", "Juan", "Luis"],
+      "correct": "Juan"
+    }
+  ],
+  "plan": {
+    "before": [
+      { "expression": "Me llamo", "role": "target" },
+      { "expression": "Mucho gusto", "role": "target" }
+    ],
+    "keyframes": [
+      {
+        "text": "María va a una fiesta. En la fiesta hay muchas personas.",
+        "questionsAfter": ["¿Dónde está María?"]
+      },
+      {
+        "text": "María ve a Juan. María dice: \"Hola, ¿cómo te llamas?\". Juan responde: \"Me llamo Juan, ¿y tú?\".",
+        "questionsAfter": ["¿Cómo se llama el amigo de María?"]
+      },
+      {
+        "text": "María dice: \"Yo me llamo María, mucho gusto\". Juan y María son amigos ahora."
+      }
+    ],
+    "after": ["full_story", "flashcards"],
+    "later": [
+      { "expression": "Me llamo", "role": "revisit", "story": "El Primer Día de Clase" }
+    ]
+  }
+}

@@ -172,7 +172,7 @@ El sistema está diseñado para soportar el método TPRS:
 ```bash
 npm start          # Iniciar servidor producción
 npm run dev        # Iniciar con nodemon
-npm run db:init    # Inicializar base de datos
+npm run db:init    # Inicializar base de datos (solo desarrollo; para bases reproducibles ver backend/docs/database.md)
 ```
 
 ### Frontend

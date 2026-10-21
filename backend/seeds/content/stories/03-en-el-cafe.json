@@ -1,0 +1,16 @@
+{
+  "id": 3,
+  "unitId": 1,
+  "order": 500,
+  "title": "En el Café",
+  "text": "Luis entra en un café. El camarero dice: \"Buenas tardes, ¿qué desea?\". Luis responde: \"Buenas tardes, un café por favor\". El camarero pregunta: \"¿Cómo se llama usted?\". Luis dice: \"Me llamo Luis\". El camarero sonríe.",
+  "questions": [
+    {
+      "id": 5,
+      "text": "¿Qué pide Luis?",
+      "type": "choice",
+      "options": ["Un té", "Un café", "Una soda"],
+      "correct": "Un café"
+    }
+  ]
+}

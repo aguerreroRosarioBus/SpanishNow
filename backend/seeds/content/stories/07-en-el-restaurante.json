@@ -1,0 +1,23 @@
+{
+  "id": 7,
+  "unitId": 3,
+  "order": 100,
+  "title": "En el Restaurante",
+  "text": "Pedro va al restaurante. El camarero pregunta: \"¿Qué desea comer?\". Pedro dice: \"Quiero pizza y ensalada, por favor\". El camarero pregunta: \"¿Y para beber?\". Pedro responde: \"Agua, por favor\". La comida está deliciosa. Pedro está muy feliz.",
+  "questions": [
+    {
+      "id": 11,
+      "text": "¿Qué quiere comer Pedro?",
+      "type": "choice",
+      "options": ["Pasta", "Pizza y ensalada", "Hamburguesa"],
+      "correct": "Pizza y ensalada"
+    },
+    {
+      "id": 12,
+      "text": "¿Qué quiere beber Pedro?",
+      "type": "choice",
+      "options": ["Café", "Agua", "Jugo"],
+      "correct": "Agua"
+    }
+  ]
+}

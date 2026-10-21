@@ -1,5 +1,7 @@
 # Guía Rápida - Desplegar en Railway
 
+> **Base de datos:** el procedimiento vigente (migraciones con runner, semillas curadas, dump previo y reconstrucción) está en `backend/docs/database.md`; el paso 7 de esta guía (importar el dump a mano) queda como referencia histórica. Además, esta guía contiene claves en claro (Cloudinary, `JWT_SECRET`): rotarlas y no copiarlas.
+
 ## 📋 Requisitos Previos
 
 - ✅ Cuenta de GitHub
@@ -86,13 +88,13 @@ DB_NAME=${{MySQL.MYSQLDATABASE}}
 **Cloudinary**:
 ```
 CLOUDINARY_CLOUD_NAME=dzrtcxloa
-CLOUDINARY_API_KEY=393292195494439
-CLOUDINARY_API_SECRET=4--Mx-13TkQAsJ8wg4NtZDwh0s4
+CLOUDINARY_API_KEY=<tu_api_key_de_cloudinary>
+CLOUDINARY_API_SECRET=<tu_api_secret_de_cloudinary>
 ```
 
 **JWT Secret**:
 ```
-JWT_SECRET=SpanishNow_2026_Secret_Key_Production_Secure_Token_123456
+JWT_SECRET=<genera_un_secreto_largo_y_aleatorio>
 ```
 
 4. Railway redesplegar automáticamente

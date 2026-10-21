@@ -1,0 +1,204 @@
+{
+  "_comment": "Contenido canónico del curso (convertido de complete_course_seed.sql). Los ids son estables: las semillas hacen upsert por id.",
+  "course": {
+    "id": 1,
+    "title": "Español A1 - Completo",
+    "description": "Curso completo con unidades, historias y actividades para probar el sistema de navegación",
+    "level": "A1",
+    "teacherEmail": "admin@gmail.com"
+  },
+  "units": [
+    {
+      "id": 1,
+      "title": "Unidad 1: Saludos y Presentaciones",
+      "description": "Aprende a saludar y presentarte en español",
+      "order": 0,
+      "vocabulary": [
+        {
+          "id": 1,
+          "word": "Hola",
+          "translation": "Hello",
+          "example": "Hola, ¿cómo estás?",
+          "partOfSpeech": "interjection"
+        },
+        {
+          "id": 2,
+          "word": "Me llamo",
+          "translation": "My name is",
+          "example": "Me llamo María",
+          "partOfSpeech": "phrase"
+        },
+        {
+          "id": 3,
+          "word": "Mucho gusto",
+          "translation": "Nice to meet you",
+          "example": "Mucho gusto, Juan",
+          "partOfSpeech": "phrase"
+        },
+        {
+          "id": 4,
+          "word": "Buenos días",
+          "translation": "Good morning",
+          "example": "Buenos días, profesora",
+          "partOfSpeech": "phrase"
+        },
+        {
+          "id": 5,
+          "word": "Buenas tardes",
+          "translation": "Good afternoon",
+          "example": "Buenas tardes, señor",
+          "partOfSpeech": "phrase"
+        },
+        {
+          "id": 6,
+          "word": "Gracias",
+          "translation": "Thank you",
+          "example": "Gracias por el café",
+          "partOfSpeech": "interjection"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Unidad 2: La Familia y Los Animales",
+      "description": "Aprende sobre la familia y los animales",
+      "order": 1,
+      "vocabulary": [
+        {
+          "id": 7,
+          "word": "Familia",
+          "translation": "Family",
+          "example": "Mi familia es grande",
+          "partOfSpeech": "noun"
+        },
+        {
+          "id": 8,
+          "word": "Padre",
+          "translation": "Father",
+          "example": "Mi padre se llama Juan",
+          "partOfSpeech": "noun"
+        },
+        {
+          "id": 9,
+          "word": "Madre",
+          "translation": "Mother",
+          "example": "Mi madre es profesora",
+          "partOfSpeech": "noun"
+        },
+        {
+          "id": 10,
+          "word": "Hermano",
+          "translation": "Brother",
+          "example": "Tengo un hermano",
+          "partOfSpeech": "noun"
+        },
+        {
+          "id": 11,
+          "word": "Hermana",
+          "translation": "Sister",
+          "example": "Mi hermana tiene ocho años",
+          "partOfSpeech": "noun"
+        },
+        {
+          "id": 12,
+          "word": "Gato",
+          "translation": "Cat",
+          "example": "El gato es blanco",
+          "partOfSpeech": "noun"
+        },
+        {
+          "id": 13,
+          "word": "Perro",
+          "translation": "Dog",
+          "example": "El perro es grande",
+          "partOfSpeech": "noun"
+        },
+        {
+          "id": 14,
+          "word": "Animal",
+          "translation": "Animal",
+          "example": "Los animales son importantes",
+          "partOfSpeech": "noun"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Unidad 3: Comida y Números",
+      "description": "Aprende sobre la comida y los números",
+      "order": 2,
+      "vocabulary": [
+        {
+          "id": 15,
+          "word": "Comida",
+          "translation": "Food",
+          "example": "La comida está deliciosa",
+          "partOfSpeech": "noun"
+        },
+        {
+          "id": 16,
+          "word": "Pizza",
+          "translation": "Pizza",
+          "example": "Quiero una pizza",
+          "partOfSpeech": "noun"
+        },
+        {
+          "id": 17,
+          "word": "Agua",
+          "translation": "Water",
+          "example": "Bebo agua",
+          "partOfSpeech": "noun"
+        },
+        {
+          "id": 18,
+          "word": "Fruta",
+          "translation": "Fruit",
+          "example": "La fruta es saludable",
+          "partOfSpeech": "noun"
+        },
+        {
+          "id": 19,
+          "word": "Manzana",
+          "translation": "Apple",
+          "example": "La manzana es roja",
+          "partOfSpeech": "noun"
+        },
+        {
+          "id": 20,
+          "word": "Naranja",
+          "translation": "Orange",
+          "example": "La naranja es dulce",
+          "partOfSpeech": "noun"
+        },
+        {
+          "id": 21,
+          "word": "Uno",
+          "translation": "One",
+          "example": "Tengo un gato",
+          "partOfSpeech": "number"
+        },
+        {
+          "id": 22,
+          "word": "Dos",
+          "translation": "Two",
+          "example": "Dos manzanas",
+          "partOfSpeech": "number"
+        },
+        {
+          "id": 23,
+          "word": "Tres",
+          "translation": "Three",
+          "example": "Tres naranjas",
+          "partOfSpeech": "number"
+        },
+        {
+          "id": 24,
+          "word": "Cinco",
+          "translation": "Five",
+          "example": "Cinco euros",
+          "partOfSpeech": "number"
+        }
+      ]
+    }
+  ]
+}

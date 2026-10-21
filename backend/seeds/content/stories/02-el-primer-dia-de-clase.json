@@ -1,0 +1,28 @@
+{
+  "id": 2,
+  "unitId": 1,
+  "order": 300,
+  "title": "El Primer Día de Clase",
+  "text": "Hoy es el primer día de clase. La profesora se llama Ana. Ana dice: \"Buenos días, yo soy la profesora Ana\". Los estudiantes dicen: \"Buenos días, profesora\". Un estudiante se llama Pedro. Pedro dice: \"Hola, me llamo Pedro, soy de México\".",
+  "questions": [
+    {
+      "id": 3,
+      "text": "¿Cómo se llama la profesora?",
+      "type": "choice",
+      "options": ["María", "Ana", "Laura"],
+      "correct": "Ana"
+    },
+    {
+      "id": 4,
+      "text": "¿De dónde es Pedro?",
+      "type": "choice",
+      "options": ["España", "Argentina", "México"],
+      "correct": "México"
+    }
+  ],
+  "plan": {
+    "before": [
+      { "expression": "Me llamo", "role": "revisit" }
+    ]
+  }
+}

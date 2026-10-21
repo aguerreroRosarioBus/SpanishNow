@@ -1,6 +1,11 @@
-// Rebuilds the dedicated test database from scratch, following the production path:
-//   1. load Dump20260122.sql (historic schema + sample data)
-//   2. apply the migrations that came after the dump, with queryInterface
+// Rebuilds the dedicated test database from scratch following the upgrade path of a real, pre-existing database:
+//   1. load Dump20260122.sql (historic schema + sample data, taken before the runner existed)
+//   2. `adopt`: register what the dump already contains (baseline, 20260115*)
+//   3. `up`: apply every remaining migration with the umzug runner (src/db/migrator.js)
+//
+// Why the dump and not an empty database: tests/legacyContent.test.js checks that real pre-TPRS content is converted by the
+// migrations (backfilled revision 1, legacy progress dropped with data), which only exists in the dump. The other path,
+// "empty database + migrations", is covered by tests/migrationRunner.test.js, which also proves both end in the same schema.
 const fs = require('fs');
 const path = require('path');
 
@@ -13,8 +18,10 @@ module.exports = async () => {
 
   const mysql = require('mysql2/promise');
   const { Sequelize } = require('sequelize');
+  const { createMigrator, adopt } = require('../src/db/migrator');
   const connection = {
     host: process.env.DB_HOST || 'localhost',
+    port: Number(process.env.DB_PORT) || 3306,
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || ''
   };
@@ -38,20 +45,12 @@ module.exports = async () => {
   // The dump carries legacy progress rows; dropping them is expected in this throwaway database.
   process.env.CONFIRM_DROP_LEGACY_PROGRESS = 'yes';
   const sequelize = new Sequelize(TEST_DB_NAME, connection.user, connection.password, {
-    host: connection.host, dialect: 'mysql', logging: false
+    host: connection.host, port: connection.port, dialect: 'mysql', logging: false
   });
   try {
-    const qi = sequelize.getQueryInterface();
-    for (const file of [
-      '20260122000000-add-audio-to-questions.js',
-      '20260127000000-create-tooltips.js',
-      '20260926000000-convert-activity-configs-to-story.js',
-      '20260927000000-create-lesson-plans.js',
-      '20261021000000-add-keyframe-tooltips.js',
-      '20261022000000-drop-legacy-progress.js'
-    ]) {
-      await require(path.join(backend, 'migrations', file)).up(qi, Sequelize);
-    }
+    const migrator = await createMigrator(sequelize, { logger: { info() {}, warn() {}, error() {}, debug() {} } });
+    await adopt(migrator);
+    await migrator.umzug.up();
   } finally {
     delete process.env.CONFIRM_DROP_LEGACY_PROGRESS;
     await sequelize.close();

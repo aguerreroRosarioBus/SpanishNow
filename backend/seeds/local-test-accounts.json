@@ -1,9 +1,17 @@
 {
-  "_note": "Credenciales SOLO para bases locales de prueba (spanishnow_tprs_*_test) restauradas desde Dump20260122.sql. Nunca usar en Railway ni en datos reales.",
-  "database": "spanishnow_tprs_m5_test",
+  "_note": "Credenciales SOLO para bases locales de prueba. Las usa `npm run db:seed:curated` (seeds/curated/01-accounts.js): la contraseña de este archivo solo se aplica si DB_HOST es localhost; en cualquier otro host hay que definir SEED_TEST_PASSWORD. Nunca usar en datos reales.",
+  "database": "(informativo) las bases locales de prueba se reconstruyen con `npm run db:rebuild`",
   "password": "tprs-local-test-1",
   "accounts": [
-    { "email": "admin@gmail.com", "role": "teacher" },
-    { "email": "lucas@gmail.com", "role": "student" }
+    {
+      "email": "admin@gmail.com",
+      "name": "Andres",
+      "role": "teacher"
+    },
+    {
+      "email": "lucas@gmail.com",
+      "name": "lucas",
+      "role": "student"
+    }
   ]
 }
