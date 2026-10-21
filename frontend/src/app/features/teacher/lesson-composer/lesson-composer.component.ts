@@ -4,10 +4,14 @@ import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
 import { KeyframeExtrasComponent } from './keyframe-extras.component';
+import { ComposerSidePanelComponent, SidePanelTab } from './composer-side-panel.component';
+import { InlineQuestionFormComponent } from './inline-question-form.component';
+import { InlineVocabularyFormComponent } from './inline-vocabulary-form.component';
 import { KeyframeTooltip, LessonBlock, LessonBlockType, LessonPhase, LessonPlan, LessonPlanService } from '../../../core/services/lesson-plan.service';
 import { QuestionService } from '../../../core/services/question.service';
 import { VocabularyService } from '../../../core/services/vocabulary.service';
 import { Story, Question, Vocabulary, Unit } from '../../../core/models/course.model';
+import { storyTextFromBlocks } from './tprs-checklist';
 
 const TUTORIAL_VERSION = '1';
 const PHASES: LessonPhase[] = ['before', 'during', 'after', 'later'];
@@ -16,15 +20,17 @@ const PHASE_LABEL: Record<LessonPhase, string> = { before: 'Antes', during: 'Dur
 @Component({
   selector: 'app-lesson-composer',
   standalone: true,
-  imports: [CommonModule, FormsModule, KeyframeExtrasComponent],
+  imports: [CommonModule, FormsModule, KeyframeExtrasComponent, ComposerSidePanelComponent, InlineQuestionFormComponent, InlineVocabularyFormComponent],
   templateUrl: './lesson-composer.component.html',
-  styleUrls: ['./lesson-composer.component.scss', './lesson-composer-tutorial.scss']
+  styleUrls: ['./lesson-composer.component.scss', './lesson-composer-tutorial.scss', './lesson-composer-flow.scss']
 })
 export class LessonComposerComponent implements OnInit, OnDestroy {
   @Input({ required: true }) story!: Story;
   @Input({ required: true }) unit!: Unit;
   @Input({ required: true }) courseUnits: Unit[] = [];
   @Output() closed = new EventEmitter<void>();
+  /** Texto de la historia reconstruido al publicar (keyframes activos unidos), para refrescar la lista sin recargar. */
+  @Output() storyTextPublished = new EventEmitter<string>();
   @Output() manageQuestions = new EventEmitter<void>();
   @Output() manageVocabulary = new EventEmitter<void>();
   @ViewChild('dialog') dialog?: ElementRef<HTMLElement>;
@@ -48,14 +54,19 @@ export class LessonComposerComponent implements OnInit, OnDestroy {
   notice = signal('');
   showTutorial = signal(false);
   exampleMode = signal(false);
-  preview = signal(false);
+  sideTab = signal<SidePanelTab>('story');
+  /** Bloque de pregunta / de expresión con el formulario de creación abierto. */
+  newQuestionFor = signal<string | null>(null);
+  newExpressionFor = signal<string | null>(null);
+  /** Selección de texto en el textarea de un keyframe y expresión que se está marcando. */
+  private keyframeSelection = signal<{ blockKey: string; snippet: string } | null>(null);
+  markTarget = signal<{ blockKey: string; word: string } | null>(null);
   reordering = signal(false);
   reorderAnnouncement = signal('');
   private draggedBlockKey: string | null = null;
   private returnFocus: HTMLElement | null = null;
   private seenKey = '';
   private blocksBeforeExample: LessonBlock[] = [];
-  previewQuestionState = signal<Record<string, 'question' | 'wrong' | 'correct' | 'continued'>>({});
 
   async ngOnInit(): Promise<void> {
     this.returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -87,7 +98,7 @@ export class LessonComposerComponent implements OnInit, OnDestroy {
   onKeydown(event: KeyboardEvent): void {
     if (event.key === 'Escape') {
       if (this.showTutorial()) { event.preventDefault(); this.closeTutorial(); }
-      else if (this.preview()) { this.preview.set(false); }
+      else if (this.sideTab() === 'preview') { this.sideTab.set('story'); }
       else this.close();
       return;
     }
@@ -105,7 +116,6 @@ export class LessonComposerComponent implements OnInit, OnDestroy {
 
   phaseLabel(phase: LessonPhase): string { return PHASE_LABEL[phase]; }
   phaseBlocks(phase: LessonPhase): LessonBlock[] { return this.blocks().filter(block => block.phase === phase); }
-  previewPhaseBlocks(phase: LessonPhase): LessonBlock[] { return this.phaseBlocks(phase).filter(block => block.active); }
   keyframesBefore(block: LessonBlock): LessonBlock[] {
     const index = this.blocks().findIndex(item => item.blockKey === block.blockKey);
     return this.blocks().slice(0, index).filter(item => item.type === 'keyframe' && item.active);
@@ -126,9 +136,85 @@ export class LessonComposerComponent implements OnInit, OnDestroy {
   addBlock(type: LessonBlockType, phase: LessonPhase): void {
     const block: LessonBlock = { blockKey: crypto.randomUUID(), type, phase, active: type !== 'expression', required: false };
     if (type === 'expression') block.vocabularyRole = phase === 'later' ? 'revisit' : 'target';
-    if (type === 'question') block.questionId = null;
+    if (type === 'question') {
+      block.questionId = null;
+      block.contextBlockKey = [...this.blocks()].reverse().find(item => item.type === 'keyframe' && item.active)?.blockKey ?? null;
+    }
     this.insertByPhase(block);
     this.changed();
+  }
+
+  /** Índice justo después del keyframe y de las preguntas que lo siguen (solo las suyas si `onlyOwn`). */
+  private afterKeyframeGroup(keyframe: LessonBlock, onlyOwn: boolean): number {
+    const list = this.blocks();
+    let index = list.findIndex(item => item.blockKey === keyframe.blockKey) + 1;
+    while (index < list.length && list[index].phase === keyframe.phase && list[index].type === 'question'
+      && (!onlyOwn || list[index].contextBlockKey === keyframe.blockKey)) index++;
+    return index;
+  }
+  private insertAt(index: number, block: LessonBlock): void {
+    const list = [...this.blocks()];
+    list.splice(index, 0, block);
+    this.blocks.set(list);
+    this.changed();
+  }
+  private focusSoon(selector: string): void { setTimeout(() => (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>(selector)?.focus(), 0); }
+
+  /** «＋ Pregunta sobre esto»: pregunta ligada al keyframe, tras las que ya tenga, con el formulario de creación abierto. */
+  addQuestionAfter(keyframe: LessonBlock): void {
+    const block: LessonBlock = { blockKey: crypto.randomUUID(), type: 'question', phase: keyframe.phase, active: true, required: false, questionId: null, contextBlockKey: keyframe.blockKey };
+    this.insertAt(this.afterKeyframeGroup(keyframe, true), block);
+    this.newQuestionFor.set(block.blockKey);
+  }
+  /** «＋ Seguir la historia»: nuevo keyframe vacío tras este keyframe y sus preguntas. */
+  addKeyframeAfter(keyframe: LessonBlock): void {
+    const block: LessonBlock = { blockKey: crypto.randomUUID(), type: 'keyframe', phase: keyframe.phase, active: true, required: false, text: '' };
+    this.insertAt(this.afterKeyframeGroup(keyframe, false), block);
+    this.focusSoon('#kf-text-' + block.blockKey);
+  }
+
+  toggleNewQuestion(key: string): void { this.newQuestionFor.set(this.newQuestionFor() === key ? null : key); }
+  onQuestionCreated(key: string, question: Question): void {
+    this.questions.update(list => [...list, question]);
+    this.updateBlock(key, { questionId: question.id });
+    this.newQuestionFor.set(null);
+  }
+  toggleNewExpression(key: string): void { this.newExpressionFor.set(this.newExpressionFor() === key ? null : key); }
+  private addVocabulary(word: Vocabulary): void { this.vocabulary.update(list => list.some(v => v.id === word.id) ? list : [...list, word]); }
+  onExpressionCreated(key: string, word: Vocabulary): void {
+    this.addVocabulary(word);
+    this.updateBlock(key, { vocabularyId: word.id });
+    this.newExpressionFor.set(null);
+  }
+
+  onKeyframeText(key: string, text: string): void {
+    if (this.keyframeSelection()?.blockKey === key) this.keyframeSelection.set(null);
+    this.updateBlock(key, { text });
+  }
+  onKeyframeSelect(event: Event, key: string): void {
+    const el = event.target as HTMLTextAreaElement;
+    const snippet = (el.value ?? '').slice(el.selectionStart ?? 0, el.selectionEnd ?? 0).trim();
+    if (snippet) this.keyframeSelection.set({ blockKey: key, snippet });
+    else if (this.keyframeSelection()?.blockKey === key && document.activeElement === el) this.keyframeSelection.set(null);
+  }
+  markableSelection(key: string): string {
+    const selection = this.keyframeSelection();
+    return selection?.blockKey === key ? selection.snippet : '';
+  }
+  startMark(key: string, word: string): void { this.markTarget.set({ blockKey: key, word }); }
+  /** Añade (activa, objetivo) la expresión marcada en «Antes», sin duplicar una ya presente. */
+  onMarked(word: Vocabulary): void {
+    this.addVocabulary(word);
+    this.markTarget.set(null);
+    this.keyframeSelection.set(null);
+    const existing = this.blocks().find(b => b.type === 'expression' && b.phase === 'before' && b.vocabularyId === word.id);
+    if (existing) {
+      this.updateBlock(existing.blockKey, { active: true, vocabularyRole: 'target' });
+    } else {
+      this.insertByPhase({ blockKey: crypto.randomUUID(), type: 'expression', phase: 'before', active: true, required: false, vocabularyRole: 'target', vocabularyId: word.id });
+      this.changed();
+    }
+    this.notice.set(`«${word.word}» añadida como expresión objetivo en Antes.`);
   }
 
   private insertByPhase(block: LessonBlock): void {
@@ -221,7 +307,7 @@ export class LessonComposerComponent implements OnInit, OnDestroy {
     const plan = this.plan(); if (!plan) return;
     this.publishing.set(true); this.error.set('');
     this.api.publish(this.story.id, plan.revision).subscribe({
-      next: published => { this.plan.set(published); this.blocks.set(published.blocks); this.dirty.set(false); this.notice.set(`Revisión ${published.revision} publicada.`); this.publishing.set(false); },
+      next: published => { this.plan.set(published); this.blocks.set(published.blocks); this.dirty.set(false); this.notice.set(`Revisión ${published.revision} publicada.`); this.publishing.set(false); this.storyTextPublished.emit(storyTextFromBlocks(published.blocks)); },
       error: error => { this.error.set(error?.error?.error || 'No se pudo publicar.'); this.publishing.set(false); }
     });
   }
@@ -266,21 +352,14 @@ export class LessonComposerComponent implements OnInit, OnDestroy {
       { blockKey: crypto.randomUUID(), type: 'matching', phase: 'after', active: false, required: false },
       { blockKey: crypto.randomUUID(), type: 'expression', phase: 'later', active: true, required: false, vocabularyRole: 'revisit', vocabularySnapshot: { word: 'me llamo', translation: 'my name is' } }
     ]);
-    this.showTutorial.set(false); this.preview.set(true);
+    this.showTutorial.set(false); this.sideTab.set('preview');
   }
-  exitExample(): void { this.blocks.set(this.blocksBeforeExample); this.blocksBeforeExample = []; this.exampleMode.set(false); this.preview.set(false); }
-  simulateWrong(block: LessonBlock): void { this.previewQuestionState.update(states => ({ ...states, [block.blockKey]: 'wrong' })); }
-  retryQuestion(block: LessonBlock): void { this.previewQuestionState.update(states => ({ ...states, [block.blockKey]: 'correct' })); }
-  continueQuestion(block: LessonBlock): void { this.previewQuestionState.update(states => ({ ...states, [block.blockKey]: 'continued' })); }
-  questionState(block: LessonBlock): string { return this.previewQuestionState()[block.blockKey] || 'question'; }
-  questionText(block: LessonBlock): string { return block.questionSnapshot?.questionText || this.questions().find(question => question.id === block.questionId)?.questionText || block.text || 'Pregunta sin contenido'; }
+  exitExample(): void { this.blocks.set(this.blocksBeforeExample); this.blocksBeforeExample = []; this.exampleMode.set(false); this.sideTab.set('story'); }
   close(): void { this.closed.emit(); this.restoreFocus(); }
   private restoreFocus(): void { if (this.returnFocus?.isConnected) this.returnFocus.focus(); }
-  previewLabel(block: LessonBlock): string { return block.text || block.vocabularySnapshot?.word || block.questionSnapshot?.questionText || this.typeLabel(block.type); }
   typeLabel(type: LessonBlockType): string { return ({ expression: 'Expresión', keyframe: 'Keyframe', question: 'Pregunta', full_story: 'Lectura y audio completos', flashcards: 'Tarjetas', matching: 'Emparejar', listen_repeat: 'Repetición oral' })[type]; }
   currentStoryTitle(storyId: number | null | undefined): string { return this.stories().find(story => story.id === storyId)?.title || 'Selecciona una historia'; }
   availableRevisitStories(): Story[] { return this.stories().filter(story => story.id !== this.story.id); }
   contextText(block: LessonBlock): string { return this.blocks().find(item => item.blockKey === block.contextBlockKey)?.text || 'Keyframe sin texto'; }
-  narrativeText(): string { return this.previewPhaseBlocks('during').filter(block => block.type === 'keyframe').map(block => block.text || '').join(' '); }
   toggleDemoMove(event: Event): void { (event.currentTarget as HTMLElement).closest('.move-demo')?.querySelector('.demo-track')?.classList.toggle('demo-moved'); }
 }

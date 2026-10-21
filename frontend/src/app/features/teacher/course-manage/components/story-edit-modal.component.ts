@@ -7,7 +7,7 @@ import { Story } from '../../../../core/models/course.model';
 import { AudioInputComponent } from '../audio/audio-input.component';
 import { CourseManageStore } from '../course-manage.store';
 
-/** Edición de título, texto y audios de una historia (reemplazar o eliminar audio actual). */
+/** Edición de título, texto (si no hay lección) y audios de una historia (reemplazar o eliminar audio actual). */
 @Component({
   selector: 'app-story-edit-modal',
   standalone: true,
@@ -28,10 +28,14 @@ export class StoryEditModalComponent {
 
   form = inject(FormBuilder).group({
     title: ['', [Validators.required, Validators.minLength(3)]],
-    text: ['', [Validators.required, Validators.minLength(20)]]
+    text: ['']
   });
 
+  /** Con lección, el texto lo genera el compositor y aquí es de solo lectura. */
+  textLocked = signal(false);
+
   ngOnInit(): void {
+    this.textLocked.set(!!this.story().hasLessonPlan);
     this.form.patchValue({ title: this.story().title, text: this.story().text });
   }
 
@@ -42,7 +46,7 @@ export class StoryEditModalComponent {
     const story = this.story();
     const formData = new FormData();
     formData.append('title', this.form.value.title!);
-    formData.append('text', this.form.value.text!);
+    if (!this.textLocked() && (this.form.value.text ?? '') !== (story.text ?? '')) formData.append('text', this.form.value.text ?? '');
 
     const slow = this.slow().getFile();
     if (slow) formData.append('audioSlow', slow);
@@ -60,7 +64,13 @@ export class StoryEditModalComponent {
       },
       error: error => {
         console.error('Error updating story:', error);
-        this.toast.error('Error al actualizar la historia');
+        if (error?.status === 409) {
+          // La historia ya tenía lección aunque no lo sabíamos: se bloquea el texto y se conserva lo demás.
+          this.store.patchStory(story.id, s => ({ ...s, hasLessonPlan: true }));
+          this.textLocked.set(true);
+          this.form.patchValue({ text: story.text });
+          this.toast.error('El texto se genera desde la lección. Editalo en el compositor.');
+        } else this.toast.error('Error al actualizar la historia');
       }
     });
   }

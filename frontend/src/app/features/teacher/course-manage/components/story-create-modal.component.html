@@ -15,16 +15,9 @@
             </div>
           </div>
 
-          <div class="mb-3">
-            <label for="storyText" class="form-label">Texto de la Historia *</label>
-            <textarea class="form-control" id="storyText" rows="8" formControlName="text" placeholder="Escribe la historia aquí..."></textarea>
-            <small class="text-muted d-block mt-1">
-              Escribe la historia usando vocabulario repetitivo y estructuras simples (método TPRS)
-            </small>
-            <div *ngIf="form.get('text')?.invalid && form.get('text')?.touched" class="text-danger small mt-1">
-              El texto debe tener al menos 20 caracteres
-            </div>
-          </div>
+          <p class="text-muted small mb-3">
+            Después de crearla se abrirá el compositor de la lección, donde escribes la historia fragmento a fragmento (método TPRS).
+          </p>
 
           <div class="mb-3">
             <label class="form-label">Audio Lento (Opcional)</label>
@@ -46,7 +39,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" (click)="close()">Cancelar</button>
-          <button type="submit" class="btn btn-primary" [disabled]="form.invalid">Crear Historia</button>
+          <button type="submit" class="btn btn-primary" [disabled]="form.invalid">Crear y componer lección</button>
         </div>
       </form>
     </div>

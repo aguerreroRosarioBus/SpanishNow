@@ -57,7 +57,8 @@ test.describe.serial('Flujo TPRS completo', () => {
 
     // Vista previa del recorrido del alumno.
     await dialog.getByRole('button', { name: 'Vista previa' }).click();
-    const preview = dialog.getByLabel('Vista previa del recorrido del alumno');
+    // La vista previa es ahora una pestaña del panel lateral (se abre/cierra con el botón del pie).
+    const preview = dialog.getByRole('tabpanel');
     await expect(preview).toBeVisible();
     await expect(preview.getByRole('heading', { name: 'Antes' })).toBeVisible();
     await expect(preview.getByRole('heading', { name: 'Durante' })).toBeVisible();

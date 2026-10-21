@@ -6,7 +6,7 @@ import { ToastService } from '../../../../core/services/toast.service';
 import { AudioInputComponent } from '../audio/audio-input.component';
 import { CourseManageStore } from '../course-manage.store';
 
-/** Nueva historia con audios lento y normal opcionales (subidos o grabados). */
+/** Nueva historia (solo título) con audios lento y normal opcionales (subidos o grabados). */
 @Component({
   selector: 'app-story-create-modal',
   standalone: true,
@@ -23,8 +23,7 @@ export class StoryCreateModalComponent {
   normal = viewChild.required<AudioInputComponent>('normal');
 
   form = inject(FormBuilder).group({
-    title: ['', [Validators.required, Validators.minLength(3)]],
-    text: ['', [Validators.required, Validators.minLength(20)]]
+    title: ['', [Validators.required, Validators.minLength(3)]]
   });
 
   close(): void { this.store.close(); }
@@ -34,7 +33,6 @@ export class StoryCreateModalComponent {
     const formData = new FormData();
     formData.append('unitId', this.unitId().toString());
     formData.append('title', this.form.value.title!);
-    formData.append('text', this.form.value.text!);
     const slow = this.slow().getFile();
     const normal = this.normal().getFile();
     if (slow) formData.append('audioSlow', slow);
@@ -43,7 +41,10 @@ export class StoryCreateModalComponent {
     this.storyService.createStory(formData).subscribe({
       next: story => {
         this.store.addStory(this.unitId(), story);
-        this.close();
+        // La historia nace solo con título: se abre el compositor para escribirla sobre la marcha.
+        const unit = this.store.units().find(u => u.id === this.unitId());
+        if (unit) this.store.open({ kind: 'composer', story, unit });
+        else this.close();
       },
       error: error => {
         console.error('Error creating story:', error);

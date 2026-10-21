@@ -1,0 +1,12 @@
+<form class="inline-form" (ngSubmit)="submit()" aria-label="Nueva expresión">
+  <div class="inline-row">
+    <label [attr.for]="uid() + '-word'">Expresión<input [id]="uid() + '-word'" name="word" maxlength="120" [ngModel]="word()" (ngModelChange)="word.set($event)"></label>
+    <label [attr.for]="uid() + '-tr'">Traducción<input [id]="uid() + '-tr'" name="translation" maxlength="200" [ngModel]="translation()" (ngModelChange)="translation.set($event)" [disabled]="!!match()" [placeholder]="match()?.translation || ''"></label>
+  </div>
+  <p class="inline-help" *ngIf="match()" role="status">«{{ match()!.word }}» ya existe en el vocabulario de la unidad ({{ match()!.translation }}); se reutilizará.</p>
+  <p class="inline-error" role="alert" *ngIf="error()">{{ error() }}</p>
+  <div class="inline-actions">
+    <button type="submit" class="small-button" [disabled]="busy() || (!match() && (!word().trim() || !translation().trim()))">{{ busy() ? 'Guardando…' : match() ? 'Usar expresión' : 'Guardar expresión' }}</button>
+    <button type="button" class="text-button" (click)="cancelled.emit()">Cancelar</button>
+  </div>
+</form>

@@ -31,6 +31,8 @@ export interface Story {
   text: string;
   audioSlowUrl?: string;
   audioNormalUrl?: string;
+  /** La historia ya tiene lección (borrador o publicada): su texto se genera desde el compositor. */
+  hasLessonPlan?: boolean;
   order: number;
   questions?: Question[];
   repetitionActivities?: RepetitionActivity[];

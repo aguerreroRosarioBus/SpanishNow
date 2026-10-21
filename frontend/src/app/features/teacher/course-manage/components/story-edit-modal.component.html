@@ -12,8 +12,9 @@
             <input type="text" class="form-control" id="editStoryTitle" formControlName="title" placeholder="Ej: Mi primer día en la escuela" />
           </div>
           <div class="mb-3">
-            <label for="editStoryText" class="form-label">Texto de la Historia *</label>
-            <textarea class="form-control" id="editStoryText" formControlName="text" rows="6" placeholder="Escribe aquí el texto de la historia..."></textarea>
+            <label for="editStoryText" class="form-label">Texto de la Historia</label>
+            <textarea class="form-control" id="editStoryText" formControlName="text" rows="6" [readOnly]="textLocked()" aria-describedby="editStoryTextNote" placeholder="Escribe aquí el texto de la historia..."></textarea>
+            <small *ngIf="textLocked()" id="editStoryTextNote" class="text-muted d-block mt-1">Se genera desde la lección. Editalo en el compositor.</small>
           </div>
           <div class="row">
             <div class="col-md-6 mb-3">

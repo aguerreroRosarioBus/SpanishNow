@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authMiddleware, isTeacher } = require('../middlewares/auth.middleware');
-const { Story, Unit, Course, Question } = require('../models');
+const { Story, Unit, Course, Question, LessonPlan } = require('../models');
 const cloudinary = require('../config/cloudinary');
 const upload = require('../middlewares/upload.middleware');
 
@@ -42,11 +42,15 @@ router.post('/', authMiddleware, isTeacher, upload.fields([
     const { unitId, title, text } = req.body;
 
     // Validate required fields
-    if (!unitId || !title || !text) {
+    // text is optional: the lesson composer writes the story fragment by fragment (published text is rebuilt from the keyframes)
+    if (!unitId || !title) {
       return res.status(400).json({
-        error: 'Missing required fields: unitId, title, text',
-        received: { unitId, title, text }
+        error: 'Missing required fields: unitId, title',
+        received: { unitId, title }
       });
+    }
+    if (text !== undefined && text !== null && typeof text !== 'string') {
+      return res.status(400).json({ error: 'text must be a string' });
     }
 
     // Validate unitId is a valid number
@@ -78,7 +82,7 @@ router.post('/', authMiddleware, isTeacher, upload.fields([
     let audioNormalUrl = null;
 
     // Solo subir a Cloudinary si está configurado
-    if (req.files['audioSlow'] && process.env.CLOUDINARY_CLOUD_NAME) {
+    if (req.files && req.files['audioSlow'] && process.env.CLOUDINARY_CLOUD_NAME) {
       try {
         const result = await cloudinary.uploadFromBuffer(req.files['audioSlow'][0].buffer, {
           folder: 'spanishnow/audio',
@@ -90,7 +94,7 @@ router.post('/', authMiddleware, isTeacher, upload.fields([
       }
     }
 
-    if (req.files['audioNormal'] && process.env.CLOUDINARY_CLOUD_NAME) {
+    if (req.files && req.files['audioNormal'] && process.env.CLOUDINARY_CLOUD_NAME) {
       try {
         const result = await cloudinary.uploadFromBuffer(req.files['audioNormal'][0].buffer, {
           folder: 'spanishnow/audio',
@@ -105,7 +109,7 @@ router.post('/', authMiddleware, isTeacher, upload.fields([
     const story = await Story.create({
       unitId: parsedUnitId,
       title,
-      text,
+      text: text || '',
       audioSlowUrl,
       audioNormalUrl,
       order
@@ -171,6 +175,11 @@ router.put('/:id', authMiddleware, isTeacher, upload.fields([
     }
 
     const { title, text, deleteAudioSlow, deleteAudioNormal } = req.body;
+
+    // Once the story has a lesson plan (draft or published) its text is owned by the lesson (rebuilt from the keyframes on publish).
+    if (text !== undefined && text !== story.text && await LessonPlan.count({ where: { storyId: story.id } }) > 0) {
+      return res.status(409).json({ error: 'El texto de esta historia se genera desde la lección; edítalo en el compositor.' });
+    }
     let audioSlowUrl = story.audioSlowUrl;
     let audioNormalUrl = story.audioNormalUrl;
 
@@ -184,7 +193,7 @@ router.put('/:id', authMiddleware, isTeacher, upload.fields([
     }
 
     // Solo subir a Cloudinary si está configurado
-    if (req.files['audioSlow'] && process.env.CLOUDINARY_CLOUD_NAME) {
+    if (req.files && req.files['audioSlow'] && process.env.CLOUDINARY_CLOUD_NAME) {
       try {
         const result = await cloudinary.uploadFromBuffer(req.files['audioSlow'][0].buffer, {
           folder: 'spanishnow/audio',
@@ -196,7 +205,7 @@ router.put('/:id', authMiddleware, isTeacher, upload.fields([
       }
     }
 
-    if (req.files['audioNormal'] && process.env.CLOUDINARY_CLOUD_NAME) {
+    if (req.files && req.files['audioNormal'] && process.env.CLOUDINARY_CLOUD_NAME) {
       try {
         const result = await cloudinary.uploadFromBuffer(req.files['audioNormal'][0].buffer, {
           folder: 'spanishnow/audio',

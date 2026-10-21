@@ -140,7 +140,7 @@ async function currentDraft(story, transaction) {
     await LessonBlock.bulkCreate(blocks.map(b => savedBlock(draft.id, b, b.position)), { transaction });
   } else {
     await LessonBlock.bulkCreate([
-      savedBlock(draft.id, { blockKey: randomUUID(), type: 'keyframe', phase: 'during', text: story.text, active: true }, 0),
+      savedBlock(draft.id, { blockKey: randomUUID(), type: 'keyframe', phase: 'during', text: story.text && story.text.trim() ? story.text : null, active: true }, 0),
       savedBlock(draft.id, { blockKey: randomUUID(), type: 'full_story', phase: 'after', active: true }, 1)
     ], { transaction });
   }

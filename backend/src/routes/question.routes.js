@@ -106,7 +106,8 @@ router.post('/', authMiddleware, isTeacher, upload.single('audio'), async (req, 
       storyId,
       questionText,
       answerType,
-      options: answerType === 'choice' ? options : null,
+      // yes_no guarda Sí/No como opciones (igual que los seeds) para que el alumno vea botones y no un campo de texto libre
+      options: answerType === 'choice' ? options : answerType === 'yes_no' ? ['Sí', 'No'] : null,
       correctAnswer,
       audioUrl
     });
@@ -192,7 +193,7 @@ router.put('/:id', authMiddleware, isTeacher, upload.single('audio'), async (req
     const updateData = {
       questionText: questionText || question.questionText,
       answerType: finalAnswerType,
-      options: finalAnswerType === 'choice' ? (options || question.options) : null,
+      options: finalAnswerType === 'choice' ? (options || question.options) : finalAnswerType === 'yes_no' ? ['Sí', 'No'] : null,
       correctAnswer: correctAnswer !== undefined ? correctAnswer : question.correctAnswer,
       audioUrl
     };

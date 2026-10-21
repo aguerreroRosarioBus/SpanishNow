@@ -92,6 +92,7 @@
     [unit]="$any(modal).unit"
     [courseUnits]="store.units()"
     (closed)="store.close()"
+    (storyTextPublished)="store.setStoryText($any(modal).story.id, $event)"
     (manageQuestions)="manageQuestionsFromComposer()"
     (manageVocabulary)="manageVocabularyFromComposer()"
   ></app-lesson-composer>

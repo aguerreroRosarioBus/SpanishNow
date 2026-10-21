@@ -72,7 +72,14 @@ export class CourseManageStore {
 
   // ===== Diálogos y confirmación =====
 
-  open(modal: ManageModal): void { this.modal.set(modal); }
+  open(modal: ManageModal): void {
+    // Abrir el compositor crea el borrador de la lección: desde ahí el texto de la historia lo genera la lección.
+    if (modal.kind === 'composer' && !modal.story.hasLessonPlan) {
+      this.patchStory(modal.story.id, s => ({ ...s, hasLessonPlan: true }));
+      modal = { ...modal, story: { ...modal.story, hasLessonPlan: true } };
+    }
+    this.modal.set(modal);
+  }
   close(): void { this.modal.set(null); }
 
   confirm(title: string, message: string, confirmText: string, onConfirm: () => void, type: 'danger' | 'warning' = 'danger'): void {
@@ -115,6 +122,7 @@ export class CourseManageStore {
   patchStory(storyId: number, change: (story: Story) => Story): void {
     this.units.update(list => list.map(u => ({ ...u, stories: (u.stories || []).map(s => s.id === storyId ? change(s) : s) })));
   }
+  setStoryText(storyId: number, text: string): void { this.patchStory(storyId, s => ({ ...s, text })); }
   setStoryQuestions(storyId: number, questions: Question[]): void {
     this.patchStory(storyId, s => ({ ...s, questions }));
   }

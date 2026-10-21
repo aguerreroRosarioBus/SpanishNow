@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authMiddleware, isTeacher } = require('../middlewares/auth.middleware');
-const { Course, Unit, User, Story, Question, RepetitionActivity } = require('../models');
+const { Course, Unit, User, Story, Question, RepetitionActivity, LessonPlan } = require('../models');
 const cloudinary = require('../config/cloudinary');
 const upload = require('../middlewares/upload.middleware');
 
@@ -51,7 +51,14 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Course not found' });
     }
 
-    res.json(course);
+    // Una historia con plan de lección tiene el texto generado desde el compositor.
+    const data = course.toJSON();
+    const storyIds = data.units.flatMap(unit => unit.stories.map(story => story.id));
+    const planned = new Set(storyIds.length
+      ? (await LessonPlan.findAll({ where: { storyId: storyIds }, attributes: ['storyId'], raw: true })).map(plan => plan.storyId)
+      : []);
+    data.units.forEach(unit => unit.stories.forEach(story => { story.hasLessonPlan = planned.has(story.id); }));
+    res.json(data);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

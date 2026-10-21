@@ -6,6 +6,7 @@ import { LessonBlock, LessonPlan, LessonPlanService } from '../../../core/servic
 import { AuthService } from '../../../core/services/auth.service';
 import { QuestionService } from '../../../core/services/question.service';
 import { VocabularyService } from '../../../core/services/vocabulary.service';
+import { Question, Vocabulary } from '../../../core/models/course.model';
 
 const block = (blockKey: string, type: LessonBlock['type'], phase: LessonBlock['phase'], extra: Partial<LessonBlock> = {}): LessonBlock =>
   ({ blockKey, type, phase, active: true, required: false, ...extra });
@@ -18,7 +19,11 @@ describe('LessonComposerComponent', () => {
   let api: { getDraft: any; saveDraft: any; reorder: any; publish: any };
   const seenKey = 'spanishnow.lesson-tutorial.5.v1';
 
-  async function create(blocks: LessonBlock[]): Promise<void> {
+  let createQuestion: any, createVocabulary: any;
+
+  async function create(blocks: LessonBlock[], vocab: Vocabulary[] = []): Promise<void> {
+    createQuestion = vi.fn((d: any) => of({ id: 99, ...d } as Question));
+    createVocabulary = vi.fn((f: FormData) => of({ id: 55, unitId: 1, word: f.get('word'), translation: f.get('translation') } as Vocabulary));
     api = {
       getDraft: vi.fn(() => of(makePlan(blocks))),
       saveDraft: vi.fn((_s: number, _r: number, b: LessonBlock[]) => of(makePlan(b))),
@@ -30,8 +35,8 @@ describe('LessonComposerComponent', () => {
       providers: [
         { provide: LessonPlanService, useValue: api },
         { provide: AuthService, useValue: { currentUser: signal({ id: 5 }) } },
-        { provide: QuestionService, useValue: { getQuestionsByStory: () => of([]) } },
-        { provide: VocabularyService, useValue: { getVocabularyByUnit: () => of([]) } },
+        { provide: QuestionService, useValue: { getQuestionsByStory: () => of([]), createQuestion } },
+        { provide: VocabularyService, useValue: { getVocabularyByUnit: () => of(vocab), createVocabulary } },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(LessonComposerComponent);
@@ -148,6 +153,141 @@ describe('LessonComposerComponent', () => {
       ]);
       await component.publish();
       expect(api.publish).toHaveBeenCalledWith(7, 1);
+    });
+  });
+
+  describe('composición incremental', () => {
+    const flush = () => new Promise(r => setTimeout(r, 5));
+    beforeEach(async () => {
+      localStorage.setItem(seenKey, 'seen');
+      await create([
+        block('k1', 'keyframe', 'during', { text: 'Luis llega a la casa.' }),
+        block('q1', 'question', 'during', { questionId: 1, contextBlockKey: 'k1' }),
+        block('k2', 'keyframe', 'during', { text: 'Luis tiene un gato.' }),
+        block('f1', 'full_story', 'after'),
+      ]);
+    });
+
+    it('«Pregunta sobre esto» inserta tras las preguntas del keyframe, con su contexto y el formulario abierto', () => {
+      component.addQuestionAfter(component.blocks()[0]);
+      fixture.detectChanges();
+      const ids = component.blocks().map(b => b.blockKey);
+      expect(ids.slice(0, 2)).toEqual(['k1', 'q1']);
+      const created = component.blocks()[2];
+      expect(created.type).toBe('question');
+      expect(created.contextBlockKey).toBe('k1');
+      expect(ids[3]).toBe('k2');
+      expect(component.newQuestionFor()).toBe(created.blockKey);
+      expect(fixture.nativeElement.querySelector('app-inline-question-form')).toBeTruthy();
+    });
+
+    it('«Seguir la historia» inserta un keyframe vacío tras el keyframe y sus preguntas', () => {
+      component.addKeyframeAfter(component.blocks()[0]);
+      const blocks = component.blocks();
+      expect(blocks.map(b => b.blockKey).slice(0, 2)).toEqual(['k1', 'q1']);
+      expect(blocks[2]).toMatchObject({ type: 'keyframe', phase: 'during', active: true, text: '' });
+      expect(blocks[3].blockKey).toBe('k2');
+      expect(component.dirty()).toBe(true);
+    });
+
+    it('los botones aparecen bajo cada keyframe de «Durante»', () => {
+      const labels = [...fixture.nativeElement.querySelectorAll('.kf-flow button')].map((b: HTMLElement) => b.textContent!.trim());
+      expect(labels).toEqual(['＋ Pregunta sobre esto', '＋ Seguir la historia', '＋ Pregunta sobre esto', '＋ Seguir la historia']);
+    });
+
+    it('crear una pregunta inline la guarda, la añade a la lista y la asigna al bloque', async () => {
+      component.addQuestionAfter(component.blocks()[2]);
+      fixture.detectChanges();
+      const form = fixture.debugElement.query(d => d.name === 'app-inline-question-form').componentInstance;
+      await form.submit();
+      expect(createQuestion).not.toHaveBeenCalled(); // vacío: no valida
+      form.text.set('¿Luis tiene un gato?');
+      form.correct.set('Sí');
+      await form.submit();
+      expect(createQuestion).toHaveBeenCalledWith({ storyId: 7, questionText: '¿Luis tiene un gato?', answerType: 'yes_no', options: ['Sí', 'No'], correctAnswer: 'Sí' });
+      expect(component.questions().map(q => q.id)).toEqual([99]);
+      expect(component.blocks()[3].questionId).toBe(99);
+      expect(component.newQuestionFor()).toBeNull();
+    });
+
+    it('pregunta de dos opciones exige opciones distintas y respuesta correcta', async () => {
+      component.addQuestionAfter(component.blocks()[2]);
+      fixture.detectChanges();
+      const form = fixture.debugElement.query(d => d.name === 'app-inline-question-form').componentInstance;
+      form.setType('choice'); form.text.set('¿Quién llega?'); form.optionA.set('Luis'); form.optionB.set('luis'); form.correct.set('0');
+      expect(form.validation()).toContain('distintas');
+      form.optionB.set('Ana'); form.correct.set('');
+      expect(form.validation()).toContain('correcta');
+      form.correct.set('1');
+      await form.submit();
+      expect(createQuestion).toHaveBeenCalledWith({ storyId: 7, questionText: '¿Quién llega?', answerType: 'choice', options: ['Luis', 'Ana'], correctAnswer: 'Ana' });
+    });
+
+    it('una pregunta nueva desde «＋ Añadir» toma el último keyframe como contexto', () => {
+      component.addBlock('question', 'during');
+      expect(component.blocks().find(b => b.type === 'question' && !b.questionId)?.contextBlockKey).toBe('k2');
+    });
+
+    it('«Nueva expresión» crea el vocabulario, lo añade y lo selecciona', async () => {
+      component.addBlock('expression', 'before');
+      const exp = component.blocks()[0];
+      component.toggleNewExpression(exp.blockKey);
+      fixture.detectChanges();
+      const form = fixture.debugElement.query(d => d.name === 'app-inline-vocabulary-form').componentInstance;
+      form.word.set('me llamo'); form.translation.set('my name is');
+      await form.submit();
+      const sent = createVocabulary.mock.calls[0][0] as FormData;
+      expect([sent.get('unitId'), sent.get('word'), sent.get('translation')]).toEqual(['1', 'me llamo', 'my name is']);
+      expect(component.vocabulary().map(v => v.id)).toEqual([55]);
+      expect(component.blocks()[0].vocabularyId).toBe(55);
+    });
+
+    it('marcar una selección crea la expresión y un bloque objetivo activo en «Antes»', async () => {
+      const textarea = fixture.nativeElement.querySelector('#kf-text-k2') as HTMLTextAreaElement;
+      textarea.focus();
+      textarea.setSelectionRange(5, 10);
+      textarea.dispatchEvent(new Event('select'));
+      fixture.detectChanges();
+      const button = [...fixture.nativeElement.querySelectorAll('.mark-expression button')][0] as HTMLButtonElement;
+      expect(button.textContent).toContain('Marcar como expresión objetivo');
+      button.click();
+      fixture.detectChanges();
+      const form = fixture.debugElement.query(d => d.name === 'app-inline-vocabulary-form').componentInstance;
+      expect(form.word()).toBe('tiene');
+      form.translation.set('has');
+      await form.submit();
+      const marked = component.blocks()[0];
+      expect(marked).toMatchObject({ type: 'expression', phase: 'before', active: true, vocabularyRole: 'target', vocabularyId: 55 });
+      expect(component.markTarget()).toBeNull();
+    });
+
+    it('reutiliza el vocabulario existente con la misma palabra (sin distinguir mayúsculas)', async () => {
+      TestBed.resetTestingModule();
+      await create([block('k1', 'keyframe', 'during', { text: 'Luis tiene un gato.' })], [{ id: 3, unitId: 1, word: 'Tiene', translation: 'has' }]);
+      component.startMark('k1', 'tiene');
+      fixture.detectChanges();
+      const form = fixture.debugElement.query(d => d.name === 'app-inline-vocabulary-form').componentInstance;
+      await form.submit();
+      expect(createVocabulary).not.toHaveBeenCalled();
+      expect(component.blocks()[0]).toMatchObject({ type: 'expression', vocabularyId: 3, vocabularyRole: 'target', active: true });
+    });
+
+    it('el panel lateral muestra la historia hasta ahora y el chequeo TPRS en vivo', async () => {
+      const el = fixture.nativeElement as HTMLElement;
+      expect(el.querySelector('.story-text')?.textContent).toBe('Luis llega a la casa.\n\nLuis tiene un gato.');
+      component.updateBlock('k2', { text: 'Luis tiene un perro.' });
+      fixture.detectChanges();
+      expect(el.querySelector('.story-text')?.textContent).toContain('perro');
+      component.sideTab.set('tprs');
+      fixture.detectChanges();
+      const items = [...el.querySelectorAll('.checklist li')] as HTMLElement[];
+      expect(items.length).toBe(6);
+      expect(items.find(li => li.textContent!.includes('lectura completa'))?.classList.contains('ok')).toBe(true);
+      expect(items.find(li => li.textContent!.includes('objetivo'))?.classList.contains('ok')).toBe(false);
+      component.sideTab.set('preview');
+      fixture.detectChanges();
+      expect(el.querySelector('#side-panel-preview')).toBeTruthy();
+      await flush();
     });
   });
 
