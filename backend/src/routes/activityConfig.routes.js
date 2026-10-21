@@ -2,10 +2,22 @@ const express = require('express');
 const router = express.Router();
 const { authMiddleware, isTeacher } = require('../middlewares/auth.middleware');
 const { ActivityConfig, Story, Unit, Course } = require('../models');
+const { canReadCourse } = require('../utils/courseAccess');
 
 // GET - Obtener configuración de actividades para una historia
-router.get('/story/:storyId', async (req, res) => {
+router.get('/story/:storyId', authMiddleware, async (req, res) => {
   try {
+    const storyId = Number(req.params.storyId);
+    const story = Number.isSafeInteger(storyId) && storyId > 0
+      ? await Story.findByPk(storyId, { include: [{ model: Unit, as: 'unit', include: [{ model: Course, as: 'course', attributes: ['id', 'teacherId'] }] }] })
+      : null;
+    if (!story) {
+      return res.status(404).json({ error: 'Story not found' });
+    }
+    if (!(await canReadCourse(req.user, story.unit.course))) {
+      return res.status(403).json({ error: 'Not authorized to view this story' });
+    }
+
     const configs = await ActivityConfig.findAll({
       where: { storyId: req.params.storyId },
       order: [['order', 'ASC']]

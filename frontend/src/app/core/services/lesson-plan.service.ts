@@ -6,6 +6,15 @@ import { environment } from '../../../environments/environment';
 export type LessonPhase = 'before' | 'during' | 'after' | 'later';
 export type LessonBlockType = 'expression' | 'keyframe' | 'question' | 'full_story' | 'flashcards' | 'matching' | 'listen_repeat';
 
+export interface KeyframeTooltip {
+  id: number;
+  startOffset: number;
+  endOffset: number;
+  selectedText: string;
+  tooltipContent: string;
+  isActive: boolean;
+}
+
 export interface LessonBlock {
   blockKey: string;
   position?: number;
@@ -15,6 +24,7 @@ export interface LessonBlock {
   required: boolean;
   text?: string | null;
   audioUrl?: string | null;
+  tooltips?: KeyframeTooltip[];
   questionId?: number | null;
   contextBlockKey?: string | null;
   vocabularyId?: number | null;
@@ -45,7 +55,8 @@ export class LessonPlanService {
   }
 
   saveDraft(storyId: number, revision: number, blocks: LessonBlock[]): Observable<LessonPlan> {
-    const orderedBlocks = blocks.map((block, position) => ({ ...block, position }));
+    // Los tooltips se gestionan por /api/tooltips; no forman parte del payload del borrador.
+    const orderedBlocks = blocks.map(({ tooltips, ...block }, position) => ({ ...block, position }));
     return this.http.put<LessonPlan>(`${this.apiUrl}/story/${storyId}/draft`, { revision, blocks: orderedBlocks });
   }
 
@@ -55,5 +66,19 @@ export class LessonPlanService {
 
   publish(storyId: number, revision: number): Observable<LessonPlan> {
     return this.http.post<LessonPlan>(`${this.apiUrl}/story/${storyId}/publish`, { revision });
+  }
+
+  uploadKeyframeAudio(storyId: number, blockKey: string, file: File): Observable<{ blockKey: string; audioUrl: string }> {
+    const form = new FormData();
+    form.append('audio', file);
+    return this.http.post<{ blockKey: string; audioUrl: string }>(this.audioUrl(storyId, blockKey), form);
+  }
+
+  deleteKeyframeAudio(storyId: number, blockKey: string): Observable<{ blockKey: string; audioUrl: null }> {
+    return this.http.delete<{ blockKey: string; audioUrl: null }>(this.audioUrl(storyId, blockKey));
+  }
+
+  private audioUrl(storyId: number, blockKey: string): string {
+    return `${this.apiUrl}/story/${storyId}/draft/blocks/${encodeURIComponent(blockKey)}/audio`;
   }
 }

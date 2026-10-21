@@ -1,43 +1,89 @@
 const express = require('express');
 const router = express.Router();
 const { authMiddleware, isTeacher } = require('../middlewares/auth.middleware');
-const { Tooltip, Story, Question, User, Unit, Course } = require('../models');
+const { Tooltip, Story, Question, User, Unit, Course, LessonPlan, LessonBlock } = require('../models');
+const { canReadCourse } = require('../utils/courseAccess');
 const { Op } = require('sequelize');
 
-// Get all tooltips for a story
-router.get('/story/:storyId', async (req, res) => {
-  try {
-    const tooltips = await Tooltip.findAll({
-      where: {
-        targetType: 'story',
-        targetId: req.params.storyId,
-        isActive: true
-      },
-      order: [['startOffset', 'ASC']],
-      include: [{ model: User, as: 'creator', attributes: ['id', 'name'] }]
-    });
+const TARGET_TYPES = ['story', 'question', 'keyframe'];
+const MAX_SELECTED_TEXT = 1000;
+const MAX_TOOLTIP_CONTENT = 2000;
+const MAX_BLOCK_KEY = 64;
+const MAX_DB_INT = 2147483647;
+const COLORS_MAX = 20;
 
-    res.json(tooltips);
+const creatorInclude = [{ model: User, as: 'creator', attributes: ['id', 'name'] }];
+const courseInclude = [{ model: Unit, as: 'unit', include: [{ model: Course, as: 'course' }] }];
+const validId = value => Number.isSafeInteger(Number(value)) && Number(value) > 0 && Number(value) <= MAX_DB_INT;
+
+/** Loads the target (story, question or the story of a keyframe) and the course it belongs to. */
+async function resolveTarget(targetType, targetId) {
+  if (!validId(targetId)) return null;
+  if (targetType === 'story' || targetType === 'keyframe') {
+    const target = await Story.findByPk(targetId, { include: courseInclude });
+    return target ? { target, course: target.unit.course } : null;
+  }
+  if (targetType === 'question') {
+    const target = await Question.findByPk(targetId, {
+      include: [{ model: Story, as: 'story', include: courseInclude }]
+    });
+    return target ? { target, course: target.story.unit.course } : null;
+  }
+  return null;
+}
+
+/** The keyframe block of the story's current draft; `error` is set when it cannot be used. */
+async function draftKeyframe(storyId, blockKey) {
+  const draft = await LessonPlan.findOne({ where: { storyId, status: 'draft' } });
+  if (!draft) return { error: { status: 404, message: 'Draft not found; open the story draft first' } };
+  const block = await LessonBlock.findOne({ where: { planId: draft.id, blockKey } });
+  if (!block) return { error: { status: 404, message: 'Block not found in the current draft' } };
+  if (block.type !== 'keyframe') return { error: { status: 400, message: 'Block is not a keyframe' } };
+  return { block };
+}
+
+const isInt = value => typeof value === 'number' && Number.isInteger(value);
+
+function validateTooltipText({ selectedText, tooltipContent, highlightColor }, { requireSelected }) {
+  if (requireSelected && (typeof selectedText !== 'string' || !selectedText)) return 'selectedText must be a non-empty string';
+  if (requireSelected && selectedText.length > MAX_SELECTED_TEXT) return `selectedText must be at most ${MAX_SELECTED_TEXT} characters`;
+  if (tooltipContent !== undefined) {
+    if (typeof tooltipContent !== 'string' || !tooltipContent.trim()) return 'tooltipContent must be a non-empty string';
+    if (tooltipContent.length > MAX_TOOLTIP_CONTENT) return `tooltipContent must be at most ${MAX_TOOLTIP_CONTENT} characters`;
+  }
+  if (highlightColor !== undefined && highlightColor !== null &&
+    (typeof highlightColor !== 'string' || highlightColor.length > COLORS_MAX)) return `highlightColor must be at most ${COLORS_MAX} characters`;
+  return null;
+}
+
+async function readTooltips(req, res, targetType, targetId, label) {
+  const resolved = await resolveTarget(targetType, targetId);
+  if (!resolved) return res.status(404).json({ error: `${label} not found` });
+  if (!(await canReadCourse(req.user, resolved.course))) {
+    return res.status(403).json({ error: `Not authorized to view tooltips of this ${label.toLowerCase()}` });
+  }
+  const tooltips = await Tooltip.findAll({
+    where: { targetType, targetId: Number(targetId), isActive: true },
+    order: [['startOffset', 'ASC']],
+    include: creatorInclude
+  });
+  return res.json(tooltips);
+}
+
+// Get all tooltips for a story (course teacher or enrolled student)
+router.get('/story/:storyId', authMiddleware, async (req, res) => {
+  try {
+    await readTooltips(req, res, 'story', req.params.storyId, 'Story');
   } catch (error) {
     console.error('Error fetching story tooltips:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get all tooltips for a question
-router.get('/question/:questionId', async (req, res) => {
+// Get all tooltips for a question (course teacher or enrolled student)
+router.get('/question/:questionId', authMiddleware, async (req, res) => {
   try {
-    const tooltips = await Tooltip.findAll({
-      where: {
-        targetType: 'question',
-        targetId: req.params.questionId,
-        isActive: true
-      },
-      order: [['startOffset', 'ASC']],
-      include: [{ model: User, as: 'creator', attributes: ['id', 'name'] }]
-    });
-
-    res.json(tooltips);
+    await readTooltips(req, res, 'question', req.params.questionId, 'Question');
   } catch (error) {
     console.error('Error fetching question tooltips:', error);
     res.status(500).json({ error: error.message });
@@ -47,58 +93,46 @@ router.get('/question/:questionId', async (req, res) => {
 // Create a new tooltip (teachers only)
 router.post('/', authMiddleware, isTeacher, async (req, res) => {
   try {
-    const { targetType, targetId, startOffset, endOffset, selectedText, tooltipContent, highlightColor } = req.body;
+    const { targetType, targetId, blockKey, startOffset, endOffset, selectedText, tooltipContent, highlightColor } = req.body || {};
 
     // Validate required fields
     if (!targetType || !targetId || startOffset === undefined || endOffset === undefined || !selectedText || !tooltipContent) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
+    if (!TARGET_TYPES.includes(targetType)) {
+      return res.status(400).json({ error: 'Invalid targetType. Must be "story", "question" or "keyframe"' });
+    }
 
     // Validate offsets
-    if (startOffset < 0 || endOffset <= startOffset) {
+    if (!isInt(startOffset) || !isInt(endOffset) || startOffset < 0 || endOffset <= startOffset) {
       return res.status(400).json({ error: 'Invalid offsets' });
+    }
+    const textError = validateTooltipText({ selectedText, tooltipContent, highlightColor }, { requireSelected: true });
+    if (textError) return res.status(400).json({ error: textError });
+    if (targetType === 'keyframe' && (typeof blockKey !== 'string' || !blockKey || blockKey.length > MAX_BLOCK_KEY)) {
+      return res.status(400).json({ error: 'blockKey is required for keyframe tooltips' });
     }
 
     // Verify target exists and teacher has permission
-    let target;
-    if (targetType === 'story') {
-      target = await Story.findByPk(targetId, {
-        include: [{
-          model: Unit,
-          as: 'unit',
-          include: [{ model: Course, as: 'course' }]
-        }]
-      });
-      if (!target) {
-        return res.status(404).json({ error: 'Story not found' });
-      }
-      if (target.unit.course.teacherId !== req.user.id) {
-        return res.status(403).json({ error: 'Not authorized to add tooltips to this story' });
-      }
-    } else if (targetType === 'question') {
-      target = await Question.findByPk(targetId, {
-        include: [{
-          model: Story,
-          as: 'story',
-          include: [{
-            model: Unit,
-            as: 'unit',
-            include: [{ model: Course, as: 'course' }]
-          }]
-        }]
-      });
-      if (!target) {
-        return res.status(404).json({ error: 'Question not found' });
-      }
-      if (target.story.unit.course.teacherId !== req.user.id) {
-        return res.status(403).json({ error: 'Not authorized to add tooltips to this question' });
-      }
-    } else {
-      return res.status(400).json({ error: 'Invalid targetType. Must be "story" or "question"' });
+    const resolved = await resolveTarget(targetType, targetId);
+    if (!resolved) {
+      return res.status(404).json({ error: `${targetType === 'question' ? 'Question' : 'Story'} not found` });
+    }
+    if (resolved.course.teacherId !== req.user.id) {
+      return res.status(403).json({ error: `Not authorized to add tooltips to this ${targetType === 'question' ? 'question' : 'story'}` });
     }
 
     // Validate selected text matches
-    const actualText = targetType === 'story' ? target.text : target.questionText;
+    let actualText;
+    if (targetType === 'story') {
+      actualText = resolved.target.text;
+    } else if (targetType === 'question') {
+      actualText = resolved.target.questionText;
+    } else {
+      const { block, error } = await draftKeyframe(resolved.target.id, blockKey);
+      if (error) return res.status(error.status).json({ error: error.message });
+      actualText = block.text || '';
+    }
     const extractedText = actualText.substring(startOffset, endOffset);
 
     if (extractedText !== selectedText) {
@@ -109,11 +143,12 @@ router.post('/', authMiddleware, isTeacher, async (req, res) => {
       });
     }
 
-    // Check for overlapping tooltips
+    // Check for overlapping tooltips (within the same keyframe for keyframe tooltips)
     const overlapping = await Tooltip.findAll({
       where: {
         targetType,
         targetId,
+        ...(targetType === 'keyframe' ? { blockKey } : {}),
         isActive: true,
         [Op.or]: [
           {
@@ -151,6 +186,7 @@ router.post('/', authMiddleware, isTeacher, async (req, res) => {
     const tooltip = await Tooltip.create({
       targetType,
       targetId,
+      blockKey: targetType === 'keyframe' ? blockKey : null,
       startOffset,
       endOffset,
       selectedText,
@@ -159,9 +195,7 @@ router.post('/', authMiddleware, isTeacher, async (req, res) => {
       highlightColor: highlightColor || 'yellow'
     });
 
-    const createdTooltip = await Tooltip.findByPk(tooltip.id, {
-      include: [{ model: User, as: 'creator', attributes: ['id', 'name'] }]
-    });
+    const createdTooltip = await Tooltip.findByPk(tooltip.id, { include: creatorInclude });
 
     res.status(201).json(createdTooltip);
   } catch (error) {
@@ -170,46 +204,30 @@ router.post('/', authMiddleware, isTeacher, async (req, res) => {
   }
 });
 
+/** Loads the tooltip and checks that the teacher owns its course; sends the error response otherwise. */
+async function ownedTooltip(req, res, action) {
+  const tooltip = await Tooltip.findByPk(req.params.id);
+  if (!tooltip) {
+    res.status(404).json({ error: 'Tooltip not found' });
+    return null;
+  }
+  const resolved = await resolveTarget(tooltip.targetType, tooltip.targetId);
+  if (!resolved || resolved.course.teacherId !== req.user.id) {
+    res.status(403).json({ error: `Not authorized to ${action} this tooltip` });
+    return null;
+  }
+  return tooltip;
+}
+
 // Update tooltip (teachers only)
 router.put('/:id', authMiddleware, isTeacher, async (req, res) => {
   try {
-    const tooltip = await Tooltip.findByPk(req.params.id);
+    const tooltip = await ownedTooltip(req, res, 'update');
+    if (!tooltip) return;
 
-    if (!tooltip) {
-      return res.status(404).json({ error: 'Tooltip not found' });
-    }
-
-    // Verify ownership via target
-    let target;
-    if (tooltip.targetType === 'story') {
-      target = await Story.findByPk(tooltip.targetId, {
-        include: [{
-          model: Unit,
-          as: 'unit',
-          include: [{ model: Course, as: 'course' }]
-        }]
-      });
-      if (!target || target.unit.course.teacherId !== req.user.id) {
-        return res.status(403).json({ error: 'Not authorized to update this tooltip' });
-      }
-    } else {
-      target = await Question.findByPk(tooltip.targetId, {
-        include: [{
-          model: Story,
-          as: 'story',
-          include: [{
-            model: Unit,
-            as: 'unit',
-            include: [{ model: Course, as: 'course' }]
-          }]
-        }]
-      });
-      if (!target || target.story.unit.course.teacherId !== req.user.id) {
-        return res.status(403).json({ error: 'Not authorized to update this tooltip' });
-      }
-    }
-
-    const { tooltipContent, highlightColor } = req.body;
+    const { tooltipContent, highlightColor } = req.body || {};
+    const textError = validateTooltipText({ tooltipContent, highlightColor }, { requireSelected: false });
+    if (textError) return res.status(400).json({ error: textError });
 
     // Only allow updating content and color, not position
     const updateData = {};
@@ -218,9 +236,7 @@ router.put('/:id', authMiddleware, isTeacher, async (req, res) => {
 
     await tooltip.update(updateData);
 
-    const updatedTooltip = await Tooltip.findByPk(tooltip.id, {
-      include: [{ model: User, as: 'creator', attributes: ['id', 'name'] }]
-    });
+    const updatedTooltip = await Tooltip.findByPk(tooltip.id, { include: creatorInclude });
 
     res.json(updatedTooltip);
   } catch (error) {
@@ -232,41 +248,8 @@ router.put('/:id', authMiddleware, isTeacher, async (req, res) => {
 // Delete tooltip (teachers only)
 router.delete('/:id', authMiddleware, isTeacher, async (req, res) => {
   try {
-    const tooltip = await Tooltip.findByPk(req.params.id);
-
-    if (!tooltip) {
-      return res.status(404).json({ error: 'Tooltip not found' });
-    }
-
-    // Verify ownership
-    let target;
-    if (tooltip.targetType === 'story') {
-      target = await Story.findByPk(tooltip.targetId, {
-        include: [{
-          model: Unit,
-          as: 'unit',
-          include: [{ model: Course, as: 'course' }]
-        }]
-      });
-      if (!target || target.unit.course.teacherId !== req.user.id) {
-        return res.status(403).json({ error: 'Not authorized to delete this tooltip' });
-      }
-    } else {
-      target = await Question.findByPk(tooltip.targetId, {
-        include: [{
-          model: Story,
-          as: 'story',
-          include: [{
-            model: Unit,
-            as: 'unit',
-            include: [{ model: Course, as: 'course' }]
-          }]
-        }]
-      });
-      if (!target || target.story.unit.course.teacherId !== req.user.id) {
-        return res.status(403).json({ error: 'Not authorized to delete this tooltip' });
-      }
-    }
+    const tooltip = await ownedTooltip(req, res, 'delete');
+    if (!tooltip) return;
 
     await tooltip.destroy();
     res.json({ message: 'Tooltip deleted successfully' });
@@ -279,26 +262,24 @@ router.delete('/:id', authMiddleware, isTeacher, async (req, res) => {
 // Validate all tooltips for a target (useful after text edits)
 router.post('/validate', authMiddleware, isTeacher, async (req, res) => {
   try {
-    const { targetType, targetId } = req.body;
+    const { targetType, targetId } = req.body || {};
 
     if (!targetType || !targetId) {
       return res.status(400).json({ error: 'Missing targetType or targetId' });
     }
-
-    let target;
-    if (targetType === 'story') {
-      target = await Story.findByPk(targetId);
-    } else if (targetType === 'question') {
-      target = await Question.findByPk(targetId);
-    } else {
+    if (targetType !== 'story' && targetType !== 'question') {
       return res.status(400).json({ error: 'Invalid targetType' });
     }
 
-    if (!target) {
+    const resolved = await resolveTarget(targetType, targetId);
+    if (!resolved) {
       return res.status(404).json({ error: 'Target not found' });
     }
+    if (resolved.course.teacherId !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized to validate tooltips of this target' });
+    }
 
-    const actualText = targetType === 'story' ? target.text : target.questionText;
+    const actualText = targetType === 'story' ? resolved.target.text : resolved.target.questionText;
     const tooltips = await Tooltip.findAll({
       where: { targetType, targetId, isActive: true }
     });

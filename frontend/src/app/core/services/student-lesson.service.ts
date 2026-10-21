@@ -13,6 +13,7 @@ export interface StudentLessonBlock {
   required: boolean;
   text?: string | null;
   audioUrl?: string | null;
+  tooltips?: Array<{ startOffset: number; endOffset: number; selectedText: string; tooltipContent: string }>;
   questionId?: number | null;
   contextBlockKey?: string | null;
   question?: { questionText: string; answerType: string; options?: string[]; audioUrl?: string | null } | null;

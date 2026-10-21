@@ -1,7 +1,7 @@
-import { Component, Input, OnInit, signal, inject, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import { Component, Input, OnChanges, OnInit, SimpleChanges, signal, inject, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { TooltipService, Tooltip } from '../../../core/services/tooltip.service';
+import { TooltipService, DisplayTooltip } from '../../../core/services/tooltip.service';
 
 @Component({
   selector: 'app-tooltip-display',
@@ -12,6 +12,8 @@ import { TooltipService, Tooltip } from '../../../core/services/tooltip.service'
       class="tooltip-display-container"
       #textContainer
       (click)="onTextClick($event)"
+      (keydown)="onTextKeydown($event)"
+      (focusin)="onTextFocus($event)"
     >
       <div
         class="text-content"
@@ -33,7 +35,7 @@ import { TooltipService, Tooltip } from '../../../core/services/tooltip.service'
             class="btn-close btn-sm float-end"
             (click)="closeTooltip()"
           ></button>
-          <div class="tooltip-popover-body">
+          <div class="tooltip-popover-body" role="status">
             {{ activeTooltip()?.tooltipContent }}
           </div>
         </div>
@@ -149,23 +151,39 @@ import { TooltipService, Tooltip } from '../../../core/services/tooltip.service'
     }
   `]
 })
-export class TooltipDisplayComponent implements OnInit, AfterViewInit {
+export class TooltipDisplayComponent implements OnInit, OnChanges, AfterViewInit {
   @Input() targetType: 'story' | 'question' = 'story';
   @Input() targetId!: number;
   @Input() text!: string;
+  /** Si se pasa, se usan estos tooltips (p. ej. los de un keyframe) y no se consulta la API. */
+  @Input() tooltipData?: DisplayTooltip[];
 
   @ViewChild('textContainer') textContainer!: ElementRef;
 
   private tooltipService = inject(TooltipService);
   private sanitizer = inject(DomSanitizer);
 
-  tooltips = signal<Tooltip[]>([]);
+  tooltips = signal<DisplayTooltip[]>([]);
   renderedText = signal<SafeHtml>('');
-  activeTooltip = signal<Tooltip | null>(null);
+  activeTooltip = signal<DisplayTooltip | null>(null);
   popoverPosition = signal<{ top: number; left: number }>({ top: 0, left: 0 });
 
   ngOnInit(): void {
-    this.loadTooltips();
+    if (this.tooltipData) this.applyStaticTooltips();
+    else this.loadTooltips();
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['tooltipData'] && !changes['tooltipData'].firstChange || (changes['text'] && !changes['text'].firstChange && this.tooltipData)) {
+      this.closeTooltip();
+      this.applyStaticTooltips();
+    }
+  }
+
+  private applyStaticTooltips(): void {
+    // Los tooltips estáticos pueden no traer id: se numeran para poder enlazar el resaltado.
+    this.tooltips.set((this.tooltipData || []).map((t, i) => ({ ...t, id: t.id ?? i + 1 })));
+    this.renderTextWithTooltips();
   }
 
   ngAfterViewInit(): void {
@@ -206,8 +224,8 @@ export class TooltipDisplayComponent implements OnInit, AfterViewInit {
 
       // Add highlighted text with tooltip
       const highlightedText = this.escapeHtml(tooltip.selectedText);
-      const color = ['yellow', 'blue', 'green', 'pink'].includes(tooltip.highlightColor) ? tooltip.highlightColor : 'yellow';
-      html += `<span class="tooltip-highlight highlight-${color}" data-tooltip-id="${Number(tooltip.id)}">${highlightedText}</span>`;
+      const color = ['yellow', 'blue', 'green', 'pink'].includes(tooltip.highlightColor || '') ? tooltip.highlightColor : 'yellow';
+      html += `<span class="tooltip-highlight highlight-${color}" data-tooltip-id="${Number(tooltip.id)}" tabindex="0" role="button" aria-haspopup="true">${highlightedText}</span>`;
 
       lastIndex = tooltip.endOffset;
     }
@@ -225,35 +243,48 @@ export class TooltipDisplayComponent implements OnInit, AfterViewInit {
     return div.innerHTML;
   }
 
+  onTextKeydown(event: KeyboardEvent): void {
+    const target = event.target as HTMLElement;
+    if (event.key === 'Escape') { this.closeTooltip(); return; }
+    if ((event.key === 'Enter' || event.key === ' ') && target.classList?.contains('tooltip-highlight')) {
+      event.preventDefault();
+      this.openFor(target);
+    }
+  }
+
+  onTextFocus(event: FocusEvent): void {
+    const target = event.target as HTMLElement;
+    if (target.classList?.contains('tooltip-highlight')) this.openFor(target);
+  }
+
   onTextClick(event: MouseEvent): void {
     const target = event.target as HTMLElement;
 
     if (target.classList.contains('tooltip-highlight')) {
-      const tooltipId = parseInt(target.getAttribute('data-tooltip-id') || '0', 10);
-      const tooltip = this.tooltips().find(t => t.id === tooltipId);
-
-      if (tooltip) {
-        // Remove active class from all highlights
-        const allHighlights = this.textContainer.nativeElement.querySelectorAll('.tooltip-highlight');
-        allHighlights.forEach((el: HTMLElement) => el.classList.remove('active'));
-
-        // Add active class to clicked highlight
-        target.classList.add('active');
-
-        // Calculate popover position relative to container
-        const rect = target.getBoundingClientRect();
-        const containerRect = this.textContainer.nativeElement.getBoundingClientRect();
-
-        this.popoverPosition.set({
-          top: rect.bottom - containerRect.top + 10,
-          left: rect.left - containerRect.left
-        });
-
-        this.activeTooltip.set(tooltip);
-      }
+      this.openFor(target);
     } else {
       this.closeTooltip();
     }
+  }
+
+  private openFor(target: HTMLElement): void {
+    const tooltipId = parseInt(target.getAttribute('data-tooltip-id') || '0', 10);
+    const tooltip = this.tooltips().find(t => t.id === tooltipId);
+    if (!tooltip) return;
+
+    // Remove active class from all highlights
+    const allHighlights = this.textContainer.nativeElement.querySelectorAll('.tooltip-highlight');
+    allHighlights.forEach((el: HTMLElement) => el.classList.remove('active'));
+    target.classList.add('active');
+
+    // Calculate popover position relative to container
+    const rect = target.getBoundingClientRect();
+    const containerRect = this.textContainer.nativeElement.getBoundingClientRect();
+    this.popoverPosition.set({
+      top: rect.bottom - containerRect.top + 10,
+      left: rect.left - containerRect.left
+    });
+    this.activeTooltip.set(tooltip);
   }
 
   closeTooltip(): void {

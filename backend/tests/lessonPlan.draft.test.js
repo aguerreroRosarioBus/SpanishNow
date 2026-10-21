@@ -78,14 +78,47 @@ describe('TPRS lesson plans: draft editing and publishing', () => {
 
     test('a failure while writing the new blocks rolls back the deletion of the old ones', async () => {
       const { story, draft, blocks } = await storyWithDraft();
-      // Passes shape validation but exceeds the TEXT column, so the insert fails after the old blocks were deleted.
-      const oversized = blocks.map(b => (b.type === 'keyframe' && b.text === 'María va a una fiesta.' ? { ...b, text: 'a'.repeat(70000) } : b));
-
-      const res = await put(story.id, draft.revision, oversized);
-
-      expect(res.status).toBeGreaterThanOrEqual(400);
+      // Passes every validation but the insert fails after the old blocks were deleted.
+      const spy = jest.spyOn(LessonBlock, 'bulkCreate').mockRejectedValueOnce(new Error('simulated insert failure'));
+      try {
+        const res = await put(story.id, draft.revision, blocks);
+        expect(res.status).toBe(500);
+      } finally { spy.mockRestore(); }
       expect((await getDraft(story.id)).body).toEqual(draft);
       expect(await LessonBlock.count({ where: { planId: draft.id } })).toBe(blocks.length);
+    });
+
+    describe('field length limits (400 with a clear message, draft unchanged)', () => {
+      const withKeyframe = (blocks, patch) => blocks.map(b => (b.type === 'keyframe' && b.text === 'María va a una fiesta.' ? { ...b, ...patch } : b));
+      const cases = {
+        'keyframe text over 20000 characters': [{ text: 'a'.repeat(20001) }, /20000/],
+        'keyframe text over 20000 characters counted in UTF-16 units': [{ text: '\u{1F600}'.repeat(10001) }, /20000/],
+        'a non-string keyframe text': [{ text: 12345 }, /text/],
+        'audioUrl over 500 characters': [{ audioUrl: `https://cdn.example.com/${'a'.repeat(500)}.mp3` }, /audioUrl/],
+        'a non-string audioUrl': [{ audioUrl: { url: 'x' } }, /audioUrl/]
+      };
+      test.each(Object.keys(cases))('rejects %s', async name => {
+        const { story, draft, blocks } = await storyWithDraft();
+        const [patch, message] = cases[name];
+        const res = await put(story.id, draft.revision, withKeyframe(blocks, patch));
+        expect(res.status).toBe(400);
+        expect(res.body.error).toMatch(message);
+        expect((await getDraft(story.id)).body).toEqual(draft);
+      });
+
+      test('rejects an id that is not a positive integer', async () => {
+        const { story, draft, blocks } = await storyWithDraft();
+        const res = await put(story.id, draft.revision, blocks.map(b => (b.type === 'question' ? { ...b, questionId: 'abc' } : b)));
+        expect(res.status).toBe(400);
+        expect(res.body.error).toMatch(/questionId/);
+      });
+
+      test('accepts keyframe text of exactly 20000 characters and a 500-character audioUrl', async () => {
+        const { story, draft, blocks } = await storyWithDraft();
+        const audioUrl = `https://cdn.example.com/${'a'.repeat(500 - 'https://cdn.example.com/'.length)}`;
+        const res = await put(story.id, draft.revision, withKeyframe(blocks, { text: 'a'.repeat(20000), audioUrl }));
+        expect(res.status).toBe(200);
+      });
     });
   });
 

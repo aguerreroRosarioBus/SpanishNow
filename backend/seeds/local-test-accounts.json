@@ -1,0 +1,9 @@
+{
+  "_note": "Credenciales SOLO para bases locales de prueba (spanishnow_tprs_*_test) restauradas desde Dump20260122.sql. Nunca usar en Railway ni en datos reales.",
+  "database": "spanishnow_tprs_m5_test",
+  "password": "tprs-local-test-1",
+  "accounts": [
+    { "email": "admin@gmail.com", "role": "teacher" },
+    { "email": "lucas@gmail.com", "role": "student" }
+  ]
+}

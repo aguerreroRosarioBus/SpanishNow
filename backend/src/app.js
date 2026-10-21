@@ -23,7 +23,7 @@ const corsOptions = {
 
 // Middlewares
 app.use(cors(corsOptions));
-app.use(express.json({ charset: 'utf-8' }));
+app.use(express.json({ charset: 'utf-8', limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, charset: 'utf-8' }));
 
 // Static files need their media type (audio, images) instead of JSON.

@@ -6,6 +6,8 @@ const { authMiddleware, isTeacher, isStudent } = require('../middlewares/auth.mi
 const sequelize = require('../config/database');
 const { Story, Unit, Course, Question, Vocabulary, Enrollment, LessonPlan, LessonBlock,
   LessonProgress, LessonAnswer, LessonReinforcement, Tooltip } = require('../models');
+const cloudinary = require('../config/cloudinary');
+const upload = require('../middlewares/upload.middleware');
 
 const TYPES = new Set(['expression', 'keyframe', 'question', 'full_story', 'flashcards', 'matching', 'listen_repeat']);
 const PHASES = { before: 0, during: 1, after: 2, later: 3 };
@@ -13,10 +15,15 @@ const REINFORCEMENTS = new Set(['flashcards', 'matching', 'listen_repeat']);
 const fail = (status, message) => { const error = new Error(message); error.status = status; throw error; };
 const sendError = (res, error) => res.status(error.status || 500).json({ error: error.message });
 const validId = value => Number.isSafeInteger(Number(value)) && Number(value) > 0;
+const MAX_KEYFRAME_TEXT = 20000; // characters (<= 60000 UTF-8 bytes, fits the TEXT column)
+const MAX_AUDIO_URL = 500; // lesson_blocks.audioUrl is VARCHAR(500)
+const MAX_DB_INT = 2147483647;
+const AUDIO_MIME = /^audio\//i;
+const AUDIO_OTHER_MIME = new Set(['video/mp4', 'video/webm', 'application/ogg']);
 const normalized = value => String(value).trim().toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
 router.use((req, res, next) => {
-  if (['PUT', 'POST'].includes(req.method) && (!req.body || typeof req.body !== 'object' || Array.isArray(req.body))) {
+  if (['PUT', 'POST'].includes(req.method) && !req.is('multipart/form-data') && (!req.body || typeof req.body !== 'object' || Array.isArray(req.body))) {
     return res.status(400).json({ error: 'A JSON object is required' });
   }
   next();
@@ -24,7 +31,8 @@ router.use((req, res, next) => {
 
 async function storyForTeacher(storyId, userId, transaction) {
   if (!validId(storyId)) fail(400, 'Invalid storyId');
-  const story = await Story.findByPk(storyId, { include: [{ model: Unit, as: 'unit', include: [{ model: Course, as: 'course' }] }], transaction, lock: transaction.LOCK.UPDATE });
+  const story = await Story.findByPk(storyId, { include: [{ model: Unit, as: 'unit', include: [{ model: Course, as: 'course' }] }],
+    ...(transaction ? { transaction, lock: transaction.LOCK.UPDATE } : {}) });
   if (!story) fail(404, 'Story not found');
   if (story.unit.course.teacherId !== userId) fail(403, 'Not authorized for this course');
   return story;
@@ -67,6 +75,50 @@ function planDto(plan, student = false) {
   const blocks = visible.map(student ? studentBlock : blockData);
   return { id: plan.id, storyId: plan.storyId, revision: plan.revision, status: plan.status,
     audioSlowUrl: plan.audioSlowUrl, audioNormalUrl: plan.audioNormalUrl, blocks };
+}
+
+const tooltipDto = t => ({ id: t.id, startOffset: t.startOffset, endOffset: t.endOffset,
+  selectedText: t.selectedText, tooltipContent: t.tooltipContent, isActive: t.isActive });
+
+/**
+ * Adds `tooltips` to every keyframe block.
+ * Teacher: every tooltip of the keyframe (including inactive ones, so they can be cleaned up).
+ * Student: only active tooltips whose selectedText still matches the text of the revision being shown.
+ */
+async function withKeyframeTooltips(dto, storyId, transaction, student = false) {
+  const tooltips = await Tooltip.findAll({ where: { targetType: 'keyframe', targetId: storyId },
+    order: [['startOffset', 'ASC'], ['id', 'ASC']], transaction });
+  for (const block of dto.blocks) {
+    if (block.type !== 'keyframe') continue;
+    const own = tooltips.filter(t => t.blockKey === block.blockKey);
+    block.tooltips = student
+      ? own.filter(t => t.isActive && typeof block.text === 'string' && block.text.slice(t.startOffset, t.endOffset) === t.selectedText)
+        .map(({ startOffset, endOffset, selectedText, tooltipContent }) => ({ startOffset, endOffset, selectedText, tooltipContent }))
+      : own.map(tooltipDto);
+  }
+  return dto;
+}
+
+const draftDto = async (plan, transaction) => withKeyframeTooltips(planDto(plan), plan.storyId, transaction);
+
+const isIdValue = value => (typeof value === 'number' || (typeof value === 'string' && /^\d+$/.test(value))) && validId(value) && Number(value) <= MAX_DB_INT;
+
+/** Rejects values that would overflow their column; only applied to client-written drafts. */
+function validateLengths(blocks) {
+  for (const [index, b] of blocks.entries()) {
+    const label = `Block ${index + 1}`;
+    if (b.text !== undefined && b.text !== null) {
+      if (typeof b.text !== 'string') fail(400, `${label}: text must be a string`);
+      if (b.type === 'keyframe' && b.text.length > MAX_KEYFRAME_TEXT) fail(400, `${label}: keyframe text is too long (maximum ${MAX_KEYFRAME_TEXT} characters)`);
+    }
+    if (b.audioUrl !== undefined && b.audioUrl !== null) {
+      if (typeof b.audioUrl !== 'string') fail(400, `${label}: audioUrl must be a string`);
+      if (b.audioUrl.length > MAX_AUDIO_URL) fail(400, `${label}: audioUrl is too long (maximum ${MAX_AUDIO_URL} characters)`);
+    }
+    for (const field of ['questionId', 'vocabularyId', 'revisitStoryId']) {
+      if (b[field] && !isIdValue(b[field])) fail(400, `${label}: ${field} must be a positive integer`);
+    }
+  }
 }
 
 function validateShape(blocks, publishing) {
@@ -188,7 +240,7 @@ router.get('/story/:storyId/draft', authMiddleware, isTeacher, async (req, res) 
   try {
     const result = await sequelize.transaction(async transaction => {
       const story = await storyForTeacher(req.params.storyId, req.user.id, transaction);
-      return planDto(await planWithBlocks((await currentDraft(story, transaction)).id, transaction));
+      return draftDto(await planWithBlocks((await currentDraft(story, transaction)).id, transaction), transaction);
     });
     res.json(result);
   } catch (error) { sendError(res, error); }
@@ -202,10 +254,11 @@ router.put('/story/:storyId/draft', authMiddleware, isTeacher, async (req, res) 
       if (req.body.revision !== draft.revision) fail(409, 'Draft revision changed; reload it');
       const blocks = req.body.blocks;
       validateShape(blocks, false);
+      validateLengths(blocks);
       await validateReferences(story, blocks, false, transaction);
       await LessonBlock.destroy({ where: { planId: draft.id }, transaction });
       await LessonBlock.bulkCreate(blocks.map((b, index) => savedBlock(draft.id, b, index)), { transaction });
-      return planDto(await planWithBlocks(draft.id, transaction));
+      return draftDto(await planWithBlocks(draft.id, transaction), transaction);
     });
     res.json(result);
   } catch (error) { sendError(res, error); }
@@ -225,9 +278,69 @@ router.put('/story/:storyId/draft/reorder', authMiddleware, isTeacher, async (re
       validateShape(ordered, false);
       // Positions are unique after the transaction; no partial reorder is visible.
       for (const [position, b] of ordered.entries()) await LessonBlock.update({ position }, { where: { planId: draft.id, blockKey: b.blockKey }, transaction });
-      return planDto(await planWithBlocks(draft.id, transaction));
+      return draftDto(await planWithBlocks(draft.id, transaction), transaction);
     });
     res.json(result);
+  } catch (error) { sendError(res, error); }
+});
+
+// Audio of a keyframe. Only the draft is modified; publishing copies audioUrl with the block.
+async function draftKeyframeBlock(story, blockKey, transaction) {
+  const draft = await currentDraft(story, transaction);
+  const block = await LessonBlock.findOne({ where: { planId: draft.id, blockKey }, transaction, lock: transaction.LOCK.UPDATE });
+  if (!block) fail(404, 'Block not found in the current draft');
+  if (block.type !== 'keyframe') fail(400, 'Only keyframe blocks can have audio');
+  return block;
+}
+
+// Rejects non-owners before buffering the file in memory.
+const audioPrecheck = async (req, res, next) => {
+  try {
+    await storyForTeacher(req.params.storyId, req.user.id);
+    next();
+  } catch (error) { sendError(res, error); }
+};
+
+const audioUpload = (req, res, next) => upload.single('audio')(req, res, error => {
+  if (!error) return next();
+  res.status(error.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({ error: error.message });
+});
+
+const audioRoute = '/story/:storyId/draft/blocks/:blockKey/audio';
+
+router.post(audioRoute, authMiddleware, isTeacher, audioPrecheck, audioUpload, async (req, res) => {
+  try {
+    const { blockKey } = req.params;
+    await sequelize.transaction(async transaction => {
+      await draftKeyframeBlock(await storyForTeacher(req.params.storyId, req.user.id, transaction), blockKey, transaction);
+    });
+    const file = req.file;
+    if (!file) fail(400, 'An audio file is required in the "audio" field');
+    if (!AUDIO_MIME.test(file.mimetype) && !AUDIO_OTHER_MIME.has(file.mimetype)) fail(400, 'The file must be an audio file');
+    let audioUrl;
+    try {
+      // Uploaded outside any DB transaction: a slow upload must not hold row locks.
+      const result = await cloudinary.uploadFromBuffer(file.buffer, { folder: 'spanishnow/keyframes', resource_type: 'video' });
+      audioUrl = result && result.secure_url;
+    } catch (cloudinaryError) {
+      console.warn('Cloudinary upload failed for keyframe audio:', cloudinaryError.message);
+    }
+    if (typeof audioUrl !== 'string' || !audioUrl || audioUrl.length > MAX_AUDIO_URL) fail(502, 'Audio upload failed; the keyframe was not modified');
+    await sequelize.transaction(async transaction => {
+      const block = await draftKeyframeBlock(await storyForTeacher(req.params.storyId, req.user.id, transaction), blockKey, transaction);
+      await block.update({ audioUrl }, { transaction });
+    });
+    res.json({ blockKey, audioUrl });
+  } catch (error) { sendError(res, error); }
+});
+
+router.delete(audioRoute, authMiddleware, isTeacher, async (req, res) => {
+  try {
+    await sequelize.transaction(async transaction => {
+      const block = await draftKeyframeBlock(await storyForTeacher(req.params.storyId, req.user.id, transaction), req.params.blockKey, transaction);
+      await block.update({ audioUrl: null }, { transaction });
+    });
+    res.json({ blockKey: req.params.blockKey, audioUrl: null });
   } catch (error) { sendError(res, error); }
 });
 
@@ -257,8 +370,14 @@ router.post('/story/:storyId/publish', authMiddleware, isTeacher, async (req, re
       for (const tooltip of tooltips) {
         if (fullText.substring(tooltip.startOffset, tooltip.endOffset) !== tooltip.selectedText) await tooltip.update({ isActive: false }, { transaction });
       }
+      const publishedKeyframes = new Map(blocks.filter(b => b.type === 'keyframe' && b.active).map(b => [b.blockKey, b.text]));
+      const keyframeTooltips = await Tooltip.findAll({ where: { targetType: 'keyframe', targetId: story.id, isActive: true }, transaction });
+      for (const tooltip of keyframeTooltips) {
+        const text = publishedKeyframes.get(tooltip.blockKey);
+        if (typeof text !== 'string' || text.substring(tooltip.startOffset, tooltip.endOffset) !== tooltip.selectedText) await tooltip.update({ isActive: false }, { transaction });
+      }
       await stageRevisits(blocks, transaction);
-      return planDto(await planWithBlocks(draft.id, transaction));
+      return draftDto(await planWithBlocks(draft.id, transaction), transaction);
     });
     res.status(201).json(result);
   } catch (error) { sendError(res, error); }
@@ -279,7 +398,8 @@ router.get('/story/:storyId', authMiddleware, isStudent, async (req, res) => {
       const fullStoryText = plan.blocks.filter(b => b.type === 'keyframe' && b.active).map(b => b.text).join('\n\n');
       const answers = await LessonAnswer.findAll({ where: { lessonProgressId: progress.id }, order: [['attempt', 'ASC']], transaction });
       const reinforcements = await LessonReinforcement.findAll({ where: { lessonProgressId: progress.id }, transaction });
-      return { ...planDto(plan, true), story: { id: story.id, title: story.title,
+      const lessonDto = await withKeyframeTooltips(planDto(plan, true), story.id, transaction, true);
+      return { ...lessonDto, story: { id: story.id, title: story.title,
         fullStoryText, audioSlowUrl: plan.audioSlowUrl, audioNormalUrl: plan.audioNormalUrl },
         progress: { id: progress.id, lastBlockKey: progress.lastBlockKey ?? null, narrativeCompleted: progress.narrativeCompleted,
           answers: answers.map(a => ({ blockKey: a.blockKey, questionId: a.questionId, studentAnswer: a.studentAnswer, isCorrect: a.isCorrect, attempt: a.attempt })),

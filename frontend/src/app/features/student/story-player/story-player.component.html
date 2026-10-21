@@ -124,6 +124,8 @@
           <button
             class="btn btn-sm btn-outline-primary px-2 py-1 flex-shrink-0"
             [disabled]="!canGoPrevious()"
+            [title]="canGoPrevious() ? 'Historia anterior' : 'No hay una historia anterior disponible'"
+            aria-label="Historia anterior"
             (click)="goToPrevious()"
             style="font-size: 0.875rem;"
           >
@@ -137,12 +139,15 @@
           <button
             class="btn btn-sm btn-outline-primary px-2 py-1 flex-shrink-0"
             [disabled]="!canGoNext()"
+            [title]="nextBlockedReason() || (canGoNext() ? 'Historia siguiente' : 'No hay una historia siguiente')"
+            [attr.aria-label]="nextBlockedReason() ? 'Historia siguiente bloqueada. ' + nextBlockedReason() : 'Historia siguiente'"
             (click)="goToNext()"
             style="font-size: 0.875rem;"
           >
             <span class="d-none d-lg-inline me-1">Siguiente</span>→
           </button>
         </div>
+        <p *ngIf="nextBlockedReason()" class="small text-muted text-end mb-3" role="status">🔒 {{ nextBlockedReason() }}</p>
 
         <!-- Story Content -->
         <div *ngIf="currentItem().type === 'story' && currentItem().story" class="card">
@@ -180,7 +185,9 @@
                   </div>
                   <div *ngSwitchCase="'keyframe'">
                     <h5 class="mt-2">Fragmento de la historia</h5>
-                    <p class="story-text mb-0">{{ block.text }}</p>
+                    <div class="story-text mb-0">
+                      <app-tooltip-display [tooltipData]="keyframeTooltips(block)" [text]="block.text || ''" />
+                    </div>
                     <button *ngIf="block.audioUrl" type="button" class="btn btn-outline-primary btn-sm mt-2"
                       (click)="toggleLessonAudio(block.audioUrl)">{{ isPlaying() ? 'Pausar fragmento' : 'Escuchar fragmento' }}</button>
                   </div>

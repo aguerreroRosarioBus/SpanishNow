@@ -44,7 +44,8 @@ module.exports = async () => {
       '20260122000000-add-audio-to-questions.js',
       '20260127000000-create-tooltips.js',
       '20260926000000-convert-activity-configs-to-story.js',
-      '20260927000000-create-lesson-plans.js'
+      '20260927000000-create-lesson-plans.js',
+      '20261021000000-add-keyframe-tooltips.js'
     ]) {
       await require(path.join(backend, 'migrations', file)).up(qi, Sequelize);
     }

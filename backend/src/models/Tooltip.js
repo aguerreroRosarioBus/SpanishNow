@@ -10,14 +10,21 @@ const Tooltip = sequelize.define('Tooltip', {
 
   // Polymorphic relationship - can belong to Story OR Question
   targetType: {
-    type: DataTypes.ENUM('story', 'question'),
+    type: DataTypes.ENUM('story', 'question', 'keyframe'),
     allowNull: false,
     comment: 'Type of content this tooltip belongs to'
   },
   targetId: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    comment: 'ID of the story or question'
+    comment: 'ID of the story or question (storyId for keyframe tooltips)'
+  },
+
+  // Only for targetType='keyframe': blockKey of the lesson keyframe; offsets are relative to its text
+  blockKey: {
+    type: DataTypes.STRING(64),
+    allowNull: true,
+    comment: 'blockKey of the keyframe (targetType=keyframe only)'
   },
 
   // Position and validation
@@ -73,6 +80,10 @@ const Tooltip = sequelize.define('Tooltip', {
     {
       fields: ['targetType', 'targetId'],
       name: 'idx_tooltip_target'
+    },
+    {
+      fields: ['targetId', 'blockKey'],
+      name: 'idx_tooltip_keyframe'
     },
     {
       fields: ['createdBy'],

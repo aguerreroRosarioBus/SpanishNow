@@ -16,6 +16,7 @@ import { ActivityModalComponent } from '../activity-modal/activity-modal.compone
 import { FlashcardModalComponent } from '../flashcard-modal/flashcard-modal.component';
 import { MatchingModalComponent } from '../matching-modal/matching-modal.component';
 import { ListenRepeatModalComponent } from '../listen-repeat-modal/listen-repeat-modal.component';
+import { DisplayTooltip } from '../../../core/services/tooltip.service';
 import { TooltipDisplayComponent } from '../../../shared/components/tooltip-display/tooltip-display.component';
 import { StudentLesson, StudentLessonBlock, StudentLessonService, StudentAnswerResult } from '../../../core/services/student-lesson.service';
 
@@ -68,9 +69,24 @@ export class StoryPlayerComponent implements OnInit {
     return items[index] || null;
   });
 
+  // Referencia estable por bloque (el input del componente de tooltips se compara por referencia).
+  private keyframeTooltipCache = new WeakMap<StudentLessonBlock, DisplayTooltip[]>();
+  keyframeTooltips(block: StudentLessonBlock): DisplayTooltip[] {
+    let list = this.keyframeTooltipCache.get(block);
+    if (!list) { list = (block.tooltips || []).map(t => ({ ...t })); this.keyframeTooltipCache.set(block, list); }
+    return list;
+  }
+
   // Navigation computed properties
-  canGoPrevious = computed(() => this.currentItemIndex() > 0);
-  canGoNext = computed(() => this.currentItemIndex() < this.navigationItems().length - 1);
+  // Las flechas siguen la misma regla de acceso que el menú lateral (ver navigateTo).
+  previousItem = computed(() => this.navigationItems()[this.currentItemIndex() - 1] ?? null);
+  nextItem = computed(() => this.navigationItems()[this.currentItemIndex() + 1] ?? null);
+  canGoPrevious = computed(() => !!this.previousItem()?.canAccess);
+  canGoNext = computed(() => !!this.nextItem()?.canAccess);
+  nextBlockedReason = computed(() => {
+    const next = this.nextItem();
+    return next && !next.canAccess ? 'Completa esta lectura para desbloquear la siguiente historia.' : '';
+  });
 
   // Audio player
   isPlaying = signal<boolean>(false);
@@ -238,30 +254,27 @@ export class StoryPlayerComponent implements OnInit {
 
   // Navigation methods
   goToPrevious(): void {
-    if (this.canGoPrevious()) {
-      this.currentItemIndex.update(i => i - 1);
-      this.loadCurrentItem();
-    }
+    const item = this.previousItem();
+    if (item) this.navigateTo(item);
   }
 
   goToNext(): void {
-    if (this.canGoNext()) {
-      this.currentItemIndex.update(i => i + 1);
-      this.loadCurrentItem();
-    }
+    const item = this.nextItem();
+    if (item) this.navigateTo(item);
   }
 
   selectItem(item: NavigationItem): void {
-    if (!item.canAccess) {
-      this.toastService.warning('Este contenido aún no está disponible');
-      return;
-    }
+    if (!this.navigateTo(item)) this.toastService.warning('Este contenido aún no está disponible');
+  }
 
+  /** Única regla de navegación (menú lateral y flechas): solo se entra a ítems con canAccess. */
+  private navigateTo(item: NavigationItem): boolean {
+    if (!item.canAccess) return false;
     const index = this.navigationItems().findIndex(i => i.id === item.id);
-    if (index >= 0) {
-      this.currentItemIndex.set(index);
-      this.loadCurrentItem();
-    }
+    if (index < 0) return false;
+    this.currentItemIndex.set(index);
+    this.loadCurrentItem();
+    return true;
   }
 
   loadCurrentItem(): void {

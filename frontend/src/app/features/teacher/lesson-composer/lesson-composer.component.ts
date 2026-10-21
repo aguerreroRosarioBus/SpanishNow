@@ -3,7 +3,8 @@ import { Component, ElementRef, EventEmitter, HostListener, Input, OnDestroy, On
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
-import { LessonBlock, LessonBlockType, LessonPhase, LessonPlan, LessonPlanService } from '../../../core/services/lesson-plan.service';
+import { KeyframeExtrasComponent } from './keyframe-extras.component';
+import { KeyframeTooltip, LessonBlock, LessonBlockType, LessonPhase, LessonPlan, LessonPlanService } from '../../../core/services/lesson-plan.service';
 import { QuestionService } from '../../../core/services/question.service';
 import { VocabularyService } from '../../../core/services/vocabulary.service';
 import { Story, Question, Vocabulary, Unit } from '../../../core/models/course.model';
@@ -15,7 +16,7 @@ const PHASE_LABEL: Record<LessonPhase, string> = { before: 'Antes', during: 'Dur
 @Component({
   selector: 'app-lesson-composer',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, KeyframeExtrasComponent],
   templateUrl: './lesson-composer.component.html',
   styleUrls: ['./lesson-composer.component.scss', './lesson-composer-tutorial.scss']
 })
@@ -108,6 +109,16 @@ export class LessonComposerComponent implements OnInit, OnDestroy {
   keyframesBefore(block: LessonBlock): LessonBlock[] {
     const index = this.blocks().findIndex(item => item.blockKey === block.blockKey);
     return this.blocks().slice(0, index).filter(item => item.type === 'keyframe' && item.active);
+  }
+  savedBlock(block: LessonBlock): LessonBlock | null { return this.plan()?.blocks.find(item => item.blockKey === block.blockKey) ?? null; }
+  ensureSavedFn = async (): Promise<boolean> => !this.dirty() || this.save();
+  onAudioChange(event: { blockKey: string; audioUrl: string | null }): void { this.patchBlock(event.blockKey, { audioUrl: event.audioUrl }); }
+  onTooltipsChange(event: { blockKey: string; tooltips: KeyframeTooltip[] }): void { this.patchBlock(event.blockKey, { tooltips: event.tooltips }); }
+  /** Aplica un cambio ya persistido por el backend (audio/tooltips) sin marcar el borrador como modificado. */
+  private patchBlock(key: string, values: Partial<LessonBlock>): void {
+    const apply = (list: LessonBlock[]) => list.map(block => block.blockKey === key ? { ...block, ...values } : block);
+    this.plan.update(plan => plan ? { ...plan, blocks: apply(plan.blocks) } : plan);
+    this.blocks.update(apply);
   }
   trackBlock(_: number, block: LessonBlock): string { return block.blockKey; }
   isPhaseValid(): boolean { return this.blocks().every((block, i, all) => PHASES.indexOf(block.phase) >= (i ? PHASES.indexOf(all[i - 1].phase) : 0)); }

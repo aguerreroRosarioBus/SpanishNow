@@ -1,6 +1,8 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 import { of } from 'rxjs';
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { StoryPlayerComponent } from './story-player.component';
 import { AuthService } from '../../../core/services/auth.service';
@@ -18,7 +20,7 @@ const makeLesson = (storyId: number, lastBlockKey: string | null): StudentLesson
     lessonBlock('f1', 3, 'full_story', 'after'),
     lessonBlock('k2', 2, 'keyframe', 'during', { text: 'dos' }),
     lessonBlock('q1', 1, 'question', 'during', { questionId: 9, contextBlockKey: 'k1', question: { questionText: '¿Dónde está María?', answerType: 'open_ended' } }),
-    lessonBlock('k1', 0, 'keyframe', 'during', { text: 'María llega a la fiesta' }),
+    lessonBlock('k1', 0, 'keyframe', 'during', { text: 'María llega a la fiesta', tooltips: [{ startOffset: 0, endOffset: 5, selectedText: 'María', tooltipContent: 'Nombre propio' }] }),
   ],
   story: { id: storyId, title: 'María', fullStoryText: 'texto' },
   progress: { id: 11, lastBlockKey, narrativeCompleted: false, answers: [], reinforcements: [] },
@@ -50,6 +52,8 @@ describe('StoryPlayerComponent (flujo TPRS)', () => {
         { provide: EnrollmentService, useValue: { getMyCourses: () => of([{ id: 1, studentId: 1, courseId: 1, createdAt: '', progress: [] }]) } },
         { provide: CourseService, useValue: { getCourse: () => of(course) } },
         { provide: StudentLessonService, useValue: lessonApi },
+        provideHttpClient(),
+        provideHttpClientTesting(),
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(StoryPlayerComponent);
@@ -121,11 +125,50 @@ describe('StoryPlayerComponent (flujo TPRS)', () => {
     expect(component.currentItem()?.id).toBe('story-100');
   });
 
-  // BUG conocido (fase 2): las flechas Anterior/Siguiente usan solo canGoNext() (índice) y
-  // no comprueban item.canAccess, por lo que saltan a una historia que el menú lateral bloquea.
-  it.fails('la flecha Siguiente aplica la misma regla de acceso que el menú lateral', async () => {
+  it('la flecha Siguiente aplica la misma regla de acceso que el menú lateral', async () => {
     await create(null);
+    expect(component.canGoNext()).toBe(false);
+    expect(component.nextBlockedReason()).toContain('Completa');
     component.goToNext();
     expect(component.currentItem()?.id).toBe('story-100');
+    fixture.detectChanges();
+    const next = [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')].find(b => b.getAttribute('aria-label')?.startsWith('Historia siguiente')) as HTMLButtonElement;
+    expect(next.disabled).toBe(true);
+    expect(next.getAttribute('aria-label')).toContain('bloqueada');
+  });
+
+  it('las flechas avanzan y retroceden cuando el ítem destino es accesible', async () => {
+    await create(null);
+    component.navigationItems.update(items => items.map(i => ({ ...i, canAccess: true })));
+    expect(component.canGoPrevious()).toBe(false);
+    component.goToNext();
+    expect(component.currentItem()?.id).toBe('story-200');
+    expect(component.canGoPrevious()).toBe(true);
+    component.goToPrevious();
+    expect(component.currentItem()?.id).toBe('story-100');
+  });
+
+  it('muestra los tooltips del keyframe sobre su texto sin consultar la API de historia', async () => {
+    await create(null);
+    const http = TestBed.inject(HttpTestingController);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const mark = el.querySelector('.story-text .tooltip-highlight') as HTMLElement;
+    expect(mark.textContent).toBe('María');
+    mark.click();
+    fixture.detectChanges();
+    expect(el.querySelector('.tooltip-popover')?.textContent).toContain('Nombre propio');
+    http.expectNone(r => r.url.includes('/tooltips'));
+
+    // Al pasar al siguiente keyframe se vuelve a renderizar sin resaltados.
+    component.goToLessonBlock(2);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(currentKey()).toBe('k2');
+    expect(el.querySelector('.story-text .tooltip-highlight')).toBeNull();
+    expect(el.querySelector('.story-text')?.textContent).toContain('dos');
   });
 });
