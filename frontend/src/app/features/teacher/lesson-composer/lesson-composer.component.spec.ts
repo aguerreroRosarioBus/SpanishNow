@@ -274,7 +274,7 @@ describe('LessonComposerComponent', () => {
 
     it('el panel lateral muestra la historia hasta ahora y el chequeo TPRS en vivo', async () => {
       const el = fixture.nativeElement as HTMLElement;
-      expect(el.querySelector('.story-text')?.textContent).toBe('Luis llega a la casa.\n\nLuis tiene un gato.');
+      expect([...el.querySelectorAll('.story-par')].map(p => p.textContent)).toEqual(['Luis llega a la casa.', 'Luis tiene un gato.']);
       component.updateBlock('k2', { text: 'Luis tiene un perro.' });
       fixture.detectChanges();
       expect(el.querySelector('.story-text')?.textContent).toContain('perro');
@@ -333,6 +333,63 @@ describe('LessonComposerComponent', () => {
       await flush();
       expect(tutorial()).toBeNull();
       expect(document.activeElement).toBe(link);
+    });
+  });
+  describe('sincronía de posición', () => {
+    beforeEach(async () => {
+      localStorage.setItem(seenKey, 'seen');
+      await create([
+        block('e1', 'expression', 'before'),
+        block('k1', 'keyframe', 'during', { text: 'uno' }),
+        block('q1', 'question', 'during', { questionId: 1, contextBlockKey: 'k1' }),
+        block('f1', 'full_story', 'after'),
+      ]);
+    });
+    const card = (key: string) => fixture.nativeElement.querySelector(`article[data-block-key="${key}"]`) as HTMLElement;
+
+    it('focusin dentro de un bloque lo marca activo; desplazar no lo cambia', () => {
+      expect(component.activeBlockKey()).toBeNull();
+      card('k1').querySelector('textarea')!.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+      expect(component.activeBlockKey()).toBe('k1');
+      fixture.nativeElement.querySelector('.timeline').dispatchEvent(new Event('scroll'));
+      expect(component.activeBlockKey()).toBe('k1');
+    });
+
+    it('editar texto, añadir bloques y seguir la historia actualizan el bloque activo', () => {
+      component.onKeyframeText('k1', 'nuevo');
+      expect(component.activeBlockKey()).toBe('k1');
+      component.addKeyframeAfter(component.blocks().find(b => b.blockKey === 'k1')!);
+      const added = component.blocks().find(b => !['e1', 'k1', 'q1', 'f1'].includes(b.blockKey))!;
+      expect(component.activeBlockKey()).toBe(added.blockKey);
+      component.addQuestionAfter(component.blocks().find(b => b.blockKey === 'k1')!);
+      const q = component.blocks().filter(b => b.type === 'question').find(b => b.blockKey !== 'q1')!;
+      expect(component.activeBlockKey()).toBe(q.blockKey);
+      component.addBlock('expression', 'before');
+      expect(component.blocks().filter(b => b.type === 'expression').pop()!.blockKey).toBe(component.activeBlockKey());
+    });
+
+    it('navigateToBlock activa, centra el bloque y enfoca su campo principal', () => {
+      const scroll = vi.fn();
+      card('q1').scrollIntoView = scroll;
+      component.navigateToBlock('q1');
+      expect(component.activeBlockKey()).toBe('q1');
+      expect(scroll).toHaveBeenCalledWith(expect.objectContaining({ block: 'center' }));
+      expect(document.activeElement).toBe(fixture.nativeElement.querySelector('#q-select-q1'));
+      card('k1').scrollIntoView = vi.fn();
+      component.navigateToBlock('k1');
+      expect(document.activeElement).toBe(fixture.nativeElement.querySelector('#kf-text-k1'));
+    });
+
+    it('el panel recibe la clave activa y navegar desde él enfoca el bloque', () => {
+      component.sideTab.set('preview');
+      fixture.detectChanges();
+      card('e1').scrollIntoView = vi.fn();
+      const item = fixture.nativeElement.querySelector('.side-panel .preview-item[data-block-key="e1"] .goto') as HTMLElement;
+      item.click();
+      fixture.detectChanges();
+      expect(component.activeBlockKey()).toBe('e1');
+      expect(document.activeElement).toBe(fixture.nativeElement.querySelector('#ex-select-e1'));
+      expect(fixture.nativeElement.querySelector('.preview-item[data-block-key="e1"]').getAttribute('aria-current')).toBe('true');
     });
   });
 });

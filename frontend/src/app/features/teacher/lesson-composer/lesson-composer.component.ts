@@ -15,6 +15,7 @@ import { QuestionService } from '../../../core/services/question.service';
 import { VocabularyService } from '../../../core/services/vocabulary.service';
 import { Story, Question, Vocabulary, Unit } from '../../../core/models/course.model';
 import { storyTextFromBlocks } from './tprs-checklist';
+import { scrollBehavior } from './scroll-sync';
 
 const TUTORIAL_VERSION = '1';
 const PHASES: LessonPhase[] = ['before', 'during', 'after', 'later'];
@@ -57,6 +58,8 @@ export class LessonComposerComponent implements OnInit, OnDestroy {
   showTutorial = signal(false);
   exampleMode = signal(false);
   sideTab = signal<SidePanelTab>('story');
+  /** Último bloque enfocado/editado/añadido (no cambia al desplazar); el panel lateral lo resalta. */
+  activeBlockKey = signal<string | null>(null);
   /** Bloque de pregunta / de expresión con el formulario de creación abierto. */
   newQuestionFor = signal<string | null>(null);
   newExpressionFor = signal<string | null>(null);
@@ -148,6 +151,7 @@ export class LessonComposerComponent implements OnInit, OnDestroy {
       block.contextBlockKey = [...this.blocks()].reverse().find(item => item.type === 'keyframe' && item.active)?.blockKey ?? null;
     }
     this.insertByPhase(block);
+    this.setActive(block.blockKey);
     this.changed();
   }
 
@@ -163,7 +167,20 @@ export class LessonComposerComponent implements OnInit, OnDestroy {
     const list = [...this.blocks()];
     list.splice(index, 0, block);
     this.blocks.set(list);
+    this.setActive(block.blockKey);
     this.changed();
+  }
+  setActive(key: string | null): void { if (this.activeBlockKey() !== key) this.activeBlockKey.set(key); }
+
+  /** Desde el panel: lleva el bloque a la vista, enfoca su campo principal y lo marca activo. */
+  navigateToBlock(key: string): void {
+    this.setActive(key);
+    const root = this.host.nativeElement as HTMLElement;
+    const card = [...root.querySelectorAll<HTMLElement>('[data-block-key]')].find(el => el.dataset['blockKey'] === key && el.tagName === 'ARTICLE');
+    if (!card) return;
+    card.scrollIntoView?.({ block: 'center', behavior: scrollBehavior() });
+    const field = card.querySelector<HTMLElement>(`#kf-text-${key}, #q-select-${key}, #ex-select-${key}`) ?? card;
+    field.focus({ preventScroll: true });
   }
   private focusSoon(selector: string): void { setTimeout(() => (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>(selector)?.focus(), 0); }
 
@@ -235,6 +252,7 @@ export class LessonComposerComponent implements OnInit, OnDestroy {
   toggleBlock(block: LessonBlock): void { this.updateBlock(block.blockKey, { active: !block.active }); }
   updateBlock(key: string, values: Partial<LessonBlock>): void {
     this.blocks.set(this.blocks().map(block => block.blockKey === key ? { ...block, ...values } : block));
+    this.setActive(key);
     this.changed();
   }
   move(block: LessonBlock, offset: -1 | 1): void {

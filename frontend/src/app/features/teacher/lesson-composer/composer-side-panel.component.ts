@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, input, model, signal } from '@angular/core';
+import { Component, ElementRef, Injector, afterNextRender, computed, effect, inject, input, model, output, signal, viewChild } from '@angular/core';
 import { Question, Vocabulary } from '../../../core/models/course.model';
 import { LessonBlock, LessonBlockType, LessonPhase } from '../../../core/services/lesson-plan.service';
 import { storyTextFromBlocks, tprsChecklist } from './tprs-checklist';
+import { PROGRAMMATIC_SCROLL_MS, canAutoScroll, nearestScrollTop, scrollBehavior } from './scroll-sync';
 
 export type SidePanelTab = 'story' | 'tprs' | 'preview';
 const PHASES: LessonPhase[] = ['before', 'during', 'after', 'later'];
@@ -27,6 +28,16 @@ export class ComposerSidePanelComponent {
   storyId = input<number>();
   audioNormalUrl = input<string | null | undefined>(null);
   tab = model<SidePanelTab>('story');
+  /** Bloque activo en el compositor (foco/edición): se resalta y, si hace falta, se muestra. */
+  activeBlockKey = input<string | null>(null);
+  /** Clic/Enter en un elemento del panel: el compositor lleva ese bloque a la vista. */
+  navigate = output<string>();
+
+  private scroller = viewChild<ElementRef<HTMLElement>>('scroller');
+  private injector = inject(Injector);
+  private pointerOver = false;
+  private lastUserScrollAt = -Infinity;
+  private programmaticUntil = 0;
 
   readonly tabs = TABS;
   readonly phases = PHASES;
@@ -35,6 +46,47 @@ export class ComposerSidePanelComponent {
   storyText = computed(() => storyTextFromBlocks(this.blocks()));
   checklist = computed(() => tprsChecklist({ blocks: this.blocks(), vocabulary: this.vocabulary(), questions: this.questions(), storyId: this.storyId() }));
   doneCount = computed(() => this.checklist().filter(item => item.ok).length);
+
+  /** Keyframes activos con texto, un párrafo cada uno (mismo criterio que storyText). */
+  storyParagraphs = computed(() => this.blocks().filter(b => b.type === 'keyframe' && b.active && (b.text ?? '').trim()).map(b => ({ key: b.blockKey, text: (b.text ?? '').trim() })));
+  /** Keyframe resaltado en «La historia hasta ahora»: el activo o, si es una pregunta, su keyframe de contexto. */
+  highlightedKeyframeKey = computed(() => {
+    const key = this.activeBlockKey(), active = this.blocks().find(b => b.blockKey === key);
+    if (!active) return null;
+    return active.type === 'question' ? active.contextBlockKey ?? null : active.type === 'keyframe' ? active.blockKey : null;
+  });
+
+  constructor() {
+    effect(() => {
+      this.activeBlockKey(); this.tab(); this.blocks();
+      afterNextRender(() => this.revealActive(), { injector: this.injector });
+    });
+  }
+
+  onPointerEnter(): void { this.pointerOver = true; }
+  onPointerLeave(): void { this.pointerOver = false; }
+  /** Desplazamiento manual (rueda/táctil) o `scroll` fuera de la ventana de nuestro propio scroll. */
+  onUserScrollIntent(): void { this.lastUserScrollAt = Date.now(); }
+  onScroll(): void { if (Date.now() > this.programmaticUntil) this.lastUserScrollAt = Date.now(); }
+
+  /** Desplaza solo el contenedor del panel, y solo si el elemento resaltado no se ve entero. */
+  revealActive(): void {
+    const container = this.scroller()?.nativeElement;
+    if (!container || this.tab() === 'tprs') return;
+    const item = container.querySelector<HTMLElement>('[aria-current="true"]');
+    if (!item || !canAutoScroll(this.pointerOver, this.lastUserScrollAt, Date.now())) return;
+    const top = nearestScrollTop(container, item);
+    if (top === null) return;
+    const behavior = scrollBehavior();
+    this.programmaticUntil = Date.now() + (behavior === 'smooth' ? PROGRAMMATIC_SCROLL_MS : 100);
+    container.scrollTo({ top, behavior });
+  }
+
+  /** Clic en el elemento de la vista previa; ignora los clics sobre controles internos. */
+  onItemClick(event: Event, block: LessonBlock): void {
+    if ((event.target as HTMLElement).closest('button, a, audio, input, select, textarea')) return;
+    this.navigate.emit(block.blockKey);
+  }
 
   phaseLabel(phase: LessonPhase): string { return PHASE_LABEL[phase]; }
   typeLabel(type: LessonBlockType): string { return TYPE_LABEL[type]; }
