@@ -1,0 +1,45 @@
+<button type="button" class="btn btn-sm btn-outline-secondary" [disabled]="disabled() || !!importing()"
+        [attr.aria-expanded]="expanded()" (click)="toggle()">
+  <app-icon name="search" [size]="16" /> {{ expanded() ? 'Cerrar búsqueda' : 'Buscar en Google Imágenes' }}
+</button>
+@if (expanded()) {
+  <section class="image-search" aria-label="Buscar en Google Imágenes" [attr.aria-busy]="loading() || !!importing()">
+    <div class="search-controls">
+      <input #queryInput type="search" class="form-control" aria-label="Qué imagen quieres buscar" maxlength="200"
+             placeholder="Ej.: una casa junto al mar" [value]="query()" (input)="query.set(queryInput.value)"
+             (keydown.enter)="onEnter($event)" [disabled]="disabled() || loading() || !!importing()">
+      <button type="button" class="btn btn-secondary btn-sm" (click)="search()"
+              [disabled]="disabled() || !query().trim() || loading() || !!importing()">Buscar</button>
+    </div>
+    <p class="form-text">Selecciona una imagen para insertarla. Revisa los permisos de uso en el sitio de origen.</p>
+    @if (error()) { <p class="text-danger small" role="alert">{{ error() }}</p> }
+    @if (loading()) { <p class="small" role="status">Buscando imágenes…</p> }
+    @if (importing()) { <p class="small" role="status">Preparando imagen…</p> }
+    @if (searched() && !loading() && !results().length) {
+      <p class="small" role="status">No encontramos imágenes. Prueba con otras palabras.</p>
+    }
+    <div class="image-results">
+      @for (result of results(); track result.token) {
+        <article class="image-result">
+          <button type="button" class="image-choice" [disabled]="disabled() || loading() || !!importing()"
+                  [attr.aria-label]="'Insertar imagen: ' + result.title" (click)="select(result)">
+            <img [src]="result.thumbnailUrl" [alt]="result.title" loading="lazy" referrerpolicy="no-referrer">
+            <span>{{ result.title }}</span>
+          </button>
+          @if (result.sourceUrl) {
+            <a [href]="result.sourceUrl" target="_blank" rel="noopener noreferrer" class="source">{{ result.source }}</a>
+          } @else { <span class="source">{{ result.source }}</span> }
+        </article>
+      }
+    </div>
+    @if (searched() && (page() > 1 || hasMore())) {
+      <nav class="pagination-controls" aria-label="Páginas de imágenes">
+        <button type="button" class="btn btn-sm btn-outline-secondary" (click)="search(page() - 1)"
+                [disabled]="disabled() || page() === 1 || loading() || !!importing()">Anterior</button>
+        <span class="small" aria-live="polite">Página {{ page() }}</span>
+        <button type="button" class="btn btn-sm btn-outline-secondary" (click)="search(page() + 1)"
+                [disabled]="disabled() || !hasMore() || loading() || !!importing()">Siguiente</button>
+      </nav>
+    }
+  </section>
+}

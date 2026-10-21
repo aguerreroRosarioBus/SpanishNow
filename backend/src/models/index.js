@@ -23,6 +23,9 @@ const Coupon = require('./Coupon');
 const Affiliate = require('./Affiliate');
 const AffiliatePayout = require('./AffiliatePayout');
 const LessonComment = require('./LessonComment');
+const LiveClass = require('./LiveClass');
+const LiveClassMember = require('./LiveClassMember');
+const GoogleConnection = require('./GoogleConnection');
 
 // Define associations
 User.hasMany(Course, { foreignKey: 'teacherId', as: 'courses' });
@@ -118,7 +121,19 @@ LessonComment.belongsTo(User, { foreignKey: 'userId', as: 'author' });
 LessonComment.hasMany(LessonComment, { foreignKey: 'parentId', as: 'replies', onDelete: 'CASCADE' });
 LessonComment.belongsTo(LessonComment, { foreignKey: 'parentId', as: 'parent' });
 
+User.hasMany(LiveClass, { foreignKey: 'teacherId', as: 'liveClasses' });
+LiveClass.belongsTo(User, { foreignKey: 'teacherId', as: 'teacher' });
+Course.hasMany(LiveClass, { foreignKey: 'courseId', as: 'liveClasses' });
+LiveClass.belongsTo(Course, { foreignKey: 'courseId', as: 'course' });
+LiveClass.hasMany(LiveClassMember, { foreignKey: 'liveClassId', as: 'members', onDelete: 'CASCADE' });
+LiveClassMember.belongsTo(LiveClass, { foreignKey: 'liveClassId', as: 'liveClass' });
+LiveClassMember.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+GoogleConnection.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
 module.exports = {
+  LiveClass,
+  LiveClassMember,
+  GoogleConnection,
   User,
   Course,
   Unit,

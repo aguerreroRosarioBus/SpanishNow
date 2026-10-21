@@ -8,12 +8,14 @@ import { ToastService } from '../../../core/services/toast.service';
 import { Course } from '../../../core/models/course.model';
 import { CourseCardComponent } from '../../../shared/components/course-card/course-card.component';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
+import { validateImageFile, IMAGE_ACCEPT } from '../lesson-composer/image-file';
+import { ImageSearchComponent } from '../../../shared/components/image-search/image-search.component';
 import { PluralPipe } from '../../../shared/pipes/plural.pipe';
 
 @Component({
   selector: 'app-teacher-dashboard',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, CourseCardComponent, IconComponent, PluralPipe],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, CourseCardComponent, IconComponent, PluralPipe, ImageSearchComponent],
   templateUrl: './teacher-dashboard.component.html',
   styleUrl: './teacher-dashboard.component.scss'
 })
@@ -32,6 +34,7 @@ export class TeacherDashboardComponent implements OnInit {
   isCreating = signal<boolean>(false);
 
   courseForm: FormGroup;
+  readonly imageAccept = IMAGE_ACCEPT;
   selectedImageFile: File | null = null;
   imagePreview: string | null = null;
 
@@ -104,31 +107,21 @@ export class TeacherDashboardComponent implements OnInit {
   }
 
   onImageSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (input.files && input.files[0]) {
-      const file = input.files[0];
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (file) this.selectSearchImage(file);
+  }
 
-      // Validar que sea una imagen
-      if (!file.type.startsWith('image/')) {
-        this.toastService.warning('Por favor selecciona un archivo de imagen válido');
-        return;
-      }
-
-      // Validar tamaño (máximo 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        this.toastService.warning('La imagen no debe superar los 5MB');
-        return;
-      }
-
-      this.selectedImageFile = file;
-
-      // Crear preview
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        this.imagePreview = e.target?.result as string;
-      };
-      reader.readAsDataURL(file);
-    }
+  selectSearchImage(file: File, editing = false): void {
+    const invalid = validateImageFile(file);
+    if (invalid) { this.toastService.warning(invalid); return; }
+    if (editing) this.selectedEditImageFile = file;
+    else this.selectedImageFile = file;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (editing) this.editImagePreview = reader.result as string;
+      else this.imagePreview = reader.result as string;
+    };
+    reader.readAsDataURL(file);
   }
 
   createCourse(): void {
@@ -175,7 +168,7 @@ export class TeacherDashboardComponent implements OnInit {
           return;
         }
 
-        this.errorMessage.set('Error al crear el curso. Intenta de nuevo.');
+        this.errorMessage.set(error?.error?.error || 'Error al crear el curso. Intenta de nuevo.');
         this.toastService.error('Error al crear el curso');
         this.isCreating.set(false);
       }
@@ -229,31 +222,8 @@ export class TeacherDashboardComponent implements OnInit {
   }
 
   onEditImageSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (input.files && input.files[0]) {
-      const file = input.files[0];
-
-      // Validar que sea una imagen
-      if (!file.type.startsWith('image/')) {
-        this.toastService.warning('Por favor selecciona un archivo de imagen válido');
-        return;
-      }
-
-      // Validar tamaño (máximo 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        this.toastService.warning('La imagen no debe superar los 5MB');
-        return;
-      }
-
-      this.selectedEditImageFile = file;
-
-      // Crear preview
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        this.editImagePreview = e.target?.result as string;
-      };
-      reader.readAsDataURL(file);
-    }
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (file) this.selectSearchImage(file, true);
   }
 
   updateCourse(): void {
@@ -304,7 +274,7 @@ export class TeacherDashboardComponent implements OnInit {
           return;
         }
 
-        this.errorMessage.set('Error al actualizar el curso. Intenta de nuevo.');
+        this.errorMessage.set(error?.error?.error || 'Error al actualizar el curso. Intenta de nuevo.');
         this.toastService.error('Error al actualizar el curso');
         this.isUpdating.set(false);
       }

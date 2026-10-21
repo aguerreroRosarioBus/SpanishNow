@@ -1,7 +1,8 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { liveReturnUrl } from '../../../core/guards/live-auth.guard';
 import { AuthService } from '../../../core/services/auth.service';
 
 /**
@@ -26,6 +27,7 @@ export class LoginComponent {
   private fb = inject(FormBuilder);      // Para construir formularios
   private authService = inject(AuthService); // Servicio de autenticación
   private router = inject(Router);       // Para navegación
+  readonly returnUrl = liveReturnUrl(inject(ActivatedRoute).snapshot.queryParamMap.get('returnUrl'));
 
   // Estado del componente
   loginForm: FormGroup;           // Formulario reactivo
@@ -68,7 +70,7 @@ export class LoginComponent {
     this.authService.login({ email, password }).subscribe({
       // Si el login es exitoso
       next: (response) => {
-        console.log('Login exitoso:', response);
+        if (this.returnUrl) { void this.router.navigateByUrl(this.returnUrl); return; }
 
         // Redirigir según el rol del usuario
         if (response.user.role === 'teacher') {

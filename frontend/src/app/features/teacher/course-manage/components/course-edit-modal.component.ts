@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CourseService } from '../../../../core/services/course.service';
 import { CouponService } from '../../../../core/services/coupon.service';
@@ -7,15 +7,17 @@ import { Coupon } from '../../../../core/models/sales.model';
 import { ToastService } from '../../../../core/services/toast.service';
 import { CourseManageStore } from '../course-manage.store';
 import { VideoEmbedComponent } from '../../../../shared/components/video-embed/video-embed.component';
+import { ImageSearchComponent } from '../../../../shared/components/image-search/image-search.component';
+import { validateImageFile, IMAGE_ACCEPT } from '../../lesson-composer/image-file';
 
 /** Edición del curso: título, descripción y datos de venta (precio, moneda, slug, publicación, texto de venta). */
 @Component({
   selector: 'app-course-edit-modal',
   standalone: true,
-  imports: [ReactiveFormsModule, VideoEmbedComponent],
+  imports: [ReactiveFormsModule, VideoEmbedComponent, ImageSearchComponent],
   templateUrl: './course-edit-modal.component.html'
 })
-export class CourseEditModalComponent {
+export class CourseEditModalComponent implements OnDestroy {
   private store = inject(CourseManageStore);
   private courseService = inject(CourseService);
   private couponService = inject(CouponService);
@@ -45,6 +47,32 @@ export class CourseEditModalComponent {
   private selectedNext = signal<number | null>(null);
   /** Cupones activos que sirven para el curso siguiente elegido (los de ese curso o los de todos). */
   offerCoupons = computed(() => this.coupons().filter(c => c.active && (c.courseId == null || c.courseId === this.selectedNext())));
+  imageFile: File | null = null;
+  imagePreview = signal<string | null>(null);
+  readonly imageAccept = IMAGE_ACCEPT;
+
+  ngOnDestroy(): void { this.selectImage(null); }
+
+  selectImage(file: File | null): void {
+    if (file) {
+      const invalid = validateImageFile(file);
+      if (invalid) { this.toast.warning(invalid); return; }
+    }
+    const previous = this.imagePreview();
+    if (previous) URL.revokeObjectURL(previous);
+    this.imageFile = file;
+    this.imagePreview.set(file ? URL.createObjectURL(file) : null);
+  }
+
+  onImageFile(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (file) this.selectImage(file);
+  }
+
+  coverPreview(): string | null { return this.imagePreview() || this.store.course()?.imageUrl || null; }
+
   isSaving = false;
   errorMessage = '';
 
@@ -115,7 +143,17 @@ export class CourseEditModalComponent {
 
     this.isSaving = true;
     this.errorMessage = '';
-    this.courseService.updateCourse(this.store.courseId(), payload).subscribe({
+    let data: FormData | Partial<Course> = payload;
+    if (this.imageFile) {
+      const form = new FormData();
+      for (const [key, value] of Object.entries(payload)) {
+        // The API treats an empty optional ID/URL as removal, just like JSON null.
+        form.append(key, value == null ? '' : String(value));
+      }
+      form.append('image', this.imageFile);
+      data = form;
+    }
+    this.courseService.updateCourse(this.store.courseId(), data).subscribe({
       next: updated => {
         // El PUT no devuelve las unidades ni el conteo: se conservan los que ya tenía la pantalla
         const previous = this.store.course();

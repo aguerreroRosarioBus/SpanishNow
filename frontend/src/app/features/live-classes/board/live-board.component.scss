@@ -1,0 +1,10 @@
+:host { display: block; min-width: 0; }
+.board-surface { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm); }
+.live-canvas { display: block; width: 100%; aspect-ratio: 16/9; touch-action: none; cursor: crosshair; user-select: none; }
+.live-canvas:focus-visible { outline: 3px solid var(--color-primary); outline-offset: -3px; }
+.read-only .live-canvas { cursor: default; }
+.selecting .live-canvas { cursor: default; }
+.selecting [data-element] { cursor: move; }
+.object-editor { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; padding: .8rem 0; font-size: .85rem; }
+.object-label { font-weight: 600; color: var(--color-text); }
+textarea { flex: 1 1 260px; min-width: 180px; border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: .5rem; resize: vertical; }

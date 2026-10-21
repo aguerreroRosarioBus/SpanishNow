@@ -9,12 +9,12 @@
       <app-sidebar-nav
         [collapsed]="sidebarCollapsed()"
         [class.open]="sidebarOpen()"
-        [forced]="isPlayer()"
+        [forced]="isWorkspace()"
         (collapseToggle)="toggleCollapse()"></app-sidebar-nav>
     }
 
     <main class="main-content" id="contenido">
-      <div class="content-wrapper" [class.is-wide]="isPlayer()" [class.is-bare]="isAuthPage()">
+      <div class="content-wrapper" [class.is-wide]="isWorkspace()" [class.is-bare]="isAuthPage()">
         <router-outlet></router-outlet>
       </div>
 

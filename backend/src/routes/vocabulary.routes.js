@@ -82,15 +82,15 @@ router.post('/', authMiddleware, isTeacher, upload.fields([
 
     // Upload image if provided
     if (req.files && req.files.image && req.files.image[0]) {
-      if (cloudinary.canUpload()) {
-        try {
-          const result = await cloudinary.uploadFromBuffer(req.files.image[0].buffer, {
-            folder: 'spanishnow/vocabulary/images'
-          });
-          imageUrl = result.secure_url;
-        } catch (cloudinaryError) {
-          console.warn('Cloudinary image upload failed:', cloudinaryError.message);
-        }
+      if (!cloudinary.canUpload()) return res.status(503).json({ error: 'El almacenamiento de imágenes no está configurado.' });
+      try {
+        const result = await cloudinary.uploadFromBuffer(req.files.image[0].buffer, {
+          folder: 'spanishnow/vocabulary/images', resource_type: 'image'
+        });
+        if (!result?.secure_url) throw new Error('Missing image URL');
+        imageUrl = result.secure_url;
+      } catch {
+        return res.status(502).json({ error: 'No se pudo guardar la imagen. El vocabulario no fue modificado.' });
       }
     }
 
@@ -159,15 +159,15 @@ router.put('/:id', authMiddleware, isTeacher, upload.fields([
 
     // Upload new image if provided
     if (req.files && req.files.image && req.files.image[0]) {
-      if (cloudinary.canUpload()) {
-        try {
-          const result = await cloudinary.uploadFromBuffer(req.files.image[0].buffer, {
-            folder: 'spanishnow/vocabulary/images'
-          });
-          imageUrl = result.secure_url;
-        } catch (cloudinaryError) {
-          console.warn('Cloudinary image upload failed:', cloudinaryError.message);
-        }
+      if (!cloudinary.canUpload()) return res.status(503).json({ error: 'El almacenamiento de imágenes no está configurado.' });
+      try {
+        const result = await cloudinary.uploadFromBuffer(req.files.image[0].buffer, {
+          folder: 'spanishnow/vocabulary/images', resource_type: 'image'
+        });
+        if (!result?.secure_url) throw new Error('Missing image URL');
+        imageUrl = result.secure_url;
+      } catch {
+        return res.status(502).json({ error: 'No se pudo guardar la imagen. El vocabulario no fue modificado.' });
       }
     }
 

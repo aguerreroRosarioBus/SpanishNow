@@ -32,6 +32,8 @@
     </ng-template>
   </div>
 
+  <app-image-search [initialQuery]="suggestion()" [disabled]="locked()" (imageSelected)="upload($event)" />
+
   <ng-container *ngIf="block().imageUrl">
     <label class="ill-alt" [attr.for]="'ill-alt-' + block().blockKey">Descripción (texto alternativo)</label>
     <input [id]="'ill-alt-' + block().blockKey" type="text" maxlength="300" [disabled]="disabled()" [ngModel]="block().imageAlt || ''" (ngModelChange)="onAlt($event)" [ngModelOptions]="{standalone: true}"

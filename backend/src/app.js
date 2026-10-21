@@ -61,6 +61,8 @@ app.use('/api/teacher', require('./routes/teacherSales.routes'));
 app.use('/api/teacher', require('./routes/teacherCoupons.routes'));
 app.use('/api/teacher', require('./routes/teacherAffiliates.routes'));
 app.use('/api/teacher', require('./routes/teacherComments.routes'));
+app.use('/api/images', require('./routes/imageSearch.routes'));
+app.use('/api/live-classes', require('./routes/liveClass.routes'));
 app.use('/api/me', require('./routes/me.routes'));
 app.use('/api/units', require('./routes/unitQuiz.routes'));
 app.use('/api/units', require('./routes/unit.routes'));

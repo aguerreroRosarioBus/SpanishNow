@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import { Vocabulary } from '../../../core/models/course.model';
 import { VocabularyService } from '../../../core/services/vocabulary.service';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
+import { ImageSearchComponent } from '../../../shared/components/image-search/image-search.component';
 import { IMAGE_ACCEPT, validateImageFile } from './image-file';
 import { WhiteboardService } from './whiteboard/whiteboard.service';
 
@@ -12,7 +13,7 @@ import { WhiteboardService } from './whiteboard/whiteboard.service';
 @Component({
   selector: 'app-inline-vocabulary-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, IconComponent],
+  imports: [CommonModule, FormsModule, IconComponent, ImageSearchComponent],
   templateUrl: './inline-vocabulary-form.component.html',
   styleUrl: './inline-forms.scss'
 })
@@ -43,7 +44,7 @@ export class InlineVocabularyFormComponent implements OnDestroy {
 
   ngOnDestroy(): void { this.setImage(null); }
 
-  private setImage(file: File | null): void {
+  setImage(file: File | null): void {
     const previous = this.imagePreview();
     if (previous && typeof URL.revokeObjectURL === 'function') URL.revokeObjectURL(previous);
     this.image.set(file);
