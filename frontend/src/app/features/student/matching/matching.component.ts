@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { VocabularyService } from '../../../core/services/vocabulary.service';
 import { Vocabulary } from '../../../core/models/course.model';
+import { IconComponent } from '../../../shared/components/icon/icon.component';
 
 interface MatchItem {
   id: number;
@@ -15,7 +16,7 @@ interface MatchItem {
 @Component({
   selector: 'app-matching',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, IconComponent],
   templateUrl: './matching.component.html',
   styleUrl: './matching.component.scss'
 })

@@ -4,6 +4,7 @@ import { Question, Vocabulary } from '../../../core/models/course.model';
 import { LessonBlock, LessonBlockType, LessonPhase } from '../../../core/services/lesson-plan.service';
 import { storyTextFromBlocks, tprsChecklist } from './tprs-checklist';
 import { PROGRAMMATIC_SCROLL_MS, canAutoScroll, nearestScrollTop, scrollBehavior } from './scroll-sync';
+import { IconComponent } from '../../../shared/components/icon/icon.component';
 
 export type SidePanelTab = 'story' | 'tprs' | 'preview';
 const PHASES: LessonPhase[] = ['before', 'during', 'after', 'later'];
@@ -17,7 +18,7 @@ const TABS: { id: SidePanelTab; label: string }[] = [
 @Component({
   selector: 'app-composer-side-panel',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, IconComponent],
   templateUrl: './composer-side-panel.component.html',
   styleUrl: './composer-side-panel.component.scss'
 })

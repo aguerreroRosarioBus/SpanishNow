@@ -1,11 +1,12 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToastService } from '../../../core/services/toast.service';
+import { IconComponent } from '../icon/icon.component';
 
 @Component({
   selector: 'app-toast',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, IconComponent],
   template: `
     <div class="toast-container">
       <div
@@ -17,7 +18,7 @@ import { ToastService } from '../../../core/services/toast.service';
         [class.toast-info]="toast.type === 'info'"
       >
         <div class="toast-content">
-          <span class="toast-icon">{{ getIcon(toast.type) }}</span>
+          <span class="toast-icon"><app-icon [name]="getIcon(toast.type)" [size]="14" /></span>
           <span class="toast-message">{{ toast.message }}</span>
         </div>
         <button type="button" class="toast-close" (click)="toastService.remove(toast.id)" aria-label="Close">
@@ -166,11 +167,11 @@ export class ToastComponent {
 
   getIcon(type: string): string {
     const icons: Record<string, string> = {
-      'success': '✓',
-      'error': '✕',
-      'warning': '⚠',
-      'info': 'ℹ'
+      'success': 'check',
+      'error': 'x',
+      'warning': 'alert-triangle',
+      'info': 'info'
     };
-    return icons[type] || 'ℹ';
+    return icons[type] || 'info';
   }
 }

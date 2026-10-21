@@ -1,79 +1,40 @@
-/**
- * Estilos del componente Register
- * Similar al Login
- */
-
 :host {
-  display: block;
-  min-height: 100%;
-  background:
-    radial-gradient(circle at 12% 8%, rgba(245, 185, 66, 0.22), transparent 42%),
-    radial-gradient(circle at 92% 90%, rgba(229, 84, 78, 0.14), transparent 40%),
-    var(--color-bg-light);
-}
-
-.container {
-  min-height: 100vh;
   display: flex;
-  align-items: center;
+  flex: 1;
 }
 
-.card {
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-lg);
-  animation: fadeIn 0.3s ease-in;
-}
+.role-picker {
+  border: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  legend {
+    float: none;
+    width: auto;
+    padding: 0;
   }
 }
 
-h2 {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
-}
-
-a {
-  text-decoration: none;
-  font-weight: 600;
-  color: var(--color-primary);
-
-  &:hover {
-    text-decoration: underline;
-  }
-}
-
-.btn-primary {
-  padding: 0.8rem;
-}
-
-// Estilo específico para los radio buttons
 .form-check {
-  padding: 0.75rem;
+  margin: 0;
+  padding: 10px 12px 10px 2.5rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  transition: all 0.2s;
 
   &:hover {
-    background-color: var(--color-bg-light);
-    border-color: var(--color-primary);
+    background: var(--color-row-hover);
   }
 
-  // Cuando el radio está seleccionado
   &:has(.form-check-input:checked) {
-    background-color: var(--color-primary-soft);
-    border-color: var(--color-primary);
+    background: #fdeee4;
+    border-color: #f3dcc9;
   }
 }
 
 .form-check-label {
   cursor: pointer;
   width: 100%;
+  font-size: 0.875rem;
 }

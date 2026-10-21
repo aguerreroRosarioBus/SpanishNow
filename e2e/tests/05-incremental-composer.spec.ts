@@ -46,7 +46,7 @@ test.describe.serial('Composición incremental de una lección', () => {
 
   test('1-5. Profesor: crea la historia con solo título, compone incrementalmente, revisa el panel y publica', async ({ page }) => {
     await login(page, teacher, /teacher\/dashboard/);
-    await page.locator('.card', { hasText: COURSE_TITLE }).getByRole('link', { name: /Gestionar contenido/i }).click();
+    await page.locator('app-course-card', { hasText: COURSE_TITLE }).getByRole('link', { name: /Gestionar contenido/i }).click();
     await expect(page).toHaveURL(/teacher\/course\/(\d+)\/manage/);
     courseUrl = /teacher\/course\/(\d+)\/manage/.exec(page.url())![1];
 

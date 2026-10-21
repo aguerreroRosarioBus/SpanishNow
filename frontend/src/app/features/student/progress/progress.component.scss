@@ -1,8 +1,111 @@
-.story-progress-list {
-  max-height: 320px;
-  overflow-y: auto;
+:host {
+  display: block;
 }
 
-.story-progress-item {
-  background: transparent;
+.course-progress-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.progress-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.progress-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.progress-card__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+
+  h2 {
+    margin: 0;
+    font: 600 1rem var(--font-heading);
+  }
+}
+
+.progress-bar.is-complete {
+  background: var(--color-success);
+}
+
+.progress-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+
+  th, td {
+    padding: 10px 12px 10px 0;
+    border-top: 1px solid var(--color-divider);
+    text-align: left;
+    vertical-align: middle;
+  }
+
+  thead th {
+    border-top: 0;
+    padding-top: 0;
+    color: var(--color-text-light);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .cell-story {
+    font-weight: 600;
+    width: 32%;
+  }
+
+  .cell-unit {
+    color: var(--color-text-light);
+  }
+
+  td:nth-child(3) { white-space: nowrap; }
+}
+
+.attempts {
+  color: var(--color-text-light);
+}
+
+.dash {
+  color: var(--color-text-light);
+}
+
+// Móvil: cada historia pasa a una tarjeta de filas etiquetadas (sin scroll horizontal)
+@media (max-width: 767.98px) {
+  .progress-table {
+    thead { display: none; }
+    tbody, tr, th, td { display: block; }
+
+    tr {
+      padding: 10px 0;
+      border-top: 1px solid var(--color-divider);
+    }
+
+    th, td {
+      border: 0;
+      padding: 2px 0;
+    }
+
+    td::before {
+      content: attr(data-label) ': ';
+      color: var(--color-text-light);
+    }
+
+    .cell-story { width: auto; font-size: 0.9375rem; }
+    .cell-story::before, td:nth-child(3)::before { content: none; }
+  }
 }

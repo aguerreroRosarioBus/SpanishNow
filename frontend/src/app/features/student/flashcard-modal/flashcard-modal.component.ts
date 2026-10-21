@@ -11,7 +11,7 @@ import { FlashcardComponent } from '../flashcard/flashcard.component';
       <div class="modal-dialog modal-xl" (click)="$event.stopPropagation()">
         <div class="modal-content">
           <div class="modal-header bg-primary text-white">
-            <h5 class="modal-title">📚 Flashcards de Vocabulario</h5>
+            <h5 class="modal-title">Flashcards de vocabulario</h5>
             <button type="button" class="btn-close btn-close-white" (click)="onClose()" aria-label="Close"></button>
           </div>
           <div class="modal-body">

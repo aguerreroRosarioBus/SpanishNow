@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authMiddleware } = require('../middlewares/auth.middleware');
 const { User, Course } = require('../models');
-const { sequelize } = require('../config/database');
+const sequelize = require('../config/database');
 
 // Get all teachers with their course count
 router.get('/teachers', authMiddleware, async (req, res) => {

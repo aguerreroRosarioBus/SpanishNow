@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { TooltipService, Tooltip, CreateTooltipDto } from '../../../core/services/tooltip.service';
 import { ToastService } from '../../../core/services/toast.service';
+import { IconComponent } from '../icon/icon.component';
 
 @Component({
   selector: 'app-tooltip-editor',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, IconComponent],
   template: `
     <div class="tooltip-editor">
       <!-- Text Display Area with Selection -->
@@ -19,7 +20,7 @@ import { ToastService } from '../../../core/services/toast.service';
             class="btn btn-sm btn-primary"
             (click)="openTooltipModal()"
           >
-            💡 Agregar Tooltip a Selección
+            <app-icon name="lightbulb" [size]="16" />Agregar tooltip a la selección
           </button>
         </div>
         <div

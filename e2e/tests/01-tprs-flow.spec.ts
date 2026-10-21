@@ -73,7 +73,7 @@ test.describe.serial('Flujo TPRS completo', () => {
   test('2. Alumno: expresiones, keyframes, tooltip con teclado, error, reintento, salir/volver, completar y reencuentro', async ({ page, request }) => {
     correct = await correctAnswersByQuestion(request, 1);
     await login(page, student, /student\/dashboard/);
-    await page.locator('.card', { hasText: COURSE_TITLE }).getByRole('link', { name: /Continuar/ }).click();
+    await page.locator('app-course-card', { hasText: COURSE_TITLE }).getByRole('link', { name: 'Continuar' }).click();
     await expect(page).toHaveURL(/student\/course\/\d+\/play/);
 
     await expect(page.getByRole('heading', { level: 1, name: STORY_MARIA })).toBeVisible();
@@ -202,23 +202,24 @@ test.describe.serial('Flujo TPRS completo', () => {
     expect(after.order).toEqual(before.order);
   });
 
-  test('5. Mi Avance refleja la lectura completada y Reiniciar Progreso lo deja en 0', async ({ page }) => {
+  test('5. Mi avance refleja la lectura completada y Reiniciar progreso lo deja en 0', async ({ page }) => {
     await login(page, student, /student\/dashboard/);
     await page.goto('/student/progress');
-    const course = page.locator('.card', { hasText: COURSE_TITLE });
-    const row = course.locator('li.story-progress-item').filter({ hasText: STORY_MARIA });
+    const course = page.locator('.progress-card', { hasText: COURSE_TITLE });
+    const row = course.locator('tr.story-progress-item').filter({ hasText: STORY_MARIA });
     await expect(row).toContainText('Lectura completada');
-    await expect(row).toContainText(`revisión ${publishedRevision}`);
+    await expect(row).not.toContainText('revisión');
     await expect(course).toContainText(/Historias completadas\s*1\/\d+/);
 
     await page.goto('/student/dashboard');
-    await page.locator('.card', { hasText: COURSE_TITLE }).getByRole('button', { name: /Reiniciar Progreso/ }).click();
+    await page.locator('app-course-card', { hasText: COURSE_TITLE }).getByRole('button', { name: 'Más acciones del curso' }).click();
+    await page.getByRole('menuitem', { name: 'Reiniciar progreso' }).click();
     await page.getByRole('button', { name: 'Reiniciar', exact: true }).click();
     await expect(page.getByText('Progreso del curso reiniciado exitosamente')).toBeVisible();
 
     await page.goto('/student/progress');
-    const reset = page.locator('.card', { hasText: COURSE_TITLE });
+    const reset = page.locator('.progress-card', { hasText: COURSE_TITLE });
     await expect(reset).toContainText(/Historias completadas\s*0\/\d+ · 0%/);
-    await expect(reset.locator('li.story-progress-item').filter({ hasText: STORY_MARIA })).toContainText('Pendiente');
+    await expect(reset.locator('tr.story-progress-item').filter({ hasText: STORY_MARIA })).toContainText('Pendiente');
   });
 });

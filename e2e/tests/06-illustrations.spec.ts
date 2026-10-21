@@ -62,7 +62,7 @@ test.describe.serial('Ilustraciones en la lección', () => {
 
   test('1-4. Profesor: dibuja, sube imagen, ilustra una expresión y publica', async ({ page }) => {
     await login(page, teacher, /teacher\/dashboard/);
-    await page.locator('.card', { hasText: COURSE_TITLE }).getByRole('link', { name: /Gestionar contenido/i }).click();
+    await page.locator('app-course-card', { hasText: COURSE_TITLE }).getByRole('link', { name: /Gestionar contenido/i }).click();
     await expect(page).toHaveURL(/teacher\/course\/(\d+)\/manage/);
     courseUrl = /teacher\/course\/(\d+)\/manage/.exec(page.url())![1];
 

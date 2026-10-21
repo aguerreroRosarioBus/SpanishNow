@@ -11,7 +11,7 @@ export const tutorialDialog = (page: Page): Locator => page.getByRole('dialog', 
 /** Profesor: login -> gestión del curso -> compositor de la historia. Cierra el tutorial si se abre solo. */
 export async function openComposer(page: Page, storyTitle = STORY_MARIA): Promise<Locator> {
   await login(page, teacher, /teacher\/dashboard/);
-  await page.locator('.card', { hasText: COURSE_TITLE }).getByRole('link', { name: /Gestionar contenido/i }).click();
+  await page.locator('app-course-card', { hasText: COURSE_TITLE }).getByRole('link', { name: /Gestionar contenido/i }).click();
   await expect(page).toHaveURL(/teacher\/course\/\d+\/manage/);
   await page.getByRole('button', { name: 'Expandir todo' }).click();
   await page.locator('app-story-card').filter({ hasText: storyTitle }).getByRole('button', { name: storyTitle }).click();

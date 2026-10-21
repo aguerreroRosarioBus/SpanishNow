@@ -1,1 +1,39 @@
-// Contact component styles
+:host {
+  display: block;
+}
+
+.info-page {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.contact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.info-section {
+  padding: var(--spacing-md);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+
+  h2 {
+    margin: 8px 0 4px;
+    font: 600 0.9375rem var(--font-heading);
+  }
+
+  p {
+    margin: 0;
+    color: var(--color-text-light);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+  }
+
+  a {
+    font-size: 0.9375rem;
+    font-weight: 600;
+  }
+}

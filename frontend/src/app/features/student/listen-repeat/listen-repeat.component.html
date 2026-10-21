@@ -8,8 +8,8 @@
   <!-- Error -->
   <div *ngIf="errorMessage()" class="alert alert-warning">
     {{ errorMessage() }}
-    <button class="btn btn-outline-secondary mt-3" (click)="goBack()">
-      ← Volver
+    <button class="btn btn-secondary mt-3" (click)="goBack()">
+      <app-icon name="chevron-left" [size]="16" />Volver
     </button>
   </div>
 
@@ -17,12 +17,12 @@
   <div *ngIf="!isLoading() && !errorMessage() && activities().length > 0">
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
-      <button class="btn btn-outline-secondary" (click)="goBack()">
-        ← Volver
+      <button class="btn btn-ghost" (click)="goBack()">
+        <app-icon name="chevron-left" [size]="16" />Volver
       </button>
       <h2 class="mb-0">Escucha y Repite</h2>
       <button class="btn btn-outline-primary" (click)="restart()">
-        🔄 Reiniciar
+        <app-icon name="rotate-ccw" [size]="16" />Reiniciar
       </button>
     </div>
 
@@ -65,7 +65,7 @@
               [disabled]="!currentActivity?.audioUrl || isPlayingModel()"
               (click)="playModel()"
             >
-              <span *ngIf="!isPlayingModel()">🔊 Reproducir Modelo</span>
+              <span *ngIf="!isPlayingModel()"><app-icon name="volume" [size]="16" />Reproducir modelo</span>
               <span *ngIf="isPlayingModel()">
                 <span class="spinner-border spinner-border-sm me-2"></span>
                 Reproduciendo...
@@ -85,14 +85,14 @@
                 class="btn btn-lg btn-danger w-100"
                 (click)="startRecording()"
               >
-                🎤 Iniciar Grabación
+                <app-icon name="mic" [size]="16" />Iniciar grabación
               </button>
               <button
                 *ngIf="isRecording()"
                 class="btn btn-lg btn-warning w-100"
                 (click)="stopRecording()"
               >
-                ⏹ Detener Grabación
+                <app-icon name="square" [size]="16" />Detener grabación
               </button>
               <button
                 *ngIf="hasRecording() && !isRecording()"
@@ -100,7 +100,7 @@
                 [disabled]="isPlayingRecording()"
                 (click)="playRecording()"
               >
-                <span *ngIf="!isPlayingRecording()">▶ Escuchar mi Grabación</span>
+                <span *ngIf="!isPlayingRecording()"><app-icon name="play" [size]="16" />Escuchar mi grabación</span>
                 <span *ngIf="isPlayingRecording()">
                   <span class="spinner-border spinner-border-sm me-2"></span>
                   Reproduciendo...
@@ -122,7 +122,7 @@
                 [class.active]="star <= rating()"
                 (click)="setRating(star)"
               >
-                {{ star <= rating() ? '⭐' : '☆' }}
+                <app-icon name="star" [size]="28" [class.is-filled]="star <= rating()" />
               </button>
             </div>
             <div class="text-center mt-2">
@@ -147,7 +147,7 @@
         [disabled]="currentIndex() === 0"
         (click)="previousActivity()"
       >
-        ← Anterior
+        <app-icon name="chevron-left" [size]="16" />Anterior
       </button>
 
       <button
@@ -163,13 +163,13 @@
         class="btn btn-lg btn-primary"
         (click)="nextActivity()"
       >
-        Siguiente →
+        Siguiente<app-icon name="chevron-right" [size]="16" />
       </button>
     </div>
 
     <!-- Summary -->
     <div *ngIf="completedCount === totalActivities && completedCount > 0" class="alert alert-success mt-4">
-      <h4>🎉 ¡Completaste todas las frases!</h4>
+      <h4>¡Completaste todas las frases!</h4>
       <p class="mb-0">
         Has evaluado tu pronunciación en {{ totalActivities }} frases.
         <button class="btn btn-sm btn-outline-success ms-3" (click)="restart()">

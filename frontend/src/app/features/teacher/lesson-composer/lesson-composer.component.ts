@@ -16,6 +16,7 @@ import { VocabularyService } from '../../../core/services/vocabulary.service';
 import { Story, Question, Vocabulary, Unit } from '../../../core/models/course.model';
 import { storyTextFromBlocks } from './tprs-checklist';
 import { scrollBehavior } from './scroll-sync';
+import { IconComponent } from '../../../shared/components/icon/icon.component';
 
 const TUTORIAL_VERSION = '1';
 const PHASES: LessonPhase[] = ['before', 'during', 'after', 'later'];
@@ -24,7 +25,7 @@ const PHASE_LABEL: Record<LessonPhase, string> = { before: 'Antes', during: 'Dur
 @Component({
   selector: 'app-lesson-composer',
   standalone: true,
-  imports: [CommonModule, FormsModule, KeyframeExtrasComponent, KeyframeIllustrationComponent, WhiteboardComponent, ComposerSidePanelComponent, InlineQuestionFormComponent, InlineVocabularyFormComponent],
+  imports: [CommonModule, FormsModule, KeyframeExtrasComponent, KeyframeIllustrationComponent, WhiteboardComponent, ComposerSidePanelComponent, InlineQuestionFormComponent, InlineVocabularyFormComponent, IconComponent],
   templateUrl: './lesson-composer.component.html',
   styleUrls: ['./lesson-composer.component.scss', './lesson-composer-tutorial.scss', './lesson-composer-flow.scss']
 })

@@ -1,80 +1,39 @@
-<div class="container mt-4">
-  <div class="row">
-    <div class="col-12">
-      <div class="mb-4">
-        <h1 class="h3">Maestros</h1>
-        <p class="text-muted">Profesores de SpanishNow</p>
-      </div>
-
-      <!-- Loading State -->
-      <div *ngIf="isLoading()" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
-          <span class="visually-hidden">Cargando...</span>
-        </div>
-        <p class="mt-3 text-muted">Cargando profesores...</p>
-      </div>
-
-      <!-- Error State -->
-      <div *ngIf="error()" class="alert alert-danger">
-        <i class="bi bi-exclamation-triangle me-2"></i>
-        {{ error() }}
-      </div>
-
-      <!-- Empty State -->
-      <div *ngIf="!isLoading() && !error() && teachers().length === 0" class="card">
-        <div class="card-body text-center py-5">
-          <div class="mb-3">
-            <i class="bi bi-person-circle" style="font-size: 4rem; color: var(--color-text-light);"></i>
-          </div>
-          <h5 class="mb-2">No hay profesores registrados</h5>
-          <p class="text-muted mb-0">Aún no hay profesores en la plataforma</p>
-        </div>
-      </div>
-
-      <!-- Teachers List -->
-      <div *ngIf="!isLoading() && !error() && teachers().length > 0" class="row g-4">
-        <div *ngFor="let teacher of teachers()" class="col-md-6 col-lg-4">
-          <div class="card h-100 teacher-card">
-            <div class="card-body">
-              <!-- Avatar -->
-              <div class="text-center mb-3">
-                <div class="teacher-avatar">
-                  {{ teacher.name.charAt(0).toUpperCase() }}
-                </div>
-              </div>
-
-              <!-- Teacher Info -->
-              <div class="text-center">
-                <h5 class="card-title mb-2">{{ teacher.name }}</h5>
-                <p class="text-muted small mb-3">
-                  <i class="bi bi-envelope me-1"></i>
-                  {{ teacher.email }}
-                </p>
-
-                <!-- Stats -->
-                <div class="d-flex justify-content-center gap-3">
-                  <div class="teacher-stat">
-                    <div class="stat-value">{{ teacher.coursesCount }}</div>
-                    <div class="stat-label">
-                      {{ teacher.coursesCount === 1 ? 'Curso' : 'Cursos' }}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Card Footer -->
-            <div class="card-footer bg-transparent border-top-0">
-              <div class="d-flex justify-content-center">
-                <span class="badge bg-success">
-                  <i class="bi bi-check-circle me-1"></i>
-                  Profesor Activo
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+<div class="page-container">
+  <div class="page-header">
+    <div class="page-header__main">
+      <h1 class="page-title">Maestros</h1>
+      <p class="page-summary">Profesores de SpanishNow</p>
     </div>
   </div>
+
+  @if (isLoading()) {
+    <div class="text-center py-5" role="status">
+      <div class="spinner-border text-primary" aria-hidden="true"></div>
+      <p class="text-muted mt-2 mb-0">Cargando profesores…</p>
+    </div>
+  } @else if (error()) {
+    <div class="state-box state-box--error" role="alert">
+      <app-icon name="alert-triangle" [size]="18" />
+      <span>{{ error() }}</span>
+      <button type="button" class="btn btn-secondary btn-sm" (click)="loadTeachers()">Reintentar</button>
+    </div>
+  } @else if (teachers().length === 0) {
+    <div class="state-box">
+      <strong>No hay profesores registrados</strong>
+      <span>Aún no hay profesores en la plataforma.</span>
+    </div>
+  } @else {
+    <div class="card-grid">
+      @for (teacher of teachers(); track teacher.id) {
+        <article class="teacher-card">
+          <div class="teacher-avatar" aria-hidden="true">{{ teacher.name.charAt(0).toUpperCase() }}</div>
+          <div class="teacher-card__text">
+            <h2 class="teacher-card__name">{{ teacher.name }}</h2>
+            <span class="teacher-card__email">{{ teacher.email }}</span>
+          </div>
+          <span class="badge-level">{{ teacher.coursesCount | plural:'curso':'cursos':'Sin cursos' }}</span>
+        </article>
+      }
+    </div>
+  }
 </div>

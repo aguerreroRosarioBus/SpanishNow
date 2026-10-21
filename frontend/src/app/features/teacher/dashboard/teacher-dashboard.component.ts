@@ -6,11 +6,14 @@ import { AuthService } from '../../../core/services/auth.service';
 import { CourseService } from '../../../core/services/course.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { Course } from '../../../core/models/course.model';
+import { CourseCardComponent } from '../../../shared/components/course-card/course-card.component';
+import { IconComponent } from '../../../shared/components/icon/icon.component';
+import { PluralPipe } from '../../../shared/pipes/plural.pipe';
 
 @Component({
   selector: 'app-teacher-dashboard',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, CourseCardComponent, IconComponent, PluralPipe],
   templateUrl: './teacher-dashboard.component.html',
   styleUrl: './teacher-dashboard.component.scss'
 })

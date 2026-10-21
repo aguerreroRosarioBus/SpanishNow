@@ -33,19 +33,21 @@ describe('ProgressComponent (avance por historia)', () => {
     return fixture;
   }
 
-  it('muestra por historia lectura, revisión, respuestas y refuerzos', async () => {
+  it('muestra por historia estado, respuestas y refuerzos; sin datos muestra «—» en vez de 0/0', async () => {
     const getProgress = vi.fn((id: number) => of(id === 1
-      ? [story(100, { narrativeCompleted: true, completedAt: '2026-01-01' }), story(200, { revision: null })]
+      ? [story(100, { narrativeCompleted: true, completedAt: '2026-01-01' }), story(200, { revision: null, answers: { total: 0, correct: 0, attempts: 0 }, reinforcements: { total: 0, completed: 0 } })]
       : []));
     const fixture = await create(getProgress);
     expect(getProgress).toHaveBeenCalledWith(1);
     expect(getProgress).toHaveBeenCalledWith(2);
     const text = (fixture.nativeElement as HTMLElement).textContent!;
     expect(text).toContain('Historia 100');
-    expect(text).toContain('revisión 2');
+    expect(text).not.toContain('revisión');
+    expect(text).not.toContain('0/0');
     expect(text).toContain('Lectura completada');
-    expect(text).toContain('Respuestas correctas: 2/3 (4 intentos)');
-    expect(text).toContain('Refuerzos: 1/2');
+    expect(text).toContain('2/3 · 4 intentos');
+    expect(text).toContain('1/2');
+    expect((fixture.nativeElement as HTMLElement).querySelectorAll('.dash').length).toBe(2);
     expect(text).toContain('1/2 · 50%');
   });
 

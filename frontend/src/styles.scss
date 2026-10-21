@@ -922,3 +922,98 @@ a {
     animation-duration: 0.01ms !important;
   }
 }
+
+/* ============================================
+   GRILLA DE TARJETAS (catálogo, Mis cursos, dashboard del profesor)
+   ============================================ */
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--spacing-md);
+}
+
+/* Chips de filtro (nivel del catálogo) */
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: var(--spacing-md);
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid #e4d8cc;
+  border-radius: var(--radius-md);
+  background: #fff;
+  color: var(--color-text);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: none;
+
+  &:hover { background: var(--color-bg-light); color: var(--color-text); }
+  &.is-active { background: #fdeee4; border-color: #f3dcc9; color: var(--color-primary-hover); }
+}
+
+/* ============================================
+   PANTALLAS DE ACCESO (login y registro)
+   ============================================ */
+
+.auth-page {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl) var(--spacing-md);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 400px;
+  padding: var(--spacing-lg);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+
+  .form-control { min-height: 40px; }
+}
+
+.auth-card__head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: var(--spacing-lg);
+  text-align: center;
+}
+
+.auth-card__title {
+  margin: 4px 0 0;
+  font: 600 1.375rem var(--font-heading);
+  color: var(--color-primary-hover);
+}
+
+.auth-card__subtitle {
+  margin: 0;
+  color: var(--color-text-light);
+  font-size: 0.875rem;
+}
+
+.auth-card__alt {
+  margin: var(--spacing-md) 0 0;
+  text-align: center;
+  color: var(--color-text-light);
+  font-size: 0.875rem;
+
+  a { font-weight: 600; }
+}
+
+/* Icono relleno (estrellas de valoración) */
+.is-filled svg { fill: currentColor; }
+
+/* Icono relleno (estrellas de valoración) */
+.is-filled svg { fill: currentColor; }

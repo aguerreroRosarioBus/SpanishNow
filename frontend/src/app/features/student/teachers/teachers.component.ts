@@ -1,6 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
+import { IconComponent } from '../../../shared/components/icon/icon.component';
+import { PluralPipe } from '../../../shared/pipes/plural.pipe';
 import { environment } from '../../../../environments/environment';
 
 interface Teacher {
@@ -13,7 +14,7 @@ interface Teacher {
 @Component({
   selector: 'app-teachers',
   standalone: true,
-  imports: [CommonModule],
+  imports: [IconComponent, PluralPipe],
   templateUrl: './teachers.component.html',
   styleUrl: './teachers.component.scss'
 })

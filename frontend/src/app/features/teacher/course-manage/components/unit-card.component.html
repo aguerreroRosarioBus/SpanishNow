@@ -20,8 +20,8 @@
       </div>
     </div>
     <div class="unit__actions">
-      <button type="button" class="btn btn-ghost btn-sm" (click)="store.open({ kind: 'vocabulary', unit: unit() })">
-        <app-icon name="book" [size]="15" />Vocabulario
+      <button type="button" class="btn btn-ghost btn-sm" (click)="store.open({ kind: 'vocabulary', unit: unit() })" aria-label="Vocabulario">
+        <app-icon name="book" [size]="15" /><span class="unit__vocab-label">Vocabulario</span>
       </button>
       <div ngbDropdown container="body" placement="bottom-end">
         <button type="button" ngbDropdownToggle class="btn-icon" aria-label="Más acciones de la unidad">

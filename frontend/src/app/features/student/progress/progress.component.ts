@@ -4,6 +4,8 @@ import { RouterLink } from '@angular/router';
 import { catchError, forkJoin, of, switchMap } from 'rxjs';
 import { EnrollmentService } from '../../../core/services/enrollment.service';
 import { Enrollment, StoryProgress } from '../../../core/models/course.model';
+import { PluralPipe } from '../../../shared/pipes/plural.pipe';
+import { unitDisplayTitle } from '../../../shared/utils/unit-title';
 
 export interface CourseProgress {
   enrollment: Enrollment;
@@ -14,7 +16,7 @@ export interface CourseProgress {
 @Component({
   selector: 'app-progress',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, PluralPipe],
   templateUrl: './progress.component.html',
   styleUrl: './progress.component.scss'
 })
@@ -53,6 +55,8 @@ export class ProgressComponent implements OnInit {
       }
     });
   }
+
+  unitTitle(title: string): string { return unitDisplayTitle(title); }
 
   completedCount(course: CourseProgress): number {
     return course.stories.filter(s => s.narrativeCompleted).length;
