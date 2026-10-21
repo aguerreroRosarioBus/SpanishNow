@@ -1,0 +1,94 @@
+{
+  "id": 3,
+  "unitId": 1,
+  "order": 500,
+  "title": "En el Café",
+  "text": "Luis entra en un café. El camarero dice: \"Buenas tardes, ¿qué desea?\". Luis responde: \"Buenas tardes, un café, por favor\". El camarero pregunta: \"¿Cómo se llama usted?\". Luis dice: \"Me llamo Luis, soy de Argentina\". El camarero sonríe y dice: \"Mucho gusto, Luis\". Luis dice: \"Gracias\".",
+  "questions": [
+    {
+      "id": 5,
+      "text": "¿Luis pide un café o un té?",
+      "type": "choice",
+      "options": [
+        "Un café",
+        "Un té"
+      ],
+      "correct": "Un café"
+    },
+    {
+      "id": 102,
+      "text": "¿Luis entra en un café?",
+      "type": "yes_no",
+      "options": [
+        "Sí",
+        "No"
+      ],
+      "correct": "Sí"
+    },
+    {
+      "id": 103,
+      "text": "¿Luis es de Argentina o de México?",
+      "type": "choice",
+      "options": [
+        "De Argentina",
+        "De México"
+      ],
+      "correct": "De Argentina"
+    }
+  ],
+  "plan": {
+    "before": [
+      {
+        "expression": "Soy de",
+        "role": "revisit"
+      },
+      {
+        "expression": "Buenas tardes",
+        "role": "target"
+      },
+      {
+        "expression": "Por favor",
+        "role": "target"
+      },
+      {
+        "expression": "Gracias",
+        "role": "target"
+      }
+    ],
+    "keyframes": [
+      {
+        "text": "Luis entra en un café. El camarero dice: \"Buenas tardes, ¿qué desea?\".",
+        "questionsAfter": [
+          "¿Luis entra en un café?"
+        ]
+      },
+      {
+        "text": "Luis responde: \"Buenas tardes, un café, por favor\".",
+        "questionsAfter": [
+          "¿Luis pide un café o un té?"
+        ]
+      },
+      {
+        "text": "El camarero pregunta: \"¿Cómo se llama usted?\". Luis dice: \"Me llamo Luis, soy de Argentina\".",
+        "questionsAfter": [
+          "¿Luis es de Argentina o de México?"
+        ]
+      },
+      {
+        "text": "El camarero sonríe y dice: \"Mucho gusto, Luis\". Luis dice: \"Gracias\"."
+      }
+    ],
+    "after": [
+      "full_story",
+      "flashcards",
+      "matching"
+    ],
+    "later": [
+      {
+        "expression": "Por favor",
+        "role": "revisit",
+        "story": "En el Restaurante"
+      }
+    ]
+  }
+}

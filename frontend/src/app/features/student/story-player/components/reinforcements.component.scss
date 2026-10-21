@@ -1,0 +1,64 @@
+.practice {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.practice__head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.practice__title {
+  margin: 0;
+  font: 600 0.9375rem var(--font-heading);
+}
+
+.practice__hint {
+  color: var(--color-text-light);
+  font-size: 0.8125rem;
+}
+
+.practice__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.practice-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.practice-card__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.practice-card__name {
+  font-weight: 700;
+}
+
+.practice-card__word {
+  font-weight: 600;
+  color: var(--color-text-light);
+}
+
+.practice-card__desc {
+  color: var(--color-text-light);
+  font-size: 0.8125rem;
+}
+
+.practice-card__desc--done {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-success-text);
+  font-weight: 600;
+}

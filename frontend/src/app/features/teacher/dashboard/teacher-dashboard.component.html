@@ -1,91 +1,40 @@
-<div class="container-fluid mt-4">
-  <div class="row">
-    <div class="col-12">
-      <!-- Header -->
-      <div class="mb-4">
-        <h1 class="h3">Mis Cursos</h1>
-        <p class="text-muted mb-0">Gestiona tus cursos de español TPRS</p>
-      </div>
-
-      <!-- Mensaje de error -->
-      <div *ngIf="errorMessage()" class="alert alert-danger" role="alert">
-        {{ errorMessage() }}
-      </div>
-
-      <!-- Loading spinner -->
-      <div *ngIf="isLoading()" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
-          <span class="visually-hidden">Cargando...</span>
-        </div>
-        <p class="text-muted mt-2">Cargando cursos...</p>
-      </div>
-
-      <!-- Lista de cursos -->
-      <div *ngIf="!isLoading()">
-        <!-- Botón para crear nuevo curso -->
-        <div class="mb-4">
-          <button class="btn btn-primary" (click)="openCreateModal()">
-            + Crear Nuevo Curso
-          </button>
-        </div>
-
-        <!-- Empty state -->
-        <div *ngIf="courses().length === 0" class="card">
-          <div class="card-body text-center py-5">
-            <h2 class="h5 mb-3">No tienes cursos todavía</h2>
-            <p class="text-muted mb-4">Crea tu primer curso TPRS para comenzar a enseñar español</p>
-            <button class="btn btn-primary" (click)="openCreateModal()">
-              Crear mi primer curso
-            </button>
-          </div>
-        </div>
-
-        <!-- Grid de cursos -->
-        <div *ngIf="courses().length > 0" class="row g-4">
-          <div *ngFor="let course of courses()" class="col-md-6 col-lg-4">
-            <div class="card h-100 shadow-sm">
-              <!-- Imagen del curso -->
-              <img
-                [src]="course.imageUrl || 'https://placehold.co/400x200/1976d2/ffffff?text=📚+SpanishNow+|+Curso+de+Español'"
-                class="card-img-top"
-                [alt]="'Portada del curso de español: ' + course.title + ' (Nivel ' + course.level + ')'"
-                style="height: 200px; object-fit: cover;"
-              >
-
-              <div class="card-body">
-                <!-- Título y nivel -->
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                  <h5 class="card-title mb-0">{{ course.title }}</h5>
-                  <span class="badge bg-primary">{{ course.level }}</span>
-                </div>
-
-                <!-- Descripción -->
-                <p class="card-text text-muted small">
-                  {{ course.description }}
-                </p>
-              </div>
-
-              <!-- Footer con acciones -->
-              <div class="card-footer bg-transparent">
-                <div class="d-flex gap-2">
-                  <a
-                    [routerLink]="['/teacher/course', course.id, 'manage']"
-                    class="btn btn-sm btn-primary flex-fill"
-                  >
-                    Gestionar Contenido
-                  </a>
-                  <button class="btn btn-sm btn-outline-secondary" (click)="openEditModal(course)">
-                    Editar
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
+<div class="page-container">
+  <div class="page-header">
+    <div class="page-header__main">
+      <h1 class="page-title">Mis cursos</h1>
+      <p class="page-summary">{{ courses().length | plural:'curso':'cursos':'Aún no tienes cursos' }}</p>
+    </div>
+    <div class="page-actions">
+      <button type="button" class="btn btn-primary" (click)="openCreateModal()">
+        <app-icon name="plus" [size]="16" />Nuevo curso
+      </button>
     </div>
   </div>
+
+  @if (errorMessage()) {
+    <div class="alert alert-danger" role="alert">{{ errorMessage() }}</div>
+  }
+
+  @if (isLoading()) {
+    <div class="text-center py-5" role="status">
+      <div class="spinner-border text-primary" aria-hidden="true"></div>
+      <p class="text-muted mt-2 mb-0">Cargando cursos…</p>
+    </div>
+  } @else if (courses().length === 0) {
+    <div class="state-box">
+      <strong>No tienes cursos todavía</strong>
+      <span>Crea tu primer curso TPRS con «Nuevo curso» para comenzar a enseñar español.</span>
+    </div>
+  } @else {
+    <div class="card-grid">
+      @for (course of courses(); track course.id) {
+        <app-course-card [title]="course.title" [level]="course.level" [description]="course.description" [imageUrl]="course.imageUrl">
+          <a [routerLink]="['/teacher/course', course.id, 'manage']" class="btn btn-secondary flex-grow-1">Gestionar contenido</a>
+          <button type="button" class="btn btn-secondary" (click)="openEditModal(course)">Editar</button>
+        </app-course-card>
+      }
+    </div>
+  }
 </div>
 
 <!-- Modal para crear curso -->
@@ -94,8 +43,8 @@
     <div class="modal-content">
       <!-- Header -->
       <div class="modal-header">
-        <h5 class="modal-title">Crear Nuevo Curso</h5>
-        <button type="button" class="btn-close" (click)="closeCreateModal()"></button>
+        <h5 class="modal-title">Nuevo curso</h5>
+        <button type="button" class="btn-close" (click)="closeCreateModal()" aria-label="Cerrar"></button>
       </div>
 
       <!-- Body con formulario -->
@@ -186,7 +135,7 @@
           [disabled]="courseForm.invalid || isCreating()"
         >
           <span *ngIf="isCreating()" class="spinner-border spinner-border-sm me-2"></span>
-          {{ isCreating() ? 'Creando...' : 'Crear Curso' }}
+          {{ isCreating() ? 'Creando…' : 'Crear curso' }}
         </button>
       </div>
     </div>
@@ -199,8 +148,8 @@
     <div class="modal-content">
       <!-- Header -->
       <div class="modal-header">
-        <h5 class="modal-title">Editar Curso</h5>
-        <button type="button" class="btn-close" (click)="closeEditModal()"></button>
+        <h5 class="modal-title">Editar curso</h5>
+        <button type="button" class="btn-close" (click)="closeEditModal()" aria-label="Cerrar"></button>
       </div>
 
       <!-- Body con formulario -->
@@ -300,7 +249,7 @@
           [disabled]="editCourseForm.invalid || isUpdating()"
         >
           <span *ngIf="isUpdating()" class="spinner-border spinner-border-sm me-2"></span>
-          {{ isUpdating() ? 'Guardando...' : 'Guardar Cambios' }}
+          {{ isUpdating() ? 'Guardando…' : 'Guardar cambios' }}
         </button>
       </div>
     </div>

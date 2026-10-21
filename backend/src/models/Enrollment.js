@@ -22,26 +22,6 @@ const Enrollment = sequelize.define('Enrollment', {
       model: 'courses',
       key: 'id'
     }
-  },
-  questionsCompleted: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false,
-    allowNull: false
-  },
-  flashcardsCompleted: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false,
-    allowNull: false
-  },
-  matchingCompleted: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false,
-    allowNull: false
-  },
-  listenRepeatCompleted: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false,
-    allowNull: false
   }
 }, {
   timestamps: true,

@@ -1,0 +1,80 @@
+<section class="block" aria-live="polite">
+  <span class="eyebrow eyebrow--muted">{{ block().phase === 'before' ? 'Antes' : block().phase === 'during' ? 'Durante' : 'Después' }}</span>
+  @switch (block().type) {
+    @case ('expression') {
+      <div class="expression-card">
+        <h2 class="block__title">
+          Expresión clave
+          @if (block().vocabularyRole === 'revisit') {
+            <span class="badge text-bg-secondary ms-2 align-middle" title="Ya la viste en una historia anterior">Repaso</span>
+          }
+        </h2>
+        @if (block().vocabulary?.imageUrl; as image) {
+          <app-lesson-illustration class="expression-image" [src]="image" [alt]="'Imagen de ' + (block().vocabulary?.word || 'la expresión')" [compact]="true" />
+        }
+        <p class="read-text read-text--term">{{ block().vocabulary?.word || block().text }}</p>
+        @if (block().vocabulary?.translation) {
+          <p class="read-text read-text--secondary">{{ block().vocabulary?.translation }}</p>
+        }
+        @if (block().vocabulary?.example) {
+          <p class="read-text fst-italic">{{ block().vocabulary?.example }}</p>
+        }
+      </div>
+    }
+
+    @case ('keyframe') {
+      <div>
+        <h2 class="block__title">Fragmento de la historia</h2>
+        <div class="kf-layout" [class.has-image]="block().imageUrl">
+          @if (block().imageUrl; as image) {
+            <app-lesson-illustration class="kf-image" [src]="image" [alt]="block().imageAlt || block().text || 'Ilustración del fragmento'" />
+          }
+          <div class="kf-content">
+            <div class="story-text read-text">
+              <app-tooltip-display [tooltipData]="tooltips()" [text]="block().text || ''" />
+            </div>
+            @if (block().audioUrl) {
+              <button type="button" class="btn btn-secondary btn-sm mt-3" (click)="session.audio.toggle(block().audioUrl)">
+                <app-icon [name]="session.audio.isPlaying() ? 'square' : 'volume'" [size]="16" />{{ session.audio.isPlaying() ? 'Pausar fragmento' : 'Escuchar fragmento' }}
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+    }
+
+    @case ('question') {
+      <div>
+        <h2 class="block__title">Pregunta de comprensión</h2>
+        <p class="read-text">{{ block().question?.questionText || 'Pregunta' }}</p>
+        @if (block().question?.options?.length) {
+          <div class="options" role="group" aria-label="Opciones de respuesta">
+            @for (option of block().question?.options; track option) {
+              <button type="button" class="option" [class.is-selected]="session.answerText() === option"
+                [attr.aria-pressed]="session.answerText() === option"
+                (click)="session.setAnswer(option)" [disabled]="session.answerResult()?.isCorrect">{{ option }}</button>
+            }
+          </div>
+        } @else {
+          <input class="form-control mt-3 answer-input" type="text" maxlength="200"
+            [value]="session.answerText()" (input)="session.setAnswer($any($event.target).value)" placeholder="Escribe tu respuesta"
+            [disabled]="session.answerResult()?.isCorrect" aria-label="Tu respuesta" />
+        }
+        <button type="button" class="btn btn-secondary mt-3" (click)="session.submitAnswer()" [disabled]="!session.answerText().trim() || session.answerResult()?.isCorrect">Comprobar respuesta</button>
+        @if (session.answerResult(); as result) {
+          <div class="alert mt-3" [class.alert-success]="result.isCorrect" [class.alert-warning]="!result.isCorrect" role="status">
+            @if (result.isCorrect) {
+              ¡Correcto! Puedes continuar.
+            } @else {
+              <strong>Vuelve a intentarlo</strong> o continúa cuando estés listo. No necesitas acertar para avanzar.
+              @if (result.context?.text) {
+                <blockquote class="mt-2 mb-2">{{ result.context?.text }}</blockquote>
+              }
+              <button type="button" class="btn btn-secondary btn-sm" (click)="session.retryAnswer()">Reintentar</button>
+            }
+          </div>
+        }
+      </div>
+    }
+  }
+</section>

@@ -1,0 +1,52 @@
+<section class="ill" [attr.aria-labelledby]="'ill-title-' + block().blockKey">
+  <h4 class="ill-title" [id]="'ill-title-' + block().blockKey">Ilustración del fragmento</h4>
+  <input #file type="file" class="visually-hidden" tabindex="-1" aria-hidden="true" [accept]="accept" (change)="onFile($event)">
+
+  <div class="ill-body">
+    <ng-container *ngIf="block().imageUrl as url; else empty">
+      <button type="button" class="ill-thumb" [attr.aria-label]="'Ampliar la ilustración'" title="Ampliar" (click)="openLarge()">
+        <img [src]="url" [alt]="block().imageAlt || 'Ilustración del fragmento'" loading="lazy" width="160" height="120">
+        <span class="ill-zoom"><app-icon name="zoom" /></span>
+      </button>
+      <div class="ill-side">
+        <div class="ill-actions">
+          <button type="button" class="ill-btn" [disabled]="locked()" (click)="draw(true)"><app-icon name="pencil" /> Editar dibujo</button>
+          <button type="button" class="ill-btn" [disabled]="locked()" (click)="file.click()"><app-icon name="upload" /> Subir imagen</button>
+          <button *ngIf="!confirmRemove()" type="button" class="ill-btn ill-danger" [disabled]="locked()" (click)="confirmRemove.set(true)"><app-icon name="trash" /> Quitar</button>
+        </div>
+        <div *ngIf="confirmRemove()" class="ill-confirm" role="alertdialog" aria-label="Confirmar quitar la ilustración">
+          <span>¿Quitar la ilustración?</span>
+          <button type="button" class="text-button" (click)="confirmRemove.set(false)">Conservar</button>
+          <button type="button" class="text-button ill-danger" [disabled]="locked()" (click)="remove()">Quitar</button>
+        </div>
+      </div>
+    </ng-container>
+    <ng-template #empty>
+      <div class="ill-empty">
+        <p class="ill-help">Un dibujo o una foto ayudan a entender el fragmento (opcional).</p>
+        <div class="ill-actions">
+          <button type="button" class="ill-btn ill-primary" [disabled]="locked()" (click)="draw(false)"><app-icon name="palette" /> Dibujar</button>
+          <button type="button" class="ill-btn" [disabled]="locked()" (click)="file.click()"><app-icon name="upload" /> Subir imagen</button>
+        </div>
+      </div>
+    </ng-template>
+  </div>
+
+  <ng-container *ngIf="block().imageUrl">
+    <label class="ill-alt" [attr.for]="'ill-alt-' + block().blockKey">Descripción (texto alternativo)</label>
+    <input [id]="'ill-alt-' + block().blockKey" type="text" maxlength="300" [disabled]="disabled()" [ngModel]="block().imageAlt || ''" (ngModelChange)="onAlt($event)" [ngModelOptions]="{standalone: true}"
+      [placeholder]="suggestion() || 'Describe la imagen para quien no pueda verla'">
+    <p class="ill-help">Lo leen los lectores de pantalla.
+      <button *ngIf="!(block().imageAlt || '').trim() && suggestion()" type="button" class="text-button" (click)="useSuggestion()">Usar sugerencia</button>
+    </p>
+  </ng-container>
+
+  <p *ngIf="busy()" class="ill-status" role="status">Procesando imagen…</p>
+  <p *ngIf="dirty() && !block().imageUrl" class="ill-help">Hay cambios sin guardar: se guardará el borrador antes de subir.</p>
+  <p *ngIf="error()" class="ill-error" role="alert">{{ error() }}</p>
+
+  <div *ngIf="enlarged()" class="ill-lightbox" role="dialog" aria-modal="true" aria-label="Ilustración ampliada" (click)="closeLarge()" (keydown)="onLightboxKeydown($event)">
+    <button type="button" class="ill-lightbox-close" aria-label="Cerrar" (click)="closeLarge()"><app-icon name="close" /></button>
+    <img [src]="block().imageUrl" [alt]="block().imageAlt || 'Ilustración del fragmento'" (click)="$event.stopPropagation()">
+  </div>
+</section>

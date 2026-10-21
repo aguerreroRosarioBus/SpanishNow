@@ -1,0 +1,98 @@
+{
+  "id": 5,
+  "unitId": 2,
+  "order": 300,
+  "title": "El Gato de Ana",
+  "text": "Ana tiene un gato. El gato se llama Michi. Michi es blanco y negro. Michi come pescado y duerme mucho. Ana ama a Michi. Michi es el mejor amigo de Ana. Cada día, Ana y Michi juegan juntos.",
+  "questions": [
+    {
+      "id": 8,
+      "text": "¿El gato se llama Michi o Toby?",
+      "type": "choice",
+      "options": [
+        "Michi",
+        "Toby"
+      ],
+      "correct": "Michi"
+    },
+    {
+      "id": 9,
+      "text": "¿Michi es blanco y negro o gris?",
+      "type": "choice",
+      "options": [
+        "Blanco y negro",
+        "Gris"
+      ],
+      "correct": "Blanco y negro"
+    },
+    {
+      "id": 105,
+      "text": "¿Michi come pizza?",
+      "type": "yes_no",
+      "options": [
+        "Sí",
+        "No"
+      ],
+      "correct": "No"
+    },
+    {
+      "id": 106,
+      "text": "¿Ana y Michi juegan juntos?",
+      "type": "yes_no",
+      "options": [
+        "Sí",
+        "No"
+      ],
+      "correct": "Sí"
+    }
+  ],
+  "plan": {
+    "before": [
+      {
+        "expression": "Tiene",
+        "role": "revisit"
+      },
+      {
+        "expression": "Gato",
+        "role": "target"
+      },
+      {
+        "expression": "Come",
+        "role": "target"
+      }
+    ],
+    "keyframes": [
+      {
+        "text": "Ana tiene un gato. El gato se llama Michi. Michi es blanco y negro.",
+        "questionsAfter": [
+          "¿El gato se llama Michi o Toby?",
+          "¿Michi es blanco y negro o gris?"
+        ]
+      },
+      {
+        "text": "Michi come pescado y duerme mucho.",
+        "questionsAfter": [
+          "¿Michi come pizza?"
+        ]
+      },
+      {
+        "text": "Ana ama a Michi. Michi es el mejor amigo de Ana. Cada día, Ana y Michi juegan juntos.",
+        "questionsAfter": [
+          "¿Ana y Michi juegan juntos?"
+        ]
+      }
+    ],
+    "after": [
+      "full_story",
+      "flashcards",
+      "matching"
+    ],
+    "later": [
+      {
+        "expression": "Se llama",
+        "role": "revisit",
+        "story": "El Perro Doctor"
+      }
+    ]
+  }
+}

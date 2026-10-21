@@ -1,0 +1,29 @@
+<div class="story-row">
+  <span class="btn-icon story-row__grip" aria-hidden="true" title="Arrastrar para reordenar"><app-icon name="grip" [size]="14" /></span>
+  <span class="story-row__order">{{ number() }}</span>
+  <button type="button" class="story-row__title" (click)="compose()" [attr.title]="story().title">{{ story().title }}</button>
+  <span class="story-row__questions">{{ questionsCount() | plural:'pregunta':'preguntas':'Sin preguntas' }}</span>
+  <span class="badge-status story-row__status" [class.badge-status--published]="published()" [class.badge-status--draft]="!published()">
+    {{ published() ? 'Publicada' : 'Borrador' }}
+  </span>
+  <div class="story-row__actions">
+    <button type="button" class="btn-icon" aria-label="Componer lección" title="Componer lección" (click)="compose()">
+      <app-icon name="pencil" [size]="16" />
+    </button>
+    <div ngbDropdown container="body" placement="bottom-end">
+      <button type="button" ngbDropdownToggle class="btn-icon" aria-label="Más acciones de la historia">
+        <app-icon name="more" [size]="18" />
+      </button>
+      <div ngbDropdownMenu role="menu">
+        <button type="button" ngbDropdownItem role="menuitem" (click)="store.open({ kind: 'story-edit', story: story(), unitId: unit().id })">Editar historia</button>
+        <button type="button" ngbDropdownItem role="menuitem" (click)="store.open({ kind: 'questions', story: story() })">Editar preguntas</button>
+        <button type="button" ngbDropdownItem role="menuitem" (click)="store.open({ kind: 'story-tooltips', story: story() })">Tooltips del texto</button>
+        <button type="button" ngbDropdownItem role="menuitem" (click)="store.open({ kind: 'repetitions', story: story() })">Audios de repetición</button>
+        <div class="dropdown-divider"></div>
+        <button type="button" ngbDropdownItem role="menuitem" class="dropdown-item--danger" (click)="store.deleteStory(unit().id, story().id)">
+          <app-icon name="trash" [size]="15" />Eliminar historia
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

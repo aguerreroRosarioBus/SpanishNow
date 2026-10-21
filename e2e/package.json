@@ -1,0 +1,16 @@
+{
+  "name": "spanishnow-e2e",
+  "private": true,
+  "version": "1.0.0",
+  "description": "E2E (Playwright) del flujo TPRS. Levanta backend :3101 + frontend :4300 contra la base spanishnow_e2e_test.",
+  "scripts": {
+    "install:browsers": "playwright install chromium",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  }
+}

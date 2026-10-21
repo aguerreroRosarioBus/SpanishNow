@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 60" role="img" aria-label="SpanishNow">
+  <path d="M26 20h28a8 8 0 0 1 8 8v16a8 8 0 0 1-8 8h-4v7l-9-7H26a8 8 0 0 1-8-8V28a8 8 0 0 1 8-8z" fill="#F5B942"/>
+  <path d="M10 2h28a8 8 0 0 1 8 8v16a8 8 0 0 1-8 8H24l-9 7v-7h-5a8 8 0 0 1-8-8V10a8 8 0 0 1 8-8z" fill="#E5544E"/>
+  <path d="M10 2h14v32h-9v7l-9-7H2V10a8 8 0 0 1 8-8z" fill="#E8632B"/>
+  <text x="24" y="24" text-anchor="middle" font-family="Poppins, Arial, sans-serif" font-weight="700" font-size="16" fill="#fff">ES</text>
+</svg>

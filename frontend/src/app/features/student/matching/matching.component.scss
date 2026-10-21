@@ -1,9 +1,9 @@
 .stat-card {
   background: white;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   padding: 1.5rem;
   text-align: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
   transition: transform 0.2s ease;
 
   &:hover {
@@ -14,23 +14,23 @@
   .stat-value {
     font-size: 2.5rem;
     font-weight: 700;
-    color: #667eea;
+    color: var(--color-primary);
     margin-bottom: 0.5rem;
   }
 
   .stat-label {
     font-size: 0.9rem;
-    color: #6c757d;
+    color: var(--color-text-light);
     text-transform: uppercase;
     letter-spacing: 1px;
   }
 }
 
 .celebration-banner {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
   color: white;
   padding: 2rem;
-  border-radius: 16px;
+  border-radius: var(--radius-xl);
   text-align: center;
   margin-bottom: 2rem;
   animation: bounceIn 0.6s ease-out;
@@ -50,10 +50,10 @@
   min-height: 400px;
 
   h4 {
-    color: #495057;
+    color: var(--color-text);
     font-weight: 600;
     padding-bottom: 0.5rem;
-    border-bottom: 3px solid #667eea;
+    border-bottom: 3px solid var(--color-primary);
   }
 }
 
@@ -68,8 +68,8 @@
   width: 100%;
   padding: 1.25rem 1.5rem;
   background: white;
-  border: 3px solid #e9ecef;
-  border-radius: 12px;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
   font-size: 1.1rem;
   font-weight: 500;
   cursor: pointer;
@@ -80,22 +80,22 @@
 
   &:hover:not(:disabled) {
     transform: translateX(8px);
-    border-color: #667eea;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+    border-color: var(--color-primary);
+    box-shadow: 0 4px 12px rgba(201, 74, 20, 0.2);
   }
 
   &.selected {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--color-primary);
     color: white;
-    border-color: #667eea;
-    transform: scale(1.05);
-    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+    border-color: var(--color-primary);
+    transform: scale(1.03);
+    box-shadow: 0 6px 16px rgba(201, 74, 20, 0.4);
   }
 
   &.matched {
-    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    background: var(--color-success);
     color: white;
-    border-color: #11998e;
+    border-color: var(--color-success);
     cursor: not-allowed;
     animation: matchSuccess 0.4s ease-out;
   }

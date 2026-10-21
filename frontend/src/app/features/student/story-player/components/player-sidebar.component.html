@@ -1,0 +1,65 @@
+<aside class="index" aria-label="Índice del curso">
+  <div class="index__head">
+    <a class="index__back" routerLink="/student/dashboard"><app-icon name="chevron-left" [size]="14" />Mis cursos</a>
+    <div class="index__course">{{ nav.course()?.title }}</div>
+    <div class="index__progress">
+      <div class="index__progress-label">
+        <span>Progreso del curso</span>
+        <span>{{ nav.courseProgress().done }} de {{ nav.courseProgress().total }} historias</span>
+      </div>
+      <div class="progress" role="progressbar" aria-label="Progreso del curso"
+           [attr.aria-valuenow]="progressPercent()" aria-valuemin="0" aria-valuemax="100">
+        <div class="progress-bar" [style.width.%]="progressPercent()"></div>
+      </div>
+    </div>
+  </div>
+
+  @if (nav.isLoading()) {
+    <div class="p-3 text-center" role="status">
+      <div class="spinner-border spinner-border-sm" aria-hidden="true"></div>
+      <p class="small text-muted mt-2 mb-0">Cargando…</p>
+    </div>
+  }
+
+  @if (!nav.isLoading() && nav.currentUnit()) {
+    <div class="index__unit">
+      <div class="index__unit-text">
+        <span class="eyebrow">Unidad {{ nav.unitNumber() }} de {{ nav.unitCount() }}</span>
+        <span class="index__unit-title">{{ unitTitle() }}</span>
+      </div>
+      <div class="index__unit-nav">
+        <button type="button" class="btn-icon" aria-label="Unidad anterior" [disabled]="!nav.canGoPreviousUnit()" (click)="nav.goToPreviousUnit()">
+          <app-icon name="chevron-left" [size]="16" />
+        </button>
+        <button type="button" class="btn-icon" aria-label="Unidad siguiente" [disabled]="!nav.canGoNextUnit()" (click)="nav.goToNextUnit()">
+          <app-icon name="chevron-right" [size]="16" />
+        </button>
+      </div>
+    </div>
+
+    <ol class="index__stories">
+      @for (item of nav.items(); track item.id) {
+        <li>
+          <button type="button" class="story-link"
+                  [class.is-current]="currentId() === item.id"
+                  [class.is-locked]="!item.canAccess"
+                  [attr.aria-current]="currentId() === item.id ? 'page' : null"
+                  [attr.aria-disabled]="!item.canAccess"
+                  [attr.title]="item.canAccess ? null : 'Completa la historia anterior para desbloquearla'"
+                  (click)="nav.selectItem(item)">
+            @if (item.completed) {
+              <span class="state state--done" aria-label="Completada"><app-icon name="check" [size]="12" /></span>
+            } @else if (currentId() === item.id) {
+              <span class="state state--current" aria-label="En curso"><span class="state__dot"></span></span>
+            } @else if (!item.canAccess) {
+              <span class="state state--locked" aria-label="Bloqueada"><app-icon name="lock" [size]="13" /></span>
+            } @else {
+              <span class="state state--todo" aria-label="Pendiente"></span>
+            }
+            <span class="story-link__title">{{ item.title }}</span>
+          </button>
+        </li>
+      }
+    </ol>
+  }
+</aside>

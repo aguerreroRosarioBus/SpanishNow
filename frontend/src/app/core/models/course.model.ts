@@ -12,6 +12,8 @@ export interface Course {
     name: string;
   };
   units?: Unit[];
+  /** Solo en el detalle del curso (GET /courses/:id) */
+  enrollmentCount?: number;
 }
 
 export interface Unit {
@@ -22,7 +24,6 @@ export interface Unit {
   order: number;
   stories?: Story[];
   vocabulary?: Vocabulary[];
-  activityConfigs?: ActivityConfig[];
 }
 
 export interface Story {
@@ -32,6 +33,10 @@ export interface Story {
   text: string;
   audioSlowUrl?: string;
   audioNormalUrl?: string;
+  /** La historia ya tiene lección (borrador o publicada): su texto se genera desde el compositor. */
+  hasLessonPlan?: boolean;
+  /** Publicada si alguna revisión de su lección está publicada; Borrador en otro caso (solo en el detalle del curso). */
+  lessonStatus?: 'draft' | 'published';
   order: number;
   questions?: Question[];
   repetitionActivities?: RepetitionActivity[];
@@ -66,57 +71,26 @@ export interface Enrollment {
   courseId: number;
   createdAt: string;
   course?: Course;
-  progress?: Progress[];
-  // Unit-level activity completion flags
-  questionsCompleted?: boolean;
-  flashcardsCompleted?: boolean;
-  matchingCompleted?: boolean;
-  listenRepeatCompleted?: boolean;
+  lessonProgress?: Array<{ storyId: number; planId: number; narrativeCompleted: boolean }>;
 }
 
-export interface Progress {
-  id: number;
-  enrollmentId: number;
+/** Resumen de avance por historia (GET /enrollments/:id/progress). */
+export interface StoryProgress {
   storyId: number;
-  completed: boolean;
-  activitiesCompleted?: boolean;
-  // Granular activity tracking (new fields)
-  flashcardsViewed?: boolean;
-  questionsCompleted?: boolean;
-  matchingCompleted?: boolean;
-  listenRepeatCompleted?: boolean;
+  storyTitle: string;
+  unitId: number;
+  unitTitle: string;
+  revision: number | null;
+  lastBlockKey: string | null;
+  narrativeCompleted: boolean;
+  completedAt: string | null;
+  answers: { total: number; correct: number; attempts: number };
+  reinforcements: { total: number; completed: number };
 }
 
-export interface QuestionResponse {
-  id: number;
-  progressId: number;
-  questionId: number;
-  studentAnswer: string;
-  isCorrect: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface QuestionSubmission {
-  questionId: number;
-  studentAnswer: string;
-}
-
-export interface QuestionResult {
-  questionId: number;
-  isCorrect: boolean;
-  correctAnswer?: string;
-}
-
-export interface SubmitResponsePayload {
-  progressId: number;
-  responses: QuestionSubmission[];
-}
-
-export interface SubmitResponseResult {
-  results: QuestionResult[];
-  allCorrect: boolean;
-  activitiesCompleted: boolean;
+export interface ResetProgressResult {
+  message: string;
+  deleted: { progress: number; answers: number; reinforcements: number };
 }
 
 export interface RepetitionActivity {
@@ -125,17 +99,6 @@ export interface RepetitionActivity {
   phrase: string;
   audioUrl?: string;
   order: number;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface ActivityConfig {
-  id: number;
-  unitId: number;
-  activityType: 'questions' | 'flashcards' | 'matching' | 'listen_repeat';
-  order: number;
-  isEnabled: boolean;
-  requiredStoryIds: number[];
   createdAt?: string;
   updatedAt?: string;
 }

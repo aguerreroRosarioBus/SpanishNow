@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Enrollment, Progress } from '../models/course.model';
+import { Enrollment, ResetProgressResult, StoryProgress } from '../models/course.model';
 import { environment } from '../../../environments/environment';
 
 @Injectable({
@@ -20,33 +20,12 @@ export class EnrollmentService {
     return this.http.post<Enrollment>(this.apiUrl, { courseId });
   }
 
-  getProgress(enrollmentId: number): Observable<Progress[]> {
-    return this.http.get<Progress[]>(`${this.apiUrl}/${enrollmentId}/progress`);
+  /** Avance por historia (LessonProgress) de una inscripción. */
+  getProgress(enrollmentId: number): Observable<StoryProgress[]> {
+    return this.http.get<StoryProgress[]>(`${this.apiUrl}/${enrollmentId}/progress`);
   }
 
-  markStoryCompleted(enrollmentId: number, storyId: number): Observable<Progress> {
-    return this.http.post<Progress>(`${this.apiUrl}/progress`, {
-      enrollmentId,
-      storyId
-    });
-  }
-
-  resetCourseProgress(enrollmentId: number): Observable<{ message: string }> {
-    return this.http.delete<{ message: string }>(`${this.apiUrl}/${enrollmentId}/reset-progress`);
-  }
-
-  // Unit-level activity completion methods
-  completeUnitActivity(enrollmentId: number, activityType: string): Observable<Enrollment> {
-    return this.http.post<Enrollment>(
-      `${this.apiUrl}/${enrollmentId}/complete-activity`,
-      { activityType }
-    );
-  }
-
-  resetUnitActivity(enrollmentId: number, activityType: string): Observable<Enrollment> {
-    return this.http.post<Enrollment>(
-      `${this.apiUrl}/${enrollmentId}/reset-activity`,
-      { activityType }
-    );
+  resetCourseProgress(enrollmentId: number): Observable<ResetProgressResult> {
+    return this.http.delete<ResetProgressResult>(`${this.apiUrl}/${enrollmentId}/reset-progress`);
   }
 }

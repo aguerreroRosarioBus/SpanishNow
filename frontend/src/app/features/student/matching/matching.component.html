@@ -8,8 +8,8 @@
   <!-- Error -->
   <div *ngIf="errorMessage()" class="alert alert-warning">
     {{ errorMessage() }}
-    <button class="btn btn-outline-secondary mt-3" (click)="goBack()">
-      ← Volver
+    <button class="btn btn-secondary mt-3" (click)="goBack()">
+      <app-icon name="chevron-left" [size]="16" />Volver
     </button>
   </div>
 
@@ -17,12 +17,12 @@
   <div *ngIf="!isLoading() && !errorMessage() && vocabulary().length > 0">
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
-      <button class="btn btn-outline-secondary" (click)="goBack()">
-        ← Volver
+      <button class="btn btn-ghost" (click)="goBack()">
+        <app-icon name="chevron-left" [size]="16" />Volver
       </button>
       <h2 class="mb-0">Empareja las Palabras</h2>
       <button class="btn btn-outline-primary" (click)="restart()">
-        🔄 Reiniciar
+        <app-icon name="rotate-ccw" [size]="16" />Reiniciar
       </button>
     </div>
 
@@ -55,7 +55,7 @@
 
     <!-- Celebration -->
     <div *ngIf="showCelebration()" class="celebration-banner">
-      <h1>🎉 ¡Excelente Trabajo! 🎉</h1>
+      <h1>¡Excelente trabajo!</h1>
       <p>Has completado todas las coincidencias con {{ accuracy }}% de precisión</p>
     </div>
 
@@ -74,7 +74,7 @@
             (click)="selectItem(word)"
           >
             <span class="match-text">{{ word.text }}</span>
-            <span *ngIf="word.matched" class="match-icon">✓</span>
+            <span *ngIf="word.matched" class="match-icon"><app-icon name="check" [size]="16" /></span>
           </button>
         </div>
       </div>
@@ -92,7 +92,7 @@
             (click)="selectItem(translation)"
           >
             <span class="match-text">{{ translation.text }}</span>
-            <span *ngIf="translation.matched" class="match-icon">✓</span>
+            <span *ngIf="translation.matched" class="match-icon"><app-icon name="check" [size]="16" /></span>
           </button>
         </div>
       </div>
@@ -101,7 +101,7 @@
     <!-- Complete Message -->
     <div *ngIf="isComplete()" class="text-center mt-4">
       <div class="alert alert-success">
-        <h4>🎊 ¡Juego Completado! 🎊</h4>
+        <h4>¡Juego completado!</h4>
         <p class="mb-3">
           Emparejaste todas las palabras en {{ attempts() }} intentos con {{ accuracy }}% de precisión.
         </p>

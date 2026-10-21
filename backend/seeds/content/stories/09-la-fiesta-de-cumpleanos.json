@@ -1,0 +1,84 @@
+{
+  "id": 9,
+  "unitId": 3,
+  "order": 500,
+  "title": "La Fiesta de Cumpleaños",
+  "text": "Hoy es el cumpleaños de Luis. Luis tiene veinte años. Hay una fiesta grande. Luis compra un pastel enorme con veinte velas. También hay pizza, refrescos y helado. Luis invita a quince amigos. Todos cantan \"Feliz cumpleaños\". Luis está muy contento.",
+  "questions": [
+    {
+      "id": 15,
+      "text": "¿Luis tiene veinte o quince años?",
+      "type": "choice",
+      "options": [
+        "Veinte",
+        "Quince"
+      ],
+      "correct": "Veinte"
+    },
+    {
+      "id": 16,
+      "text": "¿Luis invita a quince o a diez amigos?",
+      "type": "choice",
+      "options": [
+        "Quince",
+        "Diez"
+      ],
+      "correct": "Quince"
+    },
+    {
+      "id": 110,
+      "text": "¿En la fiesta hay pizza?",
+      "type": "yes_no",
+      "options": [
+        "Sí",
+        "No"
+      ],
+      "correct": "Sí"
+    }
+  ],
+  "plan": {
+    "before": [
+      {
+        "expression": "Pizza",
+        "role": "revisit"
+      },
+      {
+        "expression": "Compra",
+        "role": "revisit"
+      },
+      {
+        "expression": "Cumpleaños",
+        "role": "target"
+      },
+      {
+        "expression": "Invita",
+        "role": "target"
+      }
+    ],
+    "keyframes": [
+      {
+        "text": "Hoy es el cumpleaños de Luis. Luis tiene veinte años. Hay una fiesta grande.",
+        "questionsAfter": [
+          "¿Luis tiene veinte o quince años?"
+        ]
+      },
+      {
+        "text": "Luis compra un pastel enorme con veinte velas. También hay pizza, refrescos y helado.",
+        "questionsAfter": [
+          "¿En la fiesta hay pizza?"
+        ]
+      },
+      {
+        "text": "Luis invita a quince amigos. Todos cantan \"Feliz cumpleaños\". Luis está muy contento.",
+        "questionsAfter": [
+          "¿Luis invita a quince o a diez amigos?"
+        ]
+      }
+    ],
+    "after": [
+      "full_story",
+      "flashcards",
+      "matching"
+    ]
+  }
+}

@@ -1,85 +1,94 @@
-<div class="container mt-4">
-  <div class="row">
-    <div class="col-12">
-      <div class="mb-4">
-        <h1 class="h3">Mi Avance</h1>
-        <p class="text-muted">Seguimiento de tu progreso en todos los cursos</p>
-      </div>
-
-      <!-- Loading -->
-      <div *ngIf="isLoading()" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
-          <span class="visually-hidden">Cargando...</span>
-        </div>
-        <p class="text-muted mt-2">Cargando tu progreso...</p>
-      </div>
-
-      <!-- Empty state -->
-      <div *ngIf="!isLoading() && myCourses().length === 0" class="card">
-        <div class="card-body text-center py-5">
-          <h2 class="h5 mb-3">No tienes cursos inscritos</h2>
-          <p class="text-muted mb-4">Inscríbete en un curso para comenzar a ver tu progreso</p>
-          <a [routerLink]="['/student/dashboard']" [queryParams]="{view: 'catalog'}" class="btn btn-primary">
-            Explorar Cursos
-          </a>
-        </div>
-      </div>
-
-      <!-- Progreso de cursos -->
-      <div *ngIf="!isLoading() && myCourses().length > 0" class="row g-4">
-        <div *ngFor="let enrollment of myCourses()" class="col-md-6 col-lg-4">
-          <div class="card h-100">
-            <div class="card-body">
-              <h5 class="card-title">{{ enrollment.course?.title }}</h5>
-              <span class="badge bg-primary mb-3">{{ enrollment.course?.level }}</span>
-
-              <!-- Progress bar -->
-              <div class="mb-3">
-                <div class="d-flex justify-content-between mb-1">
-                  <small class="text-muted">Progreso</small>
-                  <small class="fw-bold">{{ getProgressPercentage(enrollment) }}%</small>
-                </div>
-                <div class="progress" style="height: 12px;">
-                  <div
-                    class="progress-bar"
-                    [class.bg-success]="getProgressPercentage(enrollment) === 100"
-                    [class.bg-primary]="getProgressPercentage(enrollment) < 100"
-                    role="progressbar"
-                    [style.width.%]="getProgressPercentage(enrollment)"
-                    [attr.aria-valuenow]="getProgressPercentage(enrollment)"
-                    aria-valuemin="0"
-                    aria-valuemax="100">
-                  </div>
-                </div>
-              </div>
-
-              <!-- Estadísticas -->
-              <div class="row g-2 mb-3">
-                <div class="col-6">
-                  <div class="card bg-light">
-                    <div class="card-body p-2 text-center">
-                      <div class="h5 mb-0">{{ enrollment.course?.units?.length || 0 }}</div>
-                      <small class="text-muted">Unidades</small>
-                    </div>
-                  </div>
-                </div>
-                <div class="col-6">
-                  <div class="card bg-light">
-                    <div class="card-body p-2 text-center">
-                      <div class="h5 mb-0">{{ getCompletedCount(enrollment) }}</div>
-                      <small class="text-muted">Completadas</small>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <a [routerLink]="['/student/course', enrollment.courseId, 'play']" class="btn btn-primary w-100">
-                Continuar
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
+<div class="page-container">
+  <div class="page-header">
+    <div class="page-header__main">
+      <h1 class="page-title">Mi avance</h1>
+      <p class="page-summary">Seguimiento de tu progreso en todos los cursos</p>
     </div>
   </div>
+
+  @if (isLoading()) {
+    <div class="text-center py-5" role="status">
+      <div class="spinner-border text-primary" aria-hidden="true"></div>
+      <p class="text-muted mt-2 mb-0">Cargando tu progreso…</p>
+    </div>
+  } @else if (courses().length === 0) {
+    <div class="state-box">
+      <strong>No tienes cursos inscritos</strong>
+      <span>Inscríbete en un curso para comenzar a ver tu progreso.</span>
+      <a [routerLink]="['/student/dashboard']" [queryParams]="{ view: 'catalog' }" class="btn btn-primary mt-2">Explorar cursos</a>
+    </div>
+  } @else {
+    <div class="course-progress-stack">
+      @for (course of courses(); track course.enrollment.id) {
+        <section class="progress-card" [attr.aria-label]="course.enrollment.course?.title">
+          <header class="progress-card__head">
+            <div class="progress-card__title">
+              <h2>{{ course.enrollment.course?.title }}</h2>
+              <span class="badge-level">{{ course.enrollment.course?.level }}</span>
+            </div>
+            <a [routerLink]="['/student/course', course.enrollment.courseId, 'play']" class="btn btn-secondary btn-sm">Continuar</a>
+          </header>
+
+          @if (course.failed) {
+            <div class="alert alert-warning mb-0" role="alert">No se pudo cargar el avance de este curso.</div>
+          } @else {
+            @if (course.stories.length === 0) {
+              <p class="text-secondary-ui mb-0">Este curso todavía no tiene historias.</p>
+            } @else {
+              <div class="progress-card__summary">
+                <div class="d-flex justify-content-between mb-1">
+                  <span class="text-secondary-ui">Historias completadas</span>
+                  <strong class="small">{{ completedCount(course) }}/{{ course.stories.length }} · {{ percentage(course) }}%</strong>
+                </div>
+                <div class="progress" role="progressbar" [attr.aria-valuenow]="percentage(course)" aria-valuemin="0" aria-valuemax="100" aria-label="Historias completadas">
+                  <div class="progress-bar" [class.is-complete]="percentage(course) === 100" [style.width.%]="percentage(course)"></div>
+                </div>
+              </div>
+            }
+
+            @if (course.stories.length > 0) {
+              <table class="progress-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Historia</th>
+                    <th scope="col">Unidad</th>
+                    <th scope="col">Estado</th>
+                    <th scope="col">Respuestas</th>
+                    <th scope="col">Refuerzos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (story of course.stories; track story.storyId) {
+                    <tr class="story-progress-item">
+                      <th scope="row" class="cell-story" data-label="Historia">{{ story.storyTitle }}</th>
+                      <td class="cell-unit" data-label="Unidad">{{ unitTitle(story.unitTitle) }}</td>
+                      <td data-label="Estado">
+                        <span class="badge-status" [class.badge-status--published]="story.narrativeCompleted" [class.badge-status--draft]="!story.narrativeCompleted">
+                          {{ story.narrativeCompleted ? 'Lectura completada' : 'Pendiente' }}
+                        </span>
+                      </td>
+                      <td data-label="Respuestas">
+                        @if (story.answers.total > 0) {
+                          {{ story.answers.correct }}/{{ story.answers.total }}<span class="attempts"> · {{ story.answers.attempts | plural:'intento':'intentos' }}</span>
+                        } @else {
+                          <span class="dash" aria-label="Sin datos">—</span>
+                        }
+                      </td>
+                      <td data-label="Refuerzos">
+                        @if (story.reinforcements.total > 0) {
+                          {{ story.reinforcements.completed }}/{{ story.reinforcements.total }}
+                        } @else {
+                          <span class="dash" aria-label="Sin datos">—</span>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            }
+          }
+        </section>
+      }
+    </div>
+  }
 </div>

@@ -10,7 +10,17 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "db:init": "node src/utils/initDb.js",
-    "db:seed": "node src/utils/seedData.js"
+    "db:migrate": "node src/db/migrate.js up",
+    "db:migrate:status": "node src/db/migrate.js status",
+    "db:migrate:down": "node src/db/migrate.js down",
+    "db:migrate:adopt": "node src/db/migrate.js adopt",
+    "db:seed:curated": "node src/db/seed.js",
+    "db:verify": "node src/db/verify.js",
+    "db:audit:tprs": "node src/db/auditTprs.js",
+    "db:rebuild": "bash scripts/db-rebuild.sh",
+    "db:seed": "node src/utils/seedData.js",
+    "db:migrate:tprs:test": "node src/utils/migrateLessonPlansTest.js",
+    "test": "jest --runInBand"
   },
   "keywords": [],
   "author": "",
@@ -26,9 +36,12 @@
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.2",
     "mysql2": "^3.16.0",
-    "sequelize": "^6.37.7"
+    "sequelize": "^6.37.7",
+    "umzug": "^3.8.3"
   },
   "devDependencies": {
-    "nodemon": "^3.1.11"
+    "jest": "^30.5.2",
+    "nodemon": "^3.1.11",
+    "supertest": "^7.3.1"
   }
 }

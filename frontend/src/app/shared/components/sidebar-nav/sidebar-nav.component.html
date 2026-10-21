@@ -1,72 +1,39 @@
-<aside class="sidebar-nav" [class.collapsed]="isCollapsed()">
-  <!-- Botón de colapsar/expandir -->
-  <button class="sidebar-toggle" (click)="toggleSidebar()" title="{{ isCollapsed() ? 'Expandir' : 'Colapsar' }}">
-    <span class="toggle-icon">{{ isCollapsed() ? '→' : '←' }}</span>
-  </button>
-
-  <!-- Sidebar para Estudiantes -->
-  <nav class="sidebar-menu" *ngIf="currentUser()?.role === 'student'">
-    <h6 class="sidebar-header" *ngIf="!isCollapsed()">Mi Aprendizaje</h6>
-
-    <a class="sidebar-item"
-       [routerLink]="['/student/dashboard']"
-       routerLinkActive="active"
-       [title]="isCollapsed() ? 'Mis Cursos' : ''">
-      <span class="sidebar-icon">📚</span>
-      <span class="sidebar-label" *ngIf="!isCollapsed()">Mis Cursos</span>
-    </a>
-
-    <a class="sidebar-item"
-       [routerLink]="['/student/progress']"
-       routerLinkActive="active"
-       [title]="isCollapsed() ? 'Mi Avance' : ''">
-      <span class="sidebar-icon">📊</span>
-      <span class="sidebar-label" *ngIf="!isCollapsed()">Mi Avance</span>
-    </a>
-
-    <div class="sidebar-divider"></div>
-
-    <h6 class="sidebar-header" *ngIf="!isCollapsed()">Cuenta</h6>
-
-    <a class="sidebar-item"
-       [routerLink]="['/settings']"
-       routerLinkActive="active"
-       [title]="isCollapsed() ? 'Configuración' : ''">
-      <span class="sidebar-icon">⚙️</span>
-      <span class="sidebar-label" *ngIf="!isCollapsed()">Configuración</span>
-    </a>
-
-    <a class="sidebar-item"
-       [routerLink]="['/teachers']"
-       routerLinkActive="active"
-       [title]="isCollapsed() ? 'Maestros' : ''">
-      <span class="sidebar-icon">👨‍🏫</span>
-      <span class="sidebar-label" *ngIf="!isCollapsed()">Maestros</span>
-    </a>
+<aside class="sidebar-nav" [class.collapsed]="collapsed()">
+  <nav class="sidebar-menu" aria-label="Navegación principal">
+    @for (group of groups(); track group.title; let first = $first) {
+      @if (!first) {
+        <div class="sidebar-divider"></div>
+      }
+      @if (!collapsed()) {
+        <div class="sidebar-header">{{ group.title }}</div>
+      }
+      @for (item of group.items; track item.label) {
+        <a class="sidebar-item"
+           [routerLink]="item.link"
+           [queryParams]="item.query ?? null"
+           routerLinkActive
+           #rla="routerLinkActive"
+           [class.active]="rla.isActive || isUnder(item)"
+           [routerLinkActiveOptions]="item.exactQuery ? { paths: 'exact', queryParams: 'exact', fragment: 'ignored', matrixParams: 'ignored' } : { paths: 'subset', queryParams: 'ignored', fragment: 'ignored', matrixParams: 'ignored' }"
+           [attr.aria-label]="collapsed() ? item.label : null"
+           [attr.title]="collapsed() ? item.label : null">
+          <app-icon [name]="item.icon" [size]="collapsed() ? 20 : 18" />
+          @if (!collapsed()) {
+            <span class="sidebar-label">{{ item.label }}</span>
+          }
+        </a>
+      }
+    }
   </nav>
 
-  <!-- Sidebar para Profesores -->
-  <nav class="sidebar-menu" *ngIf="currentUser()?.role === 'teacher'">
-    <h6 class="sidebar-header" *ngIf="!isCollapsed()">Enseñanza</h6>
-
-    <a class="sidebar-item"
-       [routerLink]="['/teacher/dashboard']"
-       routerLinkActive="active"
-       [title]="isCollapsed() ? 'Mis Cursos' : ''">
-      <span class="sidebar-icon">📚</span>
-      <span class="sidebar-label" *ngIf="!isCollapsed()">Mis Cursos</span>
-    </a>
-
-    <div class="sidebar-divider"></div>
-
-    <h6 class="sidebar-header" *ngIf="!isCollapsed()">Cuenta</h6>
-
-    <a class="sidebar-item"
-       [routerLink]="['/settings']"
-       routerLinkActive="active"
-       [title]="isCollapsed() ? 'Configuración' : ''">
-      <span class="sidebar-icon">⚙️</span>
-      <span class="sidebar-label" *ngIf="!isCollapsed()">Configuración</span>
-    </a>
-  </nav>
+  @if (!forced()) {
+    <button class="sidebar-item sidebar-collapse" type="button" (click)="collapseToggle.emit()"
+            [attr.aria-label]="collapsed() ? 'Expandir menú' : 'Plegar menú'"
+            [attr.title]="collapsed() ? 'Expandir menú' : null">
+      <app-icon name="panel-left" [size]="collapsed() ? 20 : 18" />
+      @if (!collapsed()) {
+        <span class="sidebar-label">Plegar menú</span>
+      }
+    </button>
+  }
 </aside>

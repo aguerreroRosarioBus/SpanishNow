@@ -1,0 +1,26 @@
+<div class="modal fade show" style="display: block" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Editar Curso</h5>
+        <button type="button" class="btn-close" (click)="close()"></button>
+      </div>
+      <form [formGroup]="form" (ngSubmit)="save()">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="courseTitle" class="form-label">Título *</label>
+            <input type="text" class="form-control" id="courseTitle" formControlName="title" placeholder="Ej: Español A1" />
+          </div>
+          <div class="mb-3">
+            <label for="courseDescription" class="form-label">Descripción</label>
+            <textarea class="form-control" id="courseDescription" formControlName="description" rows="3" placeholder="Descripción del curso"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="close()">Cancelar</button>
+          <button type="submit" class="btn btn-primary" [disabled]="form.invalid">Guardar Cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

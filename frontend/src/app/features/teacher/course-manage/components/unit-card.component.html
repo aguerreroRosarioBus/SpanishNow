@@ -1,0 +1,65 @@
+<section class="unit">
+  <div
+    class="unit__header"
+    [class.is-open]="open()"
+    draggable="true"
+    (dragstart)="onUnitDragStart($event)"
+    (dragover)="onDragOver($event)"
+    (drop)="onUnitDrop($event)"
+  >
+    <span class="btn-icon unit__grip" aria-hidden="true" title="Arrastrar para reordenar"><app-icon name="grip" [size]="16" /></span>
+    <button type="button" class="btn-icon" (click)="store.toggleUnit(unit().id)"
+            [attr.aria-label]="open() ? 'Colapsar unidad' : 'Expandir unidad'" [attr.aria-expanded]="open()">
+      <app-icon name="chevron-right" [size]="18" class="unit__chevron" [class.is-open]="open()" />
+    </button>
+    <div class="unit__text">
+      <span class="eyebrow">Unidad {{ number() }}</span>
+      <div class="unit__title-row">
+        <h3 class="unit__title" [attr.title]="title()">{{ title() }}</h3>
+        <span class="unit__meta">{{ storyCount() | plural:'historia':'historias' }} · {{ publishedCount() | plural:'publicada':'publicadas' }}</span>
+      </div>
+    </div>
+    <div class="unit__actions">
+      <button type="button" class="btn btn-ghost btn-sm" (click)="store.open({ kind: 'vocabulary', unit: unit() })" aria-label="Vocabulario">
+        <app-icon name="book" [size]="15" /><span class="unit__vocab-label">Vocabulario</span>
+      </button>
+      <div ngbDropdown container="body" placement="bottom-end">
+        <button type="button" ngbDropdownToggle class="btn-icon" aria-label="Más acciones de la unidad">
+          <app-icon name="more" [size]="18" />
+        </button>
+        <div ngbDropdownMenu role="menu">
+          <button type="button" ngbDropdownItem role="menuitem" (click)="store.open({ kind: 'unit-edit', unit: unit() })">Editar unidad</button>
+          <div class="dropdown-divider"></div>
+          <button type="button" ngbDropdownItem role="menuitem" class="dropdown-item--danger" (click)="store.deleteUnit(unit().id)">
+            <app-icon name="trash" [size]="15" />Eliminar unidad
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  @if (open()) {
+    @if (unit().description) {
+      <p class="unit__description">{{ unit().description }}</p>
+    }
+    <div class="unit__stories">
+      @for (story of unit().stories; track story.id; let i = $index) {
+        <div
+          class="story-drag"
+          draggable="true"
+          (dragstart)="onStoryDragStart($event, story)"
+          (dragover)="onDragOver($event)"
+          (drop)="onStoryDrop($event, story)"
+        >
+          <app-story-card [story]="story" [unit]="unit()" [number]="i + 1" />
+        </div>
+      } @empty {
+        <p class="unit__empty">Esta unidad todavía no tiene historias.</p>
+      }
+      <button type="button" class="btn btn-ghost btn-ghost--accent btn-sm unit__add"
+              (click)="store.open({ kind: 'story-create', unitId: unit().id })">
+        <app-icon name="plus" [size]="15" />Agregar historia
+      </button>
+    </div>
+  }
+</section>

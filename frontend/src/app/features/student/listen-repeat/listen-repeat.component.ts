@@ -4,11 +4,12 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { RepetitionActivityService } from '../../../core/services/repetition-activity.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { RepetitionActivity } from '../../../core/models/course.model';
+import { IconComponent } from '../../../shared/components/icon/icon.component';
 
 @Component({
   selector: 'app-listen-repeat',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, IconComponent],
   templateUrl: './listen-repeat.component.html',
   styleUrl: './listen-repeat.component.scss'
 })

@@ -1,0 +1,59 @@
+@if (session.loading()) {
+  <div class="lesson-card text-center" role="status">Cargando tu lección…</div>
+}
+
+@if (session.visibleError()) {
+  <div class="alert alert-danger d-flex align-items-center justify-content-between gap-2" role="alert">
+    <span>{{ session.visibleError() }}</span>
+    <button type="button" class="btn btn-secondary btn-sm" (click)="session.retryLoad()">Reintentar</button>
+  </div>
+}
+
+@if (session.lesson(); as lesson) {
+  <article class="lesson-card">
+    <header class="lesson-head">
+      <span class="lesson-head__meta">Historia {{ nav.currentIndex() + 1 }} de {{ nav.items().length }} · Unidad {{ nav.unitNumber() }}</span>
+      <h1 class="lesson-head__title">{{ lesson.story.title }}</h1>
+    </header>
+
+    <div class="steps">
+      <div class="steps__label">
+        <span class="steps__current">Paso {{ session.currentBlockIndex() + 1 }} de {{ session.activeBlocks().length }} ·
+          <span class="steps__type">{{ blockLabel(session.currentBlock()?.type ?? '') }}</span></span>
+        <span class="steps__percent">{{ percent() }}% completado</span>
+      </div>
+      <div class="steps__bar" role="group" aria-label="Pasos de la lección">
+        @for (block of session.activeBlocks(); track block.blockKey; let i = $index) {
+          <button type="button" class="seg"
+                  [class.is-done]="i < session.currentBlockIndex() || session.narrativeCompleted()"
+                  [class.is-current]="i === session.currentBlockIndex()"
+                  [attr.aria-label]="'Paso ' + (i + 1) + ': ' + blockLabel(block.type)"
+                  [attr.aria-current]="i === session.currentBlockIndex() ? 'step' : null"
+                  (click)="session.goToBlockIndex(i)"></button>
+        }
+      </div>
+    </div>
+
+    <div class="step">
+      @if (session.currentBlock(); as block) {
+        @if (block.type === 'full_story') {
+          <app-full-story-block />
+        } @else {
+          <app-lesson-block [block]="block" />
+        }
+      }
+    </div>
+
+    <footer class="lesson-foot">
+      <button type="button" class="btn btn-ghost btn-lg" (click)="session.goToBlock(-1)" [disabled]="session.currentBlockIndex() <= 0">
+        <app-icon name="chevron-left" [size]="16" />Anterior
+      </button>
+      <button type="button" class="btn btn-primary btn-lg" (click)="next()">
+        {{ nextLabel() }}
+        <app-icon name="chevron-right" [size]="16" />
+      </button>
+    </footer>
+  </article>
+
+  <app-reinforcements />
+}

@@ -1,0 +1,22 @@
+<div class="list-bar">
+  <h2 class="list-bar__title">Contenido del curso</h2>
+  @if (store.units().length > 0) {
+    <div class="list-bar__actions">
+      <button type="button" class="btn btn-ghost btn-sm" (click)="store.expandAllUnits()">Expandir todo</button>
+      <button type="button" class="btn btn-ghost btn-sm" (click)="store.collapseAllUnits()">Colapsar todo</button>
+    </div>
+  }
+</div>
+
+@if (store.units().length === 0) {
+  <div class="state-box">
+    <strong>Aún no hay unidades</strong>
+    <span>Crea la primera con «Nueva unidad» para empezar a agregar historias.</span>
+  </div>
+}
+
+<div class="unit-stack">
+  @for (unit of store.units(); track unit.id) {
+    <app-unit-card [unit]="unit" [number]="$index + 1" />
+  }
+</div>

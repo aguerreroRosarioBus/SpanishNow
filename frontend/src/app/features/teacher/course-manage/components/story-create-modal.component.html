@@ -1,0 +1,47 @@
+<div class="modal fade show" style="display: block" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Nueva Historia</h5>
+        <button type="button" class="btn-close" (click)="close()"></button>
+      </div>
+      <form [formGroup]="form" (ngSubmit)="save()">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="storyTitle" class="form-label">Título *</label>
+            <input type="text" class="form-control" id="storyTitle" formControlName="title" placeholder="Ej: Juan quiere conocer a María">
+            <div *ngIf="form.get('title')?.invalid && form.get('title')?.touched" class="text-danger small mt-1">
+              El título debe tener al menos 3 caracteres
+            </div>
+          </div>
+
+          <p class="text-muted small mb-3">
+            Después de crearla se abrirá el compositor de la lección, donde escribes la historia fragmento a fragmento (método TPRS).
+          </p>
+
+          <div class="mb-3">
+            <label class="form-label">Audio Lento (Opcional)</label>
+            <app-audio-input #slow name="audioSlow" [validate]="true" recordedFileName="audio-slow.webm"
+              uploadHint="Formato: MP3, WAV, OGG (máx 50MB)"
+              recordingText="Grabando audio lento... Habla despacio"
+              recordedText="Audio lento grabado correctamente"
+              startedMessage="Grabación de audio lento iniciada" stoppedMessage="Grabación de audio lento detenida" />
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Audio Normal (Opcional)</label>
+            <app-audio-input #normal name="audioNormal" [validate]="true" recordedFileName="audio-normal.webm"
+              uploadHint="Formato: MP3, WAV, OGG (máx 50MB)"
+              recordingText="Grabando audio normal... Habla a velocidad normal"
+              recordedText="Audio normal grabado correctamente"
+              startedMessage="Grabación de audio normal iniciada" stoppedMessage="Grabación de audio normal detenida" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="close()">Cancelar</button>
+          <button type="submit" class="btn btn-primary" [disabled]="form.invalid">Crear y componer lección</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

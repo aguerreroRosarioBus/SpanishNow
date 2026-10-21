@@ -1,7 +1,6 @@
-import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
+import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FlashcardComponent } from '../flashcard/flashcard.component';
-import { ProgressService } from '../../../core/services/progress.service';
 
 @Component({
   selector: 'app-flashcard-modal',
@@ -12,7 +11,7 @@ import { ProgressService } from '../../../core/services/progress.service';
       <div class="modal-dialog modal-xl" (click)="$event.stopPropagation()">
         <div class="modal-content">
           <div class="modal-header bg-primary text-white">
-            <h5 class="modal-title">📚 Flashcards de Vocabulario</h5>
+            <h5 class="modal-title">Flashcards de vocabulario</h5>
             <button type="button" class="btn-close btn-close-white" (click)="onClose()" aria-label="Close"></button>
           </div>
           <div class="modal-body">
@@ -35,11 +34,8 @@ import { ProgressService } from '../../../core/services/progress.service';
 export class FlashcardModalComponent {
   @Input() unitId!: number;
   @Input() show = false;
-  @Input() progressId!: number;
   @Output() completed = new EventEmitter<void>();
   @Output() close = new EventEmitter<void>();
-
-  private progressService = inject(ProgressService);
 
   onClose(): void {
     this.close.emit();
@@ -51,21 +47,6 @@ export class FlashcardModalComponent {
   }
 
   onAllViewed(): void {
-    // Mark flashcards as viewed in progress tracking
-    if (this.progressId) {
-      this.progressService.markFlashcardsViewed(this.progressId).subscribe({
-        next: (progress) => {
-          console.log('Flashcards marked as viewed:', progress);
-          this.completed.emit();
-        },
-        error: (error) => {
-          console.error('Error marking flashcards as viewed:', error);
-          // Still emit completion even if tracking fails
-          this.completed.emit();
-        }
-      });
-    } else {
-      this.completed.emit();
-    }
+    this.completed.emit();
   }
 }

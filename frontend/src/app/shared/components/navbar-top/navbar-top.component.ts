@@ -1,12 +1,13 @@
-import { Component, inject, signal, HostListener, Output, EventEmitter } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, input, output } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem } from '@ng-bootstrap/ng-bootstrap';
 import { AuthService } from '../../../core/services/auth.service';
+import { IconComponent } from '../icon/icon.component';
 
 @Component({
   selector: 'app-navbar-top',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [RouterLink, NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem, IconComponent],
   templateUrl: './navbar-top.component.html',
   styleUrl: './navbar-top.component.scss'
 })
@@ -16,35 +17,13 @@ export class NavbarTopComponent {
 
   currentUser = this.authService.currentUser;
 
-  showExploreDropdown = signal<boolean>(false);
-  showUserDropdown = signal<boolean>(false);
-
-  @Output() sidebarToggle = new EventEmitter<void>();
-
-  toggleExploreDropdown(): void {
-    this.showExploreDropdown.update(v => !v);
-    this.showUserDropdown.set(false);
-  }
-
-  toggleUserDropdown(): void {
-    this.showUserDropdown.update(v => !v);
-    this.showExploreDropdown.set(false);
-  }
+  /** false en login/registro: el header no muestra datos de usuario */
+  showUser = input(true);
+  menuOpen = input(false);
+  sidebarToggle = output<void>();
 
   toggleSidebar(): void {
     this.sidebarToggle.emit();
-  }
-
-  // Cerrar dropdowns al hacer click fuera
-  @HostListener('document:click', ['$event'])
-  onDocumentClick(event: MouseEvent): void {
-    const target = event.target as HTMLElement;
-    const clickedInside = target.closest('.dropdown');
-
-    if (!clickedInside) {
-      this.showExploreDropdown.set(false);
-      this.showUserDropdown.set(false);
-    }
   }
 
   logout(): void {

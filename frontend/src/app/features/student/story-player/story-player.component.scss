@@ -1,146 +1,25 @@
-.story-text {
-  font-size: 1.1rem;
-  color: #333;
-  max-height: 500px;
-  overflow-y: auto;
-}
-
-.list-group-item.active {
-  background-color: #0d6efd;
-  border-color: #0d6efd;
-}
-
-// ===== VISUAL IMPROVEMENTS =====
-
-// Breadcrumbs styling
-.breadcrumb {
-  background: transparent;
-  padding: 0;
-  margin-bottom: 0.5rem;
-  font-size: 0.9rem;
-
-  .breadcrumb-item {
-    &.active {
-      font-weight: 600;
-      color: #495057;
-    }
-  }
-}
-
-// Story progress section
-.story-progress-section {
-  border-left: 4px solid #198754;
-  transition: all 0.3s ease;
-
-  .progress {
-    transition: width 0.3s ease;
-  }
-
-  .progress-steps {
-    .step-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.25rem;
-      color: #6c757d;
-      transition: color 0.3s ease;
-
-      &.completed {
-        color: #198754;
-        font-weight: 600;
-      }
-
-      .step-icon {
-        font-size: 1.25rem;
-      }
-
-      small {
-        font-size: 0.75rem;
-        text-align: center;
-      }
-    }
-  }
-}
-
-// Unit progress
-.unit-section {
-  .unit-progress {
-    margin-top: 0.75rem;
-
-    .progress {
-      border-radius: 10px;
-      overflow: hidden;
-      transition: width 0.3s ease;
-    }
-  }
-}
-
-// Unit and story icons
-.list-group-item {
-  transition: background-color 0.2s ease;
-
-  &:hover {
-    background-color: rgba(0, 0, 0, 0.03);
-  }
-}
-
-// Navigation item wrapper with overlay button
-.nav-item-wrapper {
-  position: relative;
-
-  &:hover .repeat-activity-overlay {
-    opacity: 1;
-    visibility: visible;
-  }
-}
-
-// Repeat activity button as overlay
-.repeat-activity-overlay {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  font-size: 1rem;
-  opacity: 0;
-  visibility: hidden;
-  border: none;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 50%;
-  width: 28px;
-  height: 28px;
+// Índice del curso (260–300px) + lección. Debajo de ~800px el índice queda arriba del contenido.
+.player {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  cursor: pointer;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  z-index: 10;
-
-  &:hover {
-    transform: rotate(180deg);
-    background: rgba(255, 255, 255, 1);
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
-  }
-
-  &:active {
-    transform: rotate(180deg) scale(0.9);
-  }
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: flex-start;
 }
 
-// Responsive adjustments
-@media (max-width: 768px) {
-  .breadcrumb {
-    font-size: 0.8rem;
-  }
+.player__index {
+  display: block;
+  flex: 1 1 260px;
+  min-width: 240px;
+  max-width: 300px;
+}
 
-  .story-progress-section {
-    .progress-steps {
-      flex-wrap: wrap;
+.player__main {
+  flex: 999 1 520px;
+  min-width: 0;
+}
 
-      .step-item {
-        small {
-          font-size: 0.7rem;
-        }
-      }
-    }
+@media (max-width: 767.98px) {
+  .player__index {
+    max-width: none;
   }
 }

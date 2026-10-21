@@ -1,1 +1,5 @@
-// Sin estilos custom por ahora - solo Bootstrap
+// El resto de estilos de la pantalla de acceso (.auth-page, .auth-card) vive en styles.scss
+:host {
+  display: flex;
+  flex: 1;
+}

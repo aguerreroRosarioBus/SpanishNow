@@ -172,7 +172,7 @@ El sistema está diseñado para soportar el método TPRS:
 ```bash
 npm start          # Iniciar servidor producción
 npm run dev        # Iniciar con nodemon
-npm run db:init    # Inicializar base de datos
+npm run db:init    # Inicializar base de datos (solo desarrollo; para bases reproducibles ver backend/docs/database.md)
 ```
 
 ### Frontend
@@ -180,6 +180,13 @@ npm run db:init    # Inicializar base de datos
 npm start          # Iniciar desarrollo
 npm run build      # Build para producción
 npm test           # Ejecutar tests
+```
+
+### E2E (Playwright, flujo TPRS completo)
+```bash
+cd e2e && npm install && npx playwright install chromium   # solo la primera vez
+npm run e2e        # headless; reconstruye spanishnow_e2e_test, backend :3101 y frontend :4300
+npm run e2e:ui     # modo interactivo
 ```
 
 ## Próximos Pasos

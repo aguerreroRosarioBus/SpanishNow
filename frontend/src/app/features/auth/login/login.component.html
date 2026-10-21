@@ -1,93 +1,45 @@
-<div class="container-fluid">
-  <div class="row justify-content-center mt-5">
-    <div class="col-md-6 col-lg-4">
+<div class="auth-page">
+  <div class="auth-card">
+    <header class="auth-card__head">
+      <img src="logo-mark.svg" alt="" width="48" height="45">
+      <h1 class="auth-card__title">SpanishNow</h1>
+      <p class="auth-card__subtitle">Inicia sesión en tu cuenta</p>
+    </header>
 
-      <!-- Card con el formulario -->
-      <div class="card shadow">
-        <div class="card-body p-4">
+    @if (errorMessage) {
+      <div class="alert alert-danger" role="alert">{{ errorMessage }}</div>
+    }
 
-          <!-- Logo/Título -->
-          <div class="text-center mb-4">
-            <h2 class="fw-bold text-primary">SpanishNow</h2>
-            <p class="text-muted">Inicia sesión en tu cuenta</p>
-          </div>
-
-          <!-- Mensaje de error global -->
-          <div *ngIf="errorMessage" class="alert alert-danger" role="alert">
-            {{ errorMessage }}
-          </div>
-
-          <!-- Formulario Reactivo -->
-          <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
-
-            <!-- Campo Email -->
-            <div class="mb-3">
-              <label for="email" class="form-label">Email</label>
-              <input
-                type="email"
-                class="form-control"
-                id="email"
-                formControlName="email"
-                [class.is-invalid]="hasError('email')"
-                placeholder="tu@email.com"
-              >
-              <div *ngIf="hasError('email')" class="invalid-feedback">
-                {{ getErrorMessage('email') }}
-              </div>
-            </div>
-
-            <!-- Campo Password -->
-            <div class="mb-3">
-              <label for="password" class="form-label">Contraseña</label>
-              <input
-                type="password"
-                class="form-control"
-                id="password"
-                formControlName="password"
-                [class.is-invalid]="hasError('password')"
-                placeholder="••••••••"
-              >
-              <div *ngIf="hasError('password')" class="invalid-feedback">
-                {{ getErrorMessage('password') }}
-              </div>
-            </div>
-
-            <!-- Botón Submit -->
-            <div class="d-grid gap-2 mb-3">
-              <button
-                type="submit"
-                class="btn btn-primary"
-                [disabled]="loginForm.invalid || isLoading"
-              >
-                <span
-                  *ngIf="isLoading"
-                  class="spinner-border spinner-border-sm me-2"
-                  role="status"
-                  aria-hidden="true"
-                ></span>
-                {{ isLoading ? 'Iniciando sesión...' : 'Iniciar sesión' }}
-              </button>
-            </div>
-
-            <!-- Link a registro -->
-            <div class="text-center">
-              <p class="mb-0 text-muted">
-                ¿No tienes cuenta?
-                <a routerLink="/auth/register" class="text-primary">Regístrate aquí</a>
-              </p>
-            </div>
-
-          </form>
-        </div>
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" novalidate>
+      <div class="mb-3">
+        <label for="email" class="form-label">Email</label>
+        <input type="email" class="form-control" id="email" formControlName="email"
+               [class.is-invalid]="hasError('email')" placeholder="tu@email.com" autocomplete="email">
+        @if (hasError('email')) {
+          <div class="invalid-feedback">{{ getErrorMessage('email') }}</div>
+        }
       </div>
 
-      <!-- Texto adicional -->
-      <div class="text-center mt-3">
-        <small class="text-muted">
-          Aprende español con el método TPRS
-        </small>
+      <div class="mb-4">
+        <label for="password" class="form-label">Contraseña</label>
+        <input type="password" class="form-control" id="password" formControlName="password"
+               [class.is-invalid]="hasError('password')" autocomplete="current-password">
+        @if (hasError('password')) {
+          <div class="invalid-feedback">{{ getErrorMessage('password') }}</div>
+        }
       </div>
 
-    </div>
+      <button type="submit" class="btn btn-primary btn-lg w-100" [disabled]="loginForm.invalid || isLoading">
+        @if (isLoading) {
+          <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+        }
+        {{ isLoading ? 'Iniciando sesión…' : 'Iniciar sesión' }}
+      </button>
+
+      <p class="auth-card__alt">
+        ¿No tienes cuenta?
+        <a routerLink="/auth/register">Regístrate</a>
+      </p>
+    </form>
   </div>
 </div>

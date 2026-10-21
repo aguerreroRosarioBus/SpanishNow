@@ -1,11 +1,12 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToastService } from '../../../core/services/toast.service';
+import { IconComponent } from '../icon/icon.component';
 
 @Component({
   selector: 'app-toast',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, IconComponent],
   template: `
     <div class="toast-container">
       <div
@@ -17,7 +18,7 @@ import { ToastService } from '../../../core/services/toast.service';
         [class.toast-info]="toast.type === 'info'"
       >
         <div class="toast-content">
-          <span class="toast-icon">{{ getIcon(toast.type) }}</span>
+          <span class="toast-icon"><app-icon [name]="getIcon(toast.type)" [size]="14" /></span>
           <span class="toast-message">{{ toast.message }}</span>
         </div>
         <button type="button" class="toast-close" (click)="toastService.remove(toast.id)" aria-label="Close">
@@ -78,7 +79,7 @@ import { ToastService } from '../../../core/services/toast.service';
     .toast-message {
       font-size: 14px;
       line-height: 1.5;
-      color: #1a1a1a;
+      color: var(--color-text);
       font-weight: 500;
     }
 
@@ -88,7 +89,7 @@ import { ToastService } from '../../../core/services/toast.service';
       font-size: 24px;
       line-height: 1;
       cursor: pointer;
-      color: #6c757d;
+      color: var(--color-text-light);
       padding: 0;
       width: 24px;
       height: 24px;
@@ -105,47 +106,47 @@ import { ToastService } from '../../../core/services/toast.service';
 
     .toast-close:hover {
       background-color: rgba(0, 0, 0, 0.05);
-      color: #2c3e50;
+      color: var(--color-text);
     }
 
     .toast-success {
-      border-left-color: #28a745;
+      border-left-color: var(--color-success);
       background: #ffffff;
-      border: 1px solid #d4edda;
+      border: 1px solid var(--color-border);
     }
 
     .toast-success .toast-icon {
-      color: #28a745;
+      color: var(--color-success);
     }
 
     .toast-error {
-      border-left-color: #dc3545;
+      border-left-color: var(--color-danger);
       background: #ffffff;
-      border: 1px solid #f8d7da;
+      border: 1px solid var(--color-danger-soft);
     }
 
     .toast-error .toast-icon {
-      color: #dc3545;
+      color: var(--color-danger);
     }
 
     .toast-warning {
-      border-left-color: #ffc107;
+      border-left-color: var(--color-warning);
       background: #ffffff;
-      border: 1px solid #fff3cd;
+      border: 1px solid var(--color-warning-soft);
     }
 
     .toast-warning .toast-icon {
-      color: #f57c00;
+      color: var(--color-primary);
     }
 
     .toast-info {
-      border-left-color: #17a2b8;
+      border-left-color: var(--color-info);
       background: #ffffff;
-      border: 1px solid #d1ecf1;
+      border: 1px solid var(--color-border);
     }
 
     .toast-info .toast-icon {
-      color: #17a2b8;
+      color: var(--color-info);
     }
 
     @media (max-width: 768px) {
@@ -166,11 +167,11 @@ export class ToastComponent {
 
   getIcon(type: string): string {
     const icons: Record<string, string> = {
-      'success': '✓',
-      'error': '✕',
-      'warning': '⚠',
-      'info': 'ℹ'
+      'success': 'check',
+      'error': 'x',
+      'warning': 'alert-triangle',
+      'info': 'info'
     };
-    return icons[type] || 'ℹ';
+    return icons[type] || 'info';
   }
 }

@@ -1,0 +1,23 @@
+{
+  "source": "complete_course_seed.sql",
+  "story": "María en la Fiesta",
+  "before": [
+    { "word": "Me llamo", "role": "target" },
+    { "word": "Mucho gusto", "role": "target" }
+  ],
+  "during": [
+    {
+      "text": "María va a una fiesta. En la fiesta hay muchas personas.",
+      "afterQuestion": "¿Dónde está María?"
+    },
+    {
+      "text": "María ve a Juan. María dice: \"Hola, ¿cómo te llamas?\". Juan responde: \"Me llamo Juan, ¿y tú?\".",
+      "afterQuestion": "¿Cómo se llama el amigo de María?"
+    },
+    {
+      "text": "María dice: \"Yo me llamo María, mucho gusto\". Juan y María son amigos ahora."
+    }
+  ],
+  "after": ["full_story", "flashcards"],
+  "later": { "word": "Me llamo", "role": "revisit", "story": "El Primer Día de Clase" }
+}

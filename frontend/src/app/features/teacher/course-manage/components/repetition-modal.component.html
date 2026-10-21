@@ -1,0 +1,80 @@
+<div class="modal fade show" style="display: block" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          Listen & Repeat · {{ story().title }}
+        </h5>
+        <button type="button" class="btn-close" (click)="close()" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Form to create repetition activity -->
+        <form [formGroup]="form" (ngSubmit)="create()">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">Frase para repetir *</label>
+              <input type="text" class="form-control" formControlName="phrase" placeholder="¿Cómo te llamas?">
+              <small class="text-muted">Frase en español que el estudiante debe repetir</small>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Audio modelo *</label>
+              <app-audio-input #audio name="audio" recordedFileName="recording.webm"
+                uploadHint="Sube un archivo de audio con la pronunciación correcta"
+                recordHint="Graba tu pronunciación usando el micrófono"
+                micErrorMessage="No se pudo acceder al micrófono. Por favor, permite el acceso." />
+            </div>
+            <div class="col-12">
+              <button
+                type="submit"
+                class="btn btn-primary"
+                [disabled]="form.invalid || isSubmitting()"
+              >
+                <span *ngIf="!isSubmitting()">Agregar Actividad</span>
+                <span *ngIf="isSubmitting()">Creando...</span>
+              </button>
+            </div>
+          </div>
+        </form>
+
+        <hr class="my-4">
+
+        <!-- List of existing repetition activities -->
+        <h6>Actividades Existentes ({{ repetitions().length }})</h6>
+        <div *ngIf="repetitions().length === 0" class="alert alert-info">
+          No hay actividades de repetición para esta historia.
+        </div>
+        <div class="list-group">
+          <div
+            *ngFor="let activity of repetitions()"
+            class="list-group-item"
+            draggable="true"
+            (dragstart)="onDragStart($event, activity)"
+            (dragover)="onDragOver($event)"
+            (drop)="onDrop($event, activity)"
+            style="cursor: move;"
+          >
+            <div class="d-flex justify-content-between align-items-start">
+              <div class="flex-grow-1">
+                <app-icon class="me-2 text-muted" name="grip" [size]="14" />
+                <strong>{{ activity.phrase }}</strong>
+                <br>
+                <small class="text-success d-inline-flex align-items-center gap-1" *ngIf="activity.audioUrl"><app-icon name="volume" [size]="14" />Tiene audio modelo</small>
+              </div>
+              <button
+                class="btn btn-sm btn-outline-danger"
+                (click)="remove(activity.id)"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="close()">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

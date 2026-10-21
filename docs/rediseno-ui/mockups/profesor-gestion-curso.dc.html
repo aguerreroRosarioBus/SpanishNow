@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Gestión de curso</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&amp;family=Poppins:wght@500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#FBF5EF}
+a{color:#C2410C;text-decoration:none}a:hover{color:#9A3412}
+.btn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;font:600 14px/1 Nunito,sans-serif;cursor:pointer;border:1px solid transparent;white-space:nowrap}
+.btn-primary{background:#C2410C;color:#fff}.btn-primary:hover{background:#9A3412}
+.btn-secondary{background:#fff;color:#2A211C;border-color:#E4D8CC}.btn-secondary:hover{background:#FBF5EF}
+.btn-ghost{background:transparent;color:#5E534B}.btn-ghost:hover{background:#F3EAE1;color:#2A211C}
+.btn-sm{height:32px;padding:0 10px;font-size:13px}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;border:0;background:transparent;color:#6E6259;cursor:pointer}
+.icon-btn:hover{background:#F3EAE1;color:#2A211C}
+.nav-item{display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border-radius:8px;color:#5E534B;font:600 14px Nunito,sans-serif}
+.nav-item:hover{background:#F3EAE1;color:#2A211C}
+.story-row{display:flex;align-items:center;gap:12px;padding:0 12px 0 56px;height:48px;border-top:1px solid #F1E8DF}
+.story-row:hover{background:#FDF9F5}
+.story-row .row-actions{opacity:.0}
+.story-row:hover .row-actions,.story-row.is-open .row-actions{opacity:1}
+.menu-item{display:flex;align-items:center;gap:10px;width:100%;height:34px;padding:0 10px;border:0;background:transparent;border-radius:6px;font:600 13px Nunito,sans-serif;color:#2A211C;cursor:pointer;text-align:left}
+.menu-item:hover{background:#F6EEE6}
+</style>
+</helmet>
+
+<div style="min-height: 100vh; display: flex; flex-direction: column; font-family: Nunito, sans-serif; color: #2A211C; background: #FBF5EF; font-size: 14px">
+
+  <!-- App header: slim, sin links de marketing -->
+  <header style="height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background: #FFFFFF; border-bottom: 1px solid #EDE3D9">
+    <a href="#" style="display: flex; align-items: center; gap: 10px; color: #2A211C">
+      <span style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 7px; background: #E2552A; color: #fff; font: 600 12px Poppins, sans-serif">ES</span>
+      <span style="font: 600 15px Poppins, sans-serif; letter-spacing: -0.01em">SpanishNow</span>
+      <span style="margin-left: 6px; padding: 2px 8px; border-radius: 999px; background: #F3EAE1; color: #5E534B; font-size: 12px; font-weight: 700">Profesor</span>
+    </a>
+    <button class="btn btn-ghost btn-sm" aria-label="Menú de cuenta">
+      <span style="display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 999px; background: #C2410C; color: #fff; font-size: 12px; font-weight: 700">A</span>
+      Andrés
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+    </button>
+  </header>
+
+  <div style="flex: 1; display: flex; flex-wrap: wrap; align-items: stretch">
+
+    <!-- Sidebar angosta -->
+    <nav aria-label="Navegación principal" style="flex: 1 1 200px; max-width: 220px; min-width: 200px; padding: 16px 12px; background: #FFFFFF; border-right: 1px solid #EDE3D9; box-sizing: border-box; display: flex; flex-direction: column; gap: 2px">
+      <div style="padding: 8px 10px 6px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #7A6D63">Enseñanza</div>
+      <a href="#" class="nav-item" style="background: #FDEEE4; color: #9A3412">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+        Mis cursos
+      </a>
+      <a href="#" class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        Estudiantes
+      </a>
+      <div style="height: 1px; background: #EDE3D9; margin: 12px 10px"></div>
+      <div style="padding: 8px 10px 6px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #7A6D63">Cuenta</div>
+      <a href="#" class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        Configuración
+      </a>
+    </nav>
+
+    <!-- Contenido -->
+    <main style="flex: 999 1 560px; min-width: 0; padding: 28px 32px 64px; box-sizing: border-box">
+      <div style="max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px">
+
+        <!-- Breadcrumb -->
+        <nav aria-label="Ruta" style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #6E6259">
+          <a href="#" style="color: #6E6259; font-weight: 600">Mis cursos</a>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>
+          <span style="color: #2A211C; font-weight: 600">Español A1 – Completo</span>
+        </nav>
+
+        <!-- Encabezado de página -->
+        <div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px">
+          <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
+              <h1 style="margin: 0; font: 600 26px/1.2 Poppins, sans-serif; letter-spacing: -0.015em">Español A1 – Completo</h1>
+              <span style="padding: 2px 8px; border-radius: 6px; background: #FDEEE4; color: #9A3412; font-size: 12px; font-weight: 700">A1</span>
+              <span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 6px; background: #E6F4EC; color: #17633D; font-size: 12px; font-weight: 700"><span style="width: 6px; height: 6px; border-radius: 999px; background: #1F7A4D"></span>Publicado</span>
+            </div>
+            <p style="margin: 0; color: #6E6259; font-size: 14px">3 unidades · 11 historias · 12 estudiantes inscritos</p>
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap">
+            <button class="btn btn-secondary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              Vista de alumno
+            </button>
+            <button class="btn btn-secondary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
+              Editar curso
+            </button>
+            <button class="btn btn-primary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+              Nueva unidad
+            </button>
+          </div>
+        </div>
+
+        <!-- Barra de lista -->
+        <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 4px; border-top: 1px solid #EDE3D9">
+          <h2 style="margin: 12px 0 0; font: 600 15px Poppins, sans-serif">Contenido del curso</h2>
+          <div style="display: flex; gap: 2px; margin-top: 12px">
+            <button class="btn btn-ghost btn-sm">Expandir todo</button>
+            <button class="btn btn-ghost btn-sm">Colapsar todo</button>
+          </div>
+        </div>
+
+        <!-- Unidades -->
+        <div style="display: flex; flex-direction: column; gap: 12px">
+          <sc-for list="{{units}}" as="unit" hint-placeholder-count="3">
+            <section style="background: #FFFFFF; border: 1px solid #EDE3D9; border-radius: 12px; box-shadow: 0 1px 2px rgba(42,33,28,.04)">
+              <!-- Cabecera de unidad -->
+              <div style="{{unit.headerStyle}}">
+                <button class="icon-btn" aria-label="Arrastrar para reordenar" style="cursor: grab; color: #A89A8E">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.6"></circle><circle cx="15" cy="6" r="1.6"></circle><circle cx="9" cy="12" r="1.6"></circle><circle cx="15" cy="12" r="1.6"></circle><circle cx="9" cy="18" r="1.6"></circle><circle cx="15" cy="18" r="1.6"></circle></svg>
+                </button>
+                <button class="icon-btn" aria-label="{{unit.toggleLabel}}" onClick="{{unit.toggle}}">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="{{unit.chevronStyle}}"><path d="m9 18 6-6-6-6"></path></svg>
+                </button>
+                <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+                  <span style="font-size: 12px; font-weight: 700; color: #9A3412; letter-spacing: .06em">UNIDAD {{unit.number}}</span>
+                  <div style="display: flex; align-items: baseline; gap: 10px; min-width: 0">
+                    <h3 style="margin: 0; font: 600 19px/1.3 Poppins, sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{unit.title}}</h3>
+                    <span style="color: #6E6259; font-size: 13px; white-space: nowrap">{{unit.meta}}</span>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 4px">
+                  <button class="btn btn-ghost btn-sm">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path></svg>
+                    Vocabulario
+                  </button>
+                  <button class="icon-btn" aria-label="Más acciones de la unidad">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="19" cy="12" r="1.8"></circle></svg>
+                  </button>
+                </div>
+              </div>
+
+              <sc-if value="{{unit.open}}" hint-placeholder-val="{{true}}">
+                <p style="margin: 0; padding: 12px 16px 12px 92px; color: #6E6259; font-size: 13px">{{unit.description}}</p>
+                <div>
+                  <sc-for list="{{unit.stories}}" as="story" hint-placeholder-count="4">
+                    <div class="{{story.rowClass}}" style="position: relative">
+                      <button class="icon-btn" aria-label="Arrastrar para reordenar" style="cursor: grab; color: #C4B6AA">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.6"></circle><circle cx="15" cy="6" r="1.6"></circle><circle cx="9" cy="12" r="1.6"></circle><circle cx="15" cy="12" r="1.6"></circle><circle cx="9" cy="18" r="1.6"></circle><circle cx="15" cy="18" r="1.6"></circle></svg>
+                      </button>
+                      <span style="width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; background: #F6EEE6; color: #5E534B; font-size: 12px; font-weight: 700; flex: none">{{story.order}}</span>
+                      <a href="#" style="flex: 1; min-width: 0; color: #2A211C; font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{story.title}}</a>
+                      <span style="color: #6E6259; font-size: 13px; white-space: nowrap; width: 96px">{{story.questions}}</span>
+                      <span style="{{story.statusStyle}}">{{story.status}}</span>
+                      <div class="row-actions" style="display: flex; gap: 2px">
+                        <button class="icon-btn" aria-label="Editar historia">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
+                        </button>
+                        <button class="icon-btn" aria-label="Más acciones de la historia" onClick="{{story.toggleMenu}}">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="19" cy="12" r="1.8"></circle></svg>
+                        </button>
+                      </div>
+
+                      <sc-if value="{{story.menuOpen}}" hint-placeholder-val="{{false}}">
+                        <div role="menu" style="position: absolute; right: 12px; top: 46px; z-index: 5; width: 210px; padding: 6px; background: #FFFFFF; border: 1px solid #EDE3D9; border-radius: 10px; box-shadow: 0 8px 24px rgba(42,33,28,.12)">
+                          <button class="menu-item" role="menuitem">Editar historia</button>
+                          <button class="menu-item" role="menuitem">Editar preguntas</button>
+                          <button class="menu-item" role="menuitem">Duplicar</button>
+                          <button class="menu-item" role="menuitem">Mover a otra unidad…</button>
+                          <div style="height: 1px; background: #EDE3D9; margin: 6px 4px"></div>
+                          <button class="menu-item" role="menuitem" style="color: #B42318">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path></svg>
+                            Eliminar historia
+                          </button>
+                        </div>
+                      </sc-if>
+                    </div>
+                  </sc-for>
+                  <button class="btn btn-ghost btn-sm" style="margin: 6px 0 10px 100px; color: #9A3412">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+                    Agregar historia
+                  </button>
+                </div>
+              </sc-if>
+            </section>
+          </sc-for>
+        </div>
+
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1080}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { open: { 1: true, 2: false, 3: false }, menu: '1-2' };
+  }
+  renderVals() {
+    const pub = 'padding: 2px 8px; border-radius: 6px; background: #E6F4EC; color: #17633D; font-size: 12px; font-weight: 700; white-space: nowrap; width: 74px; text-align: center';
+    const draft = 'padding: 2px 8px; border-radius: 6px; background: #F3EAE1; color: #5E534B; font-size: 12px; font-weight: 700; white-space: nowrap; width: 74px; text-align: center';
+    const data = [
+      { number: 1, title: 'Saludos y presentaciones', description: 'Aprende a saludar y presentarte en español.', stories: [
+        ['Juan quiere comprar una bici', 1, true],
+        ['María en la fiesta', 2, true],
+        ['El primer día de clase', 3, true],
+        ['En el café', 0, false]
+      ]},
+      { number: 2, title: '[Título de la unidad 2]', description: '[Descripción]', stories: [
+        ['[Historia]', 2, true], ['[Historia]', 1, true], ['[Historia]', 0, false], ['[Historia]', 0, false]
+      ]},
+      { number: 3, title: '[Título de la unidad 3]', description: '[Descripción]', stories: [
+        ['[Historia]', 2, true], ['[Historia]', 1, false], ['[Historia]', 0, false]
+      ]}
+    ];
+    const units = data.map((u) => {
+      const open = !!this.state.open[u.number];
+      const pubCount = u.stories.filter((s) => s[2]).length;
+      return {
+        number: u.number,
+        title: u.title,
+        description: u.description,
+        meta: u.stories.length + ' historias · ' + pubCount + ' publicadas',
+        open: open,
+        headerStyle: 'display: flex; align-items: center; gap: 10px; padding: 14px 12px 14px 8px; background: #FDF1E7; border-radius: ' + (open ? '11px 11px 0 0; border-bottom: 1px solid #F3DCC9' : '11px'),
+        toggleLabel: open ? 'Colapsar unidad' : 'Expandir unidad',
+        chevronStyle: 'transition: transform 150ms ease; transform: rotate(' + (open ? 90 : 0) + 'deg)',
+        toggle: () => this.setState({ open: Object.assign({}, this.state.open, { [u.number]: !open }) }),
+        stories: u.stories.map((s, i) => {
+          const key = u.number + '-' + (i + 1);
+          const menuOpen = this.state.menu === key;
+          return {
+            order: i + 1,
+            title: s[0],
+            questions: s[1] === 0 ? 'Sin preguntas' : s[1] === 1 ? '1 pregunta' : s[1] + ' preguntas',
+            status: s[2] ? 'Publicada' : 'Borrador',
+            statusStyle: s[2] ? pub : draft,
+            menuOpen: menuOpen,
+            rowClass: menuOpen ? 'story-row is-open' : 'story-row',
+            toggleMenu: () => this.setState({ menu: menuOpen ? null : key })
+          };
+        })
+      };
+    });
+    return { units: units };
+  }
+}
+</script>
+</body>
+</html>

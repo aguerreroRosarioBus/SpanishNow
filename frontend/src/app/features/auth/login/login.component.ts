@@ -33,6 +33,9 @@ export class LoginComponent {
   isLoading: boolean = false;     // Indicador de carga durante petición
 
   constructor() {
+    // Entrar a la pantalla de acceso descarta cualquier sesión vieja (el header no debe mostrar a otro usuario)
+    this.authService.logout();
+
     // Inicializar el formulario con validaciones
     this.loginForm = this.fb.group({
       // Campo email: requerido y debe ser email válido

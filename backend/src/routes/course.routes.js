@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authMiddleware, isTeacher } = require('../middlewares/auth.middleware');
-const { Course, Unit, User, Story, ActivityConfig, Question, RepetitionActivity } = require('../models');
+const { Course, Unit, User, Story, Question, RepetitionActivity, LessonPlan, Enrollment } = require('../models');
 const cloudinary = require('../config/cloudinary');
 const upload = require('../middlewares/upload.middleware');
 
@@ -32,12 +32,11 @@ router.get('/:id', async (req, res) => {
               model: Story,
               as: 'stories',
               include: [
-                { model: Question, as: 'questions' },
+                { model: Question, as: 'questions', attributes: ['id', 'storyId', 'questionText', 'answerType', 'options', 'audioUrl'] },
                 { model: RepetitionActivity, as: 'repetitionActivities' }
               ],
               order: [['order', 'ASC']]
-            },
-            { model: ActivityConfig, as: 'activityConfigs', order: [['order', 'ASC']] }
+            }
           ],
           order: [['order', 'ASC']]
         }
@@ -52,7 +51,21 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Course not found' });
     }
 
-    res.json(course);
+    // Una historia con plan de lección tiene el texto generado desde el compositor.
+    const data = course.toJSON();
+    const storyIds = data.units.flatMap(unit => unit.stories.map(story => story.id));
+    const plans = storyIds.length
+      ? await LessonPlan.findAll({ where: { storyId: storyIds }, attributes: ['storyId', 'status'], raw: true })
+      : [];
+    const planned = new Set(plans.map(plan => plan.storyId));
+    const published = new Set(plans.filter(plan => plan.status === 'published').map(plan => plan.storyId));
+    data.units.forEach(unit => unit.stories.forEach(story => {
+      story.hasLessonPlan = planned.has(story.id);
+      // Estado que ve el profesor en la gestión del curso: Publicada si tiene alguna revisión publicada.
+      story.lessonStatus = published.has(story.id) ? 'published' : 'draft';
+    }));
+    data.enrollmentCount = await Enrollment.count({ where: { courseId: course.id } });
+    res.json(data);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

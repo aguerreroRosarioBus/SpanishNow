@@ -1,0 +1,91 @@
+{
+  "id": 7,
+  "unitId": 3,
+  "order": 100,
+  "title": "En el Restaurante",
+  "text": "Pedro va al restaurante. El camarero pregunta: \"¿Qué desea comer?\". Pedro dice: \"Quiero pizza y ensalada, por favor\". El camarero pregunta: \"¿Y para beber?\". Pedro responde: \"Agua, por favor\". La comida está deliciosa. Pedro está muy feliz.",
+  "questions": [
+    {
+      "id": 11,
+      "text": "¿Pedro quiere pizza y ensalada o pasta?",
+      "type": "choice",
+      "options": [
+        "Pizza y ensalada",
+        "Pasta"
+      ],
+      "correct": "Pizza y ensalada"
+    },
+    {
+      "id": 12,
+      "text": "¿Pedro quiere agua o café?",
+      "type": "choice",
+      "options": [
+        "Agua",
+        "Café"
+      ],
+      "correct": "Agua"
+    },
+    {
+      "id": 108,
+      "text": "¿Pedro está feliz?",
+      "type": "yes_no",
+      "options": [
+        "Sí",
+        "No"
+      ],
+      "correct": "Sí"
+    }
+  ],
+  "plan": {
+    "before": [
+      {
+        "expression": "Por favor",
+        "role": "revisit"
+      },
+      {
+        "expression": "Quiero",
+        "role": "target"
+      },
+      {
+        "expression": "Agua",
+        "role": "target"
+      },
+      {
+        "expression": "Pizza",
+        "role": "target"
+      }
+    ],
+    "keyframes": [
+      {
+        "text": "Pedro va al restaurante. El camarero pregunta: \"¿Qué desea comer?\". Pedro dice: \"Quiero pizza y ensalada, por favor\".",
+        "questionsAfter": [
+          "¿Pedro quiere pizza y ensalada o pasta?"
+        ]
+      },
+      {
+        "text": "El camarero pregunta: \"¿Y para beber?\". Pedro responde: \"Agua, por favor\".",
+        "questionsAfter": [
+          "¿Pedro quiere agua o café?"
+        ]
+      },
+      {
+        "text": "La comida está deliciosa. Pedro está muy feliz.",
+        "questionsAfter": [
+          "¿Pedro está feliz?"
+        ]
+      }
+    ],
+    "after": [
+      "full_story",
+      "flashcards",
+      "matching"
+    ],
+    "later": [
+      {
+        "expression": "Pizza",
+        "role": "revisit",
+        "story": "La Fiesta de Cumpleaños"
+      }
+    ]
+  }
+}

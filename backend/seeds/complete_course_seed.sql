@@ -1,5 +1,6 @@
 -- Complete Course Seed for Testing Navigation System
--- Creates a comprehensive course with 3 units, each with stories and activities
+-- Creates a comprehensive course with 3 units, each with stories.
+-- Legacy activity_configs / progress data is no longer seeded (dropped by migration 20261022000000-drop-legacy-progress).
 
 -- ==============================================
 -- COURSE: Spanish A1 - Complete Edition
@@ -77,14 +78,6 @@ ON DUPLICATE KEY UPDATE
   translation = VALUES(translation),
   updatedAt = NOW();
 
--- Unit 1 Activity Configs
-DELETE FROM activity_configs WHERE unitId = 1;
-INSERT INTO activity_configs (unitId, activityType, `order`, isEnabled, requiredStoryIds, createdAt, updatedAt) VALUES
-(1, 'questions', 200, 1, JSON_ARRAY(1), NOW(), NOW()),
-(1, 'flashcards', 400, 1, JSON_ARRAY(1, 2), NOW(), NOW()),
-(1, 'matching', 600, 1, JSON_ARRAY(), NOW(), NOW()),
-(1, 'listen_repeat', 700, 1, JSON_ARRAY(1, 2, 3), NOW(), NOW());
-
 -- ==============================================
 -- UNIT 2: La Familia y Los Animales
 -- ==============================================
@@ -142,14 +135,6 @@ ON DUPLICATE KEY UPDATE
   word = VALUES(word),
   translation = VALUES(translation),
   updatedAt = NOW();
-
--- Unit 2 Activity Configs
-DELETE FROM activity_configs WHERE unitId = 2;
-INSERT INTO activity_configs (unitId, activityType, `order`, isEnabled, requiredStoryIds, createdAt, updatedAt) VALUES
-(2, 'questions', 200, 1, JSON_ARRAY(4), NOW(), NOW()),
-(2, 'matching', 400, 1, JSON_ARRAY(), NOW(), NOW()),
-(2, 'flashcards', 600, 1, JSON_ARRAY(4, 5, 6), NOW(), NOW()),
-(2, 'listen_repeat', 700, 1, JSON_ARRAY(4, 5, 6), NOW(), NOW());
 
 -- ==============================================
 -- UNIT 3: Comida y Números
@@ -212,21 +197,13 @@ ON DUPLICATE KEY UPDATE
   translation = VALUES(translation),
   updatedAt = NOW();
 
--- Unit 3 Activity Configs
-DELETE FROM activity_configs WHERE unitId = 3;
-INSERT INTO activity_configs (unitId, activityType, `order`, isEnabled, requiredStoryIds, createdAt, updatedAt) VALUES
-(3, 'matching', 200, 1, JSON_ARRAY(), NOW(), NOW()),
-(3, 'questions', 400, 1, JSON_ARRAY(7, 8), NOW(), NOW()),
-(3, 'flashcards', 600, 1, JSON_ARRAY(7, 8, 9), NOW(), NOW()),
-(3, 'listen_repeat', 700, 1, JSON_ARRAY(7, 8, 9), NOW(), NOW());
-
 -- ==============================================
 -- ENROLLMENT
 -- ==============================================
 
 -- Create enrollment for student
-INSERT INTO enrollments (id, studentId, courseId, questionsCompleted, flashcardsCompleted, matchingCompleted, listenRepeatCompleted, createdAt, updatedAt) VALUES
-(1, 2, 1, 0, 0, 0, 0, NOW(), NOW())
+INSERT INTO enrollments (id, studentId, courseId, createdAt, updatedAt) VALUES
+(1, 2, 1, NOW(), NOW())
 ON DUPLICATE KEY UPDATE
   updatedAt = NOW();
 
@@ -234,69 +211,10 @@ ON DUPLICATE KEY UPDATE
 -- VERIFICATION QUERY
 -- ==============================================
 
--- Show the complete navigation for each unit
-SELECT
-    'UNIT 1' as info,
-    CONCAT('Order ', LPAD(`order`, 3, '0')) as position,
-    'Story' as type,
-    title as name,
-    NULL as requires
-FROM stories
-WHERE unitId = 1
-UNION ALL
-SELECT
-    'UNIT 1' as info,
-    CONCAT('Order ', LPAD(`order`, 3, '0')) as position,
-    'Activity' as type,
-    activityType as name,
-    IF(JSON_LENGTH(requiredStoryIds) > 0,
-       CONCAT('Stories: ', CAST(requiredStoryIds AS CHAR)),
-       'No requirements') as requires
-FROM activity_configs
-WHERE unitId = 1
-
-UNION ALL
-
-SELECT
-    'UNIT 2' as info,
-    CONCAT('Order ', LPAD(`order`, 3, '0')) as position,
-    'Story' as type,
-    title as name,
-    NULL as requires
-FROM stories
-WHERE unitId = 2
-UNION ALL
-SELECT
-    'UNIT 2' as info,
-    CONCAT('Order ', LPAD(`order`, 3, '0')) as position,
-    'Activity' as type,
-    activityType as name,
-    IF(JSON_LENGTH(requiredStoryIds) > 0,
-       CONCAT('Stories: ', CAST(requiredStoryIds AS CHAR)),
-       'No requirements') as requires
-FROM activity_configs
-WHERE unitId = 2
-
-UNION ALL
-
-SELECT
-    'UNIT 3' as info,
-    CONCAT('Order ', LPAD(`order`, 3, '0')) as position,
-    'Story' as type,
-    title as name,
-    NULL as requires
-FROM stories
-WHERE unitId = 3
-UNION ALL
-SELECT
-    'UNIT 3' as info,
-    CONCAT('Order ', LPAD(`order`, 3, '0')) as position,
-    'Activity' as type,
-    activityType as name,
-    IF(JSON_LENGTH(requiredStoryIds) > 0,
-       CONCAT('Stories: ', CAST(requiredStoryIds AS CHAR)),
-       'No requirements') as requires
-FROM activity_configs
-WHERE unitId = 3
-
-ORDER BY info, position;
+-- Show the stories of the seeded course in navigation order.
+SELECT u.id AS unitId, u.title AS unitTitle, s.id AS storyId,
+       s.title AS storyTitle, s.`order` AS storyOrder
+FROM units u
+JOIN stories s ON s.unitId = u.id
+WHERE u.courseId = 1
+ORDER BY u.`order`, s.`order`;

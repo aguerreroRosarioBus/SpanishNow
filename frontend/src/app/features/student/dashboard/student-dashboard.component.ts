@@ -6,12 +6,16 @@ import { CourseService } from '../../../core/services/course.service';
 import { EnrollmentService } from '../../../core/services/enrollment.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { Course, Enrollment } from '../../../core/models/course.model';
+import { NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem } from '@ng-bootstrap/ng-bootstrap';
+import { CourseCardComponent } from '../../../shared/components/course-card/course-card.component';
+import { IconComponent } from '../../../shared/components/icon/icon.component';
+import { PluralPipe } from '../../../shared/pipes/plural.pipe';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-student-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, ConfirmDialogComponent],
+  imports: [CommonModule, RouterLink, NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem, CourseCardComponent, IconComponent, PluralPipe, ConfirmDialogComponent],
   templateUrl: './student-dashboard.component.html',
   styleUrl: './student-dashboard.component.scss'
 })
@@ -35,6 +39,8 @@ export class StudentDashboardComponent implements OnInit {
   isLoadingCatalog = signal<boolean>(false);
   isLoadingMyCourses = signal<boolean>(false);
   errorMessage = signal<string>('');
+
+  readonly levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
   // Vista activa: 'catalog' o 'my-courses'
   activeView = signal<'catalog' | 'my-courses'>('my-courses');
@@ -172,14 +178,14 @@ export class StudentDashboardComponent implements OnInit {
   // Reset course progress
   resetCourseProgress(enrollment: Enrollment): void {
     this.showConfirm(
-      'Reiniciar Progreso',
-      `¿Estás seguro de que quieres reiniciar tu progreso en "${enrollment.course?.title}"? Esto eliminará todas tus historias completadas y actividades realizadas.`,
+      'Reiniciar progreso',
+      `¿Reiniciar tu progreso en «${enrollment.course?.title}»? Se borrarán tu avance por historia, tus respuestas y tus refuerzos completados. Esta acción no se puede deshacer.`,
       'Reiniciar',
       () => {
         this.enrollmentService.resetCourseProgress(enrollment.id).subscribe({
           next: () => {
             this.toastService.success('Progreso del curso reiniciado exitosamente');
-            // No need to reload, progress is already reset on backend
+            this.loadMyCourses();
           },
           error: (error) => {
             console.error('Error resetting progress:', error);

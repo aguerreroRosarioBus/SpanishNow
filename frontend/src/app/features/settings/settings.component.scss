@@ -1,1 +1,64 @@
-// Settings component styles
+:host {
+  display: block;
+}
+
+.settings {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.settings__section {
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.settings__title {
+  margin: 0 0 12px;
+  font: 600 0.9375rem var(--font-heading);
+}
+
+.settings__list {
+  margin: 0;
+}
+
+.settings__row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--color-divider);
+
+  &:first-child {
+    border-top: 0;
+    padding-top: 0;
+  }
+
+  dt {
+    color: var(--color-text-light);
+    font-size: 0.8125rem;
+    font-weight: 600;
+  }
+
+  dd {
+    margin: 0;
+    font-size: 0.875rem;
+    overflow-wrap: anywhere;
+  }
+}
+
+.settings__note {
+  margin: 0 0 12px;
+  color: var(--color-text-light);
+  font-size: 0.875rem;
+}
+
+@media (max-width: 575.98px) {
+  .settings__row {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}

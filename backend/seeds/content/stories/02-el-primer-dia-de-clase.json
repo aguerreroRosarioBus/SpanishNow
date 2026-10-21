@@ -1,0 +1,87 @@
+{
+  "id": 2,
+  "unitId": 1,
+  "order": 300,
+  "title": "El Primer Día de Clase",
+  "text": "Hoy es el primer día de clase. La profesora se llama Ana. Ana dice: \"Buenos días, yo soy la profesora Ana\". Los estudiantes dicen: \"Buenos días, profesora\". Un estudiante se llama Pedro. Pedro dice: \"Hola, me llamo Pedro, soy de México\".",
+  "questions": [
+    {
+      "id": 3,
+      "text": "¿La profesora se llama Ana o Laura?",
+      "type": "choice",
+      "options": [
+        "Ana",
+        "Laura"
+      ],
+      "correct": "Ana"
+    },
+    {
+      "id": 4,
+      "text": "¿Pedro es de México o de España?",
+      "type": "choice",
+      "options": [
+        "México",
+        "España"
+      ],
+      "correct": "México"
+    },
+    {
+      "id": 101,
+      "text": "¿Los estudiantes dicen «Buenos días»?",
+      "type": "yes_no",
+      "options": [
+        "Sí",
+        "No"
+      ],
+      "correct": "Sí"
+    }
+  ],
+  "plan": {
+    "before": [
+      {
+        "expression": "Me llamo",
+        "role": "revisit"
+      },
+      {
+        "expression": "Buenos días",
+        "role": "target"
+      },
+      {
+        "expression": "Soy de",
+        "role": "target"
+      }
+    ],
+    "keyframes": [
+      {
+        "text": "Hoy es el primer día de clase. La profesora se llama Ana. Ana dice: \"Buenos días, yo soy la profesora Ana\".",
+        "questionsAfter": [
+          "¿La profesora se llama Ana o Laura?"
+        ]
+      },
+      {
+        "text": "Los estudiantes dicen: \"Buenos días, profesora\".",
+        "questionsAfter": [
+          "¿Los estudiantes dicen «Buenos días»?"
+        ]
+      },
+      {
+        "text": "Un estudiante se llama Pedro. Pedro dice: \"Hola, me llamo Pedro, soy de México\".",
+        "questionsAfter": [
+          "¿Pedro es de México o de España?"
+        ]
+      }
+    ],
+    "after": [
+      "full_story",
+      "flashcards",
+      "matching"
+    ],
+    "later": [
+      {
+        "expression": "Soy de",
+        "role": "revisit",
+        "story": "En el Café"
+      }
+    ]
+  }
+}

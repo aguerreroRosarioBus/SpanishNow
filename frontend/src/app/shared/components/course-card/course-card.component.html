@@ -1,0 +1,26 @@
+<article class="course-card">
+  <div class="course-card__cover">
+    @if (showImage()) {
+      <img [src]="imageUrl()" alt="" loading="lazy" (error)="onImageError()">
+    } @else {
+      <div class="course-card__placeholder" aria-hidden="true">
+        <span class="course-card__initials">{{ initials() }}</span>
+      </div>
+    }
+  </div>
+  <div class="course-card__body">
+    <div class="course-card__title-row">
+      <h2 class="course-card__title">{{ title() }}</h2>
+      @if (level()) {
+        <span class="badge-level">{{ level() }}</span>
+      }
+    </div>
+    @if (description()) {
+      <p class="course-card__desc">{{ description() }}</p>
+    }
+    <ng-content select="[card-meta]"></ng-content>
+  </div>
+  <div class="course-card__footer">
+    <ng-content></ng-content>
+  </div>
+</article>

@@ -8,8 +8,8 @@
   <!-- Error -->
   <div *ngIf="errorMessage()" class="alert alert-warning">
     {{ errorMessage() }}
-    <button class="btn btn-outline-secondary mt-3" (click)="goBack()">
-      ← Volver
+    <button class="btn btn-secondary mt-3" (click)="goBack()">
+      <app-icon name="chevron-left" [size]="16" />Volver
     </button>
   </div>
 
@@ -17,8 +17,8 @@
   <div *ngIf="!isLoading() && !errorMessage() && vocabulary().length > 0">
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
-      <button class="btn btn-outline-secondary" (click)="goBack()">
-        ← Volver
+      <button class="btn btn-ghost" (click)="goBack()">
+        <app-icon name="chevron-left" [size]="16" />Volver
       </button>
       <h2 class="mb-0">Tarjetas de Vocabulario</h2>
       <div class="btn-group">
@@ -28,10 +28,10 @@
           [class.btn-outline-primary]="!isRandomMode()"
           (click)="toggleRandomMode()"
         >
-          🔀 {{ isRandomMode() ? 'Aleatorio' : 'Secuencial' }}
+          <app-icon name="shuffle" [size]="16" />{{ isRandomMode() ? 'Aleatorio' : 'Secuencial' }}
         </button>
         <button class="btn btn-sm btn-outline-secondary" (click)="restart()">
-          🔄 Reiniciar
+          <app-icon name="rotate-ccw" [size]="16" />Reiniciar
         </button>
       </div>
     </div>
@@ -70,7 +70,7 @@
 
             <div *ngIf="currentCard?.imageUrl" class="image-container mb-3">
               <img
-                [src]="currentCard?.imageUrl || 'https://placehold.co/300x200/4caf50/ffffff?text=📖+Vocabulario+|+SpanishNow'"
+                [src]="currentCard?.imageUrl"
                 [alt]="'Imagen ilustrativa de la palabra en español: ' + (currentCard?.word || 'palabra') + (currentCard?.translation ? ' (' + currentCard?.translation + ')' : '')"
                 class="img-fluid rounded">
             </div>
@@ -80,7 +80,7 @@
               class="btn btn-outline-primary btn-lg"
               (click)="playAudio(); $event.stopPropagation()"
             >
-              🔊 Escuchar Pronunciación
+              <app-icon name="volume" [size]="16" />Escuchar pronunciación
             </button>
 
             <p class="mt-4 text-muted">
@@ -117,7 +117,7 @@
         [disabled]="currentIndex() === 0"
         (click)="previousCard()"
       >
-        ← Anterior
+        <app-icon name="chevron-left" [size]="16" />Anterior
       </button>
 
       <button
@@ -125,7 +125,7 @@
         [disabled]="!isRandomMode() && currentIndex() >= totalCards - 1"
         (click)="nextCard()"
       >
-        {{ isRandomMode() ? 'Siguiente Aleatoria' : 'Siguiente' }} →
+        {{ isRandomMode() ? 'Siguiente aleatoria' : 'Siguiente' }}<app-icon name="chevron-right" [size]="16" />
       </button>
     </div>
 

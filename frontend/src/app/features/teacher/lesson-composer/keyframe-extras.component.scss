@@ -1,0 +1,24 @@
+:host { display: block; }
+.kf-audio, .kf-tooltips { margin-top: .6rem; }
+.kf-label { display: block; font-weight: 700; font-size: .88rem; margin-bottom: .25rem; }
+.kf-help { color: var(--color-text-light); font-size: .82rem; margin: .25rem 0 .5rem; }
+.kf-status { color: var(--color-text-light); font-size: .85rem; margin: .25rem 0; }
+.kf-error { color: var(--color-danger, #b3261e); font-size: .85rem; margin: .25rem 0; }
+.kf-preview { display: flex; align-items: center; flex-wrap: wrap; gap: .6rem; margin-top: .4rem; }
+.kf-preview audio { max-width: 100%; }
+.text-button { color: var(--color-primary); font-weight: 700; border: 0; background: transparent; text-decoration: underline; cursor: pointer; padding: .2rem 0; }
+.text-button:disabled { opacity: .5; cursor: not-allowed; }
+.small-button { border: 1px solid var(--color-border); border-radius: 9px; padding: .45rem .75rem; font-weight: 700; background: white; color: var(--color-text); cursor: pointer; }
+.small-button:disabled { opacity: .5; cursor: not-allowed; }
+.kf-tooltips summary { cursor: pointer; font-weight: 700; font-size: .9rem; }
+.kf-select, .kf-form textarea { width: 100%; padding: .5rem; border: 1px solid var(--color-border); border-radius: 8px; font: inherit; }
+.kf-select { background: #f7f2ec; }
+.kf-form { margin-top: .5rem; }
+.kf-actions { display: flex; gap: .8rem; align-items: center; margin-top: .35rem; }
+.kf-list { list-style: none; padding: 0; margin: .7rem 0 0; }
+.kf-list li { padding: .55rem .65rem; margin-bottom: .45rem; border: 1px solid var(--color-border); border-left: 4px solid var(--color-amber); border-radius: 8px; background: white; }
+.kf-list li.kf-inactive { opacity: .75; border-left-color: #b3261e; border-style: dashed; background: #fbf3f2; }
+.kf-item-head { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.kf-badge { font-size: .72rem; font-weight: 800; text-transform: uppercase; padding: .1rem .45rem; border-radius: 99px; background: #b3261e; color: white; }
+.kf-content { margin: .3rem 0 0; font-size: .9rem; }
+.kf-danger { color: #b3261e; }

@@ -1,20 +1,29 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { catchError, forkJoin, of, switchMap } from 'rxjs';
 import { EnrollmentService } from '../../../core/services/enrollment.service';
-import { Enrollment, Progress } from '../../../core/models/course.model';
+import { Enrollment, StoryProgress } from '../../../core/models/course.model';
+import { PluralPipe } from '../../../shared/pipes/plural.pipe';
+import { unitDisplayTitle } from '../../../shared/utils/unit-title';
+
+export interface CourseProgress {
+  enrollment: Enrollment;
+  stories: StoryProgress[];
+  failed: boolean;
+}
 
 @Component({
   selector: 'app-progress',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, PluralPipe],
   templateUrl: './progress.component.html',
   styleUrl: './progress.component.scss'
 })
 export class ProgressComponent implements OnInit {
   private enrollmentService = inject(EnrollmentService);
 
-  myCourses = signal<Enrollment[]>([]);
+  courses = signal<CourseProgress[]>([]);
   isLoading = signal<boolean>(false);
 
   ngOnInit(): void {
@@ -23,35 +32,38 @@ export class ProgressComponent implements OnInit {
 
   loadProgress(): void {
     this.isLoading.set(true);
-    this.enrollmentService.getMyCourses().subscribe({
-      next: (enrollments) => {
-        this.myCourses.set(enrollments);
+    this.enrollmentService.getMyCourses().pipe(
+      switchMap(enrollments => enrollments.length === 0 ? of([]) : forkJoin(
+        enrollments.map(enrollment => this.enrollmentService.getProgress(enrollment.id).pipe(
+          catchError(error => {
+            console.error('Error loading course progress:', error);
+            return of(null);
+          })
+        ))
+      ).pipe(
+        switchMap(results => of(enrollments.map((enrollment, i): CourseProgress =>
+          ({ enrollment, stories: results[i] ?? [], failed: results[i] === null }))))
+      ))
+    ).subscribe({
+      next: courses => {
+        this.courses.set(courses);
         this.isLoading.set(false);
       },
-      error: (error) => {
+      error: error => {
         console.error('Error loading progress:', error);
         this.isLoading.set(false);
       }
     });
   }
 
-  getProgressPercentage(enrollment: Enrollment): number {
-    if (!enrollment.course?.units || enrollment.course.units.length === 0) {
-      return 0;
-    }
+  unitTitle(title: string): string { return unitDisplayTitle(title); }
 
-    const totalStories = enrollment.course.units.reduce(
-      (sum, unit) => sum + (unit.stories?.length || 0),
-      0
-    );
-
-    if (totalStories === 0) return 0;
-
-    const completedStories = enrollment.progress?.filter(p => p.completed).length || 0;
-    return Math.round((completedStories / totalStories) * 100);
+  completedCount(course: CourseProgress): number {
+    return course.stories.filter(s => s.narrativeCompleted).length;
   }
 
-  getCompletedCount(enrollment: Enrollment): number {
-    return enrollment.progress?.filter(p => p.completed).length || 0;
+  percentage(course: CourseProgress): number {
+    const total = course.stories.length;
+    return total === 0 ? 0 : Math.round((this.completedCount(course) / total) * 100);
   }
 }

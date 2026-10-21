@@ -5,10 +5,13 @@ const Story = require('./Story');
 const Vocabulary = require('./Vocabulary');
 const Question = require('./Question');
 const Enrollment = require('./Enrollment');
-const Progress = require('./Progress');
-const QuestionResponse = require('./QuestionResponse');
 const RepetitionActivity = require('./RepetitionActivity');
-const ActivityConfig = require('./ActivityConfig');
+const Tooltip = require('./Tooltip');
+const LessonPlan = require('./LessonPlan');
+const LessonBlock = require('./LessonBlock');
+const LessonProgress = require('./LessonProgress');
+const LessonAnswer = require('./LessonAnswer');
+const LessonReinforcement = require('./LessonReinforcement');
 
 // Define associations
 User.hasMany(Course, { foreignKey: 'teacherId', as: 'courses' });
@@ -32,26 +35,23 @@ Enrollment.belongsTo(User, { foreignKey: 'studentId', as: 'student' });
 Course.hasMany(Enrollment, { foreignKey: 'courseId', as: 'enrollments' });
 Enrollment.belongsTo(Course, { foreignKey: 'courseId', as: 'course' });
 
-Enrollment.hasMany(Progress, { foreignKey: 'enrollmentId', as: 'progress', onDelete: 'CASCADE' });
-Progress.belongsTo(Enrollment, { foreignKey: 'enrollmentId', as: 'enrollment' });
-
-Story.hasMany(Progress, { foreignKey: 'storyId', as: 'progress' });
-Progress.belongsTo(Story, { foreignKey: 'storyId', as: 'story' });
-
-// QuestionResponse associations
-Progress.hasMany(QuestionResponse, { foreignKey: 'progressId', as: 'questionResponses', onDelete: 'CASCADE' });
-QuestionResponse.belongsTo(Progress, { foreignKey: 'progressId', as: 'progress' });
-
-Question.hasMany(QuestionResponse, { foreignKey: 'questionId', as: 'responses' });
-QuestionResponse.belongsTo(Question, { foreignKey: 'questionId', as: 'question' });
-
 // RepetitionActivity associations
 Story.hasMany(RepetitionActivity, { foreignKey: 'storyId', as: 'repetitionActivities', onDelete: 'CASCADE' });
 RepetitionActivity.belongsTo(Story, { foreignKey: 'storyId', as: 'story' });
 
-// ActivityConfig associations
-Unit.hasMany(ActivityConfig, { foreignKey: 'unitId', as: 'activityConfigs', onDelete: 'CASCADE' });
-ActivityConfig.belongsTo(Unit, { foreignKey: 'unitId', as: 'unit' });
+// Tooltip associations
+User.hasMany(Tooltip, { foreignKey: 'createdBy', as: 'tooltips' });
+Tooltip.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
+
+Story.hasMany(LessonPlan, { foreignKey: 'storyId', as: 'lessonPlans' });
+LessonPlan.belongsTo(Story, { foreignKey: 'storyId', as: 'story' });
+LessonPlan.hasMany(LessonBlock, { foreignKey: 'planId', as: 'blocks' });
+LessonBlock.belongsTo(LessonPlan, { foreignKey: 'planId', as: 'plan' });
+Enrollment.hasMany(LessonProgress, { foreignKey: 'enrollmentId', as: 'lessonProgress' });
+LessonProgress.belongsTo(Enrollment, { foreignKey: 'enrollmentId', as: 'enrollment' });
+LessonProgress.belongsTo(LessonPlan, { foreignKey: 'planId', as: 'plan' });
+LessonProgress.hasMany(LessonAnswer, { foreignKey: 'lessonProgressId', as: 'answers' });
+LessonProgress.hasMany(LessonReinforcement, { foreignKey: 'lessonProgressId', as: 'reinforcements' });
 
 module.exports = {
   User,
@@ -61,8 +61,11 @@ module.exports = {
   Vocabulary,
   Question,
   Enrollment,
-  Progress,
-  QuestionResponse,
   RepetitionActivity,
-  ActivityConfig
+  Tooltip,
+  LessonPlan,
+  LessonBlock,
+  LessonProgress,
+  LessonAnswer,
+  LessonReinforcement
 };

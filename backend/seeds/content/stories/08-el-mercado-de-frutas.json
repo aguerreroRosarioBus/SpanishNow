@@ -1,0 +1,91 @@
+{
+  "id": 8,
+  "unitId": 3,
+  "order": 300,
+  "title": "El Mercado de Frutas",
+  "text": "María va al mercado. En el mercado hay muchas frutas: manzanas, naranjas, plátanos, fresas. María compra cinco manzanas y tres naranjas. Las manzanas cuestan dos euros. Las naranjas cuestan un euro. María paga tres euros en total.",
+  "questions": [
+    {
+      "id": 13,
+      "text": "¿María compra cinco o tres manzanas?",
+      "type": "choice",
+      "options": [
+        "Cinco",
+        "Tres"
+      ],
+      "correct": "Cinco"
+    },
+    {
+      "id": 14,
+      "text": "¿Las manzanas cuestan dos euros o un euro?",
+      "type": "choice",
+      "options": [
+        "Dos euros",
+        "Un euro"
+      ],
+      "correct": "Dos euros"
+    },
+    {
+      "id": 109,
+      "text": "¿En el mercado hay frutas?",
+      "type": "yes_no",
+      "options": [
+        "Sí",
+        "No"
+      ],
+      "correct": "Sí"
+    }
+  ],
+  "plan": {
+    "before": [
+      {
+        "expression": "Hay",
+        "role": "revisit"
+      },
+      {
+        "expression": "Compra",
+        "role": "target"
+      },
+      {
+        "expression": "Cuestan",
+        "role": "target"
+      },
+      {
+        "expression": "Manzana",
+        "role": "target"
+      }
+    ],
+    "keyframes": [
+      {
+        "text": "María va al mercado. En el mercado hay muchas frutas: manzanas, naranjas, plátanos, fresas.",
+        "questionsAfter": [
+          "¿En el mercado hay frutas?"
+        ]
+      },
+      {
+        "text": "María compra cinco manzanas y tres naranjas.",
+        "questionsAfter": [
+          "¿María compra cinco o tres manzanas?"
+        ]
+      },
+      {
+        "text": "Las manzanas cuestan dos euros. Las naranjas cuestan un euro. María paga tres euros en total.",
+        "questionsAfter": [
+          "¿Las manzanas cuestan dos euros o un euro?"
+        ]
+      }
+    ],
+    "after": [
+      "full_story",
+      "flashcards",
+      "matching"
+    ],
+    "later": [
+      {
+        "expression": "Compra",
+        "role": "revisit",
+        "story": "La Fiesta de Cumpleaños"
+      }
+    ]
+  }
+}

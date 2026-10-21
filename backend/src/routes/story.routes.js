@@ -1,22 +1,33 @@
 const express = require('express');
 const router = express.Router();
 const { authMiddleware, isTeacher } = require('../middlewares/auth.middleware');
-const { Story, Unit, Course, Question, ActivityConfig } = require('../models');
+const { Story, Unit, Course, Question, LessonPlan } = require('../models');
 const cloudinary = require('../config/cloudinary');
 const upload = require('../middlewares/upload.middleware');
 
 // Get story by ID with questions
-router.get('/:id', async (req, res) => {
+router.get('/:id', authMiddleware, async (req, res) => {
   try {
     const story = await Story.findByPk(req.params.id, {
-      include: [{ model: Question, as: 'questions' }]
+      include: [{ model: Unit, as: 'unit', include: [{ model: Course, as: 'course' }] }]
     });
 
     if (!story) {
       return res.status(404).json({ error: 'Story not found' });
     }
 
-    res.json(story);
+    const owner = req.user.role === 'teacher' && story.unit.course.teacherId === req.user.id;
+    if (!owner) {
+      const { Enrollment } = require('../models');
+      const enrollment = req.user.role === 'student' && await Enrollment.findOne({
+        where: { studentId: req.user.id, courseId: story.unit.courseId }
+      });
+      if (!enrollment) return res.status(403).json({ error: 'Not authorized' });
+    }
+    const questions = await Question.findAll({ where: { storyId: story.id },
+      attributes: owner ? undefined : ['id', 'storyId', 'questionText', 'answerType', 'options', 'audioUrl'] });
+    const { unit, ...data } = story.toJSON();
+    res.json({ ...data, questions });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -31,11 +42,15 @@ router.post('/', authMiddleware, isTeacher, upload.fields([
     const { unitId, title, text } = req.body;
 
     // Validate required fields
-    if (!unitId || !title || !text) {
+    // text is optional: the lesson composer writes the story fragment by fragment (published text is rebuilt from the keyframes)
+    if (!unitId || !title) {
       return res.status(400).json({
-        error: 'Missing required fields: unitId, title, text',
-        received: { unitId, title, text }
+        error: 'Missing required fields: unitId, title',
+        received: { unitId, title }
       });
+    }
+    if (text !== undefined && text !== null && typeof text !== 'string') {
+      return res.status(400).json({ error: 'text must be a string' });
     }
 
     // Validate unitId is a valid number
@@ -67,7 +82,7 @@ router.post('/', authMiddleware, isTeacher, upload.fields([
     let audioNormalUrl = null;
 
     // Solo subir a Cloudinary si está configurado
-    if (req.files['audioSlow'] && process.env.CLOUDINARY_CLOUD_NAME) {
+    if (req.files && req.files['audioSlow'] && process.env.CLOUDINARY_CLOUD_NAME) {
       try {
         const result = await cloudinary.uploadFromBuffer(req.files['audioSlow'][0].buffer, {
           folder: 'spanishnow/audio',
@@ -79,7 +94,7 @@ router.post('/', authMiddleware, isTeacher, upload.fields([
       }
     }
 
-    if (req.files['audioNormal'] && process.env.CLOUDINARY_CLOUD_NAME) {
+    if (req.files && req.files['audioNormal'] && process.env.CLOUDINARY_CLOUD_NAME) {
       try {
         const result = await cloudinary.uploadFromBuffer(req.files['audioNormal'][0].buffer, {
           folder: 'spanishnow/audio',
@@ -94,20 +109,11 @@ router.post('/', authMiddleware, isTeacher, upload.fields([
     const story = await Story.create({
       unitId: parsedUnitId,
       title,
-      text,
+      text: text || '',
       audioSlowUrl,
       audioNormalUrl,
       order
     });
-
-    // Create default activity configurations for the new story
-    const defaultActivities = [
-      { storyId: story.id, activityType: 'flashcards', isEnabled: true, order: 0 },
-      { storyId: story.id, activityType: 'questions', isEnabled: true, order: 1 },
-      { storyId: story.id, activityType: 'matching', isEnabled: true, order: 2 },
-      { storyId: story.id, activityType: 'listen_repeat', isEnabled: true, order: 3 }
-    ];
-    await ActivityConfig.bulkCreate(defaultActivities);
 
     res.status(201).json(story);
   } catch (error) {
@@ -169,6 +175,11 @@ router.put('/:id', authMiddleware, isTeacher, upload.fields([
     }
 
     const { title, text, deleteAudioSlow, deleteAudioNormal } = req.body;
+
+    // Once the story has a lesson plan (draft or published) its text is owned by the lesson (rebuilt from the keyframes on publish).
+    if (text !== undefined && text !== story.text && await LessonPlan.count({ where: { storyId: story.id } }) > 0) {
+      return res.status(409).json({ error: 'El texto de esta historia se genera desde la lección; edítalo en el compositor.' });
+    }
     let audioSlowUrl = story.audioSlowUrl;
     let audioNormalUrl = story.audioNormalUrl;
 
@@ -182,7 +193,7 @@ router.put('/:id', authMiddleware, isTeacher, upload.fields([
     }
 
     // Solo subir a Cloudinary si está configurado
-    if (req.files['audioSlow'] && process.env.CLOUDINARY_CLOUD_NAME) {
+    if (req.files && req.files['audioSlow'] && process.env.CLOUDINARY_CLOUD_NAME) {
       try {
         const result = await cloudinary.uploadFromBuffer(req.files['audioSlow'][0].buffer, {
           folder: 'spanishnow/audio',
@@ -194,7 +205,7 @@ router.put('/:id', authMiddleware, isTeacher, upload.fields([
       }
     }
 
-    if (req.files['audioNormal'] && process.env.CLOUDINARY_CLOUD_NAME) {
+    if (req.files && req.files['audioNormal'] && process.env.CLOUDINARY_CLOUD_NAME) {
       try {
         const result = await cloudinary.uploadFromBuffer(req.files['audioNormal'][0].buffer, {
           folder: 'spanishnow/audio',
@@ -215,6 +226,21 @@ router.put('/:id', authMiddleware, isTeacher, upload.fields([
     if (order !== undefined) updateData.order = order;
 
     await story.update(updateData);
+
+    // Validate tooltips if text changed
+    if (text !== undefined && text !== story.text) {
+      const { Tooltip } = require('../models');
+      const tooltips = await Tooltip.findAll({
+        where: { targetType: 'story', targetId: story.id, isActive: true }
+      });
+
+      for (const tooltip of tooltips) {
+        const extractedText = text.substring(tooltip.startOffset, tooltip.endOffset);
+        if (extractedText !== tooltip.selectedText) {
+          await tooltip.update({ isActive: false });
+        }
+      }
+    }
 
     res.json(story);
   } catch (error) {
