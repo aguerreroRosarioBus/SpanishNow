@@ -81,6 +81,9 @@
                   <div class="curriculum__unit-head">
                     <span class="eyebrow">Unit {{ i + 1 }}</span>
                     <strong>{{ unit.title }}</strong>
+                    @if (unit.releaseAfterDays) {
+                      <span class="curriculum__drip"><app-icon name="clock" [size]="13" />Unlocks on day {{ unit.releaseAfterDays }}</span>
+                    }
                   </div>
                   @if (unit.stories.length > 0) {
                     <ul class="curriculum__stories">

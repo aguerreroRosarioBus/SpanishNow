@@ -20,6 +20,9 @@ const UnitQuizQuestion = require('./UnitQuizQuestion');
 const UnitQuizAttempt = require('./UnitQuizAttempt');
 const Certificate = require('./Certificate');
 const Coupon = require('./Coupon');
+const Affiliate = require('./Affiliate');
+const AffiliatePayout = require('./AffiliatePayout');
+const LessonComment = require('./LessonComment');
 
 // Define associations
 User.hasMany(Course, { foreignKey: 'teacherId', as: 'courses' });
@@ -100,6 +103,21 @@ Order.belongsTo(Coupon, { foreignKey: 'couponId', as: 'coupon' });
 Course.belongsTo(Course, { foreignKey: 'nextCourseId', as: 'nextCourse' });
 Course.belongsTo(Coupon, { foreignKey: 'nextCourseCouponId', as: 'nextCourseCoupon' });
 
+// Phase 4: affiliates, lesson comments
+User.hasMany(Affiliate, { foreignKey: 'teacherId', as: 'affiliates' });
+Affiliate.belongsTo(User, { foreignKey: 'teacherId', as: 'teacher' });
+Affiliate.hasMany(AffiliatePayout, { foreignKey: 'affiliateId', as: 'payouts', onDelete: 'CASCADE' });
+AffiliatePayout.belongsTo(Affiliate, { foreignKey: 'affiliateId', as: 'affiliate' });
+Affiliate.hasMany(Order, { foreignKey: 'affiliateId', as: 'orders' });
+Order.belongsTo(Affiliate, { foreignKey: 'affiliateId', as: 'affiliate' });
+
+Story.hasMany(LessonComment, { foreignKey: 'storyId', as: 'comments', onDelete: 'CASCADE' });
+LessonComment.belongsTo(Story, { foreignKey: 'storyId', as: 'story' });
+User.hasMany(LessonComment, { foreignKey: 'userId', as: 'comments', onDelete: 'CASCADE' });
+LessonComment.belongsTo(User, { foreignKey: 'userId', as: 'author' });
+LessonComment.hasMany(LessonComment, { foreignKey: 'parentId', as: 'replies', onDelete: 'CASCADE' });
+LessonComment.belongsTo(LessonComment, { foreignKey: 'parentId', as: 'parent' });
+
 module.exports = {
   User,
   Course,
@@ -122,5 +140,8 @@ module.exports = {
   UnitQuizQuestion,
   UnitQuizAttempt,
   Certificate,
-  Coupon
+  Coupon,
+  Affiliate,
+  AffiliatePayout,
+  LessonComment
 };

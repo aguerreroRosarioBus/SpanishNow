@@ -31,13 +31,15 @@ const successUrl = sessionPlaceholder => `${payments.frontendUrl()}/checkout/suc
  * `user` is the logged-in student, if any. `fakeEmail` is only honoured by the fake provider and by orders that need no
  * payment (there is no Stripe form to ask it). `pricing` is what couponService.priceFor returned (price after the coupon).
  * Preconditions (published, priced, not enrolled) are checked by the route.
+ * `affiliate` (Affiliate row, optional) is stored on the order; its commission is computed when the order is fulfilled.
  * A final price of 0 (100 % coupon) creates an order with provider 'coupon' and fulfils it on the spot, without Stripe.
  */
-async function createCheckout({ course, user, fakeEmail, pricing }) {
+async function createCheckout({ course, user, fakeEmail, pricing, affiliate = null }) {
   const price = pricing || { originalAmount: course.price, discountAmount: 0, amount: course.price, currency: String(course.currency).toLowerCase(), coupon: null };
   const base = {
     courseId: course.id, amount: price.amount, currency: price.currency,
-    originalAmount: price.originalAmount, discountAmount: price.discountAmount, couponId: price.coupon ? price.coupon.id : null
+    originalAmount: price.originalAmount, discountAmount: price.discountAmount, couponId: price.coupon ? price.coupon.id : null,
+    affiliateId: affiliate ? affiliate.id : null
   };
 
   if (price.amount === 0) {

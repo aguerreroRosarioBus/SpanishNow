@@ -4,16 +4,16 @@ import { NextCourseOffer } from '../../../core/models/sales.model';
 import { formatPrice } from '../../utils/money';
 import { IconComponent } from '../icon/icon.component';
 
-/** Tarjeta «Seguí con <curso siguiente>» que se muestra al terminar un curso de una serie. */
+/** Tarjeta «Sigue con <curso siguiente>» que se muestra al terminar un curso de una serie. */
 @Component({
   selector: 'app-next-course-card',
   standalone: true,
   imports: [RouterLink, IconComponent],
   template: `
-    <section class="next-card" [attr.aria-label]="'Seguí con ' + offer().course.title">
+    <section class="next-card" [attr.aria-label]="'Sigue con ' + offer().course.title">
       <app-icon name="graduation-cap" [size]="22" class="next-card__icon" />
       <div class="next-card__body">
-        <strong>Seguí con {{ offer().course.title }}</strong>
+        <strong>Sigue con {{ offer().course.title }}</strong>
         @if (!offer().alreadyEnrolled) {
           <div class="next-card__meta">
             {{ price() }}@if (offer().couponCode) { · con tu cupón <code>{{ offer().couponCode }}</code> }

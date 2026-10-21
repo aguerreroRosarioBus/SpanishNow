@@ -10,6 +10,8 @@ const upload = require('../middlewares/upload.middleware');
 const { parseVideoField } = require('../utils/videoUrl');
 const materialService = require('../services/materialService');
 const quizService = require('../services/quizService');
+const commentService = require('../services/commentService');
+const drip = require('../services/unitAvailability');
 
 const MAX_PRICE = 99999999; // cents; fits INTEGER and any Stripe amount
 
@@ -165,6 +167,25 @@ router.get('/:id', authMiddleware, async (req, res) => {
       unit.materials = pick(m => m.unitId === unit.id);
       unit.quiz = quizzes.get(unit.id) || null;
       unit.stories.forEach(story => { story.materials = pick(m => m.storyId === story.id); });
+    });
+
+    // Comments per story (the teacher counts all, a student the visible ones) and drip content: a student gets locked/availableAt
+    // per unit, and the stories of a closed unit keep only their title and order (no text, audio, video, questions, PDFs or quiz).
+    const commentCounts = await commentService.countByStory(storyIds, { includeHidden: isOwner });
+    const enrollment = isOwner ? null : await Enrollment.findOne({ where: { studentId: req.user.id, courseId: course.id } });
+    data.units.forEach(unit => {
+      const state = isOwner ? { locked: false, availableAt: null } : drip.unitAvailability(unit, enrollment);
+      Object.assign(unit, drip.present(state));
+      unit.stories.forEach(story => { story.commentCount = commentCounts.get(story.id) || 0; });
+      if (state.locked) {
+        unit.materials = [];
+        unit.quiz = null;
+        unit.stories = unit.stories.map(story => ({
+          id: story.id, unitId: story.unitId, title: story.title, order: story.order,
+          hasLessonPlan: story.hasLessonPlan, lessonStatus: story.lessonStatus,
+          materials: [], questions: [], repetitionActivities: [], commentCount: 0
+        }));
+      }
     });
     res.json(data);
   } catch (error) {

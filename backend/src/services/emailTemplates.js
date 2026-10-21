@@ -13,20 +13,28 @@ function formatMoney(cents, currency) {
   }
 }
 
-function layout({ title, paragraphs, button, footer }) {
+const FALLBACK = {
+  en: 'If the button does not work, copy this link into your browser:',
+  es: 'Si el botón no funciona, copia este enlace en tu navegador:'
+};
+
+// `quote`: text written by a person (a comment). Shown apart, line breaks kept, always escaped. `lang`: 'en' (default) or 'es'.
+function layout({ title, paragraphs, button, footer, quote, lang = 'en' }) {
   const body = paragraphs.map(p => `<p style="margin:0 0 16px;line-height:1.5">${escapeHtml(p)}</p>`).join('');
+  const quoted = quote ? `<blockquote style="margin:0 0 16px;padding:12px 16px;border-left:4px solid #cbd5e1;background:#f8fafc;white-space:pre-wrap;line-height:1.5">${escapeHtml(quote)}</blockquote>` : '';
   const action = button
     ? `<p style="margin:24px 0"><a href="${escapeHtml(button.url)}" style="background:#1d4ed8;color:#ffffff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold;display:inline-block">${escapeHtml(button.label)}</a></p>
-<p style="margin:0 0 16px;font-size:13px;color:#555">If the button does not work, copy this link into your browser:<br><a href="${escapeHtml(button.url)}">${escapeHtml(button.url)}</a></p>`
+<p style="margin:0 0 16px;font-size:13px;color:#555">${FALLBACK[lang]}<br><a href="${escapeHtml(button.url)}">${escapeHtml(button.url)}</a></p>`
     : '';
   const note = footer ? `<p style="margin:16px 0 0;font-size:13px;color:#555">${escapeHtml(footer)}</p>` : '';
-  return `<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;color:#222;max-width:560px;margin:0 auto;padding:24px">
-<h1 style="font-size:22px;margin:0 0 20px">${escapeHtml(title)}</h1>${body}${action}${note}
+  return `<!doctype html><html lang="${lang}"><body style="font-family:Arial,Helvetica,sans-serif;color:#222;max-width:560px;margin:0 auto;padding:24px">
+<h1 style="font-size:22px;margin:0 0 20px">${escapeHtml(title)}</h1>${body}${quoted}${action}${note}
 </body></html>`;
 }
 
-function plain({ title, paragraphs, button, footer }) {
-  return [title, '', ...paragraphs.flatMap(p => [p, '']), ...(button ? [`${button.label}: ${button.url}`, ''] : []), ...(footer ? [footer] : [])].join('\n').trim();
+function plain({ title, paragraphs, button, footer, quote }) {
+  const quoted = quote ? [quote.split('\n').map(line => `> ${line}`).join('\n'), ''] : [];
+  return [title, '', ...paragraphs.flatMap(p => [p, '']), ...quoted, ...(button ? [`${button.label}: ${button.url}`, ''] : []), ...(footer ? [footer] : [])].join('\n').trim();
 }
 
 const build = (subject, content) => ({ subject, text: plain(content), html: layout(content) });
@@ -95,4 +103,37 @@ function passwordReset({ name, token }) {
   });
 }
 
-module.exports = { purchaseConfirmation, invitation, passwordReset, formatMoney, passwordUrl, courseUrl };
+const teacherManageUrl = (course, story) => `${frontendUrl()}/teacher/course/${course.id}/manage?story=${story.id}`;
+const lessonUrl = (course, story) => `${frontendUrl()}/student/course/${course.id}/play?story=${story.id}`;
+
+/** To the teacher (Spanish): a student asked something under a lesson. No gendered wording. */
+function newQuestion({ teacherName, authorName, course, story, body }) {
+  return build(`Nueva pregunta en ${story.title}`, {
+    lang: 'es',
+    title: 'Nueva pregunta en una lección',
+    paragraphs: [
+      `Hola ${teacherName || ''}`.trim() + ',',
+      `Hay una nueva pregunta en la lección «${story.title}» del curso «${course.title}».`,
+      `Escrita por: ${authorName || 'una persona inscripta'}`
+    ],
+    quote: body,
+    button: { label: 'Ver la lección', url: teacherManageUrl(course, story) },
+    footer: 'Puedes responder desde la bandeja de Comentarios.'
+  });
+}
+
+/** To the student (English): the teacher replied to their question. The wording avoids gendered pronouns. */
+function teacherReplied({ studentName, teacherName, course, story, body }) {
+  const teacher = teacherName || 'Your teacher';
+  return build(`${teacher} replied to your question in ${story.title}`, {
+    title: 'You have a reply',
+    paragraphs: [
+      `Hi ${studentName || 'there'},`,
+      `${teacher} replied to your question in the lesson "${story.title}" of "${course.title}".`
+    ],
+    quote: body,
+    button: { label: 'Open the lesson', url: lessonUrl(course, story) }
+  });
+}
+
+module.exports = { purchaseConfirmation, invitation, passwordReset, newQuestion, teacherReplied, formatMoney, passwordUrl, courseUrl };

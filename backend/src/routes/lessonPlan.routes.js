@@ -8,8 +8,11 @@ const multer = require('multer');
 const upload = require('../middlewares/upload.middleware');
 const { REINFORCEMENTS, MAX_AUDIO_URL, fail, validId, planWithBlocks, blockData, currentDraft,
   replaceDraftBlocks, publishDraft, validateShape } = require('../services/lessonPlanService');
+const { ContentLockedError, assertUnitOpen, sendLocked } = require('../services/unitAvailability');
 
-const sendError = (res, error) => res.status(error.status || 500).json({ error: error.message });
+const sendError = (res, error) => (error instanceof ContentLockedError
+  ? sendLocked(res, error)
+  : res.status(error.status || 500).json({ error: error.message }));
 const AUDIO_MIME = /^audio\//i;
 const AUDIO_OTHER_MIME = new Set(['video/mp4', 'video/webm', 'application/ogg']);
 const IMAGE_MIME = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
@@ -39,6 +42,8 @@ async function enrollmentForStory(storyId, userId, transaction) {
   if (!story) fail(404, 'Story not found');
   const enrollment = await Enrollment.findOne({ where: { studentId: userId, courseId: story.unit.courseId }, transaction, lock: transaction.LOCK.UPDATE });
   if (!enrollment) fail(403, 'Student is not enrolled in this course');
+  // Drip content: a unit that has not opened yet gives nothing (and creates no progress).
+  await assertUnitOpen({ id: userId, role: 'student' }, story.unit, { enrollment });
   return { story, enrollment };
 }
 
@@ -284,6 +289,8 @@ async function ownedProgress(id, userId, transaction) {
   const progress = await LessonProgress.findByPk(id, { include: [{ model: Enrollment, as: 'enrollment' }], transaction, lock: transaction.LOCK.UPDATE });
   if (!progress) fail(404, 'Lesson progress not found');
   if (progress.enrollment.studentId !== userId) fail(403, 'Not authorized for this progress');
+  const story = await Story.findByPk(progress.storyId, { include: [{ model: Unit, as: 'unit' }], transaction });
+  if (story) await assertUnitOpen({ id: userId, role: 'student' }, story.unit, { enrollment: progress.enrollment });
   const plan = await planWithBlocks(progress.planId, transaction);
   if (!plan || plan.storyId !== progress.storyId || plan.status !== 'published') fail(409, 'Invalid assigned revision');
   return { progress, plan };

@@ -5,6 +5,7 @@ const { Unit, Course, Story, Vocabulary } = require('../models');
 const { canReadCourse } = require('../utils/courseAccess');
 const { Op } = require('sequelize');
 const materials = require('../services/materialService');
+const { ContentLockedError, assertUnitOpen, sendLocked, parseReleaseFields } = require('../services/unitAvailability');
 
 // Get unit by ID with stories and vocabulary (the course teacher or an enrolled student)
 router.get('/:id', authMiddleware, async (req, res) => {
@@ -25,9 +26,11 @@ router.get('/:id', authMiddleware, async (req, res) => {
     if (!(await canReadCourse(req.user, await Course.findByPk(unit.courseId)))) {
       return res.status(403).json({ error: 'Not authorized' });
     }
+    await assertUnitOpen(req.user, unit); // drip content: the stories and vocabulary of a closed unit stay closed
 
     res.json(unit);
   } catch (error) {
+    if (error instanceof ContentLockedError) return sendLocked(res, error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -36,6 +39,8 @@ router.get('/:id', authMiddleware, async (req, res) => {
 router.post('/', authMiddleware, isTeacher, async (req, res) => {
   try {
     const { courseId, title, description } = req.body;
+    const release = parseReleaseFields(req.body);
+    if (release.error) return res.status(400).json({ error: release.error });
 
     const course = await Course.findByPk(courseId);
     if (!course) {
@@ -50,7 +55,7 @@ router.post('/', authMiddleware, isTeacher, async (req, res) => {
     const existingUnits = await Unit.count({ where: { courseId } });
     const order = existingUnits;
 
-    const unit = await Unit.create({ courseId, title, description, order });
+    const unit = await Unit.create({ courseId, title, description, order, ...release.values });
     res.status(201).json(unit);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -73,7 +78,9 @@ router.put('/:id', authMiddleware, isTeacher, async (req, res) => {
     }
 
     const { title, description, order } = req.body;
-    const updateData = {};
+    const release = parseReleaseFields(req.body);
+    if (release.error) return res.status(400).json({ error: release.error });
+    const updateData = { ...release.values };
     if (title !== undefined) updateData.title = title;
     if (description !== undefined) updateData.description = description;
     if (order !== undefined) updateData.order = order;

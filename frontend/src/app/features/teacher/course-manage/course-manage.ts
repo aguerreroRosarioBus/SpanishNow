@@ -58,6 +58,8 @@ export class CourseManageComponent implements OnInit {
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
+      const story = Number(this.route.snapshot.queryParamMap.get('story'));
+      if (Number.isInteger(story) && story > 0) this.store.highlightStoryId.set(story);
       this.store.load(+id);
       this.content.loadMaterials(+id);
     }

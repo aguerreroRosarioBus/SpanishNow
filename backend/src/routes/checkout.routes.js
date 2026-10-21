@@ -5,12 +5,14 @@ const { Course, Enrollment, Order } = require('../models');
 const { createCheckout, PaymentError } = require('../services/paymentService');
 const { hasPendingInvite } = require('../services/passwordTokens');
 const { priceFor, quoteShape, CouponError } = require('../services/couponService');
+const { resolveCode } = require('../services/affiliateService');
 
 const validId = value => /^[1-9]\d{0,9}$/.test(String(value)) && Number(value) <= 2147483647;
 
 const couponFailure = (res, error) => res.status(error.status).json({ error: error.message, code: error.code });
 
 // Price of a course with a coupon, to show the discount before paying. Public: nothing is created or consumed.
+// `affiliateCode` is accepted for symmetry with POST /checkout and ignored: the buyer pays the same price with or without it.
 router.post('/quote', async (req, res) => {
   try {
     const { courseId, couponCode } = req.body || {};
@@ -31,7 +33,7 @@ router.post('/quote', async (req, res) => {
 // Start a purchase. Login is optional: a logged-in student buys with their own account.
 router.post('/', optionalAuth, async (req, res) => {
   try {
-    const { courseId, email, couponCode } = req.body || {};
+    const { courseId, email, couponCode, affiliateCode } = req.body || {};
     if (!validId(courseId)) return res.status(400).json({ error: 'courseId is required' });
     if (couponCode !== undefined && couponCode !== null && typeof couponCode !== 'string') return res.status(400).json({ error: 'couponCode must be text', code: 'coupon_invalid' });
 
@@ -46,7 +48,9 @@ router.post('/', optionalAuth, async (req, res) => {
     }
 
     const pricing = await priceFor(course, couponCode);
-    const { url } = await createCheckout({ course, user: req.user, fakeEmail: email, pricing });
+    // Attribution (last click, kept by the web app): a code that is invalid, inactive or another teacher's is ignored, never an error.
+    const affiliate = await resolveCode(affiliateCode, course);
+    const { url } = await createCheckout({ course, user: req.user, fakeEmail: email, pricing, affiliate });
     res.json({ url });
   } catch (error) {
     if (error instanceof CouponError) return couponFailure(res, error);

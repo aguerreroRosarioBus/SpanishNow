@@ -2,9 +2,10 @@
 const express = require('express');
 const router = express.Router();
 const { authMiddleware, isTeacher } = require('../middlewares/auth.middleware');
-const { Material, Course } = require('../models');
+const { Material, Course, Unit, Story } = require('../models');
 const { canReadCourse } = require('../utils/courseAccess');
 const materials = require('../services/materialService');
+const { ContentLockedError, assertUnitOpen, sendLocked } = require('../services/unitAvailability');
 
 const validId = value => /^[1-9]\d{0,9}$/.test(String(value)) && Number(value) <= 2147483647;
 
@@ -15,9 +16,17 @@ router.get('/:id/download-url', authMiddleware, async (req, res) => {
     const material = await Material.findByPk(req.params.id);
     if (!material) return res.status(404).json({ error: 'Material not found' });
     if (!(await canReadCourse(req.user, await Course.findByPk(material.courseId)))) return res.status(403).json({ error: 'Not authorized' });
+    // Drip content: a PDF of a unit (or of one of its stories) is as closed as the unit. Course-level PDFs are never locked.
+    if (material.unitId || material.storyId) {
+      const unit = material.unitId
+        ? await Unit.findByPk(material.unitId)
+        : (await Story.findByPk(material.storyId, { include: [{ model: Unit, as: 'unit' }] }) || {}).unit;
+      if (unit) await assertUnitOpen(req.user, unit);
+    }
     res.set('Cache-Control', 'no-store');
     res.json(materials.downloadUrl(material));
   } catch (error) {
+    if (error instanceof ContentLockedError) return sendLocked(res, error);
     res.status(500).json({ error: error.message });
   }
 });

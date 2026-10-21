@@ -2,11 +2,13 @@ import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { EnrollmentService } from '../../../core/services/enrollment.service';
+import { AffiliateService } from '../../../core/services/affiliate.service';
 import { PublicCatalogService } from '../../../core/services/public-catalog.service';
 import { CheckoutQuote, PublicCourseDetail } from '../../../core/models/sales.model';
 import { VideoEmbedComponent } from '../../../shared/components/video-embed/video-embed.component';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { formatPrice } from '../../../shared/utils/money';
+import { browserStorage, normalizeAffiliateCode, readAffiliateRef, saveAffiliateRef } from '../../../shared/utils/affiliate-attribution';
 import { couponErrorMessage, normalizeCouponCode, priceView } from '../../../shared/utils/coupon-price';
 
 /** Página de venta de un curso: descripción, índice, precio y botón de compra. */
@@ -20,6 +22,7 @@ import { couponErrorMessage, normalizeCouponCode, priceView } from '../../../sha
 export class CourseSalesComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private catalog = inject(PublicCatalogService);
+  private affiliates = inject(AffiliateService);
   private enrollments = inject(EnrollmentService);
   private auth = inject(AuthService);
 
@@ -74,6 +77,7 @@ export class CourseSalesComponent implements OnInit {
 
   ngOnInit(): void {
     const slug = this.route.snapshot.paramMap.get('slug') ?? '';
+    this.captureAffiliateRef();
     this.catalog.getCourse(slug).subscribe({
       next: course => {
         this.course.set(course);
@@ -94,6 +98,23 @@ export class CourseSalesComponent implements OnInit {
       }
     });
   }
+
+  /** ?ref=CODE: se valida con el servidor y se guarda 30 días (último click gana). Nunca rompe la página. */
+  private captureAffiliateRef(): void {
+    try {
+      const code = normalizeAffiliateCode(this.route.snapshot.queryParamMap.get('ref'));
+      if (!code) return;
+      this.affiliates.validateCode(code).subscribe({
+        next: ({ valid }) => { if (!valid) return;
+          this.sessionRef = code; // sigue valiendo en esta página aunque localStorage falle
+          saveAffiliateRef(browserStorage(), code); },
+        error: () => { /* sin validación no se guarda: la compra sigue sin afiliado */ }
+      });
+    } catch { /* la atribución es opcional */ }
+  }
+
+  private sessionRef: string | null = null;
+  private affiliateCode(): string | null { return this.sessionRef ?? readAffiliateRef(browserStorage()); }
 
   private checkEnrollment(courseId: number): void {
     if (!this.auth.isAuthenticated() || !this.auth.isStudent()) return;
@@ -119,7 +140,7 @@ export class CourseSalesComponent implements OnInit {
     this.couponInput.set(code);
     this.isApplying.set(true);
     this.couponError.set('');
-    this.catalog.quote(course.id, code).subscribe({
+    this.catalog.quote(course.id, code, this.affiliateCode()).subscribe({
       next: quote => {
         this.quote.set(quote);
         this.isApplying.set(false);
@@ -149,7 +170,7 @@ export class CourseSalesComponent implements OnInit {
     }
     this.isBuying.set(true);
     this.buyError.set('');
-    this.catalog.checkout(course.id, this.quote()?.coupon.code, email).subscribe({
+    this.catalog.checkout(course.id, this.quote()?.coupon.code, email, this.affiliateCode()).subscribe({
       next: ({ url }) => {
         window.location.href = url;
       },

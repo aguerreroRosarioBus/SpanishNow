@@ -20,7 +20,7 @@
     </div>
   } @else if (coupons().length === 0 && !errorMessage()) {
     <div class="state-box">
-      <strong>No tenés cupones todavía</strong>
+      <strong>No tienes cupones todavía</strong>
       <span>Creá uno con «Nuevo cupón» para dar descuentos o regalar un curso.</span>
     </div>
   } @else if (coupons().length > 0) {
@@ -84,7 +84,7 @@
           <div class="modal-body">
             @if (formError()) { <div class="alert alert-danger" role="alert">{{ formError() }}</div> }
             @if (locked()) {
-              <div class="alert alert-info" role="note">Este cupón ya se usó {{ editing()!.redemptions }} {{ editing()!.redemptions === 1 ? 'vez' : 'veces' }}: solo podés cambiar el estado, el vencimiento y el máximo de usos.</div>
+              <div class="alert alert-info" role="note">Este cupón ya se usó {{ editing()!.redemptions }} {{ editing()!.redemptions === 1 ? 'vez' : 'veces' }}: solo puedes cambiar el estado, el vencimiento y el máximo de usos.</div>
             }
 
             <div class="mb-3">

@@ -25,6 +25,8 @@ export interface PublicCourseDetail extends PublicCourse {
     title: string;
     order: number;
     hasQuiz?: boolean;
+    /** Fase 4: «Unlocks on day N» (días desde la inscripción). */
+    releaseAfterDays?: number | null;
     stories: Array<{ id: number; title: string; order: number; hasVideo?: boolean }>;
   }>;
 }
@@ -138,6 +140,9 @@ export interface TeacherOrder {
   coupon: { code: string } | null;
   provider: OrderProvider;
   receiptUrl: string | null;
+  /** Fase 4: afiliado al que se atribuyó la venta y su comisión (centavos, misma moneda). */
+  affiliate?: { id: number; name: string; code: string } | null;
+  commissionAmount?: number;
 }
 
 export interface OrdersPage { rows: TeacherOrder[]; total: number; }

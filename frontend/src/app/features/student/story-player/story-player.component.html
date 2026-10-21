@@ -6,7 +6,9 @@
       <div class="alert alert-danger" role="alert">{{ nav.errorMessage() }}</div>
     }
 
-    @if (!nav.isLoading() && nav.currentItem(); as item) {
+    @if (!nav.isLoading() && nav.currentUnitLocked() && !nav.currentItem()) {
+      <app-unit-locked-view />
+    } @else if (!nav.isLoading() && nav.currentItem(); as item) {
       @switch (item.kind) {
         @case ('intro') { <app-intro-view /> }
         @case ('quiz') { <app-quiz-view /> }

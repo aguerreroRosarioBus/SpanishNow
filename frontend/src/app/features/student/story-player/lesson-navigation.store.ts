@@ -5,6 +5,7 @@ import { ToastService } from '../../../core/services/toast.service';
 import { Course, Enrollment, QuizProgress, Unit } from '../../../core/models/course.model';
 import { NextCourseOffer } from '../../../core/models/sales.model';
 import { NavigationItem } from './navigation-item.model';
+import { availableOnLabel, contentLockedFrom } from '../../../shared/utils/release-date';
 
 /** Estado de navegación del reproductor: curso, unidad, historias del menú y regla de acceso. */
 @Injectable()
@@ -22,6 +23,9 @@ export class LessonNavigationStore {
   /** Mejor resultado de quiz por unidad (viene del progreso y se actualiza al enviar un intento). */
   quizResults = signal<Record<number, { bestScore: number | null; passed: boolean }>>({});
   introSeen = signal(false);
+  /** Historia pedida por `?story=` (links de los emails): se abre y se baja a sus comentarios. */
+  focusCommentsStoryId = signal<number | null>(null);
+  private requestedStoryId: number | null = null;
   /** Curso siguiente de la serie (viene del progreso de la inscripción). */
   nextCourse = signal<NextCourseOffer | null>(null);
   /** Curso terminado: todas las historias leídas y los quizzes de las unidades aprobados. */
@@ -34,7 +38,14 @@ export class LessonNavigationStore {
 
   items = signal<NavigationItem[]>([]);
   currentIndex = signal(0);
-  currentItem = computed(() => this.items()[this.currentIndex()] ?? null);
+  /** Ítem abierto. Un ítem bloqueado por fecha no se abre: el reproductor muestra la pantalla de «Disponible el …». */
+  currentItem = computed(() => {
+    const item = this.items()[this.currentIndex()] ?? null;
+    return item?.locked ? null : item;
+  });
+  /** La unidad abierta todavía no se liberó (contenido por fechas). */
+  currentUnitLocked = computed(() => !!this.currentUnit()?.locked);
+  currentUnitAvailableText = computed(() => availableOnLabel(this.currentUnit()?.availableAt));
   currentStoryId = computed(() => this.currentItem()?.story?.id ?? null);
   completedCount = computed(() => this.items().filter(item => item.kind === 'story' && item.completed).length);
   /** Historias de la unidad abierta (sin bienvenida ni quiz). */
@@ -79,7 +90,8 @@ export class LessonNavigationStore {
     return this.canGoNextUnit() ? 'unit' : 'courses';
   });
 
-  load(courseId: number): void {
+  load(courseId: number, requestedStoryId: number | null = null): void {
+    this.requestedStoryId = requestedStoryId;
     this.isLoading.set(true);
     this.errorMessage.set('');
     this.enrollmentService.getMyCourses().subscribe({
@@ -142,7 +154,10 @@ export class LessonNavigationStore {
           }))
         };
         this.course.set(course);
-        if (course.units && course.units.length > 0) this.selectUnit(course.units[0]);
+        if (course.units && course.units.length > 0) {
+          this.selectUnit(course.units.find(u => !u.locked) ?? course.units[0]);
+          this.openRequestedStory(course.units);
+        }
         this.isLoading.set(false);
       },
       error: error => {
@@ -161,6 +176,24 @@ export class LessonNavigationStore {
     const skipIntro = items[0]?.kind === 'intro' && (this.introSeen() || this.completedStories().size > 0);
     const first = items.findIndex((item, i) => item.canAccess && !(skipIntro && i === 0));
     if (first >= 0) this.currentIndex.set(first);
+  }
+
+  /** Abre la historia de `?story=` si es accesible; si no, queda el comportamiento habitual. */
+  private openRequestedStory(units: Unit[]): void {
+    const storyId = this.requestedStoryId;
+    this.requestedStoryId = null;
+    if (storyId === null) return;
+    const unit = units.find(u => (u.stories ?? []).some(s => s.id === storyId));
+    if (!unit || unit.locked) return;
+    const previous = { unit: this.currentUnit(), index: this.currentIndex() };
+    this.selectUnit(unit);
+    const index = this.items().findIndex(i => i.kind === 'story' && i.story?.id === storyId && i.canAccess);
+    if (index < 0) {
+      if (previous.unit) { this.selectUnit(previous.unit); this.currentIndex.set(previous.index); }
+      return;
+    }
+    this.currentIndex.set(index);
+    this.focusCommentsStoryId.set(storyId);
   }
 
   goToPreviousUnit(): void { this.moveUnit(-1); }
@@ -187,6 +220,9 @@ export class LessonNavigationStore {
       items.push({ id: 'intro', kind: 'intro', title: 'Bienvenida', order: -1, story: null, unit, completed: this.introSeen(), canAccess: true });
     }
 
+    const lockedUnit = !!unit.locked;
+    const availableAt = unit.availableAt ?? null;
+
     for (const story of stories) {
       const item: NavigationItem = {
         id: `story-${story.id}`,
@@ -197,7 +233,9 @@ export class LessonNavigationStore {
         unit,
         completed: completed.has(story.id),
         // Una historia ya completada nunca queda bloqueada, aunque la anterior no figure completada
-        canAccess: previousCompleted || completed.has(story.id)
+        canAccess: !lockedUnit && (previousCompleted || completed.has(story.id)),
+        locked: lockedUnit,
+        availableAt
       };
       previousCompleted = item.completed;
       items.push(item);
@@ -213,7 +251,9 @@ export class LessonNavigationStore {
         story: null,
         unit,
         completed: !!this.quizResults()[unit.id]?.passed,
-        canAccess: stories.every(story => completed.has(story.id))
+        canAccess: !lockedUnit && stories.every(story => completed.has(story.id)),
+        locked: lockedUnit,
+        availableAt
       });
     }
     this.items.set(items);
@@ -242,7 +282,35 @@ export class LessonNavigationStore {
   }
 
   selectItem(item: NavigationItem): void {
+    if (item.locked) {
+      // Se abre la pantalla que explica cuándo se libera
+      const index = this.items().findIndex(i => i.id === item.id);
+      if (index >= 0) this.currentIndex.set(index);
+      return;
+    }
     if (!this.navigateTo(item)) this.toastService.warning('Este contenido aún no está disponible');
+  }
+
+  /**
+   * Si el servidor respondió 403 `content_locked`, marca la unidad abierta como bloqueada (con su fecha).
+   * Devuelve true cuando era ese error, para que quien llama no muestre un error genérico.
+   */
+  handleLocked(error: unknown): boolean {
+    const locked = contentLockedFrom(error);
+    if (!locked) return false;
+    const unitId = this.currentUnit()?.id;
+    if (unitId !== undefined) this.markUnitLocked(unitId, locked.availableAt);
+    return true;
+  }
+
+  markUnitLocked(unitId: number, availableAt: string | null): void {
+    const patch = (u: Unit): Unit => u.id === unitId ? { ...u, locked: true, availableAt: availableAt ?? u.availableAt ?? null } : u;
+    this.course.update(c => c ? { ...c, units: (c.units ?? []).map(patch) } : c);
+    const current = this.currentUnit();
+    if (current?.id === unitId) {
+      this.currentUnit.set(patch(current));
+      this.buildItems();
+    }
   }
 
   /** Única regla de navegación (menú lateral y flechas): solo se entra a ítems con canAccess. */

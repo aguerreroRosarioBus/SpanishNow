@@ -6,6 +6,7 @@ const { UniqueConstraintError } = require('sequelize');
 const { Enrollment, Course, Story, Unit, LessonPlan, LessonBlock, LessonProgress, LessonAnswer, LessonReinforcement, UnitQuizAttempt } = require('../models');
 const certificates = require('../services/certificateService');
 const { nextCourseOffer } = require('../services/seriesService');
+const drip = require('../services/unitAvailability');
 
 const REINFORCEMENTS = ['flashcards', 'matching', 'listen_repeat'];
 const validId = value => /^[1-9]\d{0,9}$/.test(String(value)) && Number(value) <= 2147483647;
@@ -35,7 +36,17 @@ router.get('/my-courses', authMiddleware, isStudent, async (req, res) => {
       ]
     });
 
-    res.json(enrollments);
+    // Drip content: a closed unit lists its stories (title and order) but not their content.
+    const result = enrollments.map(row => {
+      const data = row.toJSON();
+      for (const unit of data.course ? data.course.units : []) {
+        const state = drip.unitAvailability(unit, row);
+        Object.assign(unit, drip.present(state));
+        if (state.locked) unit.stories = unit.stories.map(story => ({ id: story.id, unitId: story.unitId, title: story.title, order: story.order }));
+      }
+      return data;
+    });
+    res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

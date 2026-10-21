@@ -46,7 +46,7 @@
   } @else if (rows().length === 0 && !errorMessage()) {
     <div class="state-box">
       <strong>No hay órdenes</strong>
-      <span>Cuando alguien compre uno de tus cursos va a aparecer acá. Probá también cambiar los filtros.</span>
+      <span>Cuando alguien compre uno de tus cursos va a aparecer acá. Prueba también cambiar los filtros.</span>
     </div>
   } @else if (rows().length > 0) {
     <div class="table-wrap">
@@ -54,7 +54,7 @@
         <thead>
           <tr>
             <th scope="col">Fecha</th><th scope="col">Comprador</th><th scope="col">Curso</th>
-            <th scope="col" class="num">Monto</th><th scope="col">Estado</th><th scope="col">Cupón</th>
+            <th scope="col" class="num">Monto</th><th scope="col">Estado</th><th scope="col">Cupón</th><th scope="col">Afiliado</th>
             <th scope="col">Recibo</th><th scope="col"><span class="visually-hidden">Acciones</span></th>
           </tr>
         </thead>
@@ -78,6 +78,11 @@
                       [class.badge-status--warn]="badge(o) === 'partial'" [class.badge-status--danger]="badge(o) === 'refunded' || badge(o) === 'failed'">{{ badgeLabel(o) }}</span>
               </td>
               <td>@if (o.coupon) { <code>{{ o.coupon.code }}</code> } @else { <span class="text-secondary-ui" aria-label="Sin cupón">—</span> }</td>
+              <td>
+                @if (o.affiliate) {
+                  {{ o.affiliate.name }}<small class="d-block text-secondary-ui"><code>{{ o.affiliate.code }}</code> · Comisión {{ money(o.commissionAmount ?? 0, o.currency) }}</small>
+                } @else { <span class="text-secondary-ui" aria-label="Sin afiliado">—</span> }
+              </td>
               <td>@if (o.receiptUrl) { <a [href]="o.receiptUrl" target="_blank" rel="noopener">Recibo</a> } @else { <span class="text-secondary-ui" aria-label="Sin recibo">—</span> }</td>
               <td class="text-end">
                 @if (canRefund(o)) {

@@ -51,6 +51,10 @@ export const routes: Routes = [
     loadComponent: () => import('./features/public/course-sales/course-sales.component').then(m => m.CourseSalesComponent)
   },
   {
+    path: 'affiliate/:token',
+    loadComponent: () => import('./features/public/affiliate-dashboard/affiliate-dashboard.component').then(m => m.AffiliateDashboardComponent)
+  },
+  {
     path: 'certificates/:code',
     loadComponent: () => import('./features/public/certificate-verify/certificate-verify.component').then(m => m.CertificateVerifyComponent)
   },
@@ -83,6 +87,16 @@ export const routes: Routes = [
   {
     path: 'teacher/coupons',
     loadComponent: () => import('./features/teacher/coupons/teacher-coupons.component').then(m => m.TeacherCouponsComponent),
+    canActivate: [teacherGuard]
+  },
+  {
+    path: 'teacher/affiliates',
+    loadComponent: () => import('./features/teacher/affiliates/teacher-affiliates.component').then(m => m.TeacherAffiliatesComponent),
+    canActivate: [teacherGuard]
+  },
+  {
+    path: 'teacher/comments',
+    loadComponent: () => import('./features/teacher/comments/teacher-comments.component').then(m => m.TeacherCommentsComponent),
     canActivate: [teacherGuard]
   },
 

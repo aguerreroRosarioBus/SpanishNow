@@ -26,7 +26,15 @@ const Order = sequelize.define('Order', {
   refundedAmount: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
   refundedAt: { type: DataTypes.DATE, allowNull: true },
   // Stripe's charge.receipt_url, when the provider gives one.
-  receiptUrl: { type: DataTypes.STRING(500), allowNull: true }
+  receiptUrl: { type: DataTypes.STRING(500), allowNull: true },
+  // Affiliate that brought the buyer (set when the checkout starts). The commission is computed when the order is fulfilled.
+  affiliateId: { type: DataTypes.INTEGER, allowNull: true, references: { model: 'affiliates', key: 'id' } },
+  // Affiliate's percentage at the time the order was fulfilled (kept so refunds recompute the commission with the same one).
+  commissionPercent: { type: DataTypes.INTEGER, allowNull: true },
+  // In cents, same currency as the order: floor((amount - refundedAmount) * commissionPercent / 100).
+  commissionAmount: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+  // 'none': no commission (not fulfilled yet, 100 % coupon, self-referral). 'void': the order was fully refunded.
+  commissionStatus: { type: DataTypes.ENUM('none', 'pending', 'void'), allowNull: false, defaultValue: 'none' }
 }, {
   timestamps: true,
   tableName: 'orders'

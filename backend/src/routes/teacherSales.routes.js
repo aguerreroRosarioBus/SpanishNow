@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const { authMiddleware, isTeacher } = require('../middlewares/auth.middleware');
-const { Order, Course, User, Coupon } = require('../models');
+const { Order, Course, User, Coupon, Affiliate } = require('../models');
 const sales = require('../services/salesService');
 const { registerRefund } = require('../services/orderService');
 
@@ -88,7 +88,8 @@ router.post('/orders/:id/refund', async (req, res) => {
     const fresh = await Order.findByPk(order.id, { include: [
       { model: Course, as: 'course', attributes: ['id', 'title'] },
       { model: User, as: 'user', attributes: ['id', 'name', 'email'] },
-      { model: Coupon, as: 'coupon', attributes: ['code'] }
+      { model: Coupon, as: 'coupon', attributes: ['code'] },
+      { model: Affiliate, as: 'affiliate', attributes: ['id', 'name', 'code'] }
     ] });
     res.json({ ...sales.present(fresh), accessRevoked: result.accessRevoked > 0 });
   } catch (error) {

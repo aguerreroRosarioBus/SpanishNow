@@ -1,7 +1,7 @@
 // Sales reports for a teacher: summary (aggregated in SQL), order list, and CSV export. Money is integer cents, never mixed across currencies.
 const { Op, QueryTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const { Order, Course, User, Coupon } = require('../models');
+const { Order, Course, User, Coupon, Affiliate } = require('../models');
 
 const PAID_STATUSES = ['paid', 'refunded'];
 const FILTER_STATUSES = ['paid', 'refunded', 'pending', 'failed', 'partially_refunded'];
@@ -62,10 +62,12 @@ const escapeLike = text => text.replace(/[\\%_]/g, match => `\\${match}`);
 
 /**
  * Filters of the order list (status, courseId, q) as a Sequelize where plus its includes. Always restricted to the
- * teacher's courses. Returns { where, include } or { error }. Without `status`, pending and failed checkouts are left out.
+ * teacher's courses (and, with `affiliateId`, to the orders attributed to that affiliate).
+ * Returns { where, include } or { error }. Without `status`, pending and failed checkouts are left out.
  */
-function filtersFrom(teacherId, query = {}) {
+function filtersFrom(teacherId, query = {}, { affiliateId } = {}) {
   const and = [];
+  if (affiliateId) and.push({ affiliateId });
   if (query.status !== undefined && String(query.status) !== '') {
     const status = String(query.status);
     if (!FILTER_STATUSES.includes(status)) return { error: `status must be one of ${FILTER_STATUSES.join(', ')}` };
@@ -88,7 +90,8 @@ function filtersFrom(teacherId, query = {}) {
     include: [
       { model: Course, as: 'course', attributes: ['id', 'title'], where: { teacherId }, required: true },
       { model: User, as: 'user', attributes: ['id', 'name', 'email'], required: false },
-      { model: Coupon, as: 'coupon', attributes: ['code'], required: false }
+      { model: Coupon, as: 'coupon', attributes: ['code'], required: false },
+      { model: Affiliate, as: 'affiliate', attributes: ['id', 'name', 'code'], required: false }
     ]
   };
 }
@@ -113,12 +116,15 @@ const present = order => ({
   refundedAmount: order.refundedAmount,
   coupon: order.coupon ? { code: order.coupon.code } : null,
   provider: order.provider,
-  receiptUrl: order.receiptUrl
+  receiptUrl: order.receiptUrl,
+  affiliate: order.affiliate ? { id: order.affiliate.id, name: order.affiliate.name, code: order.affiliate.code } : null,
+  commissionAmount: order.commissionAmount,
+  commissionStatus: order.commissionStatus
 });
 
 /** { rows, total } for one page. Newest first. */
-async function listOrders(teacherId, query) {
-  const filters = filtersFrom(teacherId, query);
+async function listOrders(teacherId, query, scope = {}) {
+  const filters = filtersFrom(teacherId, query, scope);
   if (filters.error) return { error: filters.error };
   const { page, pageSize } = pageFrom(query);
   const { rows, count } = await Order.findAndCountAll({
@@ -148,7 +154,7 @@ async function eachOrderBatch(teacherId, query, onBatch) {
 // ---- CSV -------------------------------------------------------------------------------------------------------
 
 const CSV_HEADERS = ['ID', 'Fecha', 'Fecha de pago', 'Curso', 'Comprador', 'Email', 'Monto original', 'Descuento', 'Monto pagado', 'Moneda',
-  'Estado', 'Reembolsado', 'Cupón', 'Medio de pago', 'Recibo'];
+  'Estado', 'Reembolsado', 'Cupón', 'Medio de pago', 'Recibo', 'Afiliado', 'Comisión'];
 
 const STATUS_LABELS = { paid: 'Pagada', refunded: 'Reembolsada', pending: 'Pendiente', failed: 'Fallida' };
 const PROVIDER_LABELS = { stripe: 'Stripe', fake: 'Prueba', coupon: 'Cupón 100%' };
@@ -176,7 +182,8 @@ function csvLine(order) {
   return csvRow([
     order.id, iso(order.createdAt), iso(order.paidAt), order.course.title, order.buyer.name, order.buyer.email,
     decimal(order.originalAmount), decimal(order.discountAmount), decimal(order.amount), String(order.currency).toUpperCase(),
-    status, decimal(order.refundedAmount), order.coupon ? order.coupon.code : '', PROVIDER_LABELS[order.provider] || order.provider, order.receiptUrl
+    status, decimal(order.refundedAmount), order.coupon ? order.coupon.code : '', PROVIDER_LABELS[order.provider] || order.provider, order.receiptUrl,
+    order.affiliate ? `${order.affiliate.name} (${order.affiliate.code})` : '', decimal(order.commissionAmount)
   ]);
 }
 

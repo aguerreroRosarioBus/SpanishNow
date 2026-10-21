@@ -26,6 +26,9 @@
       <div class="index__unit-text">
         <span class="eyebrow">Unidad {{ nav.unitNumber() }} de {{ nav.unitCount() }}</span>
         <span class="index__unit-title">{{ unitTitle() }}</span>
+        @if (nav.currentUnitLocked()) {
+          <span class="index__unit-lock"><app-icon name="lock" [size]="12" />{{ nav.currentUnitAvailableText() }}</span>
+        }
       </div>
       <div class="index__unit-nav">
         <button type="button" class="btn-icon" aria-label="Unidad anterior" [disabled]="!nav.canGoPreviousUnit()" (click)="nav.goToPreviousUnit()">
@@ -45,7 +48,7 @@
                   [class.is-locked]="!item.canAccess"
                   [attr.aria-current]="currentId() === item.id ? 'page' : null"
                   [attr.aria-disabled]="!item.canAccess"
-                  [attr.title]="item.canAccess ? null : item.kind === 'quiz' ? 'Completa todas las historias de la unidad para desbloquear el quiz' : 'Completa la historia anterior para desbloquearla'"
+                  [attr.title]="item.locked ? nav.currentUnitAvailableText() : item.canAccess ? null : item.kind === 'quiz' ? 'Completa todas las historias de la unidad para desbloquear el quiz' : 'Completa la historia anterior para desbloquearla'"
                   (click)="nav.selectItem(item)">
             @if (item.completed) {
               <span class="state state--done" aria-label="Completada"><app-icon name="check" [size]="12" /></span>

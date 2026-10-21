@@ -314,7 +314,8 @@ describe('sales management', () => {
       expect(res.body.rows[2]).toEqual({
         id: expect.any(Number), createdAt: expect.any(String), paidAt: expect.any(String), course: { id: c1.id, title: c1.title },
         buyer: { id: buyerA.id, name: buyerA.name, email: buyerA.email }, amount: 2400, originalAmount: 3000, discountAmount: 600, currency: 'usd',
-        status: 'paid', refundedAmount: 0, coupon: { code: expect.stringMatching(/^LIST-/) }, provider: 'stripe', receiptUrl: 'https://pay.stripe.com/receipts/r1'
+        status: 'paid', refundedAmount: 0, coupon: { code: expect.stringMatching(/^LIST-/) }, provider: 'stripe', receiptUrl: 'https://pay.stripe.com/receipts/r1',
+        affiliate: null, commissionAmount: 0, commissionStatus: 'none'
       });
       expect(res.body.rows[0]).toMatchObject({ amount: 1500, originalAmount: 1500, discountAmount: 0, refundedAmount: 500, coupon: null, receiptUrl: null });
     });
@@ -373,7 +374,7 @@ describe('sales management', () => {
       const text = res.text;
       expect(text.charCodeAt(0)).toBe(0xFEFF);
       const lines = text.slice(1).split('\r\n');
-      expect(lines[0]).toBe('ID,Fecha,Fecha de pago,Curso,Comprador,Email,Monto original,Descuento,Monto pagado,Moneda,Estado,Reembolsado,Cupón,Medio de pago,Recibo');
+      expect(lines[0]).toBe('ID,Fecha,Fecha de pago,Curso,Comprador,Email,Monto original,Descuento,Monto pagado,Moneda,Estado,Reembolsado,Cupón,Medio de pago,Recibo,Afiliado,Comisión');
       expect(lines.filter(Boolean)).toHaveLength(3); // header + 2 paid orders
       expect(text).toContain(`"'=HYPERLINK(""http://evil"",""x"")"`); // buyer name: formula neutralized, quotes doubled
       expect(text).toContain("'=cmd|calc"); // course title

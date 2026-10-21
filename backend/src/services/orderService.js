@@ -7,6 +7,7 @@ const { createToken } = require('./passwordTokens');
 const { sendMail } = require('./mailService');
 const templates = require('./emailTemplates');
 const { CouponError } = require('./couponService');
+const affiliates = require('./affiliateService');
 
 /**
  * Marks the order paid, gives the buyer access and emails them. Safe to call any number of times for the same order
@@ -15,8 +16,9 @@ const { CouponError } = require('./couponService');
  *   2. finds the buyer by email, or creates a student with an unusable random password
  *   3. creates the enrollment (source 'purchase'), never a second one
  *   4. marks the order paid and stores the receipt link when the provider gave one
- *   5. counts the coupon use (once per order: only the call that marks it paid gets here)
- *   6. confirmation email (with a set-password link when the account is new)
+ *   5. fixes the affiliate's commission, if the order came through one (see affiliateService.recordCommission)
+ *   6. counts the coupon use (once per order: only the call that marks it paid gets here)
+ *   7. confirmation email (with a set-password link when the account is new)
  * `payment` may carry what the provider reported: { email, name, paymentId, receiptUrl }.
  * `strictCoupon`: refuse (CouponError, nothing saved) when the coupon has no uses left. Used for orders that are fulfilled
  * in the same request that created them (100 % discount). A purchase already paid at the provider is always honoured
@@ -53,6 +55,9 @@ async function fulfillOrder(orderOrId, payment = {}, { strictCoupon = false } = 
       providerPaymentId: payment.paymentId || order.providerPaymentId,
       receiptUrl: payment.receiptUrl ? String(payment.receiptUrl).slice(0, 500) : order.receiptUrl
     }, { transaction });
+
+    // Commission of the affiliate (if any), with the percentage of today, in the same transaction as the payment.
+    await affiliates.recordCommission(order, email, transaction);
 
     if (order.couponId) {
       // One atomic statement: the limit is checked and the use counted without a read-modify-write race.
@@ -122,6 +127,8 @@ async function registerRefund(orderId, { refundedAmount = 0, full = false, revok
     if (!total && amount === order.refundedAmount) return { applied: false, reason: 'unchanged', order };
 
     await order.update({ refundedAmount: amount, refundedAt: new Date(), ...(total ? { status: 'refunded' } : {}) }, { transaction });
+    // The affiliate's commission follows the cumulative refunded amount (void on a total refund), so replays give the same result.
+    await affiliates.adjustForRefund(order, { total }, transaction);
 
     let accessRevoked = 0;
     if (total && revokeAccess) {

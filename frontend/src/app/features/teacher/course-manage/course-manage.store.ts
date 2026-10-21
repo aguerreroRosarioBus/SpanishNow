@@ -43,6 +43,8 @@ export class CourseManageStore {
   isLoading = signal(false);
   errorMessage = signal('');
   expandedUnits = signal<Set<number>>(new Set());
+  /** Historia resaltada al llegar desde el link de un email (`?story=`). */
+  highlightStoryId = signal<number | null>(null);
 
   modal = signal<ManageModal | null>(null);
   confirmData = signal<ConfirmData | null>(null);

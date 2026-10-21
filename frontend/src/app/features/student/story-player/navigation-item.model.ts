@@ -11,6 +11,9 @@ export interface NavigationItem {
   completed: boolean;
   /** Única regla de acceso: la usan el menú lateral y las flechas. */
   canAccess: boolean;
+  /** Contenido por fechas: la unidad todavía no se liberó (distinto de «completa lo anterior»). */
+  locked?: boolean;
+  availableAt?: string | null;
   /** Solo en ítems de tipo `story`. */
   story: Story | null;
   /** Unidad a la que pertenece el ítem (el de bienvenida usa la primera). */

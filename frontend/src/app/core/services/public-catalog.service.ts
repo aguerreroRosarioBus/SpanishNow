@@ -20,17 +20,18 @@ export class PublicCatalogService {
   }
 
   /** `email` solo hace falta sin sesión cuando el cupón deja el curso gratis (no pasa por Stripe, que es quien lo pide). */
-  checkout(courseId: number, couponCode?: string | null, email?: string | null): Observable<CheckoutResponse> {
+  checkout(courseId: number, couponCode?: string | null, email?: string | null, affiliateCode?: string | null): Observable<CheckoutResponse> {
     return this.http.post<CheckoutResponse>(`${this.apiUrl}/checkout`, {
       courseId,
       ...(couponCode ? { couponCode } : {}),
-      ...(email ? { email } : {})
+      ...(email ? { email } : {}),
+      ...(affiliateCode ? { affiliateCode } : {})
     });
   }
 
   /** Precio final con cupón antes de pagar. Errores 400 con `code` de cupón. */
-  quote(courseId: number, couponCode: string): Observable<CheckoutQuote> {
-    return this.http.post<CheckoutQuote>(`${this.apiUrl}/checkout/quote`, { courseId, couponCode });
+  quote(courseId: number, couponCode: string, affiliateCode?: string | null): Observable<CheckoutQuote> {
+    return this.http.post<CheckoutQuote>(`${this.apiUrl}/checkout/quote`, { courseId, couponCode, ...(affiliateCode ? { affiliateCode } : {}) });
   }
 
   getCheckoutSession(sessionId: string): Observable<CheckoutSession> {

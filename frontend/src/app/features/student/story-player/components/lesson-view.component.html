@@ -67,4 +67,6 @@
 
   <app-materials-list [materials]="storyMaterials()" heading="Materiales de esta historia" />
   <app-materials-list [materials]="unitMaterials()" heading="Materiales de la unidad" />
+
+  <app-lesson-comments [storyId]="lesson.storyId" [autoScroll]="nav.focusCommentsStoryId() === lesson.storyId" />
 }

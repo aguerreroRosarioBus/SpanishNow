@@ -46,6 +46,12 @@ export interface Unit {
   materials?: Material[];
   /** Quiz publicado de la unidad (en el detalle del curso del alumno; el docente lo edita con QuizService). */
   quiz?: UnitQuizSummary | null;
+  /** Contenido por fechas (docente): días desde la inscripción y/o fecha fija. */
+  releaseAfterDays?: number | null;
+  releaseAt?: string | null;
+  /** Del alumno: la unidad sigue bloqueada y, si se sabe, desde cuándo está disponible. */
+  locked?: boolean;
+  availableAt?: string | null;
 }
 
 /** PDF descargable. El link real nunca viaja: la descarga pasa por GET /materials/:id/download-url. */
@@ -84,6 +90,8 @@ export interface Story {
   videoUrl?: string | null;
   /** Materiales de la historia. */
   materials?: Material[];
+  /** Cantidad de comentarios de la lección. */
+  commentCount?: number;
 }
 
 export interface Vocabulary {

@@ -177,3 +177,13 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
+
+.index__unit-lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-light);
+}

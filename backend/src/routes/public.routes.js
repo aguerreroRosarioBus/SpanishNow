@@ -39,7 +39,7 @@ router.get('/courses/:slug', async (req, res) => {
       where: { slug: req.params.slug, isPublished: true },
       include: [
         { model: User, as: 'teacher', attributes: ['name'] },
-        { model: Unit, as: 'units', attributes: ['id', 'title', 'order'], include: [{ model: Story, as: 'stories', attributes: ['id', 'title', 'order', 'videoUrl'] }] }
+        { model: Unit, as: 'units', attributes: ['id', 'title', 'order', 'releaseAfterDays'], include: [{ model: Story, as: 'stories', attributes: ['id', 'title', 'order', 'videoUrl'] }] }
       ],
       order: [
         [{ model: Unit, as: 'units' }, 'order', 'ASC'], [{ model: Unit, as: 'units' }, 'id', 'ASC'],
@@ -65,7 +65,7 @@ router.get('/courses/:slug', async (req, res) => {
       introVideoUrl: course.introVideoUrl,
       materialsCount: await Material.count({ where: { courseId: course.id } }),
       units: course.units.map(unit => ({
-        id: unit.id, title: unit.title, order: unit.order, hasQuiz: withQuiz.has(unit.id),
+        id: unit.id, title: unit.title, order: unit.order, releaseAfterDays: unit.releaseAfterDays, hasQuiz: withQuiz.has(unit.id),
         stories: unit.stories.map(story => ({ id: story.id, title: story.title, order: story.order, hasVideo: Boolean(story.videoUrl) }))
       }))
     });

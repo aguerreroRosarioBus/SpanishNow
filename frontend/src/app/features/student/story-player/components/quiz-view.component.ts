@@ -60,8 +60,9 @@ export class QuizViewComponent {
       },
       error: error => {
         this.quiz.set(null);
-        this.error.set(error?.status === 404 ? 'Este quiz ya no está disponible.' : 'No se pudo cargar el quiz. Intenta nuevamente.');
         this.loading.set(false);
+        if (this.nav.handleLocked(error)) return;
+        this.error.set(error?.status === 404 ? 'Este quiz ya no está disponible.' : 'No se pudo cargar el quiz. Intenta nuevamente.');
       }
     });
   }
@@ -91,6 +92,7 @@ export class QuizViewComponent {
       },
       error: error => {
         this.submitting.set(false);
+        if (this.nav.handleLocked(error)) return;
         this.submitError.set(error?.error?.error || 'No se pudo enviar tus respuestas. Intenta nuevamente.');
       }
     });

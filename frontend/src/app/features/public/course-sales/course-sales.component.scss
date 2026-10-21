@@ -54,6 +54,15 @@
   border-bottom: 1px solid var(--color-section-border);
 }
 
+.curriculum__drip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  font-size: 0.8125rem;
+  color: var(--color-text-light);
+}
+
 .curriculum__stories {
   list-style: none;
   margin: 0;

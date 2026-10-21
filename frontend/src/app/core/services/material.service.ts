@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { Material } from '../models/course.model';
 import { DownloadUrl } from '../models/content.model';
 import { ToastService } from './toast.service';
+import { availableOnLabel, contentLockedFrom } from '../../shared/utils/release-date';
 import { environment } from '../../../environments/environment';
 
 /** PDFs descargables: gestión del docente y descarga del alumno (siempre vía download-url). */
@@ -49,7 +50,9 @@ export class MaterialService {
       },
       error: error => {
         tab?.close();
-        this.toast.error(error?.status === 403 || error?.status === 401
+        const locked = contentLockedFrom(error);
+        if (locked) this.toast.warning(availableOnLabel(locked.availableAt));
+        else this.toast.error(error?.status === 403 || error?.status === 401
           ? 'No tienes acceso a este material'
           : 'No se pudo preparar la descarga. Intenta nuevamente.');
         onDone?.();

@@ -60,6 +60,8 @@ export class LessonSessionStore {
         if (!lesson.progress.lastBlockKey) this.persistCurrentBlock(blocks[0]);
       },
       error: error => {
+        this.loading.set(false);
+        if (this.nav.handleLocked(error)) return;
         console.error('Error loading assigned lesson:', error);
         this.error.set(error?.error?.error || 'No se pudo cargar la lección publicada. Intenta nuevamente.');
         this.loading.set(false);
@@ -82,7 +84,7 @@ export class LessonSessionStore {
         this.answerText.set('');
         this.answerResult.set(null);
       },
-      error: error => this.error.set(error?.error?.error || 'No se pudo guardar tu avance. Vuelve a intentar.')
+      error: error => { if (!this.nav.handleLocked(error)) this.error.set(error?.error?.error || 'No se pudo guardar tu avance. Vuelve a intentar.'); }
     });
   }
 
@@ -118,7 +120,7 @@ export class LessonSessionStore {
           answers: [...p.answers, { blockKey: result.blockKey, questionId: result.questionId, studentAnswer: answer, isCorrect: result.isCorrect, attempt: result.attempt }]
         }));
       },
-      error: error => this.error.set(error?.error?.error || 'No se pudo comprobar la respuesta. Intenta nuevamente.')
+      error: error => { if (!this.nav.handleLocked(error)) this.error.set(error?.error?.error || 'No se pudo comprobar la respuesta. Intenta nuevamente.'); }
     });
   }
 
@@ -131,7 +133,7 @@ export class LessonSessionStore {
         this.nav.markStoryCompleted(lesson.storyId);
         this.toastService.success('Lectura completada. Los refuerzos son opcionales.');
       },
-      error: error => this.error.set(error?.error?.error || 'Completa primero los bloques narrativos.')
+      error: error => { if (!this.nav.handleLocked(error)) this.error.set(error?.error?.error || 'Completa primero los bloques narrativos.'); }
     });
   }
 
@@ -147,7 +149,7 @@ export class LessonSessionStore {
         onDone();
         this.toastService.success('Refuerzo completado para esta historia.');
       },
-      error: error => this.error.set(error?.error?.error || 'No se pudo guardar el refuerzo.')
+      error: error => { if (!this.nav.handleLocked(error)) this.error.set(error?.error?.error || 'No se pudo guardar el refuerzo.'); }
     });
   }
 

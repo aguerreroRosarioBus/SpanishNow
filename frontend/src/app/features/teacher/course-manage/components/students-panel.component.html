@@ -23,7 +23,7 @@
   <!-- Importar CSV de Hotmart -->
   <div class="panel-block">
     <h2 class="panel-block__title">Importar compradores de Hotmart</h2>
-    <p class="form-text mt-0">Subí el CSV exportado desde Hotmart (máx. 2 MB, 5.000 filas). Vas a ver una vista previa antes de aplicar nada.</p>
+    <p class="form-text mt-0">Sube el CSV exportado desde Hotmart (máx. 2 MB, 5.000 filas). Vas a ver una vista previa antes de aplicar nada.</p>
     <input #csvInput type="file" class="form-control" accept=".csv,text/csv" aria-label="Archivo CSV de Hotmart"
            (change)="onFileSelected($event)" [disabled]="isPreviewing() || isImporting()">
 
@@ -115,7 +115,7 @@
     } @else if (students().length === 0 && !errorMessage()) {
       <div class="state-box">
         <strong>Todavía no hay alumnos</strong>
-        <span>Se inscriben al comprar el curso, o podés agregarlos o importarlos arriba.</span>
+        <span>Se inscriben al comprar el curso, o puedes agregarlos o importarlos arriba.</span>
       </div>
     } @else if (students().length > 0) {
       <div class="table-wrap">

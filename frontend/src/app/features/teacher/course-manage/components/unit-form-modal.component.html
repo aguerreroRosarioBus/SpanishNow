@@ -24,6 +24,22 @@
               La descripción debe tener al menos 10 caracteres
             </div>
           </div>
+
+          <fieldset class="mb-0">
+            <legend class="form-label float-none">Liberación por fechas (opcional)</legend>
+            <p class="form-text mt-0">Por defecto la unidad está disponible desde el primer día. Si completas los dos campos, se libera cuando se cumplen ambos. Vos siempre ves todo.</p>
+            <div class="row g-3">
+              <div class="col-sm-6">
+                <label for="unitReleaseDays" class="form-label">Liberar a los N días de la inscripción</label>
+                <input type="number" class="form-control" id="unitReleaseDays" formControlName="releaseAfterDays" min="0" max="3650" step="1" placeholder="Ej: 7">
+              </div>
+              <div class="col-sm-6">
+                <label for="unitReleaseAt" class="form-label">Liberar el día</label>
+                <input type="date" class="form-control" id="unitReleaseAt" formControlName="releaseAt">
+              </div>
+            </div>
+            @if (rulePreview()) { <div class="form-text" role="status">{{ rulePreview() }}.</div> }
+          </fieldset>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" (click)="close()">Cancelar</button>

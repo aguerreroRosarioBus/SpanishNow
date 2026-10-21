@@ -166,7 +166,7 @@ export class TeacherCouponsComponent implements OnInit {
       } else {
         const a = Number(v.amountOff);
         if (!(a > 0)) return 'El monto de descuento debe ser mayor que 0.';
-        if (!v.currency) return 'Elegí la moneda del descuento.';
+        if (!v.currency) return 'Elige la moneda del descuento.';
       }
     }
     if (v.maxRedemptions != null && (!Number.isInteger(Number(v.maxRedemptions)) || Number(v.maxRedemptions) < 1)) return 'El máximo de usos debe ser un entero mayor que 0 (o dejalo vacío).';
@@ -248,12 +248,12 @@ export class TeacherCouponsComponent implements OnInit {
 
   async copyLink(c: Coupon): Promise<void> {
     const link = this.saleLink(c);
-    if (!link) { this.toast.warning('Elegí un curso con página de venta para armar el link.'); return; }
+    if (!link) { this.toast.warning('Elige un curso con página de venta para armar el link.'); return; }
     try {
       await navigator.clipboard.writeText(link);
       this.toast.success('Link copiado');
     } catch {
-      window.prompt('Copiá este link:', link);
+      window.prompt('Copia este link:', link);
     }
   }
 }

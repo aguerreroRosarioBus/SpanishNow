@@ -20,6 +20,9 @@
         @if (pdfCount() > 0) {
           <span class="unit__meta unit__flag" [attr.title]="pdfCount() + ' PDF(s) en esta unidad'"><app-icon name="file-text" [size]="13" />{{ pdfCount() }} PDF</span>
         }
+        @if (dripLabel(); as drip) {
+          <span class="unit__meta unit__flag" [attr.title]="drip"><app-icon name="clock" [size]="13" />{{ drip }}</span>
+        }
         @if (quiz(); as q) {
           <span class="badge-status unit__quiz" [class.badge-status--published]="q.isPublished" [class.badge-status--draft]="!q.isPublished">
             Quiz {{ q.isPublished ? 'publicado' : 'borrador' }}

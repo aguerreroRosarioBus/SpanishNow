@@ -17,7 +17,7 @@
     </div>
   } @else if (orders().length === 0 && !errorMessage()) {
     <div class="state-box">
-      <strong>Todavía no tenés compras</strong>
+      <strong>Todavía no tienes compras</strong>
       <span>Cuando compres un curso vas a ver acá el detalle y el recibo.</span>
       <a [routerLink]="['/student/dashboard']" [queryParams]="{ view: 'catalog' }" class="btn btn-primary mt-2">Explorar cursos</a>
     </div>

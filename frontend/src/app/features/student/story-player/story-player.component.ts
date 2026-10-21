@@ -8,12 +8,13 @@ import { PlayerSidebarComponent } from './components/player-sidebar.component';
 import { LessonViewComponent } from './components/lesson-view.component';
 import { IntroViewComponent } from './components/intro-view.component';
 import { QuizViewComponent } from './components/quiz-view.component';
+import { UnitLockedViewComponent } from './components/unit-locked-view.component';
 
 /** Contenedor del reproductor: carga el curso y coordina el índice del curso con la lección actual. */
 @Component({
   selector: 'app-story-player',
   standalone: true,
-  imports: [PlayerSidebarComponent, LessonViewComponent, IntroViewComponent, QuizViewComponent],
+  imports: [PlayerSidebarComponent, LessonViewComponent, IntroViewComponent, QuizViewComponent, UnitLockedViewComponent],
   providers: [LessonNavigationStore, LessonSessionStore, LessonAudioService],
   templateUrl: './story-player.component.html',
   styleUrl: './story-player.component.scss'
@@ -40,7 +41,10 @@ export class StoryPlayerComponent implements OnInit, OnDestroy {
       this.router.navigate(['/auth/login']);
       return;
     }
-    this.route.params.subscribe(params => this.nav.load(+params['courseId']));
+    this.route.params.subscribe(params => {
+      const story = Number(this.route.snapshot?.queryParamMap?.get('story'));
+      this.nav.load(+params['courseId'], Number.isInteger(story) && story > 0 ? story : null);
+    });
   }
 
   ngOnDestroy(): void {

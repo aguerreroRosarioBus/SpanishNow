@@ -6,6 +6,7 @@ const { authMiddleware, isTeacher, isStudent } = require('../middlewares/auth.mi
 const { Unit, Course, Enrollment, UnitQuiz, UnitQuizQuestion, UnitQuizAttempt } = require('../models');
 const { canReadCourse } = require('../utils/courseAccess');
 const quizzes = require('../services/quizService');
+const { ContentLockedError, assertUnitOpen, sendLocked } = require('../services/unitAvailability');
 
 const validId = value => /^[1-9]\d{0,9}$/.test(String(value)) && Number(value) <= 2147483647;
 
@@ -71,13 +72,15 @@ router.get('/:id/quiz/student', authMiddleware, async (req, res) => {
     const unit = await loadUnit(req, res);
     if (!unit) return;
     if (!(await canReadCourse(req.user, unit.course))) return res.status(403).json({ error: 'Not authorized' });
+    const enrollment = req.user.role === 'student'
+      ? await Enrollment.findOne({ where: { studentId: req.user.id, courseId: unit.courseId }, attributes: ['id', 'createdAt'] })
+      : null;
+    await assertUnitOpen(req.user, unit, { enrollment }); // drip content
     const quiz = await UnitQuiz.findOne({ where: { unitId: unit.id, isPublished: true } });
     if (!quiz) return res.status(404).json({ error: 'This unit has no quiz' });
-    const enrollment = req.user.role === 'student'
-      ? await Enrollment.findOne({ where: { studentId: req.user.id, courseId: unit.courseId }, attributes: ['id'] })
-      : null;
     res.json(await quizzes.studentView(quiz, enrollment ? enrollment.id : null));
   } catch (error) {
+    if (error instanceof ContentLockedError) return sendLocked(res, error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -88,6 +91,7 @@ router.post('/:id/quiz/attempts', authMiddleware, isStudent, async (req, res) =>
     if (!unit) return;
     const enrollment = await Enrollment.findOne({ where: { studentId: req.user.id, courseId: unit.courseId } });
     if (!enrollment) return res.status(403).json({ error: 'Not authorized' });
+    await assertUnitOpen(req.user, unit, { enrollment }); // drip content
     const quiz = await UnitQuiz.findOne({ where: { unitId: unit.id, isPublished: true } });
     if (!quiz) return res.status(404).json({ error: 'This unit has no quiz' });
 
@@ -101,6 +105,7 @@ router.post('/:id/quiz/attempts', authMiddleware, isStudent, async (req, res) =>
     const bestScore = (await quizzes.bestScores(enrollment.id, [quiz.id])).get(quiz.id);
     res.status(201).json({ score, passed, bestScore, results });
   } catch (error) {
+    if (error instanceof ContentLockedError) return sendLocked(res, error);
     res.status(500).json({ error: error.message });
   }
 });

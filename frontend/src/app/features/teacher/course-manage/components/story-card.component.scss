@@ -9,6 +9,11 @@
   &:hover {
     background: var(--color-row-hover);
   }
+
+  &.is-highlighted {
+    background: var(--color-primary-soft);
+    box-shadow: inset 3px 0 0 var(--color-primary);
+  }
 }
 
 .story-row__grip {

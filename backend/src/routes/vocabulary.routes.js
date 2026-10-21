@@ -5,6 +5,7 @@ const { Vocabulary, Unit, Course } = require('../models');
 const cloudinary = require('../config/cloudinary');
 const upload = require('../middlewares/upload.middleware');
 const { canReadCourse } = require('../utils/courseAccess');
+const { ContentLockedError, assertUnitOpen, sendLocked } = require('../services/unitAvailability');
 
 // Get vocabulary by unit ID (the course teacher or an enrolled student)
 router.get('/unit/:unitId', authMiddleware, async (req, res) => {
@@ -15,6 +16,7 @@ router.get('/unit/:unitId', authMiddleware, async (req, res) => {
     const unit = await Unit.findByPk(req.params.unitId, { include: [{ model: Course, as: 'course' }] });
     if (!unit) return res.status(404).json({ error: 'Unit not found' });
     if (!(await canReadCourse(req.user, unit.course))) return res.status(403).json({ error: 'Not authorized' });
+    await assertUnitOpen(req.user, unit); // drip content
 
     const vocabulary = await Vocabulary.findAll({
       where: { unitId: req.params.unitId },
@@ -23,6 +25,7 @@ router.get('/unit/:unitId', authMiddleware, async (req, res) => {
 
     res.json(vocabulary);
   } catch (error) {
+    if (error instanceof ContentLockedError) return sendLocked(res, error);
     res.status(500).json({ error: error.message });
   }
 });
