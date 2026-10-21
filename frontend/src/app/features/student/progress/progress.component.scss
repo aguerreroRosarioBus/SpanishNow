@@ -1,1 +1,8 @@
-// Progress component styles
+.story-progress-list {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.story-progress-item {
+  background: transparent;
+}

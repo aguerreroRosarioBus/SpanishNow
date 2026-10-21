@@ -1,0 +1,40 @@
+<div class="card">
+  <div class="card-body">
+    <div *ngIf="session.loading()" class="text-center p-4" role="status">Cargando tu lección…</div>
+    <div *ngIf="session.visibleError()" class="alert alert-danger" role="alert">
+      {{ session.visibleError() }}
+      <button class="btn btn-sm btn-outline-danger ms-2" (click)="session.retryLoad()">Reintentar</button>
+    </div>
+    <ng-container *ngIf="session.lesson() as lesson">
+      <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+        <div>
+          <h5 class="mb-1">{{ lesson.story.title }}</h5>
+          <small class="text-muted">Lección publicada · revisión {{ lesson.revision }}</small>
+        </div>
+        <span *ngIf="session.narrativeCompleted()" class="badge bg-success">Lectura completada</span>
+      </div>
+
+      <div class="d-flex flex-wrap gap-2 mb-3" aria-label="Bloques de la lección">
+        <span *ngFor="let block of session.activeBlocks(); let i = index"
+          class="badge" [class.bg-primary]="block.blockKey === lesson.progress.lastBlockKey"
+          [class.bg-light]="block.blockKey !== lesson.progress.lastBlockKey"
+          [class.text-dark]="block.blockKey !== lesson.progress.lastBlockKey">
+          {{ i + 1 }}. {{ blockLabel(block.type) }}
+        </span>
+      </div>
+
+      <ng-container *ngIf="session.currentBlock() as block">
+        <app-full-story-block *ngIf="block.type === 'full_story'; else narrative" />
+        <ng-template #narrative><app-lesson-block [block]="block" /></ng-template>
+      </ng-container>
+
+      <div class="d-flex justify-content-between gap-2">
+        <button class="btn btn-outline-secondary" (click)="session.goToBlock(-1)" [disabled]="session.currentBlockIndex() <= 0">Bloque anterior</button>
+        <button *ngIf="session.currentBlockIndex() < session.activeBlocks().length - 1" class="btn btn-primary" (click)="session.goToBlock(1)">Continuar</button>
+        <button *ngIf="session.currentBlockIndex() === session.activeBlocks().length - 1 && !session.narrativeCompleted()" class="btn btn-success" (click)="session.completeNarrative()">Completar lectura</button>
+      </div>
+
+      <app-reinforcements />
+    </ng-container>
+  </div>
+</div>

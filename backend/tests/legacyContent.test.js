@@ -1,6 +1,6 @@
 // Content that predates the TPRS editor: the dump's stories must be readable after the migrations.
 const { Op } = require('sequelize');
-const { Story, Unit, Question, LessonPlan, LessonBlock, ActivityConfig, Enrollment } = require('../src/models');
+const { Story, Unit, Question, LessonPlan, LessonBlock, Enrollment } = require('../src/models');
 const sequelize = require('../src/config/database');
 const { createUser, as, planUrl, openLesson, findKeys, tokenFor } = require('./helpers/fixtures');
 
@@ -17,12 +17,12 @@ describe('Migrated legacy content (Dump20260122.sql + migrations)', () => {
     await Enrollment.create({ studentId: student.id, courseId: rows[0].courseId });
   });
 
-  test('the schema reflects the migrations (story-level activity configs, lesson tables)', async () => {
-    const columns = await sequelize.getQueryInterface().describeTable('activity_configs');
-    expect(columns.storyId).toBeDefined();
-    expect(columns.unitId).toBeUndefined();
-    expect(await ActivityConfig.count()).toBeGreaterThan(0);
-    expect((await sequelize.getQueryInterface().describeTable('questions')).audioUrl).toBeDefined();
+  test('the schema reflects the migrations (lesson tables, legacy progress system dropped)', async () => {
+    const qi = sequelize.getQueryInterface();
+    const tables = (await qi.showAllTables()).map(t => String(typeof t === 'string' ? t : Object.values(t)[0]).toLowerCase());
+    expect(tables).toEqual(expect.arrayContaining(['lesson_plans', 'lesson_blocks', 'lesson_progress']));
+    expect(tables).not.toEqual(expect.arrayContaining(['activity_configs']));
+    expect((await qi.describeTable('questions')).audioUrl).toBeDefined();
   });
 
   test('every legacy story has exactly one published revision with one keyframe and the full story', async () => {

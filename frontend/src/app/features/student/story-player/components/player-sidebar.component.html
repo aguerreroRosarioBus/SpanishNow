@@ -1,0 +1,75 @@
+<div class="card">
+  <div class="card-header bg-primary text-white">
+    <h6 class="mb-0">
+      <span class="me-2 icon-decor">📚</span>
+      {{ nav.course()?.title }}
+    </h6>
+  </div>
+  <div class="card-body p-0">
+    <div *ngIf="nav.isLoading()" class="p-3 text-center">
+      <div class="spinner-border spinner-border-sm" role="status"></div>
+      <p class="small text-muted mt-2 mb-0">Cargando...</p>
+    </div>
+
+    <div *ngIf="!nav.isLoading() && nav.currentUnit()">
+      <!-- Unit Navigation -->
+      <div class="p-3 bg-white border-bottom d-flex justify-content-between align-items-center gap-1 unit-nav">
+        <button
+          class="btn btn-sm btn-outline-primary flex-shrink-0 px-2 py-1"
+          [disabled]="!nav.canGoPreviousUnit()"
+          (click)="nav.goToPreviousUnit()"
+          style="font-size: 0.875rem;"
+        >
+          ←<span class="d-none d-lg-inline ms-1">Anterior</span>
+        </button>
+        <small class="text-muted fw-bold text-center flex-grow-1 unit-nav-title" style="font-size: 0.7rem; line-height: 1.2; min-width: 0;">
+          {{ nav.currentUnit()?.title || 'Unidad' }}
+        </small>
+        <button
+          class="btn btn-sm btn-outline-primary flex-shrink-0 px-2 py-1"
+          [disabled]="!nav.canGoNextUnit()"
+          (click)="nav.goToNextUnit()"
+          style="font-size: 0.875rem;"
+        >
+          <span class="d-none d-lg-inline me-1">Siguiente</span>→
+        </button>
+      </div>
+
+      <!-- Unit Progress -->
+      <div class="p-3 bg-light border-bottom">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <small class="text-muted">Progreso</small>
+          <small class="fw-bold">{{ nav.completedCount() }}/{{ nav.items().length }}</small>
+        </div>
+      </div>
+
+      <!-- Stories list -->
+      <div class="list-group list-group-flush">
+        <div *ngFor="let item of nav.items()" class="nav-item-wrapper position-relative">
+          <button
+            class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3"
+            [class.active]="nav.currentItem()?.id === item.id"
+            [class.list-group-item-success]="item.completed && nav.currentItem()?.id !== item.id"
+            [disabled]="!item.canAccess"
+            [class.disabled]="!item.canAccess"
+            (click)="nav.selectItem(item)"
+            [style.opacity]="item.canAccess ? '1' : '0.5'"
+          >
+            <div class="d-flex align-items-center flex-grow-1">
+              <span class="me-2 item-icon" style="font-size: 1.2rem;">📖</span>
+              <small [class.text-muted]="!item.canAccess">{{ item.title }}</small>
+            </div>
+            <div class="d-flex gap-1 align-items-center">
+              <span *ngIf="item.completed" class="badge bg-success">✓</span>
+              <span *ngIf="!item.canAccess" class="text-muted" style="font-size: 1.1rem;">🔒</span>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<button class="btn btn-outline-secondary btn-sm mt-3 w-100" (click)="back.emit()">
+  ← Volver al Dashboard
+</button>

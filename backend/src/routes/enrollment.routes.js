@@ -1,9 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const { authMiddleware, isStudent } = require('../middlewares/auth.middleware');
-const { Enrollment, Course, Progress, Story, Unit, ActivityConfig, LessonProgress } = require('../models');
+const sequelize = require('../config/database');
+const { Enrollment, Course, Story, Unit, LessonPlan, LessonBlock, LessonProgress, LessonAnswer, LessonReinforcement } = require('../models');
 
-// Get student enrollments with full course details and progress
+const REINFORCEMENTS = ['flashcards', 'matching', 'listen_repeat'];
+const validId = value => /^[1-9]\d{0,9}$/.test(String(value)) && Number(value) <= 2147483647;
+
+// Get student enrollments with full course details and lesson progress
 router.get('/my-courses', authMiddleware, isStudent, async (req, res) => {
   try {
     const enrollments = await Enrollment.findAll({
@@ -16,24 +20,9 @@ router.get('/my-courses', authMiddleware, isStudent, async (req, res) => {
             {
               model: Unit,
               as: 'units',
-              include: [
-                {
-                  model: Story,
-                  as: 'stories',
-                  include: [
-                    {
-                      model: ActivityConfig,
-                      as: 'activityConfigs'
-                    }
-                  ]
-                }
-              ]
+              include: [{ model: Story, as: 'stories' }]
             }
           ]
-        },
-        {
-          model: Progress,
-          as: 'progress'
         },
         {
           model: LessonProgress,
@@ -78,292 +67,116 @@ router.post('/', authMiddleware, isStudent, async (req, res) => {
   }
 });
 
-// Reset course progress (delete all progress for an enrollment)
-// IMPORTANT: This route must come BEFORE /:enrollmentId/progress to avoid route conflicts
+// Reset course progress: removes the student's lesson progress, answers and reinforcements for this enrollment.
+// The next time the student opens a story they receive the currently published revision.
 router.delete('/:enrollmentId/reset-progress', authMiddleware, isStudent, async (req, res) => {
   try {
-    const { enrollmentId } = req.params;
+    if (!validId(req.params.enrollmentId)) return res.status(400).json({ error: 'Invalid enrollmentId' });
 
-    const enrollment = await Enrollment.findByPk(enrollmentId);
-    if (!enrollment) {
-      return res.status(404).json({ error: 'Enrollment not found' });
-    }
+    const deleted = await sequelize.transaction(async transaction => {
+      // The enrollment row lock serializes this reset with the lesson endpoints (which lock it too).
+      const enrollment = await Enrollment.findByPk(req.params.enrollmentId, { transaction, lock: transaction.LOCK.UPDATE });
+      if (!enrollment) return { status: 404, error: 'Enrollment not found' };
+      if (enrollment.studentId !== req.user.id) return { status: 403, error: 'Not authorized' };
 
-    if (enrollment.studentId !== req.user.id) {
-      return res.status(403).json({ error: 'Not authorized' });
-    }
+      const rows = await LessonProgress.findAll({ where: { enrollmentId: enrollment.id }, attributes: ['id'], transaction, lock: transaction.LOCK.UPDATE });
+      const ids = rows.map(row => row.id);
+      if (!ids.length) return { counts: { progress: 0, answers: 0, reinforcements: 0 } };
 
-    // Delete all progress records for this enrollment
-    await Progress.destroy({
-      where: { enrollmentId }
+      const answers = await LessonAnswer.destroy({ where: { lessonProgressId: ids }, transaction });
+      const reinforcements = await LessonReinforcement.destroy({ where: { lessonProgressId: ids }, transaction });
+      const progress = await LessonProgress.destroy({ where: { id: ids }, transaction });
+      return { counts: { progress, answers, reinforcements } };
     });
 
-    res.json({ message: 'Course progress reset successfully' });
+    if (deleted.error) return res.status(deleted.status).json({ error: deleted.error });
+    res.json({ message: 'Course progress reset successfully', deleted: deleted.counts });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get progress for an enrollment
+// Lesson progress of an enrollment, one entry per story of the course (unit/story order).
+// Visible to the student who owns the enrollment and to the teacher of the course.
 router.get('/:enrollmentId/progress', authMiddleware, async (req, res) => {
   try {
-    const enrollment = await Enrollment.findByPk(req.params.enrollmentId, {
-      include: [
-        {
-          model: Progress,
-          as: 'progress',
-          include: [{ model: Story, as: 'story' }]
+    if (!validId(req.params.enrollmentId)) return res.status(400).json({ error: 'Invalid enrollmentId' });
+
+    const enrollment = await Enrollment.findByPk(req.params.enrollmentId, { include: [{ model: Course, as: 'course' }] });
+    if (!enrollment) return res.status(404).json({ error: 'Enrollment not found' });
+
+    const isOwner = req.user.role === 'student' && enrollment.studentId === req.user.id;
+    const isCourseTeacher = req.user.role === 'teacher' && enrollment.course.teacherId === req.user.id;
+    if (!isOwner && !isCourseTeacher) return res.status(403).json({ error: 'Not authorized' });
+
+    const units = await Unit.findAll({
+      where: { courseId: enrollment.courseId },
+      include: [{ model: Story, as: 'stories', attributes: ['id', 'title', 'order'] }],
+      order: [['order', 'ASC'], ['id', 'ASC'], [{ model: Story, as: 'stories' }, 'order', 'ASC'], [{ model: Story, as: 'stories' }, 'id', 'ASC']]
+    });
+
+    const progressRows = await LessonProgress.findAll({ where: { enrollmentId: enrollment.id } });
+    const progressByStory = new Map(progressRows.map(row => [row.storyId, row]));
+    const progressIds = progressRows.map(row => row.id);
+    const planIds = [...new Set(progressRows.map(row => row.planId))];
+
+    const plans = planIds.length ? await LessonPlan.findAll({ where: { id: planIds }, attributes: ['id', 'revision'] }) : [];
+    const revisionByPlan = new Map(plans.map(plan => [plan.id, plan.revision]));
+    const reinforcementBlocks = planIds.length
+      ? await LessonBlock.findAll({ where: { planId: planIds, active: true, type: REINFORCEMENTS }, attributes: ['planId', 'blockKey'] })
+      : [];
+    const blockKeysByPlan = new Map();
+    for (const block of reinforcementBlocks) {
+      if (!blockKeysByPlan.has(block.planId)) blockKeysByPlan.set(block.planId, new Set());
+      blockKeysByPlan.get(block.planId).add(block.blockKey);
+    }
+
+    const answerRows = progressIds.length ? await LessonAnswer.findAll({ where: { lessonProgressId: progressIds } }) : [];
+    const reinforcementRows = progressIds.length
+      ? await LessonReinforcement.findAll({ where: { lessonProgressId: progressIds, completed: true } })
+      : [];
+    const answersByProgress = new Map();
+    for (const row of answerRows) {
+      if (!answersByProgress.has(row.lessonProgressId)) answersByProgress.set(row.lessonProgressId, []);
+      answersByProgress.get(row.lessonProgressId).push(row);
+    }
+    const reinforcementsByProgress = new Map();
+    for (const row of reinforcementRows) {
+      if (!reinforcementsByProgress.has(row.lessonProgressId)) reinforcementsByProgress.set(row.lessonProgressId, []);
+      reinforcementsByProgress.get(row.lessonProgressId).push(row);
+    }
+
+    const result = [];
+    for (const unit of units) {
+      for (const story of unit.stories) {
+        const progress = progressByStory.get(story.id);
+        const entry = {
+          storyId: story.id, storyTitle: story.title, unitId: unit.id, unitTitle: unit.title,
+          revision: null, lastBlockKey: null, narrativeCompleted: false, completedAt: null,
+          answers: { total: 0, correct: 0, attempts: 0 }, reinforcements: { total: 0, completed: 0 }
+        };
+        if (progress) {
+          const answers = answersByProgress.get(progress.id) || [];
+          const blockKeys = blockKeysByPlan.get(progress.planId) || new Set();
+          const completed = (reinforcementsByProgress.get(progress.id) || []).filter(row => blockKeys.has(row.blockKey));
+          entry.revision = revisionByPlan.get(progress.planId) ?? null;
+          entry.lastBlockKey = progress.lastBlockKey ?? null;
+          entry.narrativeCompleted = progress.narrativeCompleted;
+          // lesson_progress has no completion timestamp: the last update of a completed lesson stands in for it.
+          entry.completedAt = progress.narrativeCompleted ? progress.updatedAt : null;
+          // total/correct count distinct question blocks answered / answered correctly at least once; attempts counts every submission.
+          entry.answers = {
+            total: new Set(answers.map(a => a.blockKey)).size,
+            correct: new Set(answers.filter(a => a.isCorrect).map(a => a.blockKey)).size,
+            attempts: answers.length
+          };
+          entry.reinforcements = { total: blockKeys.size, completed: new Set(completed.map(r => r.blockKey)).size };
         }
-      ]
-    });
-
-    if (!enrollment) {
-      return res.status(404).json({ error: 'Enrollment not found' });
+        result.push(entry);
+      }
     }
 
-    if (enrollment.studentId !== req.user.id && req.user.role !== 'teacher') {
-      return res.status(403).json({ error: 'Not authorized' });
-    }
-
-    res.json(enrollment.progress);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Mark story as completed
-router.post('/progress', authMiddleware, isStudent, async (req, res) => {
-  try {
-    const { enrollmentId, storyId } = req.body;
-
-    const enrollment = await Enrollment.findByPk(enrollmentId);
-    if (!enrollment) {
-      return res.status(404).json({ error: 'Enrollment not found' });
-    }
-
-    if (enrollment.studentId !== req.user.id) {
-      return res.status(403).json({ error: 'Not authorized' });
-    }
-
-    const story = await Story.findByPk(storyId, { include: [{ model: Unit, as: 'unit' }] });
-    if (!story) return res.status(404).json({ error: 'Story not found' });
-    if (story.unit.courseId !== enrollment.courseId) return res.status(403).json({ error: 'Story is outside this enrollment' });
-
-    const existingProgress = await Progress.findOne({
-      where: { enrollmentId, storyId }
-    });
-
-    if (existingProgress) {
-      await existingProgress.update({ completed: true });
-      return res.json(existingProgress);
-    }
-
-    const progress = await Progress.create({
-      enrollmentId,
-      storyId,
-      completed: true
-    });
-
-    res.status(201).json(progress);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Mark flashcards as viewed for a progress record
-router.post('/progress/:progressId/flashcards-viewed', authMiddleware, isStudent, async (req, res) => {
-  try {
-    const { progressId } = req.params;
-
-    const progress = await Progress.findByPk(progressId, {
-      include: [{ model: Enrollment, as: 'enrollment' }]
-    });
-
-    if (!progress) {
-      return res.status(404).json({ error: 'Progress record not found' });
-    }
-
-    if (progress.enrollment.studentId !== req.user.id) {
-      return res.status(403).json({ error: 'Not authorized' });
-    }
-
-    await progress.update({ flashcardsViewed: true });
-    res.json(progress);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Mark listen & repeat as completed for a progress record
-router.post('/progress/:progressId/listen-repeat-completed', authMiddleware, isStudent, async (req, res) => {
-  try {
-    const { progressId } = req.params;
-
-    const progress = await Progress.findByPk(progressId, {
-      include: [{ model: Enrollment, as: 'enrollment' }]
-    });
-
-    if (!progress) {
-      return res.status(404).json({ error: 'Progress record not found' });
-    }
-
-    if (progress.enrollment.studentId !== req.user.id) {
-      return res.status(403).json({ error: 'Not authorized' });
-    }
-
-    await progress.update({ listenRepeatCompleted: true });
-    res.json(progress);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Mark matching as completed for a progress record
-router.post('/progress/:progressId/matching-completed', authMiddleware, isStudent, async (req, res) => {
-  try {
-    const { progressId } = req.params;
-
-    const progress = await Progress.findByPk(progressId, {
-      include: [{ model: Enrollment, as: 'enrollment' }]
-    });
-
-    if (!progress) {
-      return res.status(404).json({ error: 'Progress record not found' });
-    }
-
-    if (progress.enrollment.studentId !== req.user.id) {
-      return res.status(403).json({ error: 'Not authorized' });
-    }
-
-    await progress.update({ matchingCompleted: true });
-    res.json(progress);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Mark questions as completed for a progress record
-router.post('/progress/:progressId/questions-completed', authMiddleware, isStudent, async (req, res) => {
-  try {
-    const { progressId } = req.params;
-
-    const progress = await Progress.findByPk(progressId, {
-      include: [{ model: Enrollment, as: 'enrollment' }]
-    });
-
-    if (!progress) {
-      return res.status(404).json({ error: 'Progress record not found' });
-    }
-
-    if (progress.enrollment.studentId !== req.user.id) {
-      return res.status(403).json({ error: 'Not authorized' });
-    }
-
-    await progress.update({ questionsCompleted: true });
-    res.json(progress);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Update activitiesCompleted flag (checks if all granular activities are done)
-router.post('/progress/:progressId/update-activities', authMiddleware, isStudent, async (req, res) => {
-  try {
-    const { progressId } = req.params;
-
-    const progress = await Progress.findByPk(progressId, {
-      include: [{ model: Enrollment, as: 'enrollment' }]
-    });
-
-    if (!progress) {
-      return res.status(404).json({ error: 'Progress record not found' });
-    }
-
-    if (progress.enrollment.studentId !== req.user.id) {
-      return res.status(403).json({ error: 'Not authorized' });
-    }
-
-    // Check if all activities are completed
-    const allActivitiesCompleted =
-      progress.flashcardsViewed &&
-      progress.questionsCompleted &&
-      progress.matchingCompleted &&
-      progress.listenRepeatCompleted;
-
-    await progress.update({ activitiesCompleted: allActivitiesCompleted });
-    res.json(progress);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Complete a unit-level activity
-router.post('/:enrollmentId/complete-activity', authMiddleware, isStudent, async (req, res) => {
-  try {
-    const { enrollmentId } = req.params;
-    const { activityType } = req.body;
-
-    const enrollment = await Enrollment.findByPk(enrollmentId);
-    if (!enrollment) {
-      return res.status(404).json({ error: 'Enrollment not found' });
-    }
-
-    if (enrollment.studentId !== req.user.id) {
-      return res.status(403).json({ error: 'Not authorized' });
-    }
-
-    const updateField = {
-      'questions': 'questionsCompleted',
-      'flashcards': 'flashcardsCompleted',
-      'matching': 'matchingCompleted',
-      'listen_repeat': 'listenRepeatCompleted'
-    };
-
-    if (!updateField[activityType]) {
-      return res.status(400).json({ error: 'Invalid activity type' });
-    }
-
-    await enrollment.update({
-      [updateField[activityType]]: true
-    });
-
-    res.json(enrollment);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Reset a unit-level activity (for repeating)
-router.post('/:enrollmentId/reset-activity', authMiddleware, isStudent, async (req, res) => {
-  try {
-    const { enrollmentId } = req.params;
-    const { activityType } = req.body;
-
-    const enrollment = await Enrollment.findByPk(enrollmentId);
-    if (!enrollment) {
-      return res.status(404).json({ error: 'Enrollment not found' });
-    }
-
-    if (enrollment.studentId !== req.user.id) {
-      return res.status(403).json({ error: 'Not authorized' });
-    }
-
-    const updateField = {
-      'questions': 'questionsCompleted',
-      'flashcards': 'flashcardsCompleted',
-      'matching': 'matchingCompleted',
-      'listen_repeat': 'listenRepeatCompleted'
-    };
-
-    if (!updateField[activityType]) {
-      return res.status(400).json({ error: 'Invalid activity type' });
-    }
-
-    await enrollment.update({
-      [updateField[activityType]]: false
-    });
-
-    res.json(enrollment);
+    res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

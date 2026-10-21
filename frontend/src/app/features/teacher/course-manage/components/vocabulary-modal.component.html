@@ -1,0 +1,99 @@
+<div class="modal fade show" style="display: block" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          📚 Vocabulario - {{ unit().title }}
+        </h5>
+        <button type="button" class="btn-close" (click)="close()"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Form to create vocabulary -->
+        <form [formGroup]="form" (ngSubmit)="create()">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Palabra (Español) *</label>
+              <input type="text" class="form-control" formControlName="word" placeholder="casa">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Traducción (Inglés) *</label>
+              <input type="text" class="form-control" formControlName="translation" placeholder="house">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Parte de la oración</label>
+              <select class="form-select" formControlName="partOfSpeech">
+                <option value="">Seleccionar...</option>
+                <option value="noun">Sustantivo (noun)</option>
+                <option value="verb">Verbo (verb)</option>
+                <option value="adjective">Adjetivo (adjective)</option>
+                <option value="adverb">Adverbio (adverb)</option>
+                <option value="pronoun">Pronombre (pronoun)</option>
+                <option value="preposition">Preposición (preposition)</option>
+                <option value="conjunction">Conjunción (conjunction)</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Ejemplo de uso</label>
+              <input type="text" class="form-control" formControlName="example" placeholder="La casa es grande">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Audio de pronunciación</label>
+              <app-audio-input #audio name="vocabAudio" layout="stacked" uploadHint="Archivo de audio con la pronunciación"
+                recordedFileName="vocab-audio.webm"
+                startedMessage="Grabación de audio iniciada" stoppedMessage="Grabación de audio detenida" />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Imagen</label>
+              <input type="file" class="form-control" accept="image/*" (change)="onImageSelected($event)">
+              <small class="text-muted">Imagen visual para la palabra</small>
+            </div>
+            <div class="col-12">
+              <button
+                type="submit"
+                class="btn btn-primary"
+                [disabled]="form.invalid || isSubmitting()"
+              >
+                <span *ngIf="!isSubmitting()">Agregar Vocabulario</span>
+                <span *ngIf="isSubmitting()">Creando...</span>
+              </button>
+            </div>
+          </div>
+        </form>
+
+        <hr class="my-4">
+
+        <!-- List of existing vocabulary -->
+        <h6>Vocabulario Existente ({{ vocabulary().length }})</h6>
+        <div *ngIf="vocabulary().length === 0" class="alert alert-info">
+          No hay vocabulario agregado para esta unidad.
+        </div>
+        <div class="list-group">
+          <div *ngFor="let vocab of vocabulary()" class="list-group-item">
+            <div class="d-flex justify-content-between align-items-start">
+              <div class="flex-grow-1">
+                <strong>{{ vocab.word }}</strong> → {{ vocab.translation }}
+                <span *ngIf="vocab.partOfSpeech" class="badge bg-secondary ms-2">{{ vocab.partOfSpeech }}</span>
+                <br>
+                <small class="text-muted" *ngIf="vocab.example">Ejemplo: {{ vocab.example }}</small>
+                <br>
+                <small class="text-success" *ngIf="vocab.audioUrl">🔊 Tiene audio</small>
+                <small class="text-info ms-2" *ngIf="vocab.imageUrl">🖼️ Tiene imagen</small>
+              </div>
+              <button
+                class="btn btn-sm btn-outline-danger"
+                (click)="remove(vocab.id)"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="close()">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

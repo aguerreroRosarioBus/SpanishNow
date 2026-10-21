@@ -1,0 +1,39 @@
+<section *ngIf="session.reinforcementBlocks().length > 0" class="mt-4 border-top pt-3">
+  <h6>Refuerzos opcionales</h6>
+  <div *ngFor="let extra of session.reinforcementBlocks()" class="py-2 border-bottom">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <strong>{{ label(extra) }}</strong>
+        <span *ngIf="extra.vocabulary?.word" class="ms-2">{{ extra.vocabulary?.word }}</span>
+      </div>
+      <button type="button" class="btn btn-sm btn-outline-primary" (click)="open(extra)">
+        {{ session.isReinforcementComplete(extra.blockKey) ? 'Repetir' : 'Practicar' }}
+      </button>
+    </div>
+    <small class="text-muted">{{ extra.type === 'listen_repeat' ? 'Historia' : 'Unidad' }} · {{ session.isReinforcementComplete(extra.blockKey) ? 'Completado' : 'Opcional' }}</small>
+  </div>
+</section>
+
+<app-flashcard-modal
+  *ngIf="nav.currentUnit()"
+  [show]="showFlashcardModal()"
+  [unitId]="nav.currentUnit()!.id"
+  (completed)="onModalCompleted()"
+  (close)="closeAllModals()"
+/>
+
+<app-matching-modal
+  *ngIf="nav.currentUnit()"
+  [show]="showMatchingModal()"
+  [unitId]="nav.currentUnit()!.id"
+  (completed)="onModalCompleted()"
+  (close)="closeAllModals()"
+/>
+
+<app-listen-repeat-modal
+  *ngIf="showListenRepeatModal()"
+  [storyId]="listenRepeatStoryId()"
+  [show]="showListenRepeatModal()"
+  (completed)="onModalCompleted()"
+  (close)="closeAllModals()"
+/>

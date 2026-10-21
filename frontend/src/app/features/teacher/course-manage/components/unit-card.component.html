@@ -1,0 +1,68 @@
+<div class="card">
+  <div
+    class="card-header bg-primary text-white"
+    draggable="true"
+    (dragstart)="onUnitDragStart($event)"
+    (dragover)="onDragOver($event)"
+    (drop)="onUnitDrop($event)"
+    style="cursor: move;"
+  >
+    <div class="d-flex justify-content-between align-items-center">
+      <div class="d-flex align-items-center flex-grow-1">
+        <span class="me-3" style="font-size: 1.5rem; opacity: 0.7;">☰</span>
+        <div class="flex-grow-1" style="cursor: pointer;" (click)="store.toggleUnit(unit().id)">
+          <h5 class="mb-0">
+            <span class="me-2">{{ store.isUnitExpanded(unit().id) ? '▼' : '▶' }}</span>
+            Unidad #{{ unit().order + 1 }} - {{ unit().title }}
+            <small class="ms-2 opacity-75">({{ unit().stories?.length || 0 }} historias)</small>
+          </h5>
+        </div>
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-sm btn-secondary" title="Editar unidad"
+          (click)="store.open({ kind: 'unit-edit', unit: unit() }); $event.stopPropagation()">
+          ✏️ Editar
+        </button>
+        <button class="btn btn-sm btn-secondary"
+          (click)="store.open({ kind: 'vocabulary', unit: unit() }); $event.stopPropagation()">
+          📚 Vocabulario
+        </button>
+        <button class="btn btn-sm btn-success"
+          (click)="store.open({ kind: 'story-create', unitId: unit().id }); $event.stopPropagation()">
+          + Historia
+        </button>
+        <button class="btn btn-sm btn-danger" (click)="store.deleteUnit(unit().id); $event.stopPropagation()">
+          🗑️
+        </button>
+      </div>
+    </div>
+  </div>
+  <div class="card-body" *ngIf="store.isUnitExpanded(unit().id)">
+    <p class="mb-3">{{ unit().description }}</p>
+
+    <!-- Stories List -->
+    <div *ngIf="unit().stories && unit().stories!.length > 0">
+      <h6 class="mb-3">Historias ({{ unit().stories!.length }})</h6>
+      <div class="list-group">
+        <div
+          *ngFor="let story of unit().stories; trackBy: trackById"
+          class="list-group-item p-0 border"
+          draggable="true"
+          (dragstart)="onStoryDragStart($event, story)"
+          (dragover)="onDragOver($event)"
+          (drop)="onStoryDrop($event, story)"
+        >
+          <app-story-card [story]="story" [unit]="unit()" />
+        </div>
+      </div>
+    </div>
+
+    <!-- No Stories -->
+    <div *ngIf="!unit().stories || unit().stories!.length === 0" class="text-center py-3">
+      <p class="text-muted mb-2">No hay historias en esta unidad</p>
+      <button class="btn btn-sm btn-primary" (click)="store.open({ kind: 'story-create', unitId: unit().id })">
+        Agregar Primera Historia
+      </button>
+    </div>
+  </div>
+</div>

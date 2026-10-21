@@ -55,7 +55,7 @@ SpanishNow/
 │   │   │   ├── Vocabulary.js  # Vocabulario por unidad
 │   │   │   ├── Question.js    # Preguntas de comprensión
 │   │   │   ├── Enrollment.js  # Inscripciones alumno-curso
-│   │   │   ├── Progress.js    # Progreso de historias
+│   │   │   ├── LessonProgress.js # Progreso TPRS (con LessonAnswer / LessonReinforcement)
 │   │   │   └── index.js       # Asociaciones entre modelos
 │   │   │
 │   │   ├── routes/            # Rutas de la API
@@ -212,15 +212,18 @@ createdAt       TIMESTAMP
 updatedAt       TIMESTAMP
 ```
 
-### Tabla: `progress`
+### Tabla: `lesson_progress`
 ```sql
-id              INT PRIMARY KEY AUTO_INCREMENT
-enrollmentId    INT NOT NULL (FK -> enrollments.id, CASCADE DELETE)
-storyId         INT NOT NULL (FK -> stories.id)
-completed       BOOLEAN DEFAULT false
-createdAt       TIMESTAMP
-updatedAt       TIMESTAMP
+id                 INT PRIMARY KEY AUTO_INCREMENT
+enrollmentId       INT NOT NULL (FK -> enrollments.id)
+storyId            INT NOT NULL (FK -> stories.id)
+planId             INT NOT NULL (FK -> lesson_plans.id, revisión asignada)
+lastBlockKey       UUID NULL
+narrativeCompleted BOOLEAN DEFAULT false
+createdAt          TIMESTAMP
+updatedAt          TIMESTAMP
 ```
+Las respuestas y refuerzos del alumno viven en `lesson_answers` y `lesson_reinforcements` (FK a `lesson_progress`). Las tablas antiguas `progress`, `question_responses` y `activity_configs`, y los flags de actividad de `enrollments`, se eliminan con la migración `20261022000000-drop-legacy-progress.js` (ver `backend/docs/tprs-conversion.md`).
 
 ### Relaciones (Sequelize Associations)
 - User **hasMany** Course (como profesor)
@@ -237,10 +240,9 @@ updatedAt       TIMESTAMP
 - Course **hasMany** Enrollment
 - Enrollment **belongsTo** User (student)
 - Enrollment **belongsTo** Course
-- Enrollment **hasMany** Progress (onDelete: CASCADE)
-- Story **hasMany** Progress
-- Progress **belongsTo** Enrollment
-- Progress **belongsTo** Story
+- Enrollment **hasMany** LessonProgress
+- LessonProgress **belongsTo** Enrollment / LessonPlan
+- LessonProgress **hasMany** LessonAnswer / LessonReinforcement
 
 ---
 
@@ -499,34 +501,31 @@ Inscribirse en un curso
 ```
 
 #### GET `/api/enrollments/:enrollmentId/progress` 🔒
-Ver progreso de una inscripción
+Progreso de lecciones TPRS de una inscripción (alumno dueño o profesor del curso; 403 en otro caso). Un elemento por historia del curso, en orden de unidad/historia.
 
 **Response (200):**
 ```json
 [
   {
-    "id": 1,
-    "enrollmentId": 1,
     "storyId": 1,
-    "completed": true,
-    "story": {
-      "id": 1,
-      "title": "Meeting Maria"
-    }
+    "storyTitle": "Meeting Maria",
+    "unitId": 1,
+    "unitTitle": "Unidad 1",
+    "revision": 1,
+    "lastBlockKey": "uuid-o-null",
+    "narrativeCompleted": true,
+    "completedAt": "2026-10-22T...",
+    "answers": { "total": 2, "correct": 2, "attempts": 3 },
+    "reinforcements": { "total": 1, "completed": 1 }
   }
 ]
 ```
+Las historias sin progreso devuelven `revision`, `lastBlockKey` y `completedAt` en `null` y contadores en 0.
 
-#### POST `/api/enrollments/progress` 🔒 (Student only)
-Marcar historia como completada
+#### DELETE `/api/enrollments/:enrollmentId/reset-progress` 🔒 (Student only, dueño)
+Borra el `lesson_progress`, `lesson_answers` y `lesson_reinforcements` del alumno en ese curso (transacción). Responde `{ "message": "...", "deleted": { "progress": n, "answers": n, "reinforcements": n } }`. Al volver a abrir una historia recibe la revisión publicada vigente.
 
-**Request Body:**
-```json
-{
-  "enrollmentId": 1,
-  "storyId": 1
-}
-```
+El progreso de las lecciones se registra con `/api/lesson-plans/progress/*`. Los endpoints antiguos `POST /api/enrollments/progress*`, `/:id/complete-activity`, `/:id/reset-activity`, `/api/question-responses` y `/api/activity-configs` fueron eliminados.
 
 ---
 
@@ -582,7 +581,7 @@ Marcar historia como completada
    - Enfoque en comprensión, no producción
 
 5. **Tracking de progreso**
-   - Tabla `progress` registra historias completadas
+   - Tablas `lesson_progress`, `lesson_answers` y `lesson_reinforcements` registran el avance por historia
    - Los alumnos pueden volver a escuchar historias múltiples veces
 
 ---

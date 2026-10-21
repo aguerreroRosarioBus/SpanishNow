@@ -1,321 +1,49 @@
 <div class="container-fluid mt-4">
   <div class="row player-row">
-    <!-- Sidebar with Navigation Items -->
+    <!-- Panel del curso -->
     <div class="col-md-3">
-      <div class="card">
-        <div class="card-header bg-primary text-white">
-          <h6 class="mb-0">
-            <span class="me-2 icon-decor">📚</span>
-            {{ course()?.title }}
-          </h6>
-        </div>
-        <div class="card-body p-0">
-          <div *ngIf="isLoading()" class="p-3 text-center">
-            <div class="spinner-border spinner-border-sm" role="status"></div>
-            <p class="small text-muted mt-2 mb-0">Cargando...</p>
-          </div>
-
-          <div *ngIf="!isLoading() && currentUnit()">
-            <!-- Unit Navigation -->
-            <div class="p-3 bg-white border-bottom d-flex justify-content-between align-items-center gap-1 unit-nav">
-              <button
-                class="btn btn-sm btn-outline-primary flex-shrink-0 px-2 py-1"
-                [disabled]="!canGoPreviousUnit()"
-                (click)="goToPreviousUnit()"
-                style="font-size: 0.875rem;"
-              >
-                ←<span class="d-none d-lg-inline ms-1">Anterior</span>
-              </button>
-              <small class="text-muted fw-bold text-center flex-grow-1 unit-nav-title" style="font-size: 0.7rem; line-height: 1.2; min-width: 0;">
-                {{ currentUnit()?.title || 'Unidad' }}
-              </small>
-              <button
-                class="btn btn-sm btn-outline-primary flex-shrink-0 px-2 py-1"
-                [disabled]="!canGoNextUnit()"
-                (click)="goToNextUnit()"
-                style="font-size: 0.875rem;"
-              >
-                <span class="d-none d-lg-inline me-1">Siguiente</span>→
-              </button>
-            </div>
-
-            <!-- Unit Progress -->
-            <div class="p-3 bg-light border-bottom">
-              <div class="d-flex justify-content-between align-items-center mb-2">
-                <small class="text-muted">Progreso</small>
-                <small class="fw-bold">{{ getCompletedItemsCount() }}/{{ navigationItems().length }}</small>
-              </div>
-            </div>
-
-            <!-- Navigation Items List (Stories + Activities mixed) -->
-            <div class="list-group list-group-flush">
-              <div
-                *ngFor="let item of navigationItems()"
-                class="nav-item-wrapper position-relative"
-              >
-                <button
-                  class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3"
-                  [class.active]="currentItem().id === item.id"
-                  [class.list-group-item-success]="item.completed && currentItem().id !== item.id"
-                  [disabled]="!item.canAccess"
-                  [class.disabled]="!item.canAccess"
-                  (click)="selectItem(item)"
-                  [style.opacity]="item.canAccess ? '1' : '0.5'"
-                >
-                  <div class="d-flex align-items-center flex-grow-1">
-                    <!-- Icon -->
-                    <span class="me-2 item-icon" style="font-size: 1.2rem;">
-                      <ng-container *ngIf="item.type === 'story'">📖</ng-container>
-                      <ng-container *ngIf="item.type === 'activity'">
-                        {{ getActivityIcon(item.activityType!) }}
-                      </ng-container>
-                    </span>
-
-                    <!-- Title -->
-                    <small [class.text-muted]="!item.canAccess">
-                      {{ item.title }}
-                    </small>
-                  </div>
-
-                  <!-- Status badges -->
-                  <div class="d-flex gap-1 align-items-center">
-                    <!-- Completed badge -->
-                    <span *ngIf="item.completed" class="badge bg-success">
-                      ✓
-                    </span>
-
-                    <!-- Locked icon -->
-                    <span *ngIf="!item.canAccess" class="text-muted" style="font-size: 1.1rem;">
-                      🔒
-                    </span>
-                  </div>
-                </button>
-
-                <!-- Repeat button as overlay (only for completed activities) -->
-                <button
-                  *ngIf="item.completed && item.type === 'activity'"
-                  class="btn btn-sm p-1 repeat-activity-overlay"
-                  (click)="repeatActivity(item)"
-                  title="Repetir actividad"
-                >
-                  🔄
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Back Button -->
-      <button class="btn btn-outline-secondary btn-sm mt-3 w-100" (click)="goBack()">
-        ← Volver al Dashboard
-      </button>
+      <app-player-sidebar (back)="goBack()" />
     </div>
 
-    <!-- Main Content Area -->
+    <!-- Contenido principal -->
     <div class="col-md-9">
-      <div *ngIf="errorMessage()" class="alert alert-danger">
-        {{ errorMessage() }}
+      <div *ngIf="nav.errorMessage()" class="alert alert-danger">
+        {{ nav.errorMessage() }}
       </div>
 
-      <div *ngIf="!isLoading() && currentItem()">
-        <!-- Navigation Header with Arrows -->
+      <div *ngIf="!nav.isLoading() && nav.currentItem() as item">
+        <!-- Flechas: misma regla de acceso que el menú lateral -->
         <div class="d-flex justify-content-between align-items-center mb-3 gap-2">
           <button
             class="btn btn-sm btn-outline-primary px-2 py-1 flex-shrink-0"
-            [disabled]="!canGoPrevious()"
-            [title]="canGoPrevious() ? 'Historia anterior' : 'No hay una historia anterior disponible'"
+            [disabled]="!nav.canGoPrevious()"
+            [title]="nav.canGoPrevious() ? 'Historia anterior' : 'No hay una historia anterior disponible'"
             aria-label="Historia anterior"
-            (click)="goToPrevious()"
+            (click)="nav.goToPrevious()"
             style="font-size: 0.875rem;"
           >
             ←<span class="d-none d-lg-inline ms-1">Anterior</span>
           </button>
 
           <h4 class="mb-0 text-center flex-grow-1" style="font-size: 1.1rem; min-width: 0;">
-            {{ currentItem().title }}
+            {{ item.title }}
           </h4>
 
           <button
             class="btn btn-sm btn-outline-primary px-2 py-1 flex-shrink-0"
-            [disabled]="!canGoNext()"
-            [title]="nextBlockedReason() || (canGoNext() ? 'Historia siguiente' : 'No hay una historia siguiente')"
-            [attr.aria-label]="nextBlockedReason() ? 'Historia siguiente bloqueada. ' + nextBlockedReason() : 'Historia siguiente'"
-            (click)="goToNext()"
+            [disabled]="!nav.canGoNext()"
+            [title]="nav.nextBlockedReason() || (nav.canGoNext() ? 'Historia siguiente' : 'No hay una historia siguiente')"
+            [attr.aria-label]="nav.nextBlockedReason() ? 'Historia siguiente bloqueada. ' + nav.nextBlockedReason() : 'Historia siguiente'"
+            (click)="nav.goToNext()"
             style="font-size: 0.875rem;"
           >
             <span class="d-none d-lg-inline me-1">Siguiente</span>→
           </button>
         </div>
-        <p *ngIf="nextBlockedReason()" class="small text-muted text-end mb-3" role="status">🔒 {{ nextBlockedReason() }}</p>
+        <p *ngIf="nav.nextBlockedReason()" class="small text-muted text-end mb-3" role="status">🔒 {{ nav.nextBlockedReason() }}</p>
 
-        <!-- Story Content -->
-        <div *ngIf="currentItem().type === 'story' && currentItem().story" class="card">
-          <div class="card-body">
-            <div *ngIf="lessonLoading()" class="text-center p-4" role="status">Cargando tu lección…</div>
-            <div *ngIf="lessonError()" class="alert alert-danger" role="alert">
-              {{ lessonError() }}
-              <button class="btn btn-sm btn-outline-danger ms-2" (click)="retryLoadLesson()">Reintentar</button>
-            </div>
-            <ng-container *ngIf="studentLesson() as lesson">
-              <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
-                <div>
-                  <h5 class="mb-1">{{ lesson.story.title }}</h5>
-                  <small class="text-muted">Lección publicada · revisión {{ lesson.revision }}</small>
-                </div>
-                <span *ngIf="narrativeCompleted()" class="badge bg-success">Lectura completada</span>
-              </div>
-
-              <div class="d-flex flex-wrap gap-2 mb-3" aria-label="Bloques de la lección">
-                <span *ngFor="let block of activeLessonBlocks(); let i = index"
-                  class="badge" [class.bg-primary]="block.blockKey === lesson.progress.lastBlockKey"
-                  [class.bg-light]="block.blockKey !== lesson.progress.lastBlockKey"
-                  [class.text-dark]="block.blockKey !== lesson.progress.lastBlockKey">
-                  {{ i + 1 }}. {{ block.type === 'expression' ? 'Expresión' : block.type === 'keyframe' ? 'Historia' : block.type === 'question' ? 'Pregunta' : block.type === 'full_story' ? 'Lectura completa' : 'Refuerzo' }}
-                </span>
-              </div>
-
-              <section *ngIf="currentLessonBlock() as block" class="border rounded p-3 mb-3" aria-live="polite">
-                <small class="text-uppercase text-muted">{{ block.phase === 'before' ? 'Antes' : block.phase === 'during' ? 'Durante' : 'Después' }}</small>
-                <ng-container [ngSwitch]="block.type">
-                  <div *ngSwitchCase="'expression'">
-                    <h5 class="mt-2">{{ block.vocabulary?.word || block.text }}</h5>
-                    <p *ngIf="block.vocabulary?.translation">{{ block.vocabulary?.translation }}</p>
-                    <p *ngIf="block.vocabulary?.example" class="mb-0 fst-italic">{{ block.vocabulary?.example }}</p>
-                  </div>
-                  <div *ngSwitchCase="'keyframe'">
-                    <h5 class="mt-2">Fragmento de la historia</h5>
-                    <div class="story-text mb-0">
-                      <app-tooltip-display [tooltipData]="keyframeTooltips(block)" [text]="block.text || ''" />
-                    </div>
-                    <button *ngIf="block.audioUrl" type="button" class="btn btn-outline-primary btn-sm mt-2"
-                      (click)="toggleLessonAudio(block.audioUrl)">{{ isPlaying() ? 'Pausar fragmento' : 'Escuchar fragmento' }}</button>
-                  </div>
-                  <div *ngSwitchCase="'question'">
-                    <h5 class="mt-2">{{ block.question?.questionText || 'Pregunta' }}</h5>
-                    <div *ngIf="block.question?.options?.length" class="d-grid gap-2 mt-3">
-                      <button *ngFor="let option of block.question?.options" type="button" class="btn btn-outline-primary text-start"
-                        [class.active]="answerText() === option" (click)="setAnswer(option)" [disabled]="answerResult()?.isCorrect">
-                        {{ option }}
-                      </button>
-                    </div>
-                    <input *ngIf="!block.question?.options?.length" class="form-control mt-3" type="text" maxlength="200"
-                      [value]="answerText()" (input)="setAnswer($any($event.target).value)" placeholder="Escribe tu respuesta"
-                      [disabled]="answerResult()?.isCorrect" aria-label="Tu respuesta" />
-                    <button class="btn btn-primary mt-3" (click)="submitLessonAnswer()" [disabled]="!answerText().trim() || answerResult()?.isCorrect">Comprobar respuesta</button>
-                    <div *ngIf="answerResult() as result" class="alert mt-3" [class.alert-success]="result.isCorrect" [class.alert-warning]="!result.isCorrect" role="status">
-                      <ng-container *ngIf="result.isCorrect">¡Correcto! Puedes continuar.</ng-container>
-                      <ng-container *ngIf="!result.isCorrect">
-                        <strong>Vuelve a intentarlo</strong> o continúa cuando estés listo. No necesitas acertar para avanzar.
-                        <blockquote *ngIf="result.context?.text" class="mt-2 mb-2">{{ result.context?.text }}</blockquote>
-                        <button class="btn btn-sm btn-outline-primary" (click)="answerResult.set(null); answerText.set('')">Reintentar</button>
-                      </ng-container>
-                    </div>
-                  </div>
-                  <div *ngSwitchCase="'full_story'">
-                    <h5 class="mt-2">Historia completa</h5>
-                    <div class="d-flex flex-wrap align-items-center gap-3 mb-3 audio-controls">
-                      <div class="btn-group btn-group-sm" role="group" aria-label="Velocidad de audio">
-                        <button class="btn" [class.btn-primary]="currentSpeed() === 'slow'" [class.btn-outline-secondary]="currentSpeed() !== 'slow'" (click)="switchLessonAudioSpeed('slow')">Lento</button>
-                        <button class="btn" [class.btn-primary]="currentSpeed() === 'normal'" [class.btn-outline-secondary]="currentSpeed() !== 'normal'" (click)="switchLessonAudioSpeed('normal')">Normal</button>
-                      </div>
-                      <button class="btn btn-outline-primary btn-sm" (click)="toggleLessonAudio()" [disabled]="!lessonAudioUrl()">{{ isPlaying() ? 'Pausar audio' : 'Reproducir audio' }}</button>
-                    </div>
-                    <div class="story-text mt-3">
-                      <app-tooltip-display [targetType]="'story'" [targetId]="lesson.story.id" [text]="lesson.story.fullStoryText" />
-                    </div>
-                  </div>
-                  <div *ngSwitchDefault>
-                    <h5 class="mt-2">{{ block.type === 'flashcards' ? 'Flashcards' : block.type === 'matching' ? 'Emparejar vocabulario' : 'Escuchar y repetir' }}</h5>
-                    <p>{{ block.vocabulary?.word }} <span *ngIf="block.vocabulary?.translation">— {{ block.vocabulary?.translation }}</span></p>
-                    <button class="btn btn-outline-success btn-sm" (click)="toggleReinforcement(block)">{{ reinforcementOpen() === block.blockKey ? 'Cerrar actividad' : 'Practicar ahora' }}</button>
-                    <div *ngIf="reinforcementOpen() === block.blockKey" class="mt-3">
-                      <p *ngIf="block.vocabulary?.example" class="fst-italic">{{ block.vocabulary?.example }}</p>
-                      <p class="small text-muted">Este refuerzo es opcional y su avance se guarda para esta historia y revisión.</p>
-                      <button class="btn btn-success btn-sm" (click)="markReinforcementComplete(block)" [disabled]="isReinforcementComplete(block.blockKey)">{{ isReinforcementComplete(block.blockKey) ? 'Completado' : 'Marcar refuerzo como completado' }}</button>
-                    </div>
-                  </div>
-                </ng-container>
-              </section>
-
-              <div class="d-flex justify-content-between gap-2">
-                <button class="btn btn-outline-secondary" (click)="goToLessonBlock(-1)" [disabled]="currentLessonBlockIndex() <= 0">Bloque anterior</button>
-                <button *ngIf="currentLessonBlockIndex() < activeLessonBlocks().length - 1" class="btn btn-primary" (click)="goToLessonBlock(1)">Continuar</button>
-                <button *ngIf="currentLessonBlockIndex() === activeLessonBlocks().length - 1 && !narrativeCompleted()" class="btn btn-success" (click)="completeNarrative()">Completar lectura</button>
-              </div>
-
-              <section *ngIf="hasOptionalReinforcements()" class="mt-4 border-top pt-3">
-                <h6>Refuerzos opcionales</h6>
-                <div *ngFor="let extra of reinforcementBlocks()" class="py-2 border-bottom">
-                  <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                      <strong>{{ extra.type === 'flashcards' ? 'Flashcards' : extra.type === 'matching' ? 'Emparejar vocabulario' : 'Escuchar y repetir' }}</strong>
-                      <span *ngIf="extra.vocabulary?.word" class="ms-2">{{ extra.vocabulary?.word }}</span>
-                    </div>
-                    <button type="button" class="btn btn-sm btn-outline-primary" (click)="openReinforcement(extra)">
-                      {{ isReinforcementComplete(extra.blockKey) ? 'Repetir' : 'Practicar' }}
-                    </button>
-                  </div>
-                  <small class="text-muted">{{ extra.type === 'listen_repeat' ? 'Historia' : 'Unidad' }} · {{ isReinforcementComplete(extra.blockKey) ? 'Completado' : 'Opcional' }}</small>
-                </div>
-              </section>
-            </ng-container>
-          </div>
-        </div>
-
-        <!-- Activity Placeholder -->
-        <div *ngIf="currentItem().type === 'activity'" class="card">
-          <div class="card-body text-center py-5">
-            <div style="font-size: 3rem;" class="mb-3">
-              {{ getActivityIcon(currentItem().activityType!) }}
-            </div>
-            <h5>{{ currentItem().title }}</h5>
-            <p class="text-muted mb-4">Haz clic en "Comenzar" para iniciar la actividad</p>
-            <button
-              class="btn btn-primary btn-lg"
-              (click)="loadCurrentItem()"
-            >
-              Comenzar Actividad
-            </button>
-          </div>
-        </div>
+        <app-lesson-view />
       </div>
     </div>
   </div>
 </div>
-
-<!-- Activity Modals -->
-<app-activity-modal
-  [show]="showActivityModal"
-  [questions]="currentStoryQuestions()"
-  [progressId]="currentProgressId()"
-  (completed)="onActivityCompleted('questions')"
-  (close)="closeAllModals()"
-/>
-
-<app-flashcard-modal
-  *ngIf="currentUnit()"
-  [show]="showFlashcardModal()"
-  [unitId]="currentUnit()!.id"
-  [progressId]="activeReinforcementBlock() ? 0 : (currentProgressId() || 0)"
-  (completed)="activeReinforcementBlock() ? onReinforcementModalCompleted() : onActivityCompleted('flashcards')"
-  (close)="closeAllModals()"
-/>
-
-<app-matching-modal
-  *ngIf="currentUnit()"
-  [show]="showMatchingModal()"
-  [unitId]="currentUnit()!.id"
-  [progressId]="activeReinforcementBlock() ? 0 : (currentProgressId() || 0)"
-  (completed)="activeReinforcementBlock() ? onReinforcementModalCompleted() : onActivityCompleted('matching')"
-  (close)="closeAllModals()"
-/>
-
-<app-listen-repeat-modal
-  *ngIf="showListenRepeatModal()"
-  [storyId]="listenRepeatStoryId()"
-  [show]="showListenRepeatModal()"
-  [progressId]="activeReinforcementBlock() ? 0 : (currentProgressId() || 0)"
-  (completed)="activeReinforcementBlock() ? onReinforcementModalCompleted() : onActivityCompleted('listen_repeat')"
-  (close)="closeAllModals()"
-/>

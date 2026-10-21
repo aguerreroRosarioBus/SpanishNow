@@ -173,13 +173,13 @@ export class StudentDashboardComponent implements OnInit {
   resetCourseProgress(enrollment: Enrollment): void {
     this.showConfirm(
       'Reiniciar Progreso',
-      `¿Estás seguro de que quieres reiniciar tu progreso en "${enrollment.course?.title}"? Esto eliminará todas tus historias completadas y actividades realizadas.`,
+      `¿Estás seguro de que quieres reiniciar tu progreso en "${enrollment.course?.title}"? Se borrarán tu avance por historia, tus respuestas y tus refuerzos completados. Esta acción no se puede deshacer.`,
       'Reiniciar',
       () => {
         this.enrollmentService.resetCourseProgress(enrollment.id).subscribe({
           next: () => {
             this.toastService.success('Progreso del curso reiniciado exitosamente');
-            // No need to reload, progress is already reset on backend
+            this.loadMyCourses();
           },
           error: (error) => {
             console.error('Error resetting progress:', error);

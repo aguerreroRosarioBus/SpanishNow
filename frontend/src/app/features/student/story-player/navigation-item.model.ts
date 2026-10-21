@@ -1,22 +1,12 @@
-import { Story, ActivityConfig } from '../../../core/models/course.model';
+import { Story } from '../../../core/models/course.model';
 
-export type NavigationItemType = 'story' | 'activity';
-export type ActivityType = 'questions' | 'flashcards' | 'matching' | 'listen_repeat';
-
+/** Ítem del menú lateral: una historia de la unidad actual. */
 export interface NavigationItem {
   id: string;
-  type: NavigationItemType;
   title: string;
   order: number;
   completed: boolean;
+  /** Única regla de acceso: la usan el menú lateral y las flechas. */
   canAccess: boolean;
-
-  // Story-specific fields
-  story?: Story;
-
-  // Activity-specific fields
-  activityType?: ActivityType;
-  storyId?: number; // The story this activity belongs to
-  unitId?: number; // Kept for convenience
-  config?: ActivityConfig;
+  story: Story;
 }

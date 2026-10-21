@@ -10,6 +10,7 @@ const sequelize = require('../config/database');
 const activityConfigMigration = require('../../migrations/20260926000000-convert-activity-configs-to-story');
 const migration = require('../../migrations/20260927000000-create-lesson-plans');
 const keyframeTooltips = require('../../migrations/20261021000000-add-keyframe-tooltips');
+const dropLegacyProgress = require('../../migrations/20261022000000-drop-legacy-progress');
 
 (async () => {
   try {
@@ -17,6 +18,8 @@ const keyframeTooltips = require('../../migrations/20261021000000-add-keyframe-t
     await activityConfigMigration.up(sequelize.getQueryInterface(), require('sequelize'));
     await migration.up(sequelize.getQueryInterface(), require('sequelize'));
     await keyframeTooltips.up(sequelize.getQueryInterface(), require('sequelize'));
+    // Refuses to run if the legacy tables hold rows, unless CONFIRM_DROP_LEGACY_PROGRESS=yes is set in the environment.
+    await dropLegacyProgress.up(sequelize.getQueryInterface(), require('sequelize'));
     console.log(`TPRS migration applied to isolated database ${testName}`);
   } finally {
     await sequelize.close();

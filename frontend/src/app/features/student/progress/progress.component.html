@@ -15,7 +15,7 @@
       </div>
 
       <!-- Empty state -->
-      <div *ngIf="!isLoading() && myCourses().length === 0" class="card">
+      <div *ngIf="!isLoading() && courses().length === 0" class="card">
         <div class="card-body text-center py-5">
           <h2 class="h5 mb-3">No tienes cursos inscritos</h2>
           <p class="text-muted mb-4">Inscríbete en un curso para comenzar a ver tu progreso</p>
@@ -26,54 +26,59 @@
       </div>
 
       <!-- Progreso de cursos -->
-      <div *ngIf="!isLoading() && myCourses().length > 0" class="row g-4">
-        <div *ngFor="let enrollment of myCourses()" class="col-md-6 col-lg-4">
+      <div *ngIf="!isLoading() && courses().length > 0" class="row g-4">
+        <div *ngFor="let course of courses()" class="col-md-6 col-lg-4">
           <div class="card h-100">
             <div class="card-body">
-              <h5 class="card-title">{{ enrollment.course?.title }}</h5>
-              <span class="badge bg-primary mb-3">{{ enrollment.course?.level }}</span>
+              <h5 class="card-title">{{ course.enrollment.course?.title }}</h5>
+              <span class="badge bg-primary mb-3">{{ course.enrollment.course?.level }}</span>
 
-              <!-- Progress bar -->
-              <div class="mb-3">
-                <div class="d-flex justify-content-between mb-1">
-                  <small class="text-muted">Progreso</small>
-                  <small class="fw-bold">{{ getProgressPercentage(enrollment) }}%</small>
-                </div>
-                <div class="progress" style="height: 12px;">
-                  <div
-                    class="progress-bar"
-                    [class.bg-success]="getProgressPercentage(enrollment) === 100"
-                    [class.bg-primary]="getProgressPercentage(enrollment) < 100"
-                    role="progressbar"
-                    [style.width.%]="getProgressPercentage(enrollment)"
-                    [attr.aria-valuenow]="getProgressPercentage(enrollment)"
-                    aria-valuemin="0"
-                    aria-valuemax="100">
-                  </div>
-                </div>
+              <div *ngIf="course.failed" class="alert alert-warning small" role="alert">
+                No se pudo cargar el avance de este curso.
               </div>
 
-              <!-- Estadísticas -->
-              <div class="row g-2 mb-3">
-                <div class="col-6">
-                  <div class="card bg-light">
-                    <div class="card-body p-2 text-center">
-                      <div class="h5 mb-0">{{ enrollment.course?.units?.length || 0 }}</div>
-                      <small class="text-muted">Unidades</small>
+              <ng-container *ngIf="!course.failed">
+                <!-- Progress bar -->
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between mb-1">
+                    <small class="text-muted">Historias completadas</small>
+                    <small class="fw-bold">{{ completedCount(course) }}/{{ course.stories.length }} · {{ percentage(course) }}%</small>
+                  </div>
+                  <div class="progress" style="height: 12px;">
+                    <div
+                      class="progress-bar"
+                      [class.bg-success]="percentage(course) === 100"
+                      [class.bg-primary]="percentage(course) < 100"
+                      role="progressbar"
+                      [style.width.%]="percentage(course)"
+                      [attr.aria-valuenow]="percentage(course)"
+                      aria-valuemin="0"
+                      aria-valuemax="100">
                     </div>
                   </div>
                 </div>
-                <div class="col-6">
-                  <div class="card bg-light">
-                    <div class="card-body p-2 text-center">
-                      <div class="h5 mb-0">{{ getCompletedCount(enrollment) }}</div>
-                      <small class="text-muted">Completadas</small>
-                    </div>
-                  </div>
-                </div>
-              </div>
 
-              <a [routerLink]="['/student/course', enrollment.courseId, 'play']" class="btn btn-primary w-100">
+                <!-- Detalle por historia -->
+                <ul class="list-group list-group-flush mb-3 story-progress-list">
+                  <li *ngFor="let story of course.stories" class="list-group-item px-0 story-progress-item">
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                      <div>
+                        <div class="fw-semibold">{{ story.storyTitle }}</div>
+                        <small class="text-muted">{{ story.unitTitle }}<ng-container *ngIf="story.revision !== null"> · revisión {{ story.revision }}</ng-container></small>
+                      </div>
+                      <span class="badge flex-shrink-0" [class.bg-success]="story.narrativeCompleted" [class.bg-secondary]="!story.narrativeCompleted">
+                        {{ story.narrativeCompleted ? 'Lectura completada' : 'Pendiente' }}
+                      </span>
+                    </div>
+                    <div class="d-flex gap-3 mt-1 small text-muted">
+                      <span>Respuestas correctas: {{ story.answers.correct }}/{{ story.answers.total }} ({{ story.answers.attempts }} intentos)</span>
+                      <span>Refuerzos: {{ story.reinforcements.completed }}/{{ story.reinforcements.total }}</span>
+                    </div>
+                  </li>
+                </ul>
+              </ng-container>
+
+              <a [routerLink]="['/student/course', course.enrollment.courseId, 'play']" class="btn btn-primary w-100">
                 Continuar
               </a>
             </div>

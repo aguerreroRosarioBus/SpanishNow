@@ -1,5 +1,5 @@
 // Student journey: pinned revision, resume, retries, reinforcements and per-story scope.
-const { Enrollment, LessonReinforcement, LessonAnswer, LessonProgress } = require('../src/models');
+const { LessonReinforcement, LessonAnswer, LessonProgress } = require('../src/models');
 const { as, createWorld, createStory, standardBlocks, planUrl, publishPlan, openLesson, visit, answer } = require('./helpers/fixtures');
 
 describe('TPRS lesson plans: student journey', () => {
@@ -161,8 +161,6 @@ describe('TPRS lesson plans: student journey', () => {
 
       expect(await LessonReinforcement.count({ where: { lessonProgressId: lesson.progress.id } })).toBe(0);
       expect((await openLesson(world.student, story.id)).body.progress.reinforcements).toEqual([]);
-      const enrollment = await Enrollment.findByPk(world.enrollments.student.id);
-      expect([enrollment.questionsCompleted, enrollment.flashcardsCompleted, enrollment.matchingCompleted, enrollment.listenRepeatCompleted]).toEqual([false, false, false, false]);
     });
 
     test('reinforcements completed in one story do not appear completed in another', async () => {
@@ -186,9 +184,7 @@ describe('TPRS lesson plans: student journey', () => {
       expect(cross.status).toBe(400);
       expect(await LessonReinforcement.count({ where: { lessonProgressId: lessonB.progress.id } })).toBe(0);
 
-      // Neither the enrollment-wide flags nor the other student are affected.
-      const enrollment = await Enrollment.findByPk(world.enrollments.student.id);
-      expect(enrollment.flashcardsCompleted).toBe(false);
+      // The other student is not affected.
       expect((await openLesson(world.student2, a.story.id)).body.progress.reinforcements).toEqual([]);
     });
 

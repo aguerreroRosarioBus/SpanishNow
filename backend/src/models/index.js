@@ -5,10 +5,7 @@ const Story = require('./Story');
 const Vocabulary = require('./Vocabulary');
 const Question = require('./Question');
 const Enrollment = require('./Enrollment');
-const Progress = require('./Progress');
-const QuestionResponse = require('./QuestionResponse');
 const RepetitionActivity = require('./RepetitionActivity');
-const ActivityConfig = require('./ActivityConfig');
 const Tooltip = require('./Tooltip');
 const LessonPlan = require('./LessonPlan');
 const LessonBlock = require('./LessonBlock');
@@ -38,26 +35,9 @@ Enrollment.belongsTo(User, { foreignKey: 'studentId', as: 'student' });
 Course.hasMany(Enrollment, { foreignKey: 'courseId', as: 'enrollments' });
 Enrollment.belongsTo(Course, { foreignKey: 'courseId', as: 'course' });
 
-Enrollment.hasMany(Progress, { foreignKey: 'enrollmentId', as: 'progress', onDelete: 'CASCADE' });
-Progress.belongsTo(Enrollment, { foreignKey: 'enrollmentId', as: 'enrollment' });
-
-Story.hasMany(Progress, { foreignKey: 'storyId', as: 'progress' });
-Progress.belongsTo(Story, { foreignKey: 'storyId', as: 'story' });
-
-// QuestionResponse associations
-Progress.hasMany(QuestionResponse, { foreignKey: 'progressId', as: 'questionResponses', onDelete: 'CASCADE' });
-QuestionResponse.belongsTo(Progress, { foreignKey: 'progressId', as: 'progress' });
-
-Question.hasMany(QuestionResponse, { foreignKey: 'questionId', as: 'responses' });
-QuestionResponse.belongsTo(Question, { foreignKey: 'questionId', as: 'question' });
-
 // RepetitionActivity associations
 Story.hasMany(RepetitionActivity, { foreignKey: 'storyId', as: 'repetitionActivities', onDelete: 'CASCADE' });
 RepetitionActivity.belongsTo(Story, { foreignKey: 'storyId', as: 'story' });
-
-// ActivityConfig associations
-Story.hasMany(ActivityConfig, { foreignKey: 'storyId', as: 'activityConfigs', onDelete: 'CASCADE' });
-ActivityConfig.belongsTo(Story, { foreignKey: 'storyId', as: 'story' });
 
 // Tooltip associations
 User.hasMany(Tooltip, { foreignKey: 'createdBy', as: 'tooltips' });
@@ -81,10 +61,7 @@ module.exports = {
   Vocabulary,
   Question,
   Enrollment,
-  Progress,
-  QuestionResponse,
   RepetitionActivity,
-  ActivityConfig,
   Tooltip,
   LessonPlan,
   LessonBlock,

@@ -159,35 +159,6 @@ describe('TPRS lesson plans: answer visibility and access control', () => {
       const res = await answer(world.student, lesson.progress.id, { blockKey: keys.q1, questionId: q1.id, studentAnswer: 'En la fiesta' });
       expect(res.status).toBe(409);
     });
-
-    test('the legacy submit endpoint rejects questions from another story', async () => {
-      const a = await publishedStory();
-      const b = await publishedStory();
-      const enrollment = world.enrollments.student;
-      const progress = await as(world.student).post('/api/enrollments/progress', { enrollmentId: enrollment.id, storyId: a.story.id });
-      expect([200, 201]).toContain(progress.status);
-
-      const res = await as(world.student).post('/api/question-responses/submit', {
-        progressId: progress.body.id, responses: [{ questionId: b.q1.id, studentAnswer: 'En la fiesta' }]
-      });
-      expect(res.status).toBe(400);
-
-      const other = await as(world.student2).post('/api/question-responses/submit', {
-        progressId: progress.body.id, responses: [{ questionId: a.q1.id, studentAnswer: 'En la fiesta' }]
-      });
-      expect(other.status).toBe(403);
-    });
-
-    test('a student cannot register progress for a story outside their enrollment', async () => {
-      const res = await as(world.student).post('/api/enrollments/progress', {
-        enrollmentId: world.enrollments.student.id, storyId: world.foreignStory.id
-      });
-      expect(res.status).toBe(403);
-      const hijack = await as(world.outsider).post('/api/enrollments/progress', {
-        enrollmentId: world.enrollments.student.id, storyId: world.foreignStory.id
-      });
-      expect(hijack.status).toBe(403);
-    });
   });
 
   describe('teacher endpoints require the course owner', () => {
@@ -235,17 +206,15 @@ describe('TPRS lesson plans: answer visibility and access control', () => {
       expect((await as(world.teacher).get(`${planUrl('abc')}/draft`)).status).toBe(400);
     });
 
-    test('the question and activity-config endpoints also require course ownership', async () => {
+    test('the question endpoints also require course ownership', async () => {
       const { story, q1 } = await publishedStory();
 
       const create = await as(world.otherTeacher).post('/api/questions', { storyId: story.id, questionText: '¿Hola?', answerType: 'yes_no', correctAnswer: 'Sí' });
       const update = await as(world.otherTeacher).put(`/api/questions/${q1.id}`, { questionText: 'Manipulada' });
       const remove = await as(world.otherTeacher).delete(`/api/questions/${q1.id}`);
-      const config = await as(world.otherTeacher).post('/api/activity-configs', { storyId: story.id, activityType: 'flashcards', order: 1 });
-      const studentConfig = await as(world.student).post('/api/activity-configs', { storyId: story.id, activityType: 'flashcards', order: 1 });
       const studentCreate = await as(world.student).post('/api/questions', { storyId: story.id, questionText: '¿Hola?', answerType: 'yes_no', correctAnswer: 'Sí' });
 
-      for (const res of [create, update, remove, config, studentConfig, studentCreate]) expect(forbidden(res.status)).toBe(true);
+      for (const res of [create, update, remove, studentCreate]) expect(forbidden(res.status)).toBe(true);
       expect((await Question.findByPk(q1.id)).questionText).toBe('¿Dónde está María?');
     });
   });

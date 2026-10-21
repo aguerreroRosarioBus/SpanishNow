@@ -5,6 +5,8 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { StoryPlayerComponent } from './story-player.component';
+import { LessonNavigationStore } from './lesson-navigation.store';
+import { LessonSessionStore } from './lesson-session.store';
 import { AuthService } from '../../../core/services/auth.service';
 import { CourseService } from '../../../core/services/course.service';
 import { EnrollmentService } from '../../../core/services/enrollment.service';
@@ -29,6 +31,8 @@ const makeLesson = (storyId: number, lastBlockKey: string | null): StudentLesson
 describe('StoryPlayerComponent (flujo TPRS)', () => {
   let fixture: ComponentFixture<StoryPlayerComponent>;
   let component: StoryPlayerComponent;
+  let nav: LessonNavigationStore;
+  let session: LessonSessionStore;
   let lessonApi: { getStory: any; setCurrentBlock: any; answer: any; completeNarrative: any; completeReinforcement: any };
 
   async function create(lastBlockKey: string | null): Promise<void> {
@@ -49,7 +53,7 @@ describe('StoryPlayerComponent (flujo TPRS)', () => {
         { provide: ActivatedRoute, useValue: { params: of({ courseId: '1' }) } },
         { provide: Router, useValue: { navigate: vi.fn() } },
         { provide: AuthService, useValue: { currentUser: signal({ id: 1, role: 'student' }), isStudent: () => true } },
-        { provide: EnrollmentService, useValue: { getMyCourses: () => of([{ id: 1, studentId: 1, courseId: 1, createdAt: '', progress: [] }]) } },
+        { provide: EnrollmentService, useValue: { getMyCourses: () => of([{ id: 1, studentId: 1, courseId: 1, createdAt: '', lessonProgress: [] }]) } },
         { provide: CourseService, useValue: { getCourse: () => of(course) } },
         { provide: StudentLessonService, useValue: lessonApi },
         provideHttpClient(),
@@ -58,41 +62,43 @@ describe('StoryPlayerComponent (flujo TPRS)', () => {
     }).compileComponents();
     fixture = TestBed.createComponent(StoryPlayerComponent);
     component = fixture.componentInstance;
+    nav = fixture.debugElement.injector.get(LessonNavigationStore);
+    session = fixture.debugElement.injector.get(LessonSessionStore);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
   }
 
-  const currentKey = () => component.currentLessonBlock()?.blockKey;
+  const currentKey = () => session.currentBlock()?.blockKey;
 
   it('avanza keyframe por keyframe y la pregunta aparece después del keyframe que le da contexto', async () => {
     await create(null);
-    expect(component.activeLessonBlocks().map(b => b.blockKey)).toEqual(['k1', 'q1', 'k2', 'f1']);
+    expect(session.activeBlocks().map(b => b.blockKey)).toEqual(['k1', 'q1', 'k2', 'f1']);
     // Sin progreso previo: se persiste y se muestra el primer bloque.
     expect(lessonApi.setCurrentBlock).toHaveBeenCalledWith(11, 'k1');
     expect(currentKey()).toBe('k1');
 
-    component.goToLessonBlock(1);
+    session.goToBlock(1);
     expect(currentKey()).toBe('q1');
-    expect(component.currentLessonBlock()?.contextBlockKey).toBe('k1');
+    expect(session.currentBlock()?.contextBlockKey).toBe('k1');
     fixture.detectChanges();
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('¿Dónde está María?');
 
-    component.goToLessonBlock(1);
+    session.goToBlock(1);
     expect(currentKey()).toBe('k2');
-    component.goToLessonBlock(-1);
+    session.goToBlock(-1);
     expect(currentKey()).toBe('q1');
   });
 
   it('una respuesta incorrecta muestra el contexto, permite reintentar y no bloquea el avance', async () => {
     await create('q1');
     lessonApi.answer.mockReturnValue(of({ blockKey: 'q1', questionId: 9, isCorrect: false, attempt: 1, context: { blockKey: 'k1', text: 'María llega a la fiesta' }, canRetry: true, canContinue: true }));
-    component.setAnswer('en la escuela');
-    component.submitLessonAnswer();
+    session.setAnswer('en la escuela');
+    session.submitAnswer();
     fixture.detectChanges();
 
     const el = fixture.nativeElement as HTMLElement;
-    expect(component.answerResult()?.isCorrect).toBe(false);
+    expect(session.answerResult()?.isCorrect).toBe(false);
     expect(el.querySelector('blockquote')?.textContent).toContain('María llega a la fiesta');
 
     // "Continuar" sigue habilitado aunque la respuesta sea incorrecta.
@@ -103,34 +109,34 @@ describe('StoryPlayerComponent (flujo TPRS)', () => {
     const retry = [...el.querySelectorAll('button')].find(b => b.textContent?.trim() === 'Reintentar') as HTMLButtonElement;
     retry.click();
     fixture.detectChanges();
-    expect(component.answerResult()).toBeNull();
-    expect(component.answerText()).toBe('');
+    expect(session.answerResult()).toBeNull();
+    expect(session.answerText()).toBe('');
 
-    component.goToLessonBlock(1);
+    session.goToBlock(1);
     expect(currentKey()).toBe('k2');
   });
 
   it('al reanudar arranca en el último bloque visitado sin reiniciar el progreso', async () => {
     await create('q1');
     expect(currentKey()).toBe('q1');
-    expect(component.currentLessonBlockIndex()).toBe(1);
+    expect(session.currentBlockIndex()).toBe(1);
     expect(lessonApi.setCurrentBlock).not.toHaveBeenCalled();
   });
 
   it('el menú lateral bloquea un contenido no disponible', async () => {
     await create(null);
-    const locked = component.navigationItems().find(i => !i.canAccess)!;
+    const locked = nav.items().find(i => !i.canAccess)!;
     expect(locked.id).toBe('story-200');
-    component.selectItem(locked);
-    expect(component.currentItem()?.id).toBe('story-100');
+    nav.selectItem(locked);
+    expect(nav.currentItem()?.id).toBe('story-100');
   });
 
   it('la flecha Siguiente aplica la misma regla de acceso que el menú lateral', async () => {
     await create(null);
-    expect(component.canGoNext()).toBe(false);
-    expect(component.nextBlockedReason()).toContain('Completa');
-    component.goToNext();
-    expect(component.currentItem()?.id).toBe('story-100');
+    expect(nav.canGoNext()).toBe(false);
+    expect(nav.nextBlockedReason()).toContain('Completa');
+    nav.goToNext();
+    expect(nav.currentItem()?.id).toBe('story-100');
     fixture.detectChanges();
     const next = [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')].find(b => b.getAttribute('aria-label')?.startsWith('Historia siguiente')) as HTMLButtonElement;
     expect(next.disabled).toBe(true);
@@ -139,13 +145,13 @@ describe('StoryPlayerComponent (flujo TPRS)', () => {
 
   it('las flechas avanzan y retroceden cuando el ítem destino es accesible', async () => {
     await create(null);
-    component.navigationItems.update(items => items.map(i => ({ ...i, canAccess: true })));
-    expect(component.canGoPrevious()).toBe(false);
-    component.goToNext();
-    expect(component.currentItem()?.id).toBe('story-200');
-    expect(component.canGoPrevious()).toBe(true);
-    component.goToPrevious();
-    expect(component.currentItem()?.id).toBe('story-100');
+    nav.items.update(items => items.map(i => ({ ...i, canAccess: true })));
+    expect(nav.canGoPrevious()).toBe(false);
+    nav.goToNext();
+    expect(nav.currentItem()?.id).toBe('story-200');
+    expect(nav.canGoPrevious()).toBe(true);
+    nav.goToPrevious();
+    expect(nav.currentItem()?.id).toBe('story-100');
   });
 
   it('muestra los tooltips del keyframe sobre su texto sin consultar la API de historia', async () => {
@@ -163,7 +169,7 @@ describe('StoryPlayerComponent (flujo TPRS)', () => {
     http.expectNone(r => r.url.includes('/tooltips'));
 
     // Al pasar al siguiente keyframe se vuelve a renderizar sin resaltados.
-    component.goToLessonBlock(2);
+    session.goToBlock(2);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();

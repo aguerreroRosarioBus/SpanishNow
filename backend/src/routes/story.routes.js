@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authMiddleware, isTeacher } = require('../middlewares/auth.middleware');
-const { Story, Unit, Course, Question, ActivityConfig } = require('../models');
+const { Story, Unit, Course, Question } = require('../models');
 const cloudinary = require('../config/cloudinary');
 const upload = require('../middlewares/upload.middleware');
 
@@ -110,15 +110,6 @@ router.post('/', authMiddleware, isTeacher, upload.fields([
       audioNormalUrl,
       order
     });
-
-    // Create default activity configurations for the new story
-    const defaultActivities = [
-      { storyId: story.id, activityType: 'flashcards', isEnabled: true, order: 0 },
-      { storyId: story.id, activityType: 'questions', isEnabled: true, order: 1 },
-      { storyId: story.id, activityType: 'matching', isEnabled: true, order: 2 },
-      { storyId: story.id, activityType: 'listen_repeat', isEnabled: true, order: 3 }
-    ];
-    await ActivityConfig.bulkCreate(defaultActivities);
 
     res.status(201).json(story);
   } catch (error) {

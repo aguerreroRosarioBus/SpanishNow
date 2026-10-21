@@ -1,0 +1,41 @@
+<section class="border rounded p-3 mb-3" aria-live="polite">
+  <small class="text-uppercase text-muted">{{ block().phase === 'before' ? 'Antes' : block().phase === 'during' ? 'Durante' : 'Después' }}</small>
+  <ng-container [ngSwitch]="block().type">
+    <div *ngSwitchCase="'expression'">
+      <h5 class="mt-2">{{ block().vocabulary?.word || block().text }}</h5>
+      <p *ngIf="block().vocabulary?.translation">{{ block().vocabulary?.translation }}</p>
+      <p *ngIf="block().vocabulary?.example" class="mb-0 fst-italic">{{ block().vocabulary?.example }}</p>
+    </div>
+
+    <div *ngSwitchCase="'keyframe'">
+      <h5 class="mt-2">Fragmento de la historia</h5>
+      <div class="story-text mb-0">
+        <app-tooltip-display [tooltipData]="tooltips()" [text]="block().text || ''" />
+      </div>
+      <button *ngIf="block().audioUrl" type="button" class="btn btn-outline-primary btn-sm mt-2"
+        (click)="session.audio.toggle(block().audioUrl)">{{ session.audio.isPlaying() ? 'Pausar fragmento' : 'Escuchar fragmento' }}</button>
+    </div>
+
+    <div *ngSwitchCase="'question'">
+      <h5 class="mt-2">{{ block().question?.questionText || 'Pregunta' }}</h5>
+      <div *ngIf="block().question?.options?.length" class="d-grid gap-2 mt-3">
+        <button *ngFor="let option of block().question?.options" type="button" class="btn btn-outline-primary text-start"
+          [class.active]="session.answerText() === option" (click)="session.setAnswer(option)" [disabled]="session.answerResult()?.isCorrect">
+          {{ option }}
+        </button>
+      </div>
+      <input *ngIf="!block().question?.options?.length" class="form-control mt-3" type="text" maxlength="200"
+        [value]="session.answerText()" (input)="session.setAnswer($any($event.target).value)" placeholder="Escribe tu respuesta"
+        [disabled]="session.answerResult()?.isCorrect" aria-label="Tu respuesta" />
+      <button class="btn btn-primary mt-3" (click)="session.submitAnswer()" [disabled]="!session.answerText().trim() || session.answerResult()?.isCorrect">Comprobar respuesta</button>
+      <div *ngIf="session.answerResult() as result" class="alert mt-3" [class.alert-success]="result.isCorrect" [class.alert-warning]="!result.isCorrect" role="status">
+        <ng-container *ngIf="result.isCorrect">¡Correcto! Puedes continuar.</ng-container>
+        <ng-container *ngIf="!result.isCorrect">
+          <strong>Vuelve a intentarlo</strong> o continúa cuando estés listo. No necesitas acertar para avanzar.
+          <blockquote *ngIf="result.context?.text" class="mt-2 mb-2">{{ result.context?.text }}</blockquote>
+          <button class="btn btn-sm btn-outline-primary" (click)="session.retryAnswer()">Reintentar</button>
+        </ng-container>
+      </div>
+    </div>
+  </ng-container>
+</section>

@@ -34,7 +34,6 @@ export interface Story {
   order: number;
   questions?: Question[];
   repetitionActivities?: RepetitionActivity[];
-  activityConfigs?: ActivityConfig[];
 }
 
 export interface Vocabulary {
@@ -66,58 +65,26 @@ export interface Enrollment {
   courseId: number;
   createdAt: string;
   course?: Course;
-  progress?: Progress[];
   lessonProgress?: Array<{ storyId: number; planId: number; narrativeCompleted: boolean }>;
-  // Unit-level activity completion flags
-  questionsCompleted?: boolean;
-  flashcardsCompleted?: boolean;
-  matchingCompleted?: boolean;
-  listenRepeatCompleted?: boolean;
 }
 
-export interface Progress {
-  id: number;
-  enrollmentId: number;
+/** Resumen de avance por historia (GET /enrollments/:id/progress). */
+export interface StoryProgress {
   storyId: number;
-  completed: boolean;
-  activitiesCompleted?: boolean;
-  // Granular activity tracking (new fields)
-  flashcardsViewed?: boolean;
-  questionsCompleted?: boolean;
-  matchingCompleted?: boolean;
-  listenRepeatCompleted?: boolean;
+  storyTitle: string;
+  unitId: number;
+  unitTitle: string;
+  revision: number | null;
+  lastBlockKey: string | null;
+  narrativeCompleted: boolean;
+  completedAt: string | null;
+  answers: { total: number; correct: number; attempts: number };
+  reinforcements: { total: number; completed: number };
 }
 
-export interface QuestionResponse {
-  id: number;
-  progressId: number;
-  questionId: number;
-  studentAnswer: string;
-  isCorrect: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface QuestionSubmission {
-  questionId: number;
-  studentAnswer: string;
-}
-
-export interface QuestionResult {
-  questionId: number;
-  isCorrect: boolean;
-  correctAnswer?: string;
-}
-
-export interface SubmitResponsePayload {
-  progressId: number;
-  responses: QuestionSubmission[];
-}
-
-export interface SubmitResponseResult {
-  results: QuestionResult[];
-  allCorrect: boolean;
-  activitiesCompleted: boolean;
+export interface ResetProgressResult {
+  message: string;
+  deleted: { progress: number; answers: number; reinforcements: number };
 }
 
 export interface RepetitionActivity {
@@ -126,17 +93,6 @@ export interface RepetitionActivity {
   phrase: string;
   audioUrl?: string;
   order: number;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface ActivityConfig {
-  id: number;
-  storyId: number;
-  activityType: 'questions' | 'flashcards' | 'matching' | 'listen_repeat';
-  order: number;
-  isEnabled: boolean;
-  requiredStoryIds: number[];
   createdAt?: string;
   updatedAt?: string;
 }

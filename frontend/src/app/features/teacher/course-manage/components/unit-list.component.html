@@ -1,0 +1,30 @@
+<div class="row g-4">
+  <!-- Empty State -->
+  <div *ngIf="store.units().length === 0" class="col-12">
+    <div class="card">
+      <div class="card-body text-center py-5">
+        <h2 class="h5 mb-3">No hay unidades creadas</h2>
+        <p class="text-muted mb-4">Comienza creando la primera unidad de tu curso</p>
+        <button class="btn btn-primary" (click)="store.open({ kind: 'unit-create' })">
+          Crear Primera Unidad
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Expand/Collapse All Controls -->
+  <div *ngIf="store.units().length > 0" class="col-12 mb-3">
+    <div class="d-flex gap-2">
+      <button class="btn btn-sm btn-outline-secondary" (click)="store.expandAllUnits()">
+        ▼ Expandir todas
+      </button>
+      <button class="btn btn-sm btn-outline-secondary" (click)="store.collapseAllUnits()">
+        ▶ Colapsar todas
+      </button>
+    </div>
+  </div>
+
+  <div *ngFor="let unit of store.units(); trackBy: trackById" class="col-12">
+    <app-unit-card [unit]="unit" />
+  </div>
+</div>

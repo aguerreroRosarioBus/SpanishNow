@@ -1,5 +1,6 @@
 -- Complete Course Seed for Testing Navigation System
--- Creates a comprehensive course with 3 units, each with stories and activities
+-- Creates a comprehensive course with 3 units, each with stories.
+-- Legacy activity_configs / progress data is no longer seeded (dropped by migration 20261022000000-drop-legacy-progress).
 
 -- ==============================================
 -- COURSE: Spanish A1 - Complete Edition
@@ -77,15 +78,6 @@ ON DUPLICATE KEY UPDATE
   translation = VALUES(translation),
   updatedAt = NOW();
 
--- Story-level defaults. INSERT IGNORE preserves teacher changes on repeat runs.
-INSERT IGNORE INTO activity_configs (storyId, activityType, `order`, isEnabled, requiredStoryIds, createdAt, updatedAt) VALUES
-(1, 'questions', 0, 1, JSON_ARRAY(), NOW(), NOW()),
-(1, 'flashcards', 1, 1, JSON_ARRAY(), NOW(), NOW()),
-(2, 'questions', 0, 1, JSON_ARRAY(), NOW(), NOW()),
-(2, 'listen_repeat', 1, 1, JSON_ARRAY(), NOW(), NOW()),
-(3, 'questions', 0, 1, JSON_ARRAY(), NOW(), NOW()),
-(3, 'matching', 1, 1, JSON_ARRAY(), NOW(), NOW());
-
 -- ==============================================
 -- UNIT 2: La Familia y Los Animales
 -- ==============================================
@@ -143,14 +135,6 @@ ON DUPLICATE KEY UPDATE
   word = VALUES(word),
   translation = VALUES(translation),
   updatedAt = NOW();
-
-INSERT IGNORE INTO activity_configs (storyId, activityType, `order`, isEnabled, requiredStoryIds, createdAt, updatedAt) VALUES
-(4, 'questions', 0, 1, JSON_ARRAY(), NOW(), NOW()),
-(4, 'matching', 1, 1, JSON_ARRAY(), NOW(), NOW()),
-(5, 'questions', 0, 1, JSON_ARRAY(), NOW(), NOW()),
-(5, 'flashcards', 1, 1, JSON_ARRAY(), NOW(), NOW()),
-(6, 'questions', 0, 1, JSON_ARRAY(), NOW(), NOW()),
-(6, 'listen_repeat', 1, 1, JSON_ARRAY(), NOW(), NOW());
 
 -- ==============================================
 -- UNIT 3: Comida y Números
@@ -213,21 +197,13 @@ ON DUPLICATE KEY UPDATE
   translation = VALUES(translation),
   updatedAt = NOW();
 
-INSERT IGNORE INTO activity_configs (storyId, activityType, `order`, isEnabled, requiredStoryIds, createdAt, updatedAt) VALUES
-(7, 'questions', 0, 1, JSON_ARRAY(), NOW(), NOW()),
-(7, 'matching', 1, 1, JSON_ARRAY(), NOW(), NOW()),
-(8, 'questions', 0, 1, JSON_ARRAY(), NOW(), NOW()),
-(8, 'flashcards', 1, 1, JSON_ARRAY(), NOW(), NOW()),
-(9, 'questions', 0, 1, JSON_ARRAY(), NOW(), NOW()),
-(9, 'listen_repeat', 1, 1, JSON_ARRAY(), NOW(), NOW());
-
 -- ==============================================
 -- ENROLLMENT
 -- ==============================================
 
 -- Create enrollment for student
-INSERT INTO enrollments (id, studentId, courseId, questionsCompleted, flashcardsCompleted, matchingCompleted, listenRepeatCompleted, createdAt, updatedAt) VALUES
-(1, 2, 1, 0, 0, 0, 0, NOW(), NOW())
+INSERT INTO enrollments (id, studentId, courseId, createdAt, updatedAt) VALUES
+(1, 2, 1, NOW(), NOW())
 ON DUPLICATE KEY UPDATE
   updatedAt = NOW();
 
@@ -235,12 +211,10 @@ ON DUPLICATE KEY UPDATE
 -- VERIFICATION QUERY
 -- ==============================================
 
--- Show activities beneath each story; they no longer occupy unit-wide slots.
+-- Show the stories of the seeded course in navigation order.
 SELECT u.id AS unitId, u.title AS unitTitle, s.id AS storyId,
-       s.title AS storyTitle, s.`order` AS storyOrder,
-       ac.activityType, ac.`order` AS activityOrder, ac.isEnabled
+       s.title AS storyTitle, s.`order` AS storyOrder
 FROM units u
 JOIN stories s ON s.unitId = u.id
-LEFT JOIN activity_configs ac ON ac.storyId = s.id
 WHERE u.courseId = 1
-ORDER BY u.`order`, s.`order`, ac.`order`;
+ORDER BY u.`order`, s.`order`;

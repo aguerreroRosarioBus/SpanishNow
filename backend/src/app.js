@@ -44,10 +44,8 @@ app.use('/api/stories', require('./routes/story.routes'));
 app.use('/api/lesson-plans', require('./routes/lessonPlan.routes'));
 app.use('/api/enrollments', require('./routes/enrollment.routes'));
 app.use('/api/questions', require('./routes/question.routes'));
-app.use('/api/question-responses', require('./routes/questionResponse.routes'));
 app.use('/api/vocabulary', require('./routes/vocabulary.routes'));
 app.use('/api/repetition-activities', require('./routes/repetitionActivity.routes'));
-app.use('/api/activity-configs', require('./routes/activityConfig.routes'));
 app.use('/api/tooltips', require('./routes/tooltip.routes'));
 
 // Health check

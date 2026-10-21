@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authMiddleware, isTeacher } = require('../middlewares/auth.middleware');
-const { Course, Unit, User, Story, ActivityConfig, Question, RepetitionActivity } = require('../models');
+const { Course, Unit, User, Story, Question, RepetitionActivity } = require('../models');
 const cloudinary = require('../config/cloudinary');
 const upload = require('../middlewares/upload.middleware');
 
@@ -33,8 +33,7 @@ router.get('/:id', async (req, res) => {
               as: 'stories',
               include: [
                 { model: Question, as: 'questions', attributes: ['id', 'storyId', 'questionText', 'answerType', 'options', 'audioUrl'] },
-                { model: RepetitionActivity, as: 'repetitionActivities' },
-                { model: ActivityConfig, as: 'activityConfigs', order: [['order', 'ASC']] }
+                { model: RepetitionActivity, as: 'repetitionActivities' }
               ],
               order: [['order', 'ASC']]
             }

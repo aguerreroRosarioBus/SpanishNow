@@ -35,6 +35,8 @@ module.exports = async () => {
     await loader.end();
   }
 
+  // The dump carries legacy progress rows; dropping them is expected in this throwaway database.
+  process.env.CONFIRM_DROP_LEGACY_PROGRESS = 'yes';
   const sequelize = new Sequelize(TEST_DB_NAME, connection.user, connection.password, {
     host: connection.host, dialect: 'mysql', logging: false
   });
@@ -45,11 +47,13 @@ module.exports = async () => {
       '20260127000000-create-tooltips.js',
       '20260926000000-convert-activity-configs-to-story.js',
       '20260927000000-create-lesson-plans.js',
-      '20261021000000-add-keyframe-tooltips.js'
+      '20261021000000-add-keyframe-tooltips.js',
+      '20261022000000-drop-legacy-progress.js'
     ]) {
       await require(path.join(backend, 'migrations', file)).up(qi, Sequelize);
     }
   } finally {
+    delete process.env.CONFIRM_DROP_LEGACY_PROGRESS;
     await sequelize.close();
   }
 };

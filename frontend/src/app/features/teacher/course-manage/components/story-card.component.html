@@ -1,0 +1,54 @@
+<!-- Header (Always Visible) -->
+<div
+  class="d-flex justify-content-between align-items-center p-3 cursor-pointer"
+  (click)="toggle()"
+  style="cursor: pointer; user-select: none;"
+>
+  <div class="d-flex align-items-center gap-3 flex-grow-1">
+    <span style="font-size: 1.2rem; opacity: 0.6;">{{ expanded() ? '▼' : '▶' }}</span>
+    <div>
+      <strong>📖 #{{ story().order + 1 }} - {{ story().title }}</strong>
+      <div class="text-muted small mt-1">📊 {{ questionsCount() }} preguntas</div>
+    </div>
+  </div>
+
+  <button class="btn btn-sm btn-danger" title="Eliminar historia"
+    (click)="store.deleteStory(unit().id, story().id); $event.stopPropagation()">
+    🗑️
+  </button>
+</div>
+
+<!-- Expanded Content -->
+<div *ngIf="expanded()" class="border-top">
+  <div class="p-3 bg-light">
+    <small class="text-muted">
+      {{ story().text.substring(0, 150) }}{{ story().text.length > 150 ? '...' : '' }}
+    </small>
+  </div>
+
+  <div class="p-3">
+    <h6 class="text-secondary mb-3">📝 CONTENIDO</h6>
+    <div class="d-flex gap-2 flex-wrap">
+      <button class="btn btn-sm btn-primary"
+        (click)="store.open({ kind: 'composer', story: story(), unit: unit() }); $event.stopPropagation()">
+        🧩 Componer lección TPRS
+      </button>
+      <button class="btn btn-sm btn-outline-secondary"
+        (click)="store.open({ kind: 'story-edit', story: story(), unitId: unit().id }); $event.stopPropagation()">
+        ✏️ Editar Texto
+      </button>
+      <button class="btn btn-sm btn-outline-primary"
+        (click)="store.open({ kind: 'questions', story: story() }); $event.stopPropagation()">
+        📝 Preguntas: {{ questionsCount() }}
+      </button>
+      <button class="btn btn-sm btn-outline-info"
+        (click)="store.open({ kind: 'story-tooltips', story: story() }); $event.stopPropagation()">
+        💡 Tooltips: {{ tooltipsCount() }}
+      </button>
+      <button class="btn btn-sm btn-outline-success"
+        (click)="store.open({ kind: 'repetitions', story: story() }); $event.stopPropagation()">
+        🎤 Audios: {{ audiosCount() }}
+      </button>
+    </div>
+  </div>
+</div>
