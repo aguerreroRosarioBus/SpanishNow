@@ -14,10 +14,11 @@ test.describe.serial('Flujo TPRS completo', () => {
   let publishedRevision = 0;
   let correct: Record<string, string> = {};
 
-  const blockBadges = (page: Page) => page.getByLabel('Bloques de la lección').locator('.badge');
-  const currentBadge = (page: Page) => page.getByLabel('Bloques de la lección').locator('.badge.bg-primary');
-  const blockHeading = (page: Page) => page.locator('app-lesson-block h5, app-full-story-block h5').first();
-  const sidebarItem = (page: Page, title: string) => page.locator('app-player-sidebar button.list-group-item').filter({ hasText: title });
+  const steps = (page: Page) => page.getByRole('group', { name: 'Pasos de la lección' }).getByRole('button');
+  const currentStep = (page: Page) => page.getByRole('group', { name: 'Pasos de la lección' }).locator('[aria-current="step"]');
+  /** Texto principal del paso: la palabra de la expresión o el texto de la pregunta. */
+  const stepText = (page: Page) => page.locator('app-lesson-block .read-text').first();
+  const sidebarItem = (page: Page, title: string) => page.locator('app-player-sidebar ol button').filter({ hasText: title });
 
   test('1. Profesor: tutorial, mover bloque, tooltip, guardar, vista previa y publicar', async ({ page }) => {
     const dialog = await openComposer(page);
@@ -72,20 +73,20 @@ test.describe.serial('Flujo TPRS completo', () => {
   test('2. Alumno: expresiones, keyframes, tooltip con teclado, error, reintento, salir/volver, completar y reencuentro', async ({ page, request }) => {
     correct = await correctAnswersByQuestion(request, 1);
     await login(page, student, /student\/dashboard/);
-    await page.locator('.card', { hasText: COURSE_TITLE }).getByRole('link', { name: /Continuar Aprendiendo/ }).click();
+    await page.locator('.card', { hasText: COURSE_TITLE }).getByRole('link', { name: /Continuar/ }).click();
     await expect(page).toHaveURL(/student\/course\/\d+\/play/);
 
-    await expect(page.getByRole('heading', { level: 4, name: STORY_MARIA })).toBeVisible();
-    await expect(page.getByText(`Lección publicada · revisión ${publishedRevision}`)).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: STORY_MARIA })).toBeVisible();
+    // Sin metadatos internos para el alumno
+    await expect(page.getByText(/revisión/i)).toHaveCount(0);
 
     // La historia siguiente está bloqueada hasta completar la lectura.
     const next = sidebarItem(page, 'El Primer Día de Clase');
-    await expect(next).toBeDisabled();
-    await expect(next).toContainText('🔒');
-    await expect(page.getByRole('button', { name: /Historia siguiente/ })).toBeDisabled();
+    await expect(next).toHaveAttribute('aria-disabled', 'true');
+    await expect(next.getByLabel('Bloqueada')).toBeVisible();
 
     // Expresiones antes de la narración.
-    const total = await blockBadges(page).count();
+    const total = await steps(page).count();
     await expect(page.locator('app-lesson-block').getByText('Antes', { exact: true })).toBeVisible();
     const expressions: string[] = [];
     let tooltipChecked = false, wrongTried = false, reloaded = false;
@@ -112,10 +113,10 @@ test.describe.serial('Flujo TPRS completo', () => {
         await page.keyboard.press('Escape');
         tooltipChecked = true;
       } else if (isQuestion) {
-        const text = (await blockHeading(page).innerText()).trim();
+        const text = (await stepText(page).innerText()).trim();
         const answer = correct[text];
         expect(answer, `respuesta correcta conocida para «${text}»`).toBeTruthy();
-        const options = page.locator('app-lesson-block .d-grid button');
+        const options = page.locator('app-lesson-block .options button');
         if (!wrongTried) {
           // Equivocarse: contexto + Reintentar.
           const optionTexts = (await options.allInnerTexts()).map(t => t.trim());
@@ -133,21 +134,21 @@ test.describe.serial('Flujo TPRS completo', () => {
         await page.getByRole('button', { name: 'Comprobar respuesta' }).click();
         await expect(page.getByRole('status').filter({ hasText: '¡Correcto!' })).toBeVisible();
       } else if (!isKeyframe) {
-        expressions.push((await blockHeading(page).innerText()).trim());
+        expressions.push((await stepText(page).innerText()).trim());
       }
 
       await page.getByRole('button', { name: 'Continuar' }).click();
       // Esperar al bloque siguiente antes de inspeccionarlo (el avance se persiste en el servidor).
-      await expect(currentBadge(page)).toContainText(`${i + 2}.`);
+      await expect(currentStep(page)).toHaveAttribute('aria-label', new RegExp(`^Paso ${i + 2}:`));
 
       // Salir y volver: tras el primer error resuelto, al recargar se retoma el mismo bloque.
       if (wrongTried && !reloaded) {
-        const badge = (await currentBadge(page).innerText()).trim();
-        const heading = (await blockHeading(page).innerText()).trim();
+        const step = await currentStep(page).getAttribute('aria-label');
+        const heading = (await stepText(page).innerText()).trim();
         await page.reload();
-        await expect(page.getByRole('heading', { level: 4, name: STORY_MARIA })).toBeVisible();
-        await expect(currentBadge(page)).toHaveText(badge);
-        await expect(blockHeading(page)).toHaveText(heading);
+        await expect(page.getByRole('heading', { level: 1, name: STORY_MARIA })).toBeVisible();
+        await expect(currentStep(page)).toHaveAttribute('aria-label', step!);
+        await expect(stepText(page)).toHaveText(heading);
         reloaded = true;
       }
     }
@@ -156,22 +157,21 @@ test.describe.serial('Flujo TPRS completo', () => {
     expect(tooltipChecked && wrongTried && reloaded).toBe(true);
 
     // Lectura completada: la historia siguiente se desbloquea.
-    await expect(page.getByText('Lectura completada').first()).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Historia completa' })).toBeVisible();
-    await expect(next).toBeEnabled();
-    await expect(next).not.toContainText('🔒');
-    const nextArrow = page.getByRole('button', { name: 'Historia siguiente' });
+    await expect(next).not.toHaveAttribute('aria-disabled', 'true');
+    await expect(sidebarItem(page, STORY_MARIA).getByLabel('Completada')).toBeVisible();
+    const nextArrow = page.getByRole('button', { name: 'Siguiente historia' });
     await expect(nextArrow).toBeEnabled();
 
     // Reencuentro: «Me llamo» reaparece como repaso en la historia siguiente.
     const lessonResponse = page.waitForResponse(r => /\/lesson-plans\/story\/\d+$/.test(r.url()) && r.request().method() === 'GET');
     await nextArrow.click();
     const lesson = await (await lessonResponse).json();
-    await expect(page.getByRole('heading', { level: 4, name: 'El Primer Día de Clase' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'El Primer Día de Clase' })).toBeVisible();
     const revisit = lesson.blocks.find((b: any) => b.type === 'expression' && b.vocabularyRole === 'revisit' && b.active && b.phase !== 'later');
     expect(revisit?.vocabulary?.word?.toLowerCase()).toBe('me llamo');
-    await expect(page.getByRole('heading', { level: 5, name: /Me llamo/i }).first()).toBeVisible();
-    await expect(page.getByRole('heading', { level: 5, name: /Me llamo/i }).first().getByText('Repaso')).toBeVisible();
+    await expect(page.locator('.expression-card').first()).toContainText(/Me llamo/i);
+    await expect(page.locator('.expression-card').first().getByText('Repaso')).toBeVisible();
   });
 
   test('4. Revisión fija: el alumno conserva su revisión aunque el profesor publique otra con distinto orden', async ({ page, browser }) => {
@@ -184,7 +184,6 @@ test.describe.serial('Flujo TPRS completo', () => {
     await login(page, student, /student\/dashboard/);
     const before = await studentLesson(page);
     expect(before.revision).toBe(publishedRevision);
-    await expect(page.getByText(`revisión ${publishedRevision}`)).toBeVisible();
 
     // Profesor: nueva revisión con el orden de las expresiones invertido.
     const teacherContext = await browser.newContext();
@@ -201,7 +200,6 @@ test.describe.serial('Flujo TPRS completo', () => {
     const after = await studentLesson(page);
     expect(after.revision).toBe(publishedRevision);
     expect(after.order).toEqual(before.order);
-    await expect(page.getByText(`Lección publicada · revisión ${publishedRevision}`)).toBeVisible();
   });
 
   test('5. Mi Avance refleja la lectura completada y Reiniciar Progreso lo deja en 0', async ({ page }) => {

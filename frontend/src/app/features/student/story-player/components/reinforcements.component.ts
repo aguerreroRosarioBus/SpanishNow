@@ -1,5 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { StudentLessonBlock } from '../../../../core/services/student-lesson.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { VocabularyService } from '../../../../core/services/vocabulary.service';
@@ -13,8 +13,9 @@ import { LessonSessionStore } from '../lesson-session.store';
 @Component({
   selector: 'app-reinforcements',
   standalone: true,
-  imports: [CommonModule, FlashcardModalComponent, MatchingModalComponent, ListenRepeatModalComponent],
-  templateUrl: './reinforcements.component.html'
+  imports: [IconComponent, FlashcardModalComponent, MatchingModalComponent, ListenRepeatModalComponent],
+  templateUrl: './reinforcements.component.html',
+  styleUrl: './reinforcements.component.scss'
 })
 export class ReinforcementsComponent {
   session = inject(LessonSessionStore);
@@ -30,6 +31,14 @@ export class ReinforcementsComponent {
 
   label(block: StudentLessonBlock): string {
     return block.type === 'flashcards' ? 'Flashcards' : block.type === 'matching' ? 'Emparejar vocabulario' : 'Escuchar y repetir';
+  }
+
+  icon(block: StudentLessonBlock): string {
+    return block.type === 'flashcards' ? 'layers' : block.type === 'matching' ? 'puzzle' : 'headphones';
+  }
+
+  description(block: StudentLessonBlock): string {
+    return block.type === 'flashcards' ? 'Repasa palabras clave' : block.type === 'matching' ? 'Une palabra y significado' : 'Escucha y repite frases';
   }
 
   open(block: StudentLessonBlock): void {

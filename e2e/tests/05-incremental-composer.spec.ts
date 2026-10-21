@@ -152,22 +152,21 @@ test.describe.serial('Composición incremental de una lección', () => {
     await page.goto(`/student/course/${courseUrl}/play`);
 
     // Ir a la unidad nueva con las flechas de unidad del menú lateral.
-    const unitTitle = page.locator('.unit-nav-title');
+    const unitTitle = page.locator('.index__unit-title');
     await expect(unitTitle).not.toBeEmpty();
     for (let i = 0; i < 30; i++) {
       const current = ((await unitTitle.textContent()) ?? '').trim();
       if (current.includes(UNIT_TITLE)) break;
-      await page.locator('.unit-nav button').last().click();
+      await page.locator('.index__unit-nav button').last().click();
       await expect(unitTitle).not.toHaveText(current); // esperar a que cambie de unidad antes de volver a pulsar
     }
     await expect(unitTitle).toContainText(UNIT_TITLE);
-    await expect(page.getByRole('heading', { level: 4, name: STORY_TITLE })).toBeVisible();
-    await expect(page.getByText(/Lección publicada · revisión \d+/)).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: STORY_TITLE })).toBeVisible();
 
     const next = () => page.getByRole('button', { name: 'Continuar' }).click();
     // Antes: las dos expresiones objetivo marcadas.
     for (const target of [TARGET1, TARGET2]) {
-      await expect(page.getByRole('heading', { level: 5, name: new RegExp(target.phrase, 'i') })).toBeVisible();
+      await expect(page.locator('app-lesson-block .read-text--term').filter({ hasText: new RegExp(target.phrase, 'i') })).toBeVisible();
       await expect(page.locator('app-lesson-block')).toContainText(target.translation);
       await next();
     }
@@ -176,8 +175,8 @@ test.describe.serial('Composición incremental de una lección', () => {
     await expect(page.getByRole('heading', { name: 'Fragmento de la historia' })).toBeVisible();
     await expect(page.locator('app-lesson-block .story-text')).toContainText(KF1);
     await next();
-    await expect(page.getByRole('heading', { level: 5, name: Q1 })).toBeVisible();
-    const options = page.locator('app-lesson-block .d-grid button');
+    await expect(page.locator('app-lesson-block .read-text').filter({ hasText: Q1 })).toBeVisible();
+    const options = page.locator('app-lesson-block .options button');
     await expect(options).toHaveText([/Sí/, /No/]);
     await options.filter({ hasText: /^\s*No\s*$/ }).click();
     await page.getByRole('button', { name: 'Comprobar respuesta' }).click();

@@ -1,39 +1,51 @@
-<section *ngIf="session.reinforcementBlocks().length > 0" class="mt-4 border-top pt-3">
-  <h6>Refuerzos opcionales</h6>
-  <div *ngFor="let extra of session.reinforcementBlocks()" class="py-2 border-bottom">
-    <div class="d-flex justify-content-between align-items-center">
-      <div>
-        <strong>{{ label(extra) }}</strong>
-        <span *ngIf="extra.vocabulary?.word" class="ms-2">{{ extra.vocabulary?.word }}</span>
-      </div>
-      <button type="button" class="btn btn-sm btn-outline-primary" (click)="open(extra)">
-        {{ session.isReinforcementComplete(extra.blockKey) ? 'Repetir' : 'Practicar' }}
-      </button>
+@if (session.reinforcementBlocks().length > 0) {
+  <section class="practice" aria-labelledby="practice-title">
+    <div class="practice__head">
+      <h2 id="practice-title" class="practice__title">Practicar vocabulario</h2>
+      <span class="practice__hint">Opcional · de la unidad {{ nav.unitNumber() }}</span>
     </div>
-    <small class="text-muted">{{ extra.type === 'listen_repeat' ? 'Historia' : 'Unidad' }} · {{ session.isReinforcementComplete(extra.blockKey) ? 'Completado' : 'Opcional' }}</small>
-  </div>
-</section>
+    <div class="practice__grid">
+      @for (extra of session.reinforcementBlocks(); track extra.blockKey) {
+        <div class="practice-card">
+          <span class="icon-tile" aria-hidden="true"><app-icon [name]="icon(extra)" [size]="18" /></span>
+          <div class="practice-card__text">
+            <div class="practice-card__name">{{ label(extra) }}@if (extra.vocabulary?.word) {<span class="practice-card__word"> · {{ extra.vocabulary?.word }}</span>}</div>
+            @if (session.isReinforcementComplete(extra.blockKey)) {
+              <div class="practice-card__desc practice-card__desc--done"><app-icon name="check" [size]="13" />Completado</div>
+            } @else {
+              <div class="practice-card__desc">{{ description(extra) }}</div>
+            }
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm" (click)="open(extra)">
+            {{ session.isReinforcementComplete(extra.blockKey) ? 'Repetir' : 'Practicar' }}
+          </button>
+        </div>
+      }
+    </div>
+  </section>
+}
 
-<app-flashcard-modal
-  *ngIf="nav.currentUnit()"
-  [show]="showFlashcardModal()"
-  [unitId]="nav.currentUnit()!.id"
-  (completed)="onModalCompleted()"
-  (close)="closeAllModals()"
-/>
+@if (nav.currentUnit()) {
+  <app-flashcard-modal
+    [show]="showFlashcardModal()"
+    [unitId]="nav.currentUnit()!.id"
+    (completed)="onModalCompleted()"
+    (close)="closeAllModals()"
+  />
 
-<app-matching-modal
-  *ngIf="nav.currentUnit()"
-  [show]="showMatchingModal()"
-  [unitId]="nav.currentUnit()!.id"
-  (completed)="onModalCompleted()"
-  (close)="closeAllModals()"
-/>
+  <app-matching-modal
+    [show]="showMatchingModal()"
+    [unitId]="nav.currentUnit()!.id"
+    (completed)="onModalCompleted()"
+    (close)="closeAllModals()"
+  />
+}
 
-<app-listen-repeat-modal
-  *ngIf="showListenRepeatModal()"
-  [storyId]="listenRepeatStoryId()"
-  [show]="showListenRepeatModal()"
-  (completed)="onModalCompleted()"
-  (close)="closeAllModals()"
-/>
+@if (showListenRepeatModal()) {
+  <app-listen-repeat-modal
+    [storyId]="listenRepeatStoryId()"
+    [show]="showListenRepeatModal()"
+    (completed)="onModalCompleted()"
+    (close)="closeAllModals()"
+  />
+}

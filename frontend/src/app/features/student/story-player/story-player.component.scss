@@ -1,27 +1,25 @@
-// ===== LAYOUT RESPONSIVO =====
-// Panel del curso (izquierda) + contenido: rejilla con ancho fijo para el panel,
-// en vez de un 25% que se vuelve minúsculo al restar el sidebar de la app.
-.player-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 1.5rem;
-  margin: 0;
-
-  > * {
-    width: auto;
-    max-width: none;
-    padding: 0;
-  }
+// Índice del curso (260–300px) + lección. Debajo de ~800px el índice queda arriba del contenido.
+.player {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: flex-start;
 }
 
-@media (min-width: 992px) {
-  .player-row {
-    grid-template-columns: 300px minmax(0, 1fr);
-    align-items: start;
-  }
+.player__index {
+  display: block;
+  flex: 1 1 260px;
+  min-width: 240px;
+  max-width: 300px;
+}
 
-  .player-row > :first-child {
-    position: sticky;
-    top: 1rem;
+.player__main {
+  flex: 999 1 520px;
+  min-width: 0;
+}
+
+@media (max-width: 767.98px) {
+  .player__index {
+    max-width: none;
   }
 }

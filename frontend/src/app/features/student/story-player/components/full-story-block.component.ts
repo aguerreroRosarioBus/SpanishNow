@@ -1,5 +1,5 @@
 import { Component, computed, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { TooltipDisplayComponent } from '../../../../shared/components/tooltip-display/tooltip-display.component';
 import { DisplayTooltip } from '../../../../core/services/tooltip.service';
 import { LessonSessionStore } from '../lesson-session.store';
@@ -9,7 +9,7 @@ import { LessonIllustrationComponent } from './lesson-illustration.component';
 @Component({
   selector: 'app-full-story-block',
   standalone: true,
-  imports: [CommonModule, TooltipDisplayComponent, LessonIllustrationComponent],
+  imports: [IconComponent, TooltipDisplayComponent, LessonIllustrationComponent],
   templateUrl: './full-story-block.component.html',
   styleUrl: './full-story-block.component.scss'
 })
@@ -31,5 +31,4 @@ export class FullStoryBlockComponent {
       tooltips: (b.tooltips || []).map(t => ({ ...t })) as DisplayTooltip[]
     }));
   });
-  trackPara(_: number, para: { key: string }): string { return para.key; }
 }

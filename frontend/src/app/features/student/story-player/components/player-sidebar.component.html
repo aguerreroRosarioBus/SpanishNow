@@ -1,75 +1,65 @@
-<div class="card">
-  <div class="card-header bg-primary text-white">
-    <h6 class="mb-0">
-      <span class="me-2 icon-decor">📚</span>
-      {{ nav.course()?.title }}
-    </h6>
+<aside class="index" aria-label="Índice del curso">
+  <div class="index__head">
+    <a class="index__back" routerLink="/student/dashboard"><app-icon name="chevron-left" [size]="14" />Mis cursos</a>
+    <div class="index__course">{{ nav.course()?.title }}</div>
+    <div class="index__progress">
+      <div class="index__progress-label">
+        <span>Progreso del curso</span>
+        <span>{{ nav.courseProgress().done }} de {{ nav.courseProgress().total }} historias</span>
+      </div>
+      <div class="progress" role="progressbar" aria-label="Progreso del curso"
+           [attr.aria-valuenow]="progressPercent()" aria-valuemin="0" aria-valuemax="100">
+        <div class="progress-bar" [style.width.%]="progressPercent()"></div>
+      </div>
+    </div>
   </div>
-  <div class="card-body p-0">
-    <div *ngIf="nav.isLoading()" class="p-3 text-center">
-      <div class="spinner-border spinner-border-sm" role="status"></div>
-      <p class="small text-muted mt-2 mb-0">Cargando...</p>
+
+  @if (nav.isLoading()) {
+    <div class="p-3 text-center" role="status">
+      <div class="spinner-border spinner-border-sm" aria-hidden="true"></div>
+      <p class="small text-muted mt-2 mb-0">Cargando…</p>
+    </div>
+  }
+
+  @if (!nav.isLoading() && nav.currentUnit()) {
+    <div class="index__unit">
+      <div class="index__unit-text">
+        <span class="eyebrow">Unidad {{ nav.unitNumber() }} de {{ nav.unitCount() }}</span>
+        <span class="index__unit-title">{{ unitTitle() }}</span>
+      </div>
+      <div class="index__unit-nav">
+        <button type="button" class="btn-icon" aria-label="Unidad anterior" [disabled]="!nav.canGoPreviousUnit()" (click)="nav.goToPreviousUnit()">
+          <app-icon name="chevron-left" [size]="16" />
+        </button>
+        <button type="button" class="btn-icon" aria-label="Unidad siguiente" [disabled]="!nav.canGoNextUnit()" (click)="nav.goToNextUnit()">
+          <app-icon name="chevron-right" [size]="16" />
+        </button>
+      </div>
     </div>
 
-    <div *ngIf="!nav.isLoading() && nav.currentUnit()">
-      <!-- Unit Navigation -->
-      <div class="p-3 bg-white border-bottom d-flex justify-content-between align-items-center gap-1 unit-nav">
-        <button
-          class="btn btn-sm btn-outline-primary flex-shrink-0 px-2 py-1"
-          [disabled]="!nav.canGoPreviousUnit()"
-          (click)="nav.goToPreviousUnit()"
-          style="font-size: 0.875rem;"
-        >
-          ←<span class="d-none d-lg-inline ms-1">Anterior</span>
-        </button>
-        <small class="text-muted fw-bold text-center flex-grow-1 unit-nav-title" style="font-size: 0.7rem; line-height: 1.2; min-width: 0;">
-          {{ nav.currentUnit()?.title || 'Unidad' }}
-        </small>
-        <button
-          class="btn btn-sm btn-outline-primary flex-shrink-0 px-2 py-1"
-          [disabled]="!nav.canGoNextUnit()"
-          (click)="nav.goToNextUnit()"
-          style="font-size: 0.875rem;"
-        >
-          <span class="d-none d-lg-inline me-1">Siguiente</span>→
-        </button>
-      </div>
-
-      <!-- Unit Progress -->
-      <div class="p-3 bg-light border-bottom">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <small class="text-muted">Progreso</small>
-          <small class="fw-bold">{{ nav.completedCount() }}/{{ nav.items().length }}</small>
-        </div>
-      </div>
-
-      <!-- Stories list -->
-      <div class="list-group list-group-flush">
-        <div *ngFor="let item of nav.items()" class="nav-item-wrapper position-relative">
-          <button
-            class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3"
-            [class.active]="nav.currentItem()?.id === item.id"
-            [class.list-group-item-success]="item.completed && nav.currentItem()?.id !== item.id"
-            [disabled]="!item.canAccess"
-            [class.disabled]="!item.canAccess"
-            (click)="nav.selectItem(item)"
-            [style.opacity]="item.canAccess ? '1' : '0.5'"
-          >
-            <div class="d-flex align-items-center flex-grow-1">
-              <span class="me-2 item-icon" style="font-size: 1.2rem;">📖</span>
-              <small [class.text-muted]="!item.canAccess">{{ item.title }}</small>
-            </div>
-            <div class="d-flex gap-1 align-items-center">
-              <span *ngIf="item.completed" class="badge bg-success">✓</span>
-              <span *ngIf="!item.canAccess" class="text-muted" style="font-size: 1.1rem;">🔒</span>
-            </div>
+    <ol class="index__stories">
+      @for (item of nav.items(); track item.id) {
+        <li>
+          <button type="button" class="story-link"
+                  [class.is-current]="currentId() === item.id"
+                  [class.is-locked]="!item.canAccess"
+                  [attr.aria-current]="currentId() === item.id ? 'page' : null"
+                  [attr.aria-disabled]="!item.canAccess"
+                  [attr.title]="item.canAccess ? null : 'Completa la historia anterior para desbloquearla'"
+                  (click)="nav.selectItem(item)">
+            @if (item.completed) {
+              <span class="state state--done" aria-label="Completada"><app-icon name="check" [size]="12" /></span>
+            } @else if (currentId() === item.id) {
+              <span class="state state--current" aria-label="En curso"><span class="state__dot"></span></span>
+            } @else if (!item.canAccess) {
+              <span class="state state--locked" aria-label="Bloqueada"><app-icon name="lock" [size]="13" /></span>
+            } @else {
+              <span class="state state--todo" aria-label="Pendiente"></span>
+            }
+            <span class="story-link__title">{{ item.title }}</span>
           </button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<button class="btn btn-outline-secondary btn-sm mt-3 w-100" (click)="back.emit()">
-  ← Volver al Dashboard
-</button>
+        </li>
+      }
+    </ol>
+  }
+</aside>

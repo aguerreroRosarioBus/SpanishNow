@@ -1,5 +1,5 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -50,8 +50,8 @@ describe('StoryPlayerComponent (flujo TPRS)', () => {
     await TestBed.configureTestingModule({
       imports: [StoryPlayerComponent],
       providers: [
+        provideRouter([]),
         { provide: ActivatedRoute, useValue: { params: of({ courseId: '1' }) } },
-        { provide: Router, useValue: { navigate: vi.fn() } },
         { provide: AuthService, useValue: { currentUser: signal({ id: 1, role: 'student' }), isStudent: () => true } },
         { provide: EnrollmentService, useValue: { getMyCourses: () => of([{ id: 1, studentId: 1, courseId: 1, createdAt: '', lessonProgress: [] }]) } },
         { provide: CourseService, useValue: { getCourse: () => of(course) } },
@@ -131,16 +131,60 @@ describe('StoryPlayerComponent (flujo TPRS)', () => {
     expect(nav.currentItem()?.id).toBe('story-100');
   });
 
-  it('la flecha Siguiente aplica la misma regla de acceso que el menú lateral', async () => {
+  it('el índice marca como bloqueada la historia que aún no se puede abrir y como actual la abierta', async () => {
     await create(null);
+    const rows = [...(fixture.nativeElement as HTMLElement).querySelectorAll('app-player-sidebar ol button')] as HTMLButtonElement[];
+    expect(rows.length).toBe(2);
+    expect(rows[0].getAttribute('aria-current')).toBe('page');
+    expect(rows[1].getAttribute('aria-disabled')).toBe('true');
+    expect(rows[1].querySelector('.state--locked')).toBeTruthy();
     expect(nav.canGoNext()).toBe(false);
     expect(nav.nextBlockedReason()).toContain('Completa');
-    nav.goToNext();
-    expect(nav.currentItem()?.id).toBe('story-100');
+  });
+
+  it('una historia completada nunca aparece bloqueada, aunque la anterior no figure completada', async () => {
+    await create(null);
+    nav.markStoryCompleted(200);
+    const second = nav.items().find(i => i.id === 'story-200')!;
+    expect(second.completed).toBe(true);
+    expect(second.canAccess).toBe(true);
     fixture.detectChanges();
-    const next = [...(fixture.nativeElement as HTMLElement).querySelectorAll('button')].find(b => b.getAttribute('aria-label')?.startsWith('Historia siguiente')) as HTMLButtonElement;
-    expect(next.disabled).toBe(true);
-    expect(next.getAttribute('aria-label')).toContain('bloqueada');
+    const rows = [...(fixture.nativeElement as HTMLElement).querySelectorAll('app-player-sidebar ol button')];
+    expect(rows[1].querySelector('.state--done')).toBeTruthy();
+    expect(rows[1].querySelector('.state--locked')).toBeNull();
+  });
+
+  it('la barra de pasos marca completados en verde, el actual en naranja y no hay otro par anterior/siguiente', async () => {
+    await create('q1');
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const segs = [...el.querySelectorAll('.seg')];
+    expect(segs.length).toBe(4);
+    expect(segs.map(s => s.classList.contains('is-done'))).toEqual([true, false, false, false]);
+    expect(segs[1].classList.contains('is-current')).toBe(true);
+    expect(segs[1].getAttribute('aria-label')).toBe('Paso 2: Pregunta');
+    expect(el.textContent).toContain('Paso 2 de 4');
+    // Un único Anterior y un único Continuar; sin flechas de historia ni «Bloque anterior»
+    const labels = [...el.querySelectorAll('button')].map(b => b.textContent?.trim());
+    expect(labels.filter(l => l === 'Anterior').length).toBe(1);
+    expect(labels.filter(l => l === 'Continuar').length).toBe(1);
+    expect(el.querySelector('[aria-label="Historia siguiente"]')).toBeNull();
+    expect(el.textContent).not.toContain('revisión');
+  });
+
+  it('en el último paso el botón principal completa la lectura y luego pasa a la siguiente historia', async () => {
+    await create('f1');
+    lessonApi.completeNarrative.mockReturnValue(of({}));
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const primary = () => el.querySelector('.lesson-foot .btn-primary') as HTMLButtonElement;
+    expect(primary().textContent?.trim()).toBe('Completar lectura');
+    primary().click();
+    fixture.detectChanges();
+    expect(lessonApi.completeNarrative).toHaveBeenCalled();
+    expect(primary().textContent?.trim()).toBe('Siguiente historia');
+    primary().click();
+    expect(nav.currentItem()?.id).toBe('story-200');
   });
 
   it('las flechas avanzan y retroceden cuando el ítem destino es accesible', async () => {

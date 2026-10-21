@@ -86,6 +86,12 @@ export class LessonSessionStore {
     });
   }
 
+  /** Salta a un paso de la barra de pasos (índice dentro de los bloques activos). */
+  goToBlockIndex(index: number): void {
+    const block = this.activeBlocks()[index];
+    if (block && index !== this.currentBlockIndex()) this.persistCurrentBlock(block);
+  }
+
   goToBlock(offset: number): void {
     const block = this.activeBlocks()[this.currentBlockIndex() + offset];
     if (block) this.persistCurrentBlock(block);

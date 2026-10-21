@@ -1,22 +1,31 @@
-<section *ngIf="session.lesson() as lesson" class="border rounded p-3 mb-3" aria-live="polite">
-  <small class="text-uppercase text-muted">{{ session.currentBlock()?.phase === 'before' ? 'Antes' : session.currentBlock()?.phase === 'during' ? 'Durante' : 'Después' }}</small>
-  <h5 class="mt-2">Historia completa</h5>
-  <div class="d-flex flex-wrap align-items-center gap-3 mb-3 audio-controls">
-    <div class="btn-group btn-group-sm" role="group" aria-label="Velocidad de audio">
-      <button class="btn" [class.btn-primary]="session.audio.speed() === 'slow'" [class.btn-outline-secondary]="session.audio.speed() !== 'slow'" (click)="session.switchAudioSpeed('slow')">Lento</button>
-      <button class="btn" [class.btn-primary]="session.audio.speed() === 'normal'" [class.btn-outline-secondary]="session.audio.speed() !== 'normal'" (click)="session.switchAudioSpeed('normal')">Normal</button>
+@if (session.lesson(); as lesson) {
+  <section class="block" aria-live="polite">
+    <span class="eyebrow eyebrow--muted">{{ session.currentBlock()?.phase === 'before' ? 'Antes' : session.currentBlock()?.phase === 'during' ? 'Durante' : 'Después' }}</span>
+    <h2 class="block__title">Historia completa</h2>
+    <div class="audio-controls">
+      <div class="btn-group btn-group-sm" role="group" aria-label="Velocidad de audio">
+        <button type="button" class="btn" [class.btn-primary]="session.audio.speed() === 'slow'" [class.btn-secondary]="session.audio.speed() !== 'slow'" (click)="session.switchAudioSpeed('slow')">Lento</button>
+        <button type="button" class="btn" [class.btn-primary]="session.audio.speed() === 'normal'" [class.btn-secondary]="session.audio.speed() !== 'normal'" (click)="session.switchAudioSpeed('normal')">Normal</button>
+      </div>
+      <button type="button" class="btn btn-secondary btn-sm" (click)="session.toggleFullStoryAudio()" [disabled]="!session.fullStoryAudioUrl()">
+        <app-icon [name]="session.audio.isPlaying() ? 'square' : 'volume'" [size]="16" />{{ session.audio.isPlaying() ? 'Pausar audio' : 'Reproducir audio' }}
+      </button>
     </div>
-    <button class="btn btn-outline-primary btn-sm" (click)="session.toggleFullStoryAudio()" [disabled]="!session.fullStoryAudioUrl()">{{ session.audio.isPlaying() ? 'Pausar audio' : 'Reproducir audio' }}</button>
-  </div>
-  <div *ngIf="paragraphs() as paras; else plain" class="story-text mt-3 illustrated">
-    <article *ngFor="let para of paras; trackBy: trackPara" class="story-para" [class.with-image]="para.imageUrl">
-      <app-lesson-illustration *ngIf="para.imageUrl as image" class="para-image" [src]="image" [alt]="para.alt" [compact]="true" />
-      <div class="para-text"><app-tooltip-display [tooltipData]="para.tooltips" [text]="para.text" /></div>
-    </article>
-  </div>
-  <ng-template #plain>
-    <div class="story-text mt-3">
-      <app-tooltip-display [targetType]="'story'" [targetId]="lesson.story.id" [text]="lesson.story.fullStoryText" />
-    </div>
-  </ng-template>
-</section>
+    @if (paragraphs(); as paras) {
+      <div class="story-text read-text illustrated">
+        @for (para of paras; track para.key) {
+          <article class="story-para" [class.with-image]="para.imageUrl">
+            @if (para.imageUrl; as image) {
+              <app-lesson-illustration class="para-image" [src]="image" [alt]="para.alt" [compact]="true" />
+            }
+            <div class="para-text"><app-tooltip-display [tooltipData]="para.tooltips" [text]="para.text" /></div>
+          </article>
+        }
+      </div>
+    } @else {
+      <div class="story-text read-text">
+        <app-tooltip-display [targetType]="'story'" [targetId]="lesson.story.id" [text]="lesson.story.fullStoryText" />
+      </div>
+    }
+  </section>
+}

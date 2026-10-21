@@ -24,6 +24,12 @@ export class LessonNavigationStore {
   currentItem = computed(() => this.items()[this.currentIndex()] ?? null);
   currentStoryId = computed(() => this.currentItem()?.story.id ?? null);
   completedCount = computed(() => this.items().filter(item => item.completed).length);
+  /** Avance de todo el curso (no solo de la unidad abierta) */
+  courseProgress = computed(() => {
+    const done = this.completedStories();
+    const stories = (this.course()?.units ?? []).flatMap(u => u.stories ?? []);
+    return { done: stories.filter(s => done.has(s.id)).length, total: stories.length };
+  });
 
   // Las flechas siguen la misma regla de acceso que el menú lateral (ver navigateTo).
   previousItem = computed(() => this.items()[this.currentIndex() - 1] ?? null);
@@ -39,10 +45,19 @@ export class LessonNavigationStore {
     const unit = this.currentUnit();
     return unit ? (this.course()?.units ?? []).findIndex(u => u.id === unit.id) : -1;
   });
+  /** Posición de la unidad abierta (1-based) y cantidad de unidades, para «UNIDAD 1 DE 3» */
+  unitNumber = computed(() => this.unitIndex() + 1);
+  unitCount = computed(() => this.course()?.units?.length ?? 0);
   canGoPreviousUnit = computed(() => this.unitIndex() > 0);
   canGoNextUnit = computed(() => {
     const index = this.unitIndex();
     return index >= 0 && index < (this.course()?.units?.length ?? 0) - 1;
+  });
+
+  /** Qué sigue al terminar la lección: otra historia, la próxima unidad o volver a los cursos. */
+  afterLesson = computed<'story' | 'unit' | 'courses'>(() => {
+    if (this.nextItem()?.canAccess) return 'story';
+    return this.canGoNextUnit() ? 'unit' : 'courses';
   });
 
   load(courseId: number): void {
@@ -114,7 +129,8 @@ export class LessonNavigationStore {
         order: story.order,
         story,
         completed: completed.has(story.id),
-        canAccess: previousCompleted
+        // Una historia ya completada nunca queda bloqueada, aunque la anterior no figure completada
+        canAccess: previousCompleted || completed.has(story.id)
       };
       previousCompleted = item.completed;
       return item;

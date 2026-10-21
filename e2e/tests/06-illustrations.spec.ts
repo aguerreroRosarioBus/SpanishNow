@@ -125,21 +125,21 @@ test.describe.serial('Ilustraciones en la lección', () => {
   test('5. Alumno: ve las ilustraciones', async ({ page }) => {
     await login(page, student, /student\/dashboard/);
     await page.goto(`/student/course/${courseUrl}/play`);
-    const unitTitle = page.locator('.unit-nav-title');
+    const unitTitle = page.locator('.index__unit-title');
     await expect(unitTitle).not.toBeEmpty();
     for (let i = 0; i < 30; i++) {
       const current = ((await unitTitle.textContent()) ?? '').trim();
       if (current.includes(UNIT_TITLE)) break;
-      await page.locator('.unit-nav button').last().click();
+      await page.locator('.index__unit-nav button').last().click();
       await expect(unitTitle).not.toHaveText(current);
     }
     await expect(unitTitle).toContainText(UNIT_TITLE);
-    await expect(page.getByRole('heading', { level: 4, name: STORY_TITLE })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: STORY_TITLE })).toBeVisible();
 
     const loaded = (img: Locator) => expect.poll(() => img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true);
 
     // Tarjeta de la expresión con su imagen.
-    await expect(page.getByRole('heading', { level: 5, name: new RegExp(TARGET.phrase, 'i') })).toBeVisible();
+    await expect(page.locator('app-lesson-block .read-text--term').filter({ hasText: new RegExp(TARGET.phrase, 'i') })).toBeVisible();
     const exprImg = page.locator('app-lesson-block app-lesson-illustration img').first();
     await expect(exprImg).toHaveAttribute('alt', `Imagen de ${TARGET.phrase}`);
     await loaded(exprImg);

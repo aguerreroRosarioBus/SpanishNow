@@ -45,3 +45,59 @@
     <app-unit-list />
   }
 </div>
+
+<!-- Diálogos: se crean al abrirse y se destruyen al cerrarse -->
+<ng-container *ngIf="store.modal() as modal">
+  <ng-container [ngSwitch]="modal.kind">
+    <app-course-edit-modal *ngSwitchCase="'course-edit'" />
+    <app-unit-form-modal *ngSwitchCase="'unit-create'" />
+    <ng-container *ngSwitchCase="'unit-edit'">
+      <app-unit-form-modal [unit]="$any(modal).unit" />
+    </ng-container>
+    <ng-container *ngSwitchCase="'story-create'">
+      <app-story-create-modal [unitId]="$any(modal).unitId" />
+    </ng-container>
+    <ng-container *ngSwitchCase="'story-edit'">
+      <app-story-edit-modal [story]="$any(modal).story" />
+    </ng-container>
+    <ng-container *ngSwitchCase="'questions'">
+      <app-question-modal [story]="$any(modal).story" />
+    </ng-container>
+    <ng-container *ngSwitchCase="'vocabulary'">
+      <app-vocabulary-modal [unit]="$any(modal).unit" />
+    </ng-container>
+    <ng-container *ngSwitchCase="'repetitions'">
+      <app-repetition-modal [story]="$any(modal).story" />
+    </ng-container>
+    <ng-container *ngSwitchCase="'story-tooltips'">
+      <app-tooltip-modal [title]="$any(modal).story.title" targetType="story"
+        [targetId]="$any(modal).story.id" [text]="$any(modal).story.text" (closed)="store.close()" />
+    </ng-container>
+  </ng-container>
+</ng-container>
+
+<!-- Modal Backdrop -->
+<div class="modal-backdrop fade show" *ngIf="store.hasBackdrop()"></div>
+
+<!-- Confirm Dialog -->
+<app-confirm-dialog
+  *ngIf="store.confirmData() as confirm"
+  [show]="store.showConfirmDialog()"
+  [title]="confirm.title"
+  [message]="confirm.message"
+  [confirmText]="confirm.confirmText"
+  [type]="confirm.type"
+  (confirmed)="store.acceptConfirm()"
+  (cancelled)="store.cancelConfirm()"
+></app-confirm-dialog>
+
+<ng-container *ngIf="store.modal() as modal">
+  <app-lesson-composer
+    *ngIf="modal.kind === 'composer'"
+    [story]="$any(modal).story"
+    [unit]="$any(modal).unit"
+    [courseUnits]="store.units()"
+    (closed)="store.close()"
+    (storyTextPublished)="store.setStoryText($any(modal).story.id, $event)"
+  ></app-lesson-composer>
+</ng-container>

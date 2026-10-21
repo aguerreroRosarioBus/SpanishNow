@@ -1,7 +1,7 @@
 import { Component, computed, inject, input } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { StudentLessonBlock } from '../../../../core/services/student-lesson.service';
 import { DisplayTooltip } from '../../../../core/services/tooltip.service';
+import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { TooltipDisplayComponent } from '../../../../shared/components/tooltip-display/tooltip-display.component';
 import { LessonSessionStore } from '../lesson-session.store';
 import { LessonIllustrationComponent } from './lesson-illustration.component';
@@ -10,7 +10,7 @@ import { LessonIllustrationComponent } from './lesson-illustration.component';
 @Component({
   selector: 'app-lesson-block',
   standalone: true,
-  imports: [CommonModule, TooltipDisplayComponent, LessonIllustrationComponent],
+  imports: [IconComponent, TooltipDisplayComponent, LessonIllustrationComponent],
   templateUrl: './lesson-block.component.html',
   styleUrl: './lesson-block.component.scss'
 })

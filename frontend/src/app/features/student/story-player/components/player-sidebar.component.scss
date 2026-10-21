@@ -1,71 +1,162 @@
-.list-group-item {
-  transition: background-color 0.2s ease;
+.index {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.index__head {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 16px 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.index__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  color: var(--color-text-light);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: none;
 
   &:hover {
-    background-color: var(--color-primary-soft);
-  }
-
-  &.active {
-    background-color: var(--color-primary-soft);
-    border-color: var(--color-border);
-    box-shadow: inset 4px 0 0 var(--color-primary);
-    color: var(--color-primary-dark);
+    color: var(--color-primary-hover);
   }
 }
 
-.nav-item-wrapper {
-  position: relative;
+.index__course {
+  font: 600 1rem/1.3 var(--font-heading);
 }
 
-// Menos ruido visual: sin emojis decorativos en el panel del curso
-.icon-decor,
-.item-icon {
-  display: none;
+.index__progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-// Navegación de unidad: flechas compactas y título con espacio para respirar
-.unit-nav {
-  gap: 0.5rem !important;
-
-  .d-lg-inline {
-    display: none !important;
-  }
-
-  .btn {
-    width: 2.25rem;
-    height: 2.25rem;
-    padding: 0 !important;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1rem !important;
-  }
+.index__progress-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--color-text-light);
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
-.unit-nav-title {
-  font-family: var(--font-heading);
-  font-size: 0.95rem !important;
-  color: var(--color-text) !important;
+.index__unit {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 12px 12px 16px;
+  background: var(--color-section-tint);
+  border-bottom: 1px solid var(--color-section-border);
 }
 
-// Cabecera del panel más sobria (crema en lugar de naranja sólido)
-.card-header.bg-primary {
-  background-color: var(--color-primary-soft) !important;
-  color: var(--color-text) !important;
-  border-bottom: 1px solid var(--color-border);
-  padding: 1rem 1.25rem;
+.index__unit-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
 
-  h6 {
-    color: var(--color-text) !important;
-    font-size: 1.05rem;
-    font-weight: 600;
+  .eyebrow {
+    font-size: 0.6875rem;
+    letter-spacing: 0.06em;
   }
 }
 
-// En pantallas medianas y pequeñas la lista no debe empujar el contenido fuera de vista
-@media (max-width: 991.98px) {
-  .list-group {
-    max-height: 240px;
-    overflow-y: auto;
+.index__unit-title {
+  font: 600 0.875rem/1.3 var(--font-heading);
+}
+
+.index__unit-nav {
+  display: flex;
+  flex: none;
+  gap: 2px;
+}
+
+.index__stories {
+  list-style: none;
+  margin: 0;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.story-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text);
+  font: 600 0.875rem var(--font-body);
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--color-bg-light);
   }
+
+  &.is-current {
+    background: #fdeee4;
+    color: var(--color-primary-hover);
+  }
+
+  &.is-locked {
+    color: var(--color-text-light);
+    cursor: default;
+
+    &:hover {
+      background: transparent;
+    }
+  }
+}
+
+.story-link__title {
+  flex: 1;
+  min-width: 0;
+}
+
+.state {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  box-sizing: border-box;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.state--done {
+  background: #1f7a4d;
+  color: #fff;
+}
+
+.state--current {
+  border: 2px solid var(--color-primary);
+}
+
+.state__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+}
+
+.state--todo {
+  border: 2px solid #d9cbbe;
+}
+
+.state--locked {
+  color: var(--color-text-light);
 }
