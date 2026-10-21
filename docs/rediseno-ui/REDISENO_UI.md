@@ -368,3 +368,18 @@ Trabajar sobre una rama nueva creada desde `feat/tprs-lesson-flow`. Ir en fases,
 ### Verificación visual
 
 Levantar la app con el backend de pruebas (ver `DEVELOPMENT.md`) y capturar cada pantalla a 1024px, 1440px y 390px, como profesor y como alumno. Comparar contra los mockups.
+
+---
+
+## 5. Estado de implementación
+
+Las 5 fases están implementadas (un commit por fase en la rama `claude/focused-goldstine-400645`). Decisiones y pendientes:
+
+- **Íconos:** se amplió el componente propio `<app-icon>` (`shared/components/icon`) con el set Lucide necesario, en lugar de agregar `lucide-angular`.
+- **Menús «⋯»:** se usa `ngbDropdown`, lo que sumó `@popperjs/core` como dependencia.
+- **Datos nuevos del backend** (aditivos, `GET /courses/:id`): `lessonStatus` por historia (Publicada si alguna revisión está publicada) y `enrollmentCount` por curso. El badge de estado del curso se deriva: «Publicado» si tiene al menos una historia publicada.
+- **Fuera de esta entrega** (no existen en el backend o requieren una decisión de producto):
+  - «Duplicar» (unidad e historia) y «Mover a otra unidad…»: no hay endpoints; quedaron fuera del menú.
+  - «Vista de alumno» (vista previa del reproductor para el profesor): el reproductor usa endpoints solo de alumno inscrito.
+  - El menú del profesor no tiene «Estudiantes» (no existe esa pantalla).
+- **Bugs de la sección 1.3:** 1 (header con sesión vieja en login), 2 (portada sin imagen), 3 (`/teachers`: import incorrecto de `sequelize` en el backend), 4 (completada y bloqueada a la vez) y 5 («0/0» en Mi avance) están corregidos.

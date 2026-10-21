@@ -11,7 +11,9 @@
         <a class="sidebar-item"
            [routerLink]="item.link"
            [queryParams]="item.query ?? null"
-           routerLinkActive="active"
+           routerLinkActive
+           #rla="routerLinkActive"
+           [class.active]="rla.isActive || isUnder(item)"
            [routerLinkActiveOptions]="item.exactQuery ? { paths: 'exact', queryParams: 'exact', fragment: 'ignored', matrixParams: 'ignored' } : { paths: 'subset', queryParams: 'ignored', fragment: 'ignored', matrixParams: 'ignored' }"
            [attr.aria-label]="collapsed() ? item.label : null"
            [attr.title]="collapsed() ? item.label : null">

@@ -29,7 +29,7 @@
     <div class="card-grid">
       @for (course of courses(); track course.id) {
         <app-course-card [title]="course.title" [level]="course.level" [description]="course.description" [imageUrl]="course.imageUrl">
-          <a [routerLink]="['/teacher/course', course.id, 'manage']" class="btn btn-primary flex-grow-1">Gestionar contenido</a>
+          <a [routerLink]="['/teacher/course', course.id, 'manage']" class="btn btn-secondary flex-grow-1">Gestionar contenido</a>
           <button type="button" class="btn btn-secondary" (click)="openEditModal(course)">Editar</button>
         </app-course-card>
       }
