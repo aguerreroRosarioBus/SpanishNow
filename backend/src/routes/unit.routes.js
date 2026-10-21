@@ -3,6 +3,8 @@ const router = express.Router();
 const { authMiddleware, isTeacher } = require('../middlewares/auth.middleware');
 const { Unit, Course, Story, Vocabulary } = require('../models');
 const { canReadCourse } = require('../utils/courseAccess');
+const { Op } = require('sequelize');
+const materials = require('../services/materialService');
 
 // Get unit by ID with stories and vocabulary (the course teacher or an enrolled student)
 router.get('/:id', authMiddleware, async (req, res) => {
@@ -99,6 +101,9 @@ router.delete('/:id', authMiddleware, isTeacher, async (req, res) => {
       return res.status(403).json({ error: 'Not authorized' });
     }
 
+    // PDFs of the unit and of its stories go with it (the rows by cascade, the files here).
+    const storyIds = (await Story.findAll({ where: { unitId: unit.id }, attributes: ['id'] })).map(story => story.id);
+    await materials.removeFilesWhere({ [Op.or]: [{ unitId: unit.id }, ...(storyIds.length ? [{ storyId: { [Op.in]: storyIds } }] : [])] });
     await unit.destroy();
     res.json({ message: 'Unit deleted successfully' });
   } catch (error) {

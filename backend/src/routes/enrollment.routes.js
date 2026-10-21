@@ -3,7 +3,8 @@ const router = express.Router();
 const { authMiddleware, isStudent } = require('../middlewares/auth.middleware');
 const sequelize = require('../config/database');
 const { UniqueConstraintError } = require('sequelize');
-const { Enrollment, Course, Story, Unit, LessonPlan, LessonBlock, LessonProgress, LessonAnswer, LessonReinforcement } = require('../models');
+const { Enrollment, Course, Story, Unit, LessonPlan, LessonBlock, LessonProgress, LessonAnswer, LessonReinforcement, UnitQuizAttempt } = require('../models');
+const certificates = require('../services/certificateService');
 
 const REINFORCEMENTS = ['flashcards', 'matching', 'listen_repeat'];
 const validId = value => /^[1-9]\d{0,9}$/.test(String(value)) && Number(value) <= 2147483647;
@@ -88,14 +89,16 @@ router.delete('/:enrollmentId/reset-progress', authMiddleware, isStudent, async 
       if (!enrollment) return { status: 404, error: 'Enrollment not found' };
       if (enrollment.studentId !== req.user.id) return { status: 403, error: 'Not authorized' };
 
+      // Quiz attempts are progress too. An issued certificate is kept: the enrolment still exists.
+      const quizAttempts = await UnitQuizAttempt.destroy({ where: { enrollmentId: enrollment.id }, transaction });
       const rows = await LessonProgress.findAll({ where: { enrollmentId: enrollment.id }, attributes: ['id'], transaction, lock: transaction.LOCK.UPDATE });
       const ids = rows.map(row => row.id);
-      if (!ids.length) return { counts: { progress: 0, answers: 0, reinforcements: 0 } };
+      if (!ids.length) return { counts: { progress: 0, answers: 0, reinforcements: 0, quizAttempts } };
 
       const answers = await LessonAnswer.destroy({ where: { lessonProgressId: ids }, transaction });
       const reinforcements = await LessonReinforcement.destroy({ where: { lessonProgressId: ids }, transaction });
       const progress = await LessonProgress.destroy({ where: { id: ids }, transaction });
-      return { counts: { progress, answers, reinforcements } };
+      return { counts: { progress, answers, reinforcements, quizAttempts } };
     });
 
     if (deleted.error) return res.status(deleted.status).json({ error: deleted.error });
@@ -155,10 +158,18 @@ router.get('/:enrollmentId/progress', authMiddleware, async (req, res) => {
       reinforcementsByProgress.get(row.lessonProgressId).push(row);
     }
 
+    // Only stories with a published lesson count: a draft cannot be opened by the student.
+    const allStoryIds = units.flatMap(unit => unit.stories.map(story => story.id));
+    const publishedStoryIds = new Set(allStoryIds.length
+      ? (await LessonPlan.findAll({ where: { storyId: allStoryIds, status: 'published' }, attributes: ['storyId'], raw: true }))
+        .map(plan => plan.storyId)
+      : []);
+
     const result = [];
     for (const unit of units) {
       for (const story of unit.stories) {
         const progress = progressByStory.get(story.id);
+        if (!publishedStoryIds.has(story.id) && !progress) continue;
         const entry = {
           storyId: story.id, storyTitle: story.title, unitId: unit.id, unitTitle: unit.title,
           revision: null, lastBlockKey: null, narrativeCompleted: false, completedAt: null,
@@ -185,7 +196,33 @@ router.get('/:enrollmentId/progress', authMiddleware, async (req, res) => {
       }
     }
 
-    res.json(result);
+    const completion = await certificates.completionOf(enrollment);
+    res.json({
+      stories: result,
+      quizzes: completion.quizzes,
+      certificate: await certificates.statusOf(enrollment, completion)
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Issues the certificate of completion (idempotent: an enrolment that already has one gets the same one back).
+// Only the student who owns the enrolment. `name` is the name to print (up to 100 characters, the account name by default).
+router.post('/:enrollmentId/certificate', authMiddleware, isStudent, async (req, res) => {
+  try {
+    if (!validId(req.params.enrollmentId)) return res.status(400).json({ error: 'Invalid enrollmentId' });
+    const enrollment = await Enrollment.findByPk(req.params.enrollmentId);
+    if (!enrollment) return res.status(404).json({ error: 'Enrollment not found' });
+    if (enrollment.studentId !== req.user.id) return res.status(403).json({ error: 'Not authorized' });
+
+    const name = req.body ? req.body.name : undefined;
+    const cleaned = certificates.cleanName(name, req.user.name);
+    if (cleaned.error) return res.status(400).json({ error: cleaned.error });
+
+    const result = await certificates.issue(enrollment, { name });
+    if (result.missing) return res.status(409).json({ error: 'The course is not completed yet', missing: result.missing });
+    res.status(result.created ? 201 : 200).json(certificates.publicShape(result.certificate));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

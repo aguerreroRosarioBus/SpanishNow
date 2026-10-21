@@ -22,11 +22,15 @@
   } @else if (course(); as c) {
     <div class="sales-layout">
       <div class="sales-main">
-        <div class="sales-cover">
-          @if (c.imageUrl) {
-            <img [src]="c.imageUrl" alt="">
-          }
-        </div>
+        @if (c.introVideoUrl) {
+          <app-video-embed [url]="c.introVideoUrl" [title]="'Welcome video: ' + c.title" />
+        } @else {
+          <div class="sales-cover">
+            @if (c.imageUrl) {
+              <img [src]="c.imageUrl" alt="">
+            }
+          </div>
+        }
 
         <div class="page-header__title mt-3">
           <h1 class="page-title">{{ c.title }}</h1>
@@ -51,6 +55,8 @@
           <p class="page-summary mb-2">
             {{ sortedUnits().length }} {{ sortedUnits().length === 1 ? 'unit' : 'units' }} ·
             {{ lessonCount() }} {{ lessonCount() === 1 ? 'lesson' : 'lessons' }}
+            @if (quizCount() > 0) { · {{ quizCount() }} {{ quizCount() === 1 ? 'quiz' : 'quizzes' }} }
+            @if (materialsCount() > 0) { · {{ materialsCount() }} downloadable {{ materialsCount() === 1 ? 'PDF' : 'PDFs' }} }
           </p>
           @if (sortedUnits().length === 0) {
             <div class="state-box"><span>The curriculum will be available soon.</span></div>
@@ -65,9 +71,23 @@
                   @if (unit.stories.length > 0) {
                     <ul class="curriculum__stories">
                       @for (story of unit.stories; track story.id) {
-                        <li>{{ story.title }}</li>
+                        <li class="curriculum__story">
+                          <span>{{ story.title }}</span>
+                          @if (story.hasVideo) {
+                            <app-icon name="video" [size]="15" class="curriculum__icon" />
+                            <span class="visually-hidden">Includes video</span>
+                          }
+                        </li>
+                      }
+                      @if (unit.hasQuiz) {
+                        <li class="curriculum__story curriculum__story--quiz">
+                          <span>Unit quiz</span>
+                          <app-icon name="help-circle" [size]="15" class="curriculum__icon" />
+                        </li>
                       }
                     </ul>
+                  } @else if (unit.hasQuiz) {
+                    <ul class="curriculum__stories"><li class="curriculum__story curriculum__story--quiz"><span>Unit quiz</span><app-icon name="help-circle" [size]="15" class="curriculum__icon" /></li></ul>
                   }
                 </li>
               }

@@ -108,3 +108,11 @@
     margin-left: 12px;
   }
 }
+
+.unit__flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.unit__quiz { flex: none; }

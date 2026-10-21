@@ -45,7 +45,7 @@
                   [class.is-locked]="!item.canAccess"
                   [attr.aria-current]="currentId() === item.id ? 'page' : null"
                   [attr.aria-disabled]="!item.canAccess"
-                  [attr.title]="item.canAccess ? null : 'Completa la historia anterior para desbloquearla'"
+                  [attr.title]="item.canAccess ? null : item.kind === 'quiz' ? 'Completa todas las historias de la unidad para desbloquear el quiz' : 'Completa la historia anterior para desbloquearla'"
                   (click)="nav.selectItem(item)">
             @if (item.completed) {
               <span class="state state--done" aria-label="Completada"><app-icon name="check" [size]="12" /></span>
@@ -57,6 +57,13 @@
               <span class="state state--todo" aria-label="Pendiente"></span>
             }
             <span class="story-link__title">{{ item.title }}</span>
+            @if (item.kind === 'intro') {
+              <app-icon name="video" [size]="14" class="story-link__kind" />
+            } @else if (item.kind === 'quiz') {
+              <span class="story-link__tag">Quiz</span>
+            } @else if (item.story?.videoUrl) {
+              <app-icon name="video" [size]="14" class="story-link__kind" />
+            }
           </button>
         </li>
       }

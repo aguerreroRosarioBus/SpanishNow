@@ -51,6 +51,10 @@ export const routes: Routes = [
     loadComponent: () => import('./features/public/course-sales/course-sales.component').then(m => m.CourseSalesComponent)
   },
   {
+    path: 'certificates/:code',
+    loadComponent: () => import('./features/public/certificate-verify/certificate-verify.component').then(m => m.CertificateVerifyComponent)
+  },
+  {
     path: 'checkout/success',
     loadComponent: () => import('./features/public/checkout-success/checkout-success.component').then(m => m.CheckoutSuccessComponent)
   },

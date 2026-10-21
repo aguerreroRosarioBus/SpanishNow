@@ -5,6 +5,7 @@ import { unitDisplayTitle } from '../../../../shared/utils/unit-title';
 import { PluralPipe } from '../../../../shared/pipes/plural.pipe';
 import { Story, Unit } from '../../../../core/models/course.model';
 import { CourseManageStore } from '../course-manage.store';
+import { CourseContentStore } from '../course-content.store';
 import { StoryCardComponent } from './story-card.component';
 
 // Estado de arrastre compartido entre tarjetas (una unidad arrastrada a la vez).
@@ -20,6 +21,7 @@ let draggedUnit: Unit | null = null;
 })
 export class UnitCardComponent {
   store = inject(CourseManageStore);
+  content = inject(CourseContentStore);
   unit = input.required<Unit>();
   /** Número visible de la unidad (posición en el curso) */
   number = input.required<number>();
@@ -28,6 +30,10 @@ export class UnitCardComponent {
   open = computed(() => this.store.isUnitExpanded(this.unit().id));
   storyCount = computed(() => this.unit().stories?.length ?? 0);
   publishedCount = computed(() => (this.unit().stories ?? []).filter(s => s.lessonStatus === 'published').length);
+  /** PDFs de la unidad y de todas sus historias. */
+  pdfCount = computed(() => this.content.unitMaterialCount(this.unit().id)
+    + (this.unit().stories ?? []).reduce((sum, s) => sum + this.content.storyMaterialCount(s.id), 0));
+  quiz = computed(() => this.content.quiz(this.unit().id));
   private draggedStory: Story | null = null;
 
   onDragOver(event: DragEvent): void {

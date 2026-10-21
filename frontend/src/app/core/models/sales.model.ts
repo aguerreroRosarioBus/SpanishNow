@@ -14,11 +14,16 @@ export interface PublicCourse {
 
 export interface PublicCourseDetail extends PublicCourse {
   salesDescription?: string | null;
+  /** Video de bienvenida (URL de embed normalizada). */
+  introVideoUrl?: string | null;
+  /** Cantidad de PDFs descargables del curso (nunca sus URLs). */
+  materialsCount?: number;
   units: Array<{
     id: number;
     title: string;
     order: number;
-    stories: Array<{ id: number; title: string; order: number }>;
+    hasQuiz?: boolean;
+    stories: Array<{ id: number; title: string; order: number; hasVideo?: boolean }>;
   }>;
 }
 

@@ -57,16 +57,19 @@ describe('Enrollment progress and reset (lesson-based)', () => {
       expect((await as(world.student).get(progressUrl('abc'))).status).toBe(400);
     });
 
-    test('lists every story of the course in unit/story order, with empty values for untouched stories', async () => {
+    test('lists the stories with a published lesson in unit/story order, with empty values for untouched stories', async () => {
       const res = await as(world.student2).get(progressUrl(enrollment2Id));
       expect(res.status).toBe(200);
-      expect(res.body.map(e => e.storyId)).toEqual([storyA.story.id, storyB.story.id, storyC.story.id]);
-      expect(res.body[0]).toEqual({
+      expect(res.body.quizzes).toEqual([]);
+      expect(res.body.certificate).toEqual({ eligible: false, code: null, missing: { stories: 2, quizzes: 0 } }); // A and B have a published lesson
+      const stories = res.body.stories;
+      expect(stories.map(e => e.storyId)).toEqual([storyA.story.id, storyB.story.id]); // C has no published lesson
+      expect(stories[0]).toEqual({
         storyId: storyA.story.id, storyTitle: storyA.story.title, unitId: world.unit.id, unitTitle: 'Unidad 1',
         revision: null, lastBlockKey: null, narrativeCompleted: false, completedAt: null,
         answers: { total: 0, correct: 0, attempts: 0 }, reinforcements: { total: 0, completed: 0 }
       });
-      expect(res.body[2]).toMatchObject({ storyId: storyC.story.id, unitId: unit2.id, unitTitle: 'Unidad 2', revision: null });
+      expect(stories).toHaveLength(2);
     });
 
     test('reports revision, position, answers and reinforcements of the lesson progress', async () => {
@@ -78,7 +81,8 @@ describe('Enrollment progress and reset (lesson-based)', () => {
       for (const viewer of [student, world.teacher]) {
         const res = await as(viewer).get(progressUrl(enrollment.id));
         expect(res.status).toBe(200);
-        const [a, b, c] = res.body;
+        const [a, b, c] = res.body.stories;
+        expect(c).toBeUndefined(); // C has no published lesson
         expect(a).toMatchObject({
           storyId: storyA.story.id, revision: 1, lastBlockKey: storyA.keys.q2, narrativeCompleted: true,
           answers: { total: 2, correct: 2, attempts: 3 }, reinforcements: { total: 1, completed: 1 }
@@ -88,7 +92,6 @@ describe('Enrollment progress and reset (lesson-based)', () => {
           storyId: storyB.story.id, revision: 1, narrativeCompleted: false, completedAt: null,
           answers: { total: 2, correct: 2, attempts: 3 }, reinforcements: { total: 1, completed: 0 }
         });
-        expect(c).toMatchObject({ storyId: storyC.story.id, revision: null, answers: { total: 0, correct: 0, attempts: 0 } });
       }
     });
   });
@@ -139,7 +142,7 @@ describe('Enrollment progress and reset (lesson-based)', () => {
       const res = await as(student).delete(resetUrl(enrollment.id));
 
       expect(res.status).toBe(200);
-      expect(res.body).toEqual({ message: expect.any(String), deleted: { progress: 2, answers: 6, reinforcements: 2 } });
+      expect(res.body).toEqual({ message: expect.any(String), deleted: { progress: 2, answers: 6, reinforcements: 2, quizAttempts: 0 } });
       expect(await counts({ enrollmentId: enrollment.id })).toEqual({ progress: 0, answers: 0, reinforcements: 0 });
       expect(await counts({ enrollmentId: otherEnrollment.id })).toEqual(beforeOther);
       expect(await counts({ enrollmentId: secondEnrollment.id })).toEqual(beforeSecond);
@@ -150,7 +153,7 @@ describe('Enrollment progress and reset (lesson-based)', () => {
       // Idempotent: nothing left to delete.
       const again = await as(student).delete(resetUrl(enrollment.id));
       expect(again.status).toBe(200);
-      expect(again.body.deleted).toEqual({ progress: 0, answers: 0, reinforcements: 0 });
+      expect(again.body.deleted).toEqual({ progress: 0, answers: 0, reinforcements: 0, quizAttempts: 0 });
     });
 
     test('after a reset the student starts over on the currently published revision', async () => {
@@ -168,7 +171,7 @@ describe('Enrollment progress and reset (lesson-based)', () => {
       const restarted = (await openLesson(student, content.story.id)).body;
       expect(restarted.revision).toBe(2);
       expect(restarted.progress).toMatchObject({ lastBlockKey: null, narrativeCompleted: false, answers: [], reinforcements: [] });
-      const progress = (await as(student).get(progressUrl(enrollment.id))).body.find(e => e.storyId === content.story.id);
+      const progress = (await as(student).get(progressUrl(enrollment.id))).body.stories.find(e => e.storyId === content.story.id);
       expect(progress.revision).toBe(2);
     });
 

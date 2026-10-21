@@ -3,12 +3,13 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CourseService } from '../../../../core/services/course.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { CourseManageStore } from '../course-manage.store';
+import { VideoEmbedComponent } from '../../../../shared/components/video-embed/video-embed.component';
 
 /** Edición del curso: título, descripción y datos de venta (precio, moneda, slug, publicación, texto de venta). */
 @Component({
   selector: 'app-course-edit-modal',
   standalone: true,
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, VideoEmbedComponent],
   templateUrl: './course-edit-modal.component.html'
 })
 export class CourseEditModalComponent {
@@ -29,7 +30,8 @@ export class CourseEditModalComponent {
     currency: ['usd'],
     slug: ['', [Validators.pattern(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)]],
     isPublished: [false],
-    salesDescription: ['']
+    salesDescription: [''],
+    introVideoUrl: ['']
   });
   isSaving = false;
   errorMessage = '';
@@ -44,7 +46,8 @@ export class CourseEditModalComponent {
         currency: course.currency || 'usd',
         slug: course.slug || '',
         isPublished: !!course.isPublished,
-        salesDescription: course.salesDescription || ''
+        salesDescription: course.salesDescription || '',
+        introVideoUrl: course.introVideoUrl || ''
       });
     }
   }
@@ -52,6 +55,11 @@ export class CourseEditModalComponent {
   /** Slug actual guardado en el curso (el link a la página de venta solo existe si ya está guardado). */
   savedSlug(): string | null {
     return this.store.course()?.slug ?? null;
+  }
+
+  /** Video de bienvenida ya guardado (URL de embed que normalizó el servidor). */
+  savedIntroVideo(): string | null {
+    return this.store.course()?.introVideoUrl ?? null;
   }
 
   close(): void { this.store.close(); }
@@ -69,7 +77,9 @@ export class CourseEditModalComponent {
       price: Math.round((Number(v.price) || 0) * 100),
       currency: v.currency || 'usd',
       isPublished: !!v.isPublished,
-      salesDescription: v.salesDescription ?? ''
+      salesDescription: v.salesDescription ?? '',
+      // Vacío = quitar el video; el servidor valida el proveedor y devuelve la URL de embed
+      introVideoUrl: (v.introVideoUrl ?? '').trim() || null
     } as Record<string, unknown>;
     const slug = (v.slug ?? '').trim();
     if (slug) payload['slug'] = slug;

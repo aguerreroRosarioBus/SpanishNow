@@ -37,6 +37,9 @@
           <app-icon name="pencil" [size]="16" />Editar curso
         </button>
         @if (tab() === 'content') {
+          <button type="button" class="btn btn-secondary" (click)="store.open({ kind: 'materials', unit: null })">
+            <app-icon name="file-text" [size]="16" />Materiales
+          </button>
           <button type="button" class="btn btn-primary" (click)="store.open({ kind: 'unit-create' })">
             <app-icon name="plus" [size]="16" />Nueva unidad
           </button>
@@ -79,6 +82,12 @@
     </ng-container>
     <ng-container *ngSwitchCase="'repetitions'">
       <app-repetition-modal [story]="$any(modal).story" />
+    </ng-container>
+    <ng-container *ngSwitchCase="'materials'">
+      <app-materials-modal [unit]="$any(modal).unit" />
+    </ng-container>
+    <ng-container *ngSwitchCase="'quiz'">
+      <app-quiz-modal [unit]="$any(modal).unit" />
     </ng-container>
     <ng-container *ngSwitchCase="'story-tooltips'">
       <app-tooltip-modal [title]="$any(modal).story.title" targetType="story"

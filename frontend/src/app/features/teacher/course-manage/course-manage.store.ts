@@ -17,6 +17,8 @@ export type ManageModal =
   | { kind: 'vocabulary'; unit: Unit }
   | { kind: 'repetitions'; story: Story }
   | { kind: 'story-tooltips'; story: Story }
+  | { kind: 'materials'; unit: Unit | null }
+  | { kind: 'quiz'; unit: Unit }
   | { kind: 'composer'; story: Story; unit: Unit };
 
 export interface ConfirmData {

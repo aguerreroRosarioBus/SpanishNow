@@ -2,6 +2,7 @@ import { Component, computed, inject, input } from '@angular/core';
 import { NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem } from '@ng-bootstrap/ng-bootstrap';
 import { Story, Unit } from '../../../../core/models/course.model';
 import { CourseManageStore } from '../course-manage.store';
+import { CourseContentStore } from '../course-content.store';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { PluralPipe } from '../../../../shared/pipes/plural.pipe';
 
@@ -15,12 +16,15 @@ import { PluralPipe } from '../../../../shared/pipes/plural.pipe';
 })
 export class StoryCardComponent {
   store = inject(CourseManageStore);
+  private content = inject(CourseContentStore);
   story = input.required<Story>();
   unit = input.required<Unit>();
   /** Posición visible de la historia en la unidad */
   number = input.required<number>();
 
   questionsCount = computed(() => this.story().questions?.length || 0);
+  hasVideo = computed(() => !!this.story().videoUrl);
+  pdfCount = computed(() => this.content.storyMaterialCount(this.story().id));
   published = computed(() => this.story().lessonStatus === 'published');
 
   compose(): void {

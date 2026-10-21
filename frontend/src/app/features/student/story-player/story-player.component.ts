@@ -6,12 +6,14 @@ import { LessonNavigationStore } from './lesson-navigation.store';
 import { LessonSessionStore } from './lesson-session.store';
 import { PlayerSidebarComponent } from './components/player-sidebar.component';
 import { LessonViewComponent } from './components/lesson-view.component';
+import { IntroViewComponent } from './components/intro-view.component';
+import { QuizViewComponent } from './components/quiz-view.component';
 
 /** Contenedor del reproductor: carga el curso y coordina el índice del curso con la lección actual. */
 @Component({
   selector: 'app-story-player',
   standalone: true,
-  imports: [PlayerSidebarComponent, LessonViewComponent],
+  imports: [PlayerSidebarComponent, LessonViewComponent, IntroViewComponent, QuizViewComponent],
   providers: [LessonNavigationStore, LessonSessionStore, LessonAudioService],
   templateUrl: './story-player.component.html',
   styleUrl: './story-player.component.scss'
@@ -29,6 +31,7 @@ export class StoryPlayerComponent implements OnInit, OnDestroy {
     effect(() => {
       const storyId = this.nav.currentStoryId();
       if (storyId) untracked(() => this.session.load(storyId));
+      else untracked(() => this.audio.stop());
     });
   }
 

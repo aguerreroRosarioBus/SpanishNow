@@ -5,7 +5,7 @@ const { authMiddleware, isTeacher } = require('../middlewares/auth.middleware');
 const csvUpload = require('../middlewares/csvUpload.middleware');
 const sequelize = require('../config/database');
 const { Op, fn, col } = require('sequelize');
-const { Course, Enrollment, User, Unit, Story, LessonProgress, LessonAnswer, LessonReinforcement } = require('../models');
+const { Course, Enrollment, User, Unit, Story, LessonPlan, LessonProgress, LessonAnswer, LessonReinforcement, UnitQuizAttempt, Certificate } = require('../models');
 const { normalizeEmail, isValidEmail } = require('../services/accounts');
 const { grantAccess, sendInvitation, previewImport, applyImport, ImportError } = require('../services/studentImport');
 
@@ -23,7 +23,14 @@ async function ownCourse(req, res) {
   return course;
 }
 
-const totalStories = courseId => Story.count({ include: [{ model: Unit, as: 'unit', attributes: [], where: { courseId } }] });
+// Stories with a published lesson: the only ones a student can complete.
+const totalStories = courseId => Story.count({
+  distinct: true,
+  include: [
+    { model: Unit, as: 'unit', attributes: [], where: { courseId } },
+    { model: LessonPlan, as: 'lessonPlans', attributes: [], where: { status: 'published' }, required: true }
+  ]
+});
 
 // completed = stories whose narrative the student finished
 async function completedByEnrollment(enrollmentIds) {
@@ -109,6 +116,8 @@ router.delete('/:id/students/:enrollmentId', async (req, res) => {
         await LessonReinforcement.destroy({ where: { lessonProgressId: ids }, transaction });
         await LessonProgress.destroy({ where: { id: ids }, transaction });
       }
+      await UnitQuizAttempt.destroy({ where: { enrollmentId: enrollment.id }, transaction });
+      await Certificate.destroy({ where: { enrollmentId: enrollment.id }, transaction });
       await enrollment.destroy({ transaction });
       return true;
     });

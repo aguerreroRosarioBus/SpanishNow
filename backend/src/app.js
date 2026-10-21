@@ -52,10 +52,13 @@ app.use((req, res, next) => {
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/users', require('./routes/user.routes'));
 app.use('/api/courses', require('./routes/courseStudents.routes'));
+app.use('/api/courses', require('./routes/courseMaterials.routes'));
 app.use('/api/courses', require('./routes/course.routes'));
 app.use('/api/public', require('./routes/public.routes'));
 app.use('/api/checkout', require('./routes/checkout.routes'));
+app.use('/api/units', require('./routes/unitQuiz.routes'));
 app.use('/api/units', require('./routes/unit.routes'));
+app.use('/api/materials', require('./routes/material.routes'));
 app.use('/api/stories', require('./routes/story.routes'));
 app.use('/api/lesson-plans', require('./routes/lessonPlan.routes'));
 app.use('/api/enrollments', require('./routes/enrollment.routes'));

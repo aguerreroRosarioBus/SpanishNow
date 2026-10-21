@@ -37,6 +37,11 @@ const Story = sequelize.define('Story', {
     type: DataTypes.INTEGER,
     allowNull: false,
     defaultValue: 0
+  },
+  // Lesson video: normalised embed URL (YouTube, Vimeo or Bunny), see utils/videoUrl.js.
+  videoUrl: {
+    type: DataTypes.STRING(500),
+    allowNull: true
   }
 }, {
   timestamps: true,

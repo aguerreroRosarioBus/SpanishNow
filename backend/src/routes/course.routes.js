@@ -2,11 +2,14 @@ const express = require('express');
 const router = express.Router();
 const { authMiddleware, optionalAuth, isTeacher } = require('../middlewares/auth.middleware');
 const { UniqueConstraintError } = require('sequelize');
-const { Course, Unit, User, Story, Question, RepetitionActivity, LessonPlan, Enrollment, Order } = require('../models');
+const { Course, Unit, User, Story, Question, RepetitionActivity, LessonPlan, Enrollment, Order, Material } = require('../models');
 const { canReadCourse } = require('../utils/courseAccess');
 const { SLUG_PATTERN, MAX_LENGTH: MAX_SLUG } = require('../utils/slug');
 const cloudinary = require('../config/cloudinary');
 const upload = require('../middlewares/upload.middleware');
+const { parseVideoField } = require('../utils/videoUrl');
+const materialService = require('../services/materialService');
+const quizService = require('../services/quizService');
 
 const MAX_PRICE = 99999999; // cents; fits INTEGER and any Stripe amount
 
@@ -110,6 +113,19 @@ router.get('/:id', authMiddleware, async (req, res) => {
       story.lessonStatus = published.has(story.id) ? 'published' : 'draft';
     }));
     data.enrollmentCount = await Enrollment.count({ where: { courseId: course.id } });
+
+    // PDFs by place (course, unit, story) without their storage link, and the quiz summary of each unit.
+    // The teacher also sees quizzes in draft (isPublished: false); a student only the published ones.
+    const files = await Material.findAll({ where: { courseId: course.id }, order: [['order', 'ASC'], ['id', 'ASC']] });
+    const pick = predicate => files.filter(predicate).map(materialService.present);
+    data.materials = pick(m => m.unitId === null && m.storyId === null);
+    const isOwner = req.user.role === 'teacher';
+    const quizzes = await quizService.summariesByUnit(data.units.map(unit => unit.id), { includeDrafts: isOwner });
+    data.units.forEach(unit => {
+      unit.materials = pick(m => m.unitId === unit.id);
+      unit.quiz = quizzes.get(unit.id) || null;
+      unit.stories.forEach(story => { story.materials = pick(m => m.storyId === story.id); });
+    });
     res.json(data);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -174,9 +190,11 @@ router.put('/:id', authMiddleware, isTeacher, upload.single('image'), async (req
 
     const sales = parseSalesFields(req.body);
     if (sales.error) return res.status(400).json({ error: sales.error });
+    const intro = parseVideoField(req.body, 'introVideoUrl');
+    if (intro.error) return res.status(400).json({ error: intro.error });
 
     try {
-      await course.update({ title, description, level, imageUrl, ...sales.values });
+      await course.update({ title, description, level, imageUrl, ...sales.values, ...(intro.skip ? {} : { introVideoUrl: intro.value }) });
     } catch (error) {
       if (error instanceof UniqueConstraintError) return res.status(409).json({ error: 'That slug is already used by another course' });
       throw error;
@@ -205,6 +223,7 @@ router.delete('/:id', authMiddleware, isTeacher, async (req, res) => {
       return res.status(409).json({ error: 'This course has orders and cannot be deleted. Unpublish it instead.' });
     }
 
+    await materialService.removeFilesWhere({ courseId: course.id });
     await course.destroy();
 
     res.json({ message: 'Course deleted successfully' });

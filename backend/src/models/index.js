@@ -14,6 +14,11 @@ const LessonAnswer = require('./LessonAnswer');
 const LessonReinforcement = require('./LessonReinforcement');
 const Order = require('./Order');
 const PasswordToken = require('./PasswordToken');
+const Material = require('./Material');
+const UnitQuiz = require('./UnitQuiz');
+const UnitQuizQuestion = require('./UnitQuizQuestion');
+const UnitQuizAttempt = require('./UnitQuizAttempt');
+const Certificate = require('./Certificate');
 
 // Define associations
 User.hasMany(Course, { foreignKey: 'teacherId', as: 'courses' });
@@ -65,6 +70,25 @@ Enrollment.belongsTo(Order, { foreignKey: 'orderId', as: 'order' });
 User.hasMany(PasswordToken, { foreignKey: 'userId', as: 'passwordTokens', onDelete: 'CASCADE' });
 PasswordToken.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
+// Phase 2: materials, unit quizzes and certificates
+Course.hasMany(Material, { foreignKey: 'courseId', as: 'materials', onDelete: 'CASCADE' });
+Material.belongsTo(Course, { foreignKey: 'courseId', as: 'course' });
+Unit.hasMany(Material, { foreignKey: 'unitId', as: 'materials', onDelete: 'CASCADE' });
+Material.belongsTo(Unit, { foreignKey: 'unitId', as: 'unit' });
+Story.hasMany(Material, { foreignKey: 'storyId', as: 'materials', onDelete: 'CASCADE' });
+Material.belongsTo(Story, { foreignKey: 'storyId', as: 'story' });
+
+Unit.hasOne(UnitQuiz, { foreignKey: 'unitId', as: 'quiz', onDelete: 'CASCADE' });
+UnitQuiz.belongsTo(Unit, { foreignKey: 'unitId', as: 'unit' });
+UnitQuiz.hasMany(UnitQuizQuestion, { foreignKey: 'quizId', as: 'questions', onDelete: 'CASCADE' });
+UnitQuizQuestion.belongsTo(UnitQuiz, { foreignKey: 'quizId', as: 'quiz' });
+UnitQuiz.hasMany(UnitQuizAttempt, { foreignKey: 'quizId', as: 'attempts', onDelete: 'CASCADE' });
+UnitQuizAttempt.belongsTo(UnitQuiz, { foreignKey: 'quizId', as: 'quiz' });
+Enrollment.hasMany(UnitQuizAttempt, { foreignKey: 'enrollmentId', as: 'quizAttempts', onDelete: 'CASCADE' });
+UnitQuizAttempt.belongsTo(Enrollment, { foreignKey: 'enrollmentId', as: 'enrollment' });
+Enrollment.hasOne(Certificate, { foreignKey: 'enrollmentId', as: 'certificate', onDelete: 'CASCADE' });
+Certificate.belongsTo(Enrollment, { foreignKey: 'enrollmentId', as: 'enrollment' });
+
 module.exports = {
   User,
   Course,
@@ -81,5 +105,10 @@ module.exports = {
   LessonAnswer,
   LessonReinforcement,
   Order,
-  PasswordToken
+  PasswordToken,
+  Material,
+  UnitQuiz,
+  UnitQuizQuestion,
+  UnitQuizAttempt,
+  Certificate
 };

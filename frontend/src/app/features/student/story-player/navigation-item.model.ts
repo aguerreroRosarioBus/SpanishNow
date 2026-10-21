@@ -1,12 +1,18 @@
-import { Story } from '../../../core/models/course.model';
+import { Story, Unit } from '../../../core/models/course.model';
 
-/** Ítem del menú lateral: una historia de la unidad actual. */
+export type NavigationItemKind = 'intro' | 'story' | 'quiz';
+
+/** Ítem del menú lateral de la unidad actual: video de bienvenida, una historia o el quiz de la unidad. */
 export interface NavigationItem {
   id: string;
+  kind: NavigationItemKind;
   title: string;
   order: number;
   completed: boolean;
   /** Única regla de acceso: la usan el menú lateral y las flechas. */
   canAccess: boolean;
-  story: Story;
+  /** Solo en ítems de tipo `story`. */
+  story: Story | null;
+  /** Unidad a la que pertenece el ítem (el de bienvenida usa la primera). */
+  unit: Unit | null;
 }

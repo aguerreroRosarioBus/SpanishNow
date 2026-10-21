@@ -4,13 +4,15 @@ import { AuthService } from '../../../core/services/auth.service';
 import { EnrollmentService } from '../../../core/services/enrollment.service';
 import { PublicCatalogService } from '../../../core/services/public-catalog.service';
 import { PublicCourseDetail } from '../../../core/models/sales.model';
+import { VideoEmbedComponent } from '../../../shared/components/video-embed/video-embed.component';
+import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { formatPrice } from '../../../shared/utils/money';
 
 /** Página de venta de un curso: descripción, índice, precio y botón de compra. */
 @Component({
   selector: 'app-course-sales',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, VideoEmbedComponent, IconComponent],
   templateUrl: './course-sales.component.html',
   styleUrl: './course-sales.component.scss'
 })
@@ -36,6 +38,8 @@ export class CourseSalesComponent implements OnInit {
     return c && c.price > 0 ? formatPrice(c.price, c.currency) : 'Free';
   });
   lessonCount = computed(() => (this.course()?.units ?? []).reduce((sum, u) => sum + u.stories.length, 0));
+  materialsCount = computed(() => this.course()?.materialsCount ?? 0);
+  quizCount = computed(() => (this.course()?.units ?? []).filter(u => u.hasQuiz).length);
   sortedUnits = computed(() => [...(this.course()?.units ?? [])]
     .sort((a, b) => a.order - b.order)
     .map(u => ({ ...u, stories: [...u.stories].sort((a, b) => a.order - b.order) })));

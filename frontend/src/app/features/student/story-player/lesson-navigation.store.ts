@@ -2,7 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { CourseService } from '../../../core/services/course.service';
 import { EnrollmentService } from '../../../core/services/enrollment.service';
 import { ToastService } from '../../../core/services/toast.service';
-import { Course, Enrollment, Unit } from '../../../core/models/course.model';
+import { Course, Enrollment, QuizProgress, Unit } from '../../../core/models/course.model';
 import { NavigationItem } from './navigation-item.model';
 
 /** Estado de navegación del reproductor: curso, unidad, historias del menú y regla de acceso. */
@@ -18,12 +18,17 @@ export class LessonNavigationStore {
   isLoading = signal(false);
   errorMessage = signal('');
   completedStories = signal<Set<number>>(new Set());
+  /** Mejor resultado de quiz por unidad (viene del progreso y se actualiza al enviar un intento). */
+  quizResults = signal<Record<number, { bestScore: number | null; passed: boolean }>>({});
+  introSeen = signal(false);
 
   items = signal<NavigationItem[]>([]);
   currentIndex = signal(0);
   currentItem = computed(() => this.items()[this.currentIndex()] ?? null);
-  currentStoryId = computed(() => this.currentItem()?.story.id ?? null);
-  completedCount = computed(() => this.items().filter(item => item.completed).length);
+  currentStoryId = computed(() => this.currentItem()?.story?.id ?? null);
+  completedCount = computed(() => this.items().filter(item => item.kind === 'story' && item.completed).length);
+  /** Historias de la unidad abierta (sin bienvenida ni quiz). */
+  storyItems = computed(() => this.items().filter(item => item.kind === 'story'));
   /** Avance de todo el curso (no solo de la unidad abierta) */
   courseProgress = computed(() => {
     const done = this.completedStories();
@@ -38,7 +43,10 @@ export class LessonNavigationStore {
   canGoNext = computed(() => !!this.nextItem()?.canAccess);
   nextBlockedReason = computed(() => {
     const next = this.nextItem();
-    return next && !next.canAccess ? 'Completa esta lectura para desbloquear la siguiente historia.' : '';
+    if (!next || next.canAccess) return '';
+    return next.kind === 'quiz'
+      ? 'Completa todas las historias de la unidad para desbloquear el quiz.'
+      : 'Completa esta lectura para desbloquear la siguiente historia.';
   });
 
   private unitIndex = computed(() => {
@@ -55,8 +63,9 @@ export class LessonNavigationStore {
   });
 
   /** Qué sigue al terminar la lección: otra historia, la próxima unidad o volver a los cursos. */
-  afterLesson = computed<'story' | 'unit' | 'courses'>(() => {
-    if (this.nextItem()?.canAccess) return 'story';
+  afterLesson = computed<'story' | 'quiz' | 'unit' | 'courses'>(() => {
+    const next = this.nextItem();
+    if (next?.canAccess) return next.kind === 'quiz' ? 'quiz' : 'story';
     return this.canGoNextUnit() ? 'unit' : 'courses';
   });
 
@@ -75,6 +84,7 @@ export class LessonNavigationStore {
         this.completedStories.set(new Set(
           (enrollment.lessonProgress || []).filter(p => p.narrativeCompleted).map(p => p.storyId)
         ));
+        this.loadQuizProgress(enrollment.id);
         this.loadCourse(courseId);
       },
       error: error => {
@@ -85,9 +95,39 @@ export class LessonNavigationStore {
     });
   }
 
+  /** Resultados de quiz: si falla, los quizzes quedan como pendientes (no bloquea el curso). */
+  private loadQuizProgress(enrollmentId: number): void {
+    this.enrollmentService.getProgressSummary(enrollmentId).subscribe({
+      next: ({ quizzes }) => this.setQuizProgress(quizzes),
+      error: error => console.error('Error loading quiz progress:', error)
+    });
+  }
+
+  setQuizProgress(quizzes: QuizProgress[]): void {
+    const map: Record<number, { bestScore: number | null; passed: boolean }> = {};
+    for (const q of quizzes) map[q.unitId] = { bestScore: q.bestScore, passed: q.passed };
+    this.quizResults.set(map);
+    this.buildItems();
+  }
+
+  /** Guarda el mejor resultado tras un intento y actualiza el menú. */
+  setQuizResult(unitId: number, result: { bestScore: number; passed: boolean }): void {
+    this.quizResults.update(current => ({ ...current, [unitId]: { bestScore: result.bestScore, passed: result.passed } }));
+    this.buildItems();
+  }
+
   private loadCourse(courseId: number): void {
     this.courseService.getCourse(courseId).subscribe({
-      next: course => {
+      next: loaded => {
+        // El alumno solo ve historias con lección publicada: las de borrador no se pueden abrir
+        // y no deben contar para el avance ni bloquear el quiz de la unidad.
+        const course = {
+          ...loaded,
+          units: (loaded.units ?? []).map(unit => ({
+            ...unit,
+            stories: (unit.stories ?? []).filter(story => story.lessonStatus !== 'draft')
+          }))
+        };
         this.course.set(course);
         if (course.units && course.units.length > 0) this.selectUnit(course.units[0]);
         this.isLoading.set(false);
@@ -103,8 +143,11 @@ export class LessonNavigationStore {
   selectUnit(unit: Unit): void {
     this.currentUnit.set(unit);
     this.buildItems();
-    const firstAccessible = this.items().findIndex(item => item.canAccess);
-    if (firstAccessible >= 0) this.currentIndex.set(firstAccessible);
+    const items = this.items();
+    // La bienvenida es el punto de partida solo mientras no hay avance: después se retoma desde las historias.
+    const skipIntro = items[0]?.kind === 'intro' && (this.introSeen() || this.completedStories().size > 0);
+    const first = items.findIndex((item, i) => item.canAccess && !(skipIntro && i === 0));
+    if (first >= 0) this.currentIndex.set(first);
   }
 
   goToPreviousUnit(): void { this.moveUnit(-1); }
@@ -122,20 +165,52 @@ export class LessonNavigationStore {
     if (!unit) { this.items.set([]); return; }
     const completed = this.completedStories();
     let previousCompleted = true;
-    const items = [...(unit.stories || [])].sort((a, b) => a.order - b.order).map(story => {
+    const stories = [...(unit.stories || [])].sort((a, b) => a.order - b.order);
+    const items: NavigationItem[] = [];
+
+    // Video de bienvenida: primer ítem de la primera unidad, siempre accesible y sin bloquear lo que sigue.
+    const introVideo = this.course()?.introVideoUrl;
+    if (introVideo && this.unitIndex() === 0) {
+      items.push({ id: 'intro', kind: 'intro', title: 'Bienvenida', order: -1, story: null, unit, completed: this.introSeen(), canAccess: true });
+    }
+
+    for (const story of stories) {
       const item: NavigationItem = {
         id: `story-${story.id}`,
+        kind: 'story',
         title: story.title,
         order: story.order,
         story,
+        unit,
         completed: completed.has(story.id),
         // Una historia ya completada nunca queda bloqueada, aunque la anterior no figure completada
         canAccess: previousCompleted || completed.has(story.id)
       };
       previousCompleted = item.completed;
-      return item;
-    });
+      items.push(item);
+    }
+
+    // Quiz publicado: al final de la unidad, se habilita al completar todas sus historias.
+    if (unit.quiz) {
+      items.push({
+        id: `quiz-${unit.id}`,
+        kind: 'quiz',
+        title: unit.quiz.title || 'Quiz de la unidad',
+        order: Number.MAX_SAFE_INTEGER,
+        story: null,
+        unit,
+        completed: !!this.quizResults()[unit.id]?.passed,
+        canAccess: stories.every(story => completed.has(story.id))
+      });
+    }
     this.items.set(items);
+  }
+
+  /** Marca vista la bienvenida (no hay endpoint: es solo del reproductor). */
+  markIntroSeen(): void {
+    if (this.introSeen()) return;
+    this.introSeen.set(true);
+    this.buildItems();
   }
 
   markStoryCompleted(storyId: number): void {

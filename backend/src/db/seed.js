@@ -4,6 +4,7 @@
 //   course-content  course, units, stories, questions, vocabulary (seeds/content/*.json)
 //   lesson-plans    initial published revision per story + curated plans (story JSON `plan`)
 //   enrollments     test student enrolled in the course
+//   rich-content    welcome video, story videos, sample PDF and a quiz for the demo course (only when it has none yet)
 //
 // Target: DB_HOST / DB_PORT / DB_USER / DB_PASSWORD / DB_NAME. On a non-local host SEED_TEST_PASSWORD is required.
 // Run `npm run db:migrate` first. Safe to run repeatedly (see each seed's header for what it never overwrites).
@@ -12,7 +13,7 @@ const path = require('path');
 const sequelize = require('../config/database');
 const models = require('../models');
 
-const SEEDS = ['01-accounts', '02-course-content', '03-lesson-plans', '04-enrollments']
+const SEEDS = ['01-accounts', '02-course-content', '03-lesson-plans', '04-enrollments', '05-rich-content']
   .map(file => require(path.resolve(__dirname, '..', '..', 'seeds', 'curated', file)));
 
 function parseArgs(argv) {

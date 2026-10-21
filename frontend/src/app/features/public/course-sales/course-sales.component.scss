@@ -67,3 +67,14 @@
     &:first-child { border-top: 0; }
   }
 }
+
+.curriculum__story {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+
+  &--quiz { color: var(--color-text-light); font-weight: 600; }
+}
+
+.curriculum__icon { flex: none; color: var(--color-text-light); }

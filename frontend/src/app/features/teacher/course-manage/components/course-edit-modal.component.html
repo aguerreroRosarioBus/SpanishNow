@@ -19,6 +19,16 @@
             <textarea class="form-control" id="courseDescription" formControlName="description" rows="3" placeholder="Descripción del curso"></textarea>
           </div>
 
+          <div class="mb-3">
+            <label for="courseIntroVideo" class="form-label">Video de bienvenida (YouTube, Vimeo o Bunny)</label>
+            <input type="url" class="form-control" id="courseIntroVideo" formControlName="introVideoUrl"
+                   placeholder="https://www.youtube.com/watch?v=…" aria-describedby="courseIntroVideoHelp" />
+            <div class="form-text" id="courseIntroVideoHelp">Pega el link del video. Se muestra en la página de venta y como primer ítem del curso. Vacío = sin video.</div>
+            @if (savedIntroVideo(); as video) {
+              <div class="mt-2"><app-video-embed [url]="video" title="Vista previa del video de bienvenida" /></div>
+            }
+          </div>
+
           <h6 class="eyebrow mt-4 mb-3">Venta</h6>
           <div class="row g-3 mb-3">
             <div class="col-7">

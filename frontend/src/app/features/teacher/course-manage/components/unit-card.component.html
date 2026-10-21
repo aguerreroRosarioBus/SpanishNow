@@ -17,6 +17,14 @@
       <div class="unit__title-row">
         <h3 class="unit__title" [attr.title]="title()">{{ title() }}</h3>
         <span class="unit__meta">{{ storyCount() | plural:'historia':'historias' }} · {{ publishedCount() | plural:'publicada':'publicadas' }}</span>
+        @if (pdfCount() > 0) {
+          <span class="unit__meta unit__flag" [attr.title]="pdfCount() + ' PDF(s) en esta unidad'"><app-icon name="file-text" [size]="13" />{{ pdfCount() }} PDF</span>
+        }
+        @if (quiz(); as q) {
+          <span class="badge-status unit__quiz" [class.badge-status--published]="q.isPublished" [class.badge-status--draft]="!q.isPublished">
+            Quiz {{ q.isPublished ? 'publicado' : 'borrador' }}
+          </span>
+        }
       </div>
     </div>
     <div class="unit__actions">
@@ -29,6 +37,8 @@
         </button>
         <div ngbDropdownMenu role="menu">
           <button type="button" ngbDropdownItem role="menuitem" (click)="store.open({ kind: 'unit-edit', unit: unit() })">Editar unidad</button>
+          <button type="button" ngbDropdownItem role="menuitem" (click)="store.open({ kind: 'materials', unit: unit() })">Materiales</button>
+          <button type="button" ngbDropdownItem role="menuitem" (click)="store.open({ kind: 'quiz', unit: unit() })">Quiz de la unidad</button>
           <div class="dropdown-divider"></div>
           <button type="button" ngbDropdownItem role="menuitem" class="dropdown-item--danger" (click)="store.deleteUnit(unit().id)">
             <app-icon name="trash" [size]="15" />Eliminar unidad

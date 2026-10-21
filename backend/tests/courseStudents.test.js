@@ -47,7 +47,7 @@ describe('teacher access to course students', () => {
   });
 
   describe('list and removal', () => {
-    test('lists students with source and progress (completed lessons out of all lessons)', async () => {
+    test('lists students with source and progress (completed lessons out of published lessons)', async () => {
       const own = await newCourse(world.teacher);
       const unit = await require('../src/models').Unit.create({ courseId: own.id, title: 'U', description: 'x', order: 0 });
       const stories = [await Story.create({ unitId: unit.id, title: 'A', text: 't', order: 0 }), await Story.create({ unitId: unit.id, title: 'B', text: 't', order: 1 })];
@@ -60,7 +60,7 @@ describe('teacher access to course students', () => {
       expect(res.status).toBe(200);
       expect(res.body).toEqual([{
         enrollmentId: enrollment.id, user: { id: student.id, name: student.name, email: student.email }, source: 'purchase',
-        enrolledAt: expect.any(String), progress: { completedStories: 1, totalStories: 2 }
+        enrolledAt: expect.any(String), progress: { completedStories: 1, totalStories: 1 } // B has no published lesson
       }]);
     });
 

@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, effect, inject, OnInit, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
@@ -6,6 +6,9 @@ import { PluralPipe } from '../../../shared/pipes/plural.pipe';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { LessonComposerComponent } from '../lesson-composer/lesson-composer.component';
 import { CourseManageStore } from './course-manage.store';
+import { CourseContentStore } from './course-content.store';
+import { MaterialsModalComponent } from './components/materials-modal.component';
+import { QuizModalComponent } from './components/quiz-modal.component';
 import { StudentsPanelComponent } from './components/students-panel.component';
 import { UnitListComponent } from './components/unit-list.component';
 import { CourseEditModalComponent } from './components/course-edit-modal.component';
@@ -25,23 +28,39 @@ import { TooltipModalComponent } from './components/tooltip-modal.component';
     CommonModule, RouterLink, IconComponent, PluralPipe, ConfirmDialogComponent, LessonComposerComponent, UnitListComponent,
     CourseEditModalComponent, UnitFormModalComponent, StoryCreateModalComponent, StoryEditModalComponent,
     QuestionModalComponent, VocabularyModalComponent, RepetitionModalComponent, TooltipModalComponent,
-    StudentsPanelComponent
+    StudentsPanelComponent, MaterialsModalComponent, QuizModalComponent
   ],
-  providers: [CourseManageStore],
+  providers: [CourseManageStore, CourseContentStore],
   templateUrl: './course-manage.html',
   styleUrl: './course-manage.scss',
 })
 export class CourseManageComponent implements OnInit {
   store = inject(CourseManageStore);
+  private content = inject(CourseContentStore);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
 
   /** Pestaña activa: contenido (unidades) o alumnos. */
   tab = signal<'content' | 'students'>('content');
 
+  constructor() {
+    // Cuando llegan las unidades se consulta el quiz de cada una para los indicadores de las tarjetas
+    let loaded = false;
+    effect(() => {
+      const ids = this.store.units().map(u => u.id);
+      if (!loaded && ids.length) {
+        loaded = true;
+        untracked(() => this.content.loadQuizzes(ids));
+      }
+    });
+  }
+
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
-    if (id) this.store.load(+id);
+    if (id) {
+      this.store.load(+id);
+      this.content.loadMaterials(+id);
+    }
     else this.router.navigate(['/teacher/dashboard']);
   }
 

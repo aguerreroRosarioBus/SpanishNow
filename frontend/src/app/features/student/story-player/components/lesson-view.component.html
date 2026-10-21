@@ -12,9 +12,13 @@
 @if (session.lesson(); as lesson) {
   <article class="lesson-card">
     <header class="lesson-head">
-      <span class="lesson-head__meta">Historia {{ nav.currentIndex() + 1 }} de {{ nav.items().length }} · Unidad {{ nav.unitNumber() }}</span>
+      <span class="lesson-head__meta">Historia {{ storyPosition() }} de {{ nav.storyItems().length }} · Unidad {{ nav.unitNumber() }}</span>
       <h1 class="lesson-head__title">{{ lesson.story.title }}</h1>
     </header>
+
+    @if (videoUrl(); as video) {
+      <app-video-embed [url]="video" [title]="'Video: ' + lesson.story.title" />
+    }
 
     <div class="steps">
       <div class="steps__label">
@@ -56,4 +60,7 @@
   </article>
 
   <app-reinforcements />
+
+  <app-materials-list [materials]="storyMaterials()" heading="Materiales de esta historia" />
+  <app-materials-list [materials]="unitMaterials()" heading="Materiales de la unidad" />
 }

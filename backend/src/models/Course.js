@@ -57,6 +57,11 @@ const Course = sequelize.define('Course', {
   salesDescription: {
     type: DataTypes.TEXT,
     allowNull: true
+  },
+  // Welcome video: normalised embed URL (YouTube, Vimeo or Bunny), see utils/videoUrl.js.
+  introVideoUrl: {
+    type: DataTypes.STRING(500),
+    allowNull: true
   }
 }, {
   timestamps: true,

@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { Course, Unit, Story, User } = require('../models');
+const { Op } = require('sequelize');
+const { Course, Unit, Story, User, Material, UnitQuiz, Certificate } = require('../models');
+const certificates = require('../services/certificateService');
 const { SLUG_PATTERN } = require('../utils/slug');
 
 const summary = course => ({
@@ -37,7 +39,7 @@ router.get('/courses/:slug', async (req, res) => {
       where: { slug: req.params.slug, isPublished: true },
       include: [
         { model: User, as: 'teacher', attributes: ['name'] },
-        { model: Unit, as: 'units', attributes: ['id', 'title', 'order'], include: [{ model: Story, as: 'stories', attributes: ['id', 'title', 'order'] }] }
+        { model: Unit, as: 'units', attributes: ['id', 'title', 'order'], include: [{ model: Story, as: 'stories', attributes: ['id', 'title', 'order', 'videoUrl'] }] }
       ],
       order: [
         [{ model: Unit, as: 'units' }, 'order', 'ASC'], [{ model: Unit, as: 'units' }, 'id', 'ASC'],
@@ -46,14 +48,54 @@ router.get('/courses/:slug', async (req, res) => {
       ]
     });
     if (!course) return res.status(404).json({ error: 'Course not found' });
+    // Only what the sales page needs: whether there is a video / quiz and how many PDFs, never their links.
+    const withQuiz = new Set((await UnitQuiz.findAll({
+      where: { unitId: { [Op.in]: course.units.map(unit => unit.id) }, isPublished: true }, attributes: ['unitId']
+    })).map(quiz => quiz.unitId));
     res.json({
       ...summary(course),
       salesDescription: course.salesDescription,
+      introVideoUrl: course.introVideoUrl,
+      materialsCount: await Material.count({ where: { courseId: course.id } }),
       units: course.units.map(unit => ({
-        id: unit.id, title: unit.title, order: unit.order,
-        stories: unit.stories.map(story => ({ id: story.id, title: story.title, order: story.order }))
+        id: unit.id, title: unit.title, order: unit.order, hasQuiz: withQuiz.has(unit.id),
+        stories: unit.stories.map(story => ({ id: story.id, title: story.title, order: story.order, hasVideo: Boolean(story.videoUrl) }))
       }))
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Certificate verification (public: whoever holds the code can check it). The code is not guessable: 12 random characters.
+async function findCertificate(req, res) {
+  const code = certificates.normalizeCode(req.params.code);
+  const certificate = code ? await Certificate.findOne({ where: { code } }) : null;
+  if (!certificate) { res.status(404).json({ error: 'Certificate not found' }); return null; }
+  return certificate;
+}
+
+router.get('/certificates/:code', async (req, res) => {
+  try {
+    const certificate = await findCertificate(req, res);
+    if (certificate) res.json(certificates.publicShape(certificate));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/certificates/:code/pdf', async (req, res) => {
+  try {
+    const certificate = await findCertificate(req, res);
+    if (!certificate) return;
+    const pdf = await certificates.renderPdf(certificate);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="certificate-${certificate.code}.pdf"`,
+      'Content-Length': pdf.length,
+      'Cache-Control': 'private, max-age=300'
+    });
+    res.end(pdf);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

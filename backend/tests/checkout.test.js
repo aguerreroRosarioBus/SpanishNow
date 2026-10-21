@@ -289,7 +289,8 @@ describe('selling courses', () => {
       const page = await as(null).get(`/api/public/courses/${published.slug}`);
       expect(page.status).toBe(200);
       expect(page.body.salesDescription).toBe('Learn Spanish with a short film.');
-      expect(page.body.units).toEqual([{ id: unit.id, title: 'Unit 1', order: 1, stories: [{ id: expect.any(Number), title: 'Lesson 1', order: 1 }] }]);
+      expect(page.body.units).toEqual([{ id: unit.id, title: 'Unit 1', order: 1, hasQuiz: false, stories: [{ id: expect.any(Number), title: 'Lesson 1', order: 1, hasVideo: false }] }]);
+      expect(page.body).toMatchObject({ introVideoUrl: null, materialsCount: 0 });
       expect(JSON.stringify(page.body)).not.toContain('SECRET TEXT');
 
       await draft.update({ slug: 'borrador-oculto' });
