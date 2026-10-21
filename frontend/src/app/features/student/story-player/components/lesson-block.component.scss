@@ -4,3 +4,8 @@
   max-height: 500px;
   overflow: visible;
 }
+
+.kf-layout.has-image { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 1rem; align-items: start; }
+.kf-image { width: 100%; }
+.expression-image { max-width: 220px; margin: .5rem 0; }
+@media (max-width: 640px) { .kf-layout.has-image { grid-template-columns: 1fr; } .kf-image { max-width: none; } }

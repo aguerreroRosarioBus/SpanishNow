@@ -4,6 +4,9 @@ import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
 import { KeyframeExtrasComponent } from './keyframe-extras.component';
+import { KeyframeIllustrationComponent } from './keyframe-illustration.component';
+import { WhiteboardComponent } from './whiteboard/whiteboard.component';
+import { WhiteboardService } from './whiteboard/whiteboard.service';
 import { ComposerSidePanelComponent, SidePanelTab } from './composer-side-panel.component';
 import { InlineQuestionFormComponent } from './inline-question-form.component';
 import { InlineVocabularyFormComponent } from './inline-vocabulary-form.component';
@@ -20,7 +23,7 @@ const PHASE_LABEL: Record<LessonPhase, string> = { before: 'Antes', during: 'Dur
 @Component({
   selector: 'app-lesson-composer',
   standalone: true,
-  imports: [CommonModule, FormsModule, KeyframeExtrasComponent, ComposerSidePanelComponent, InlineQuestionFormComponent, InlineVocabularyFormComponent],
+  imports: [CommonModule, FormsModule, KeyframeExtrasComponent, KeyframeIllustrationComponent, WhiteboardComponent, ComposerSidePanelComponent, InlineQuestionFormComponent, InlineVocabularyFormComponent],
   templateUrl: './lesson-composer.component.html',
   styleUrls: ['./lesson-composer.component.scss', './lesson-composer-tutorial.scss', './lesson-composer-flow.scss']
 })
@@ -39,6 +42,7 @@ export class LessonComposerComponent implements OnInit, OnDestroy {
   private questionsApi = inject(QuestionService);
   private vocabApi = inject(VocabularyService);
   private host = inject<ElementRef<HTMLElement>>(ElementRef);
+  whiteboard = inject(WhiteboardService);
   plan = signal<LessonPlan | null>(null);
   blocks = signal<LessonBlock[]>([]);
   questions = signal<Question[]>([]);
@@ -90,7 +94,7 @@ export class LessonComposerComponent implements OnInit, OnDestroy {
     }
   }
 
-  ngOnDestroy(): void { this.restoreFocus(); }
+  ngOnDestroy(): void { this.whiteboard.finish(null); this.restoreFocus(); }
 
   @HostListener('document:keydown', ['$event'])
   onKeydown(event: KeyboardEvent): void {
@@ -121,6 +125,11 @@ export class LessonComposerComponent implements OnInit, OnDestroy {
   savedBlock(block: LessonBlock): LessonBlock | null { return this.plan()?.blocks.find(item => item.blockKey === block.blockKey) ?? null; }
   ensureSavedFn = async (): Promise<boolean> => !this.dirty() || this.save();
   onAudioChange(event: { blockKey: string; audioUrl: string | null }): void { this.patchBlock(event.blockKey, { audioUrl: event.audioUrl }); }
+  vocabImage(block: LessonBlock): string | null { return this.vocabulary().find(v => v.id === block.vocabularyId)?.imageUrl || null; }
+  vocabWord(block: LessonBlock): string | null { return this.vocabulary().find(v => v.id === block.vocabularyId)?.word || null; }
+  onImageChange(event: { blockKey: string; imageUrl: string | null }): void { this.patchBlock(event.blockKey, { imageUrl: event.imageUrl }); }
+  /** La descripción sí es parte del borrador: marca cambios sin guardar. */
+  onImageAlt(event: { blockKey: string; imageAlt: string }): void { this.updateBlock(event.blockKey, { imageAlt: event.imageAlt }); }
   onTooltipsChange(event: { blockKey: string; tooltips: KeyframeTooltip[] }): void { this.patchBlock(event.blockKey, { tooltips: event.tooltips }); }
   /** Aplica un cambio ya persistido por el backend (audio/tooltips) sin marcar el borrador como modificado. */
   private patchBlock(key: string, values: Partial<LessonBlock>): void {

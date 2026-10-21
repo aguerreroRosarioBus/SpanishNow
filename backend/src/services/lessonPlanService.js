@@ -13,6 +13,7 @@ const fail = (status, message) => { const error = new Error(message); error.stat
 const validId = value => Number.isSafeInteger(Number(value)) && Number(value) > 0;
 const MAX_KEYFRAME_TEXT = 20000; // characters (<= 60000 UTF-8 bytes, fits the TEXT column)
 const MAX_AUDIO_URL = 500; // lesson_blocks.audioUrl is VARCHAR(500)
+const MAX_IMAGE_ALT = 300; // lesson_blocks.imageAlt is VARCHAR(300)
 const MAX_DB_INT = 2147483647;
 
 async function planWithBlocks(planId, transaction) {
@@ -39,6 +40,10 @@ function validateLengths(blocks) {
     if (b.audioUrl !== undefined && b.audioUrl !== null) {
       if (typeof b.audioUrl !== 'string') fail(400, `${label}: audioUrl must be a string`);
       if (b.audioUrl.length > MAX_AUDIO_URL) fail(400, `${label}: audioUrl is too long (maximum ${MAX_AUDIO_URL} characters)`);
+    }
+    if (b.imageAlt !== undefined && b.imageAlt !== null) {
+      if (typeof b.imageAlt !== 'string') fail(400, `${label}: imageAlt must be a string`);
+      if (b.imageAlt.length > MAX_IMAGE_ALT) fail(400, `${label}: imageAlt is too long (maximum ${MAX_IMAGE_ALT} characters)`);
     }
     for (const field of ['questionId', 'vocabularyId', 'revisitStoryId']) {
       if (b[field] && !isIdValue(b[field])) fail(400, `${label}: ${field} must be a positive integer`);
@@ -121,6 +126,8 @@ const savedBlock = (planId, b, position) => ({
   planId, blockKey: b.blockKey, type: b.type, phase: b.phase, position,
   active: b.active !== false, required: b.required === true, text: b.type === 'keyframe' ? b.text || null : null,
   audioUrl: b.type === 'keyframe' ? b.audioUrl || null : null,
+  imageUrl: b.type === 'keyframe' ? b.imageUrl || null : null,
+  imageAlt: b.type === 'keyframe' && typeof b.imageAlt === 'string' ? b.imageAlt.trim() || null : null,
   questionId: b.type === 'question' ? b.questionId || null : null,
   contextBlockKey: b.type === 'question' ? b.contextBlockKey || null : null,
   vocabularyId: b.type === 'expression' ? b.vocabularyId || null : null,
@@ -166,8 +173,11 @@ async function replaceDraftBlocks(story, draft, blocks, transaction) {
   validateShape(blocks, false);
   validateLengths(blocks);
   await validateReferences(story, blocks, false, transaction);
+  // imageUrl is only set by the image endpoint (uploaded files), never by the client body: keep what the draft already has.
+  const current = await LessonBlock.findAll({ where: { planId: draft.id, type: 'keyframe' }, attributes: ['blockKey', 'imageUrl'], transaction });
+  const images = new Map(current.map(b => [b.blockKey, b.imageUrl]));
   await LessonBlock.destroy({ where: { planId: draft.id }, transaction });
-  await LessonBlock.bulkCreate(blocks.map((b, index) => savedBlock(draft.id, b, index)), { transaction });
+  await LessonBlock.bulkCreate(blocks.map((b, index) => savedBlock(draft.id, { ...b, imageUrl: images.get(b.blockKey) || null }, index)), { transaction });
 }
 
 /**
@@ -208,7 +218,7 @@ async function publishDraft(story, revision, transaction) {
 }
 
 module.exports = {
-  TYPES, PHASES, REINFORCEMENTS, MAX_AUDIO_URL, fail, validId,
+  TYPES, PHASES, REINFORCEMENTS, MAX_AUDIO_URL, MAX_IMAGE_ALT, fail, validId,
   planWithBlocks, blockData, validateLengths, validateShape, validateReferences,
   savedBlock, currentDraft, stageRevisits, replaceDraftBlocks, publishDraft
 };

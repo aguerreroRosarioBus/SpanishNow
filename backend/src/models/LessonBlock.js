@@ -12,6 +12,8 @@ module.exports = sequelize.define('LessonBlock', {
   required: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
   text: { type: DataTypes.TEXT, allowNull: true },
   audioUrl: { type: DataTypes.STRING(500), allowNull: true },
+  imageUrl: { type: DataTypes.STRING(500), allowNull: true },
+  imageAlt: { type: DataTypes.STRING(300), allowNull: true },
   questionId: { type: DataTypes.INTEGER, allowNull: true },
   contextBlockKey: { type: DataTypes.UUID, allowNull: true },
   vocabularyId: { type: DataTypes.INTEGER, allowNull: true },

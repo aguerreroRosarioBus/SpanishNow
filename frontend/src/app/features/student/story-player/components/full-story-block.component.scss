@@ -4,3 +4,9 @@
   max-height: 500px;
   overflow: visible;
 }
+
+.story-para { display: flex; gap: 1rem; align-items: flex-start; margin-bottom: 1rem; }
+.story-para:not(.with-image) .para-text { padding-left: 0; }
+.para-image { flex: 0 0 180px; width: 180px; }
+.para-text { flex: 1 1 0; min-width: 0; }
+@media (max-width: 560px) { .story-para.with-image { flex-direction: column; } .para-image { flex-basis: auto; width: 100%; max-width: 260px; } }

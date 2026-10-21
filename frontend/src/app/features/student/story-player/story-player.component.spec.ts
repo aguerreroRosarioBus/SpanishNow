@@ -35,9 +35,9 @@ describe('StoryPlayerComponent (flujo TPRS)', () => {
   let session: LessonSessionStore;
   let lessonApi: { getStory: any; setCurrentBlock: any; answer: any; completeNarrative: any; completeReinforcement: any };
 
-  async function create(lastBlockKey: string | null): Promise<void> {
+  async function create(lastBlockKey: string | null, tweak: (lesson: StudentLesson) => StudentLesson = l => l): Promise<void> {
     lessonApi = {
-      getStory: vi.fn((storyId: number) => of(makeLesson(storyId, lastBlockKey))),
+      getStory: vi.fn((storyId: number) => of(tweak(makeLesson(storyId, lastBlockKey)))),
       setCurrentBlock: vi.fn((_p: number, blockKey: string) => of({ lastBlockKey: blockKey, narrativeCompleted: false, revision: 1 })),
       answer: vi.fn(),
       completeNarrative: vi.fn(),
@@ -176,5 +176,67 @@ describe('StoryPlayerComponent (flujo TPRS)', () => {
     expect(currentKey()).toBe('k2');
     expect(el.querySelector('.story-text .tooltip-highlight')).toBeNull();
     expect(el.querySelector('.story-text')?.textContent).toContain('dos');
+  });
+
+  describe('ilustraciones', () => {
+    const withImages = (lesson: StudentLesson): StudentLesson => ({
+      ...lesson,
+      blocks: [
+        lessonBlock('e1', -1, 'expression', 'before', { vocabulary: { word: 'la casa', translation: 'the house', imageUrl: 'https://cdn/casa.png' } }),
+        ...lesson.blocks.map(b => b.blockKey === 'k1' ? { ...b, imageUrl: 'https://cdn/k1.png', imageAlt: 'María entra a la fiesta' } : b),
+      ],
+    });
+    const el = () => fixture.nativeElement as HTMLElement;
+
+    it('el keyframe muestra la ilustración junto al texto con su alt y carga diferida', async () => {
+      await create('k1', withImages);
+      const img = el().querySelector('.kf-layout app-lesson-illustration img') as HTMLImageElement;
+      expect(img.getAttribute('src')).toBe('https://cdn/k1.png');
+      expect(img.alt).toBe('María entra a la fiesta');
+      expect(img.getAttribute('loading')).toBe('lazy');
+      expect(el().querySelector('.kf-layout')?.classList.contains('has-image')).toBe(true);
+      expect(el().querySelector('.story-text')?.textContent).toContain('María llega a la fiesta');
+    });
+
+    it('sin imagen el keyframe se ve como antes', async () => {
+      await create('k1');
+      expect(el().querySelector('app-lesson-illustration')).toBeNull();
+      expect(el().querySelector('.kf-layout')?.classList.contains('has-image')).toBe(false);
+    });
+
+    it('al pulsar se ve ampliada en un diálogo y Escape la cierra', async () => {
+      await create('k1', withImages);
+      (el().querySelector('.ill-open') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      expect(el().querySelector('.ill-overlay')?.getAttribute('role')).toBe('dialog');
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      fixture.detectChanges();
+      expect(el().querySelector('.ill-overlay')).toBeNull();
+    });
+
+    it('la expresión muestra la imagen del vocabulario con la palabra y su traducción', async () => {
+      await create('e1', withImages);
+      expect(el().querySelector('.expression-card img')?.getAttribute('src')).toBe('https://cdn/casa.png');
+      expect(el().querySelector('.expression-card')?.textContent).toContain('la casa');
+      expect(el().querySelector('.expression-card')?.textContent).toContain('the house');
+    });
+
+    it('la lectura completa ilustra cada párrafo que tiene imagen y deja el resto como texto', async () => {
+      await create('f1', withImages);
+      const paras = [...el().querySelectorAll('.story-para')];
+      expect(paras).toHaveLength(2); // k1 (con imagen) y k2 (solo texto)
+      expect(paras[0].querySelector('img')?.getAttribute('src')).toBe('https://cdn/k1.png');
+      expect(paras[0].textContent).toContain('María llega a la fiesta');
+      expect(paras[1].querySelector('img')).toBeNull();
+      expect(paras[1].textContent).toContain('dos');
+      // los tooltips del keyframe siguen funcionando dentro del párrafo
+      expect(paras[0].querySelector('.tooltip-highlight')?.textContent).toBe('María');
+    });
+
+    it('sin ninguna imagen la lectura completa conserva el texto de la historia', async () => {
+      await create('f1');
+      expect(el().querySelector('.story-para')).toBeNull();
+      expect(el().querySelector('.story-text app-tooltip-display')).toBeTruthy();
+    });
   });
 });

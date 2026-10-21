@@ -13,3 +13,8 @@ legend { float: left; margin-right: .5rem; padding: 0; }
 .small-button:disabled { opacity: .5; cursor: not-allowed; }
 .text-button { color: var(--color-primary); font-weight: 700; border: 0; background: transparent; text-decoration: underline; cursor: pointer; padding: .2rem 0; }
 @media (max-width: 560px) { .inline-row { grid-template-columns: 1fr; } }
+.inline-image { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.inline-image-label { font-size: .8rem; font-weight: 700; color: var(--color-text-light); margin-right: .25rem; }
+.inline-thumb { width: 64px; height: 48px; object-fit: cover; border: 1px solid var(--color-border); border-radius: 8px; }
+.inline-icon-btn { display: inline-flex; align-items: center; gap: .35rem; }
+.inline-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }

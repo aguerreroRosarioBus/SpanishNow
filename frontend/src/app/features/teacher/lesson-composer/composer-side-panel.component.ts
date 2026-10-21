@@ -42,6 +42,7 @@ export class ComposerSidePanelComponent {
   hasDuring(): boolean { return this.blocks().some(b => b.phase === 'during'); }
   narrativeText(): string { return this.previewBlocks('during').filter(b => b.type === 'keyframe').map(b => b.text || '').join(' '); }
   previewLabel(block: LessonBlock): string { return block.text || block.vocabularySnapshot?.word || this.vocabulary().find(v => v.id === block.vocabularyId)?.word || block.questionSnapshot?.questionText || this.typeLabel(block.type); }
+  vocabImage(block: LessonBlock): string | null { return this.vocabulary().find(v => v.id === block.vocabularyId)?.imageUrl || null; }
   questionText(block: LessonBlock): string { return block.questionSnapshot?.questionText || this.questions().find(q => q.id === block.questionId)?.questionText || block.text || 'Pregunta sin contenido'; }
   contextText(block: LessonBlock): string { return this.blocks().find(item => item.blockKey === block.contextBlockKey)?.text || 'Keyframe sin texto'; }
   questionState(block: LessonBlock): string { return this.questionStates()[block.blockKey] || 'question'; }

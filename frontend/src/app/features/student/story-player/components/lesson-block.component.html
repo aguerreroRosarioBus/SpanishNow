@@ -1,7 +1,8 @@
 <section class="border rounded p-3 mb-3" aria-live="polite">
   <small class="text-uppercase text-muted">{{ block().phase === 'before' ? 'Antes' : block().phase === 'during' ? 'Durante' : 'Después' }}</small>
   <ng-container [ngSwitch]="block().type">
-    <div *ngSwitchCase="'expression'">
+    <div *ngSwitchCase="'expression'" class="expression-card">
+      <app-lesson-illustration *ngIf="block().vocabulary?.imageUrl as image" class="expression-image" [src]="image" [alt]="'Imagen de ' + (block().vocabulary?.word || 'la expresión')" [compact]="true" />
       <h5 class="mt-2">
         {{ block().vocabulary?.word || block().text }}
         <span *ngIf="block().vocabularyRole === 'revisit'" class="badge text-bg-secondary ms-2 align-middle"
@@ -13,11 +14,16 @@
 
     <div *ngSwitchCase="'keyframe'">
       <h5 class="mt-2">Fragmento de la historia</h5>
-      <div class="story-text mb-0">
-        <app-tooltip-display [tooltipData]="tooltips()" [text]="block().text || ''" />
+      <div class="kf-layout" [class.has-image]="block().imageUrl">
+        <app-lesson-illustration *ngIf="block().imageUrl as image" class="kf-image" [src]="image" [alt]="block().imageAlt || block().text || 'Ilustración del fragmento'" />
+        <div class="kf-content">
+          <div class="story-text mb-0">
+            <app-tooltip-display [tooltipData]="tooltips()" [text]="block().text || ''" />
+          </div>
+          <button *ngIf="block().audioUrl" type="button" class="btn btn-outline-primary btn-sm mt-2"
+            (click)="session.audio.toggle(block().audioUrl)">{{ session.audio.isPlaying() ? 'Pausar fragmento' : 'Escuchar fragmento' }}</button>
+        </div>
       </div>
-      <button *ngIf="block().audioUrl" type="button" class="btn btn-outline-primary btn-sm mt-2"
-        (click)="session.audio.toggle(block().audioUrl)">{{ session.audio.isPlaying() ? 'Pausar fragmento' : 'Escuchar fragmento' }}</button>
     </div>
 
     <div *ngSwitchCase="'question'">

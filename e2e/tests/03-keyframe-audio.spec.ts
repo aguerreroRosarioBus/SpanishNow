@@ -22,7 +22,7 @@ test('subir y quitar el audio de un keyframe (backend interceptado)', async ({ p
   const keyframe = dialog.locator('section[data-phase="during"] article.block-card').filter({ has: page.locator('textarea') }).first();
   await expect(keyframe.locator('audio')).toHaveCount(0);
 
-  await keyframe.locator('input[type="file"]').setInputFiles({ name: 'test.mp3', mimeType: 'audio/mpeg', buffer: Buffer.from('ID3-fake-audio') });
+  await keyframe.locator('input[type="file"][accept="audio/*"]').setInputFiles({ name: 'test.mp3', mimeType: 'audio/mpeg', buffer: Buffer.from('ID3-fake-audio') });
   const player = keyframe.locator('audio');
   await expect(player).toHaveAttribute('src', AUDIO_URL);
   await expect(keyframe.getByRole('button', { name: 'Quitar audio' })).toBeVisible();

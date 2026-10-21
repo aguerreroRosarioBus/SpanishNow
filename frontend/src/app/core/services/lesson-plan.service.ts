@@ -24,6 +24,9 @@ export interface LessonBlock {
   required: boolean;
   text?: string | null;
   audioUrl?: string | null;
+  /** Ilustración del keyframe. Solo se modifica con uploadKeyframeImage/deleteKeyframeImage, no con el borrador. */
+  imageUrl?: string | null;
+  imageAlt?: string | null;
   tooltips?: KeyframeTooltip[];
   questionId?: number | null;
   contextBlockKey?: string | null;
@@ -76,6 +79,20 @@ export class LessonPlanService {
 
   deleteKeyframeAudio(storyId: number, blockKey: string): Observable<{ blockKey: string; audioUrl: null }> {
     return this.http.delete<{ blockKey: string; audioUrl: null }>(this.audioUrl(storyId, blockKey));
+  }
+
+  uploadKeyframeImage(storyId: number, blockKey: string, file: File): Observable<{ blockKey: string; imageUrl: string }> {
+    const form = new FormData();
+    form.append('image', file);
+    return this.http.post<{ blockKey: string; imageUrl: string }>(this.imageUrl(storyId, blockKey), form);
+  }
+
+  deleteKeyframeImage(storyId: number, blockKey: string): Observable<{ blockKey: string; imageUrl: null }> {
+    return this.http.delete<{ blockKey: string; imageUrl: null }>(this.imageUrl(storyId, blockKey));
+  }
+
+  private imageUrl(storyId: number, blockKey: string): string {
+    return `${this.apiUrl}/story/${storyId}/draft/blocks/${encodeURIComponent(blockKey)}/image`;
   }
 
   private audioUrl(storyId: number, blockKey: string): string {

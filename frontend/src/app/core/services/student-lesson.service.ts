@@ -13,11 +13,13 @@ export interface StudentLessonBlock {
   required: boolean;
   text?: string | null;
   audioUrl?: string | null;
+  imageUrl?: string | null;
+  imageAlt?: string | null;
   tooltips?: Array<{ startOffset: number; endOffset: number; selectedText: string; tooltipContent: string }>;
   questionId?: number | null;
   contextBlockKey?: string | null;
   question?: { questionText: string; answerType: string; options?: string[]; audioUrl?: string | null } | null;
-  vocabulary?: { word: string; translation: string; example?: string } | null;
+  vocabulary?: { word: string; translation: string; example?: string; imageUrl?: string | null } | null;
   vocabularyRole?: 'target' | 'support' | 'revisit' | null;
 }
 export interface StudentLesson {

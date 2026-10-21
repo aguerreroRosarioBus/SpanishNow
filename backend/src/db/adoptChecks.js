@@ -125,6 +125,14 @@ const adoptChecks = {
     return (await legacyDropped(i))
       ? yes('progress, question_responses, activity_configs and the enrollment flags are already gone')
       : no('legacy progress tables or enrollment flags still exist');
+  },
+
+  async '20261023000000-add-keyframe-images.js'(i) {
+    if (!i.hasTable('lesson_blocks')) return no('lesson_blocks does not exist');
+    const columns = await i.columns('lesson_blocks');
+    return columns.has('imageUrl') && columns.has('imageAlt')
+      ? yes('lesson_blocks.imageUrl and imageAlt exist')
+      : no('lesson_blocks.imageUrl or imageAlt missing');
   }
 };
 

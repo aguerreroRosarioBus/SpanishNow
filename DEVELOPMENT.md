@@ -595,6 +595,8 @@ Cada historia se consume según su **plan de lección** publicado (`lesson_plans
 | Después | `full_story` y refuerzos (`flashcards`, `matching`, `listen_repeat`) | La lectura completa se deriva de los keyframes; los refuerzos son opcionales |
 | Más adelante | `expression` con `revisitStoryId` | Programa la reaparición en una historia posterior (crea un borrador allí, no publica) |
 
+Los keyframes admiten una ilustración (`lesson_blocks.imageUrl` + texto alternativo `imageAlt`): se sube con `POST /api/lesson-plans/story/:storyId/draft/blocks/:blockKey/image` (campo `image`, PNG/JPEG/WebP/GIF, máx. 5 MB; `DELETE` en la misma ruta la quita). `imageUrl` solo lo escribe ese endpoint (el `PUT` del borrador la conserva); `imageAlt` viaja con el `PUT`. Sin Cloudinary en local/E2E: `MEDIA_FAKE_UPLOADS=1` (ver `backend/docs/database.md`).
+
 El profesor edita los planes en el compositor («🧩 Componer lección TPRS» en la gestión del curso).
 
 ### Contenido curado y auditoría

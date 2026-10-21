@@ -3,6 +3,14 @@
     <label [attr.for]="uid() + '-word'">Expresión<input [id]="uid() + '-word'" name="word" maxlength="120" [ngModel]="word()" (ngModelChange)="word.set($event)"></label>
     <label [attr.for]="uid() + '-tr'">Traducción<input [id]="uid() + '-tr'" name="translation" maxlength="200" [ngModel]="translation()" (ngModelChange)="translation.set($event)" [disabled]="!!match()" [placeholder]="match()?.translation || ''"></label>
   </div>
+  <div class="inline-image" *ngIf="!match()">
+    <span class="inline-image-label">Imagen (opcional)</span>
+    <input #file type="file" class="inline-hidden" tabindex="-1" aria-hidden="true" [accept]="accept" (change)="onImageFile($event)">
+    <img *ngIf="imagePreview() as src" class="inline-thumb" [src]="src" alt="Vista previa de la imagen de la expresión" width="64" height="48">
+    <button type="button" class="small-button inline-icon-btn" [disabled]="busy()" (click)="draw()"><app-icon name="palette" /> Dibujar</button>
+    <button type="button" class="small-button inline-icon-btn" [disabled]="busy()" (click)="file.click()"><app-icon name="upload" /> {{ image() ? 'Cambiar imagen' : 'Subir imagen' }}</button>
+    <button type="button" *ngIf="image()" class="text-button" [disabled]="busy()" (click)="removeImage()">Quitar imagen</button>
+  </div>
   <p class="inline-help" *ngIf="match()" role="status">«{{ match()!.word }}» ya existe en el vocabulario de la unidad ({{ match()!.translation }}); se reutilizará.</p>
   <p class="inline-error" role="alert" *ngIf="error()">{{ error() }}</p>
   <div class="inline-actions">

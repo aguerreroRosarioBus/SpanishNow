@@ -4,6 +4,7 @@ const { authMiddleware, isTeacher, isStudent } = require('../middlewares/auth.mi
 const sequelize = require('../config/database');
 const { Story, Unit, Course, Enrollment, LessonPlan, LessonBlock, LessonProgress, LessonAnswer, LessonReinforcement, Tooltip } = require('../models');
 const cloudinary = require('../config/cloudinary');
+const multer = require('multer');
 const upload = require('../middlewares/upload.middleware');
 const { REINFORCEMENTS, MAX_AUDIO_URL, fail, validId, planWithBlocks, blockData, currentDraft,
   replaceDraftBlocks, publishDraft, validateShape } = require('../services/lessonPlanService');
@@ -11,6 +12,8 @@ const { REINFORCEMENTS, MAX_AUDIO_URL, fail, validId, planWithBlocks, blockData,
 const sendError = (res, error) => res.status(error.status || 500).json({ error: error.message });
 const AUDIO_MIME = /^audio\//i;
 const AUDIO_OTHER_MIME = new Set(['video/mp4', 'video/webm', 'application/ogg']);
+const IMAGE_MIME = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const normalized = value => String(value).trim().toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
 
@@ -126,11 +129,11 @@ router.put('/story/:storyId/draft/reorder', authMiddleware, isTeacher, async (re
 });
 
 // Audio of a keyframe. Only the draft is modified; publishing copies audioUrl with the block.
-async function draftKeyframeBlock(story, blockKey, transaction) {
+async function draftKeyframeBlock(story, blockKey, transaction, what = 'audio') {
   const draft = await currentDraft(story, transaction);
   const block = await LessonBlock.findOne({ where: { planId: draft.id, blockKey }, transaction, lock: transaction.LOCK.UPDATE });
   if (!block) fail(404, 'Block not found in the current draft');
-  if (block.type !== 'keyframe') fail(400, 'Only keyframe blocks can have audio');
+  if (block.type !== 'keyframe') fail(400, `Only keyframe blocks can have ${what}`);
   return block;
 }
 
@@ -182,6 +185,60 @@ router.delete(audioRoute, authMiddleware, isTeacher, async (req, res) => {
       await block.update({ audioUrl: null }, { transaction });
     });
     res.json({ blockKey: req.params.blockKey, audioUrl: null });
+  } catch (error) { sendError(res, error); }
+});
+
+// Illustration of a keyframe (uploaded image or exported drawing). Same rules as the audio: only the draft is modified,
+// only keyframes, and imageUrl can only be written by this endpoint (the draft PUT preserves it).
+const imageMulter = multer({
+  storage: multer.memoryStorage(),
+  // multer rejects a file that reaches the limit, so +1 keeps exactly 5 MB acceptable
+  limits: { fileSize: MAX_IMAGE_BYTES + 1, files: 1 },
+  fileFilter: (req, file, cb) => IMAGE_MIME.has(file.mimetype) ? cb(null, true)
+    : cb(new Error('The image must be PNG, JPEG, WebP or GIF'))
+});
+
+const imageUpload = (req, res, next) => imageMulter.single('image')(req, res, error => {
+  if (!error) return next();
+  if (error.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: 'The image is too large (maximum 5 MB)' });
+  res.status(400).json({ error: error.message });
+});
+
+const imageRoute = '/story/:storyId/draft/blocks/:blockKey/image';
+
+router.post(imageRoute, authMiddleware, isTeacher, audioPrecheck, imageUpload, async (req, res) => {
+  try {
+    const { blockKey } = req.params;
+    await sequelize.transaction(async transaction => {
+      await draftKeyframeBlock(await storyForTeacher(req.params.storyId, req.user.id, transaction), blockKey, transaction, 'an illustration');
+    });
+    const file = req.file;
+    if (!file) fail(400, 'An image file is required in the "image" field');
+    if (!IMAGE_MIME.has(file.mimetype)) fail(400, 'The image must be PNG, JPEG, WebP or GIF');
+    let imageUrl;
+    try {
+      // Uploaded outside any DB transaction: a slow upload must not hold row locks.
+      const result = await cloudinary.uploadFromBuffer(file.buffer, { folder: 'spanishnow/keyframes/images', resource_type: 'image' });
+      imageUrl = result && result.secure_url;
+    } catch (cloudinaryError) {
+      console.warn('Cloudinary upload failed for keyframe image:', cloudinaryError.message);
+    }
+    if (typeof imageUrl !== 'string' || !imageUrl || imageUrl.length > MAX_AUDIO_URL) fail(502, 'Image upload failed; the keyframe was not modified');
+    await sequelize.transaction(async transaction => {
+      const block = await draftKeyframeBlock(await storyForTeacher(req.params.storyId, req.user.id, transaction), blockKey, transaction, 'an illustration');
+      await block.update({ imageUrl }, { transaction });
+    });
+    res.json({ blockKey, imageUrl });
+  } catch (error) { sendError(res, error); }
+});
+
+router.delete(imageRoute, authMiddleware, isTeacher, async (req, res) => {
+  try {
+    await sequelize.transaction(async transaction => {
+      const block = await draftKeyframeBlock(await storyForTeacher(req.params.storyId, req.user.id, transaction), req.params.blockKey, transaction, 'an illustration');
+      await block.update({ imageUrl: null }, { transaction });
+    });
+    res.json({ blockKey: req.params.blockKey, imageUrl: null });
   } catch (error) { sendError(res, error); }
 });
 

@@ -38,7 +38,10 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
       PORT: String(BACKEND_PORT),
       DB_NAME: E2E_DB,
       DB_HOST: 'localhost',
-      CORS_EXTRA_ORIGINS: `http://localhost:${FRONTEND_PORT}`
+      CORS_EXTRA_ORIGINS: `http://localhost:${FRONTEND_PORT}`,
+      // Sin Cloudinary real: las subidas se guardan en backend/uploads-dev (ver backend/docs/database.md)
+      MEDIA_FAKE_UPLOADS: '1',
+      MEDIA_FAKE_BASE_URL: `http://localhost:${BACKEND_PORT}`
     },
     stdio: ['ignore', 'ignore', 'inherit']
   });

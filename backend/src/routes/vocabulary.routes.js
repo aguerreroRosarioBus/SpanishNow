@@ -71,7 +71,7 @@ router.post('/', authMiddleware, isTeacher, upload.fields([
 
     // Upload image if provided
     if (req.files && req.files.image && req.files.image[0]) {
-      if (process.env.CLOUDINARY_CLOUD_NAME) {
+      if (cloudinary.canUpload()) {
         try {
           const result = await cloudinary.uploadFromBuffer(req.files.image[0].buffer, {
             folder: 'spanishnow/vocabulary/images'
@@ -148,7 +148,7 @@ router.put('/:id', authMiddleware, isTeacher, upload.fields([
 
     // Upload new image if provided
     if (req.files && req.files.image && req.files.image[0]) {
-      if (process.env.CLOUDINARY_CLOUD_NAME) {
+      if (cloudinary.canUpload()) {
         try {
           const result = await cloudinary.uploadFromBuffer(req.files.image[0].buffer, {
             folder: 'spanishnow/vocabulary/images'

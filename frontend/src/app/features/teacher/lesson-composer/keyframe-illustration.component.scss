@@ -1,0 +1,29 @@
+:host { display: block; grid-column: 1 / -1; }
+.ill { margin-top: .4rem; padding: .7rem; border: 1px solid var(--color-border); border-radius: 12px; background: white; }
+.ill-title { margin: 0 0 .5rem; font-size: .9rem; text-transform: none; letter-spacing: 0; color: var(--color-text); }
+.ill-body { display: flex; flex-wrap: wrap; gap: .8rem; align-items: flex-start; }
+.ill-thumb { position: relative; flex: none; width: 160px; aspect-ratio: 4 / 3; padding: 0; border: 1px solid var(--color-border); border-radius: 10px; overflow: hidden; background: var(--color-bg-light); cursor: zoom-in; }
+.ill-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ill-zoom { position: absolute; right: .3rem; bottom: .3rem; display: grid; place-items: center; width: 1.7rem; height: 1.7rem; border-radius: 50%; background: rgba(43, 26, 14, .65); color: white; font-size: .95rem; }
+.ill-side, .ill-empty { flex: 1 1 14rem; min-width: 0; }
+.ill-empty { padding: .8rem; border: 2px dashed var(--color-border); border-radius: 12px; background: var(--color-primary-soft); }
+.ill-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.ill-btn { display: inline-flex; align-items: center; gap: .4rem; padding: .45rem .75rem; border: 1px solid var(--color-border); border-radius: 9px; background: white; color: var(--color-text); font-weight: 700; font-size: .87rem; cursor: pointer; }
+.ill-btn:hover:not(:disabled) { background: var(--color-primary-soft); border-color: var(--color-primary); }
+.ill-btn:disabled { opacity: .5; cursor: not-allowed; }
+.ill-primary { background: var(--color-primary); border-color: var(--color-primary); color: white; }
+.ill-primary:hover:not(:disabled) { background: var(--color-primary-hover); color: white; }
+.ill-danger { color: var(--color-danger); }
+.ill-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; margin-top: .5rem; padding: .45rem .6rem; border-radius: 9px; background: var(--color-danger-soft); font-size: .87rem; font-weight: 700; }
+.ill-alt { display: block; margin: .7rem 0 .25rem; font-size: .85rem; font-weight: 700; }
+.ill input[type=text] { width: 100%; padding: .5rem; border: 1px solid var(--color-border); border-radius: 8px; font: inherit; font-size: .9rem; }
+.ill-help { margin: .3rem 0 0; color: var(--color-text-light); font-size: .82rem; }
+.ill-status { margin: .4rem 0 0; color: var(--color-text-light); font-size: .85rem; }
+.ill-error { margin: .4rem 0 0; color: var(--color-danger); font-size: .85rem; }
+.text-button { color: var(--color-primary); font-weight: 700; border: 0; background: transparent; text-decoration: underline; cursor: pointer; padding: .1rem; }
+.ill-btn:focus-visible, .ill-thumb:focus-visible, .text-button:focus-visible, .ill-lightbox-close:focus-visible { outline: 3px solid var(--color-brand); outline-offset: 2px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.ill-lightbox { position: fixed; inset: 0; z-index: 1150; display: grid; place-items: center; padding: 1rem; background: rgba(20, 12, 6, .82); cursor: zoom-out; }
+.ill-lightbox img { max-width: min(96vw, 1100px); max-height: 90dvh; border-radius: 10px; background: white; cursor: default; }
+.ill-lightbox-close { position: absolute; top: .8rem; right: .8rem; display: grid; place-items: center; width: 2.6rem; height: 2.6rem; border: 0; border-radius: 50%; background: white; color: var(--color-text); cursor: pointer; font-size: 1.2rem; }
+@media (max-width: 560px) { .ill-thumb { width: 100%; } }

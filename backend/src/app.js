@@ -33,6 +33,9 @@ app.use(express.urlencoded({ extended: true, charset: 'utf-8' }));
 
 // Static files need their media type (audio, images) instead of JSON.
 app.use('/uploads', express.static('uploads'));
+const fakeUploads = require('./config/fakeUploads');
+fakeUploads.assertSafe();
+if (fakeUploads.enabled()) app.use('/uploads-dev', express.static(fakeUploads.DIR)); // local stand-in for Cloudinary (dev/E2E only)
 
 // Set charset for API responses
 app.use((req, res, next) => {

@@ -8,7 +8,15 @@
     </div>
     <button class="btn btn-outline-primary btn-sm" (click)="session.toggleFullStoryAudio()" [disabled]="!session.fullStoryAudioUrl()">{{ session.audio.isPlaying() ? 'Pausar audio' : 'Reproducir audio' }}</button>
   </div>
-  <div class="story-text mt-3">
-    <app-tooltip-display [targetType]="'story'" [targetId]="lesson.story.id" [text]="lesson.story.fullStoryText" />
+  <div *ngIf="paragraphs() as paras; else plain" class="story-text mt-3 illustrated">
+    <article *ngFor="let para of paras; trackBy: trackPara" class="story-para" [class.with-image]="para.imageUrl">
+      <app-lesson-illustration *ngIf="para.imageUrl as image" class="para-image" [src]="image" [alt]="para.alt" [compact]="true" />
+      <div class="para-text"><app-tooltip-display [tooltipData]="para.tooltips" [text]="para.text" /></div>
+    </article>
   </div>
+  <ng-template #plain>
+    <div class="story-text mt-3">
+      <app-tooltip-display [targetType]="'story'" [targetId]="lesson.story.id" [text]="lesson.story.fullStoryText" />
+    </div>
+  </ng-template>
 </section>

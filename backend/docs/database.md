@@ -161,6 +161,10 @@ Guardas: `--target local` se niega si el host no es `localhost`/`127.0.0.1`/`::1
 
 Para probar la actualización de una base existente sin tocarla: copiarla (`mysqldump bd | mysql copia`), `db:migrate:adopt`, `db:migrate` y `db:seed:curated -- --sync-content`, y comparar recuentos antes y después.
 
+## Subidas sin Cloudinary (desarrollo y E2E)
+
+Con `MEDIA_FAKE_UPLOADS=1` el backend no llama a Cloudinary: `cloudinary.uploadFromBuffer` guarda el archivo en `backend/uploads-dev/` (ignorado por git, nombre = UUID y extension segun la firma del archivo) y devuelve una URL absoluta `MEDIA_FAKE_BASE_URL/uploads-dev/<archivo>` (por defecto `http://localhost:$PORT`). `app.js` sirve esa carpeta en `/uploads-dev` solo si el modo esta activo. Cubre las ilustraciones de keyframe (`POST /api/lesson-plans/story/:storyId/draft/blocks/:blockKey/image`) y las imagenes de vocabulario (`POST/PUT /api/vocabulary`). Con esta variable el proceso **se niega a arrancar** si `NODE_ENV=production` o si existe `RAILWAY_ENVIRONMENT`. La suite E2E (`e2e/global-setup.ts`) la activa para su backend en `:3101`; para el backend de desarrollo basta anadir `MEDIA_FAKE_UPLOADS=1` al `.env` local.
+
 ## Procedimiento propuesto para Railway (sin aplicar todavía)
 
 Railway es solo de prueba, sin datos reales, pero se respalda igual. **Requiere OK del usuario antes de ejecutarse.** Elegí reconstruir (A); la actualización en el lugar (B) queda por si alguien ya registró cuentas que quiere conservar.
