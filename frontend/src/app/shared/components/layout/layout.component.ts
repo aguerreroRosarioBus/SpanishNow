@@ -1,34 +1,54 @@
-import { Component, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, computed, inject, signal } from '@angular/core';
 import { RouterOutlet, RouterLink, Router, NavigationEnd } from '@angular/router';
-import { filter } from 'rxjs/operators';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { filter, map } from 'rxjs/operators';
 import { NavbarTopComponent } from '../navbar-top/navbar-top.component';
 import { SidebarNavComponent } from '../sidebar-nav/sidebar-nav.component';
+import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-layout',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, NavbarTopComponent, SidebarNavComponent],
+  imports: [RouterOutlet, RouterLink, NavbarTopComponent, SidebarNavComponent],
   templateUrl: './layout.component.html',
   styleUrl: './layout.component.scss'
 })
 export class LayoutComponent {
   private router = inject(Router);
+  private authService = inject(AuthService);
   readonly year = new Date().getFullYear();
-  showSidebar = signal<boolean>(true);
-  sidebarOpen = signal<boolean>(false);
+
+  private url = toSignal(
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      map(event => event.urlAfterRedirects)
+    ),
+    { initialValue: this.router.url }
+  );
+
+  /** Pantallas de acceso: sin barra lateral ni datos de usuario, con el pie público. */
+  isAuthPage = computed(() => this.url().startsWith('/auth/'));
+  /** El reproductor es el único lugar donde el contenido usa el ancho de 1180px. */
+  isPlayer = computed(() => /^\/student\/course\/[^/]+\/play/.test(this.url()));
+  showSidebar = computed(() => !this.isAuthPage() && !!this.authService.currentUser());
+  /** El pie público solo se ve fuera de la app autenticada. */
+  showFooter = computed(() => !this.authService.currentUser() || this.isAuthPage());
+
+  userCollapsed = signal(false);
+  /** En el reproductor la barra lateral se pliega sola. */
+  sidebarCollapsed = computed(() => this.isPlayer() || this.userCollapsed());
+  sidebarOpen = signal(false);
 
   constructor() {
-    // Ocultar sidebar en auth pages
-    this.router.events.pipe(
-      filter(event => event instanceof NavigationEnd)
-    ).subscribe((event) => {
-      const navigationEvent = event as NavigationEnd;
-      this.showSidebar.set(!navigationEvent.url.includes('/auth/'));
-    });
+    // Al navegar en móvil se cierra el menú desplegable
+    this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe(() => this.sidebarOpen.set(false));
   }
 
   toggleSidebar(): void {
     this.sidebarOpen.update(v => !v);
+  }
+
+  toggleCollapse(): void {
+    this.userCollapsed.update(v => !v);
   }
 }

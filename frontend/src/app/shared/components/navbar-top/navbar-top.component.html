@@ -1,77 +1,37 @@
-<nav class="navbar-top">
-  <div class="navbar-container">
-    <!-- Hamburger menu (mobile) -->
-    <button class="hamburger-button" (click)="toggleSidebar()" type="button" aria-label="Abrir menú">
-      <span class="hamburger-icon"></span>
-      <span class="hamburger-icon"></span>
-      <span class="hamburger-icon"></span>
+<header class="navbar-top">
+  @if (showUser() && currentUser()) {
+    <button class="btn-icon hamburger-button" type="button" (click)="toggleSidebar()"
+            [attr.aria-label]="menuOpen() ? 'Cerrar menú' : 'Abrir menú'" [attr.aria-expanded]="menuOpen()">
+      <app-icon [name]="menuOpen() ? 'close' : 'menu'" [size]="18" />
     </button>
+  }
 
-    <!-- Logo -->
-    <a [routerLink]="currentUser()?.role === 'student' ? '/student/dashboard' : '/teacher/dashboard'"
-       class="navbar-brand">
-      <img src="logo-mark.svg" alt="" class="brand-mark" width="44" height="42">
-      <span class="brand-divider" aria-hidden="true"></span>
-      <span class="brand-word">SPANISH<br>NOW</span>
-    </a>
+  <a class="navbar-brand" [routerLink]="!showUser() || !currentUser() ? '/auth/login' : currentUser()?.role === 'student' ? '/student/dashboard' : '/teacher/dashboard'">
+    <img src="logo-mark.svg" alt="" class="brand-mark" width="28" height="27">
+    <span class="brand-word">SpanishNow</span>
+    @if (showUser() && currentUser()?.role === 'teacher') {
+      <span class="role-chip">Profesor</span>
+    }
+  </a>
 
-    <!-- Navigation Links -->
-    <div class="navbar-nav">
-      <!-- Explorar Dropdown (solo estudiantes) -->
-      <div class="nav-item dropdown" *ngIf="currentUser()?.role === 'student'">
-        <button class="nav-link dropdown-toggle" (click)="toggleExploreDropdown()">
-          Explorar
-        </button>
-        <div class="dropdown-menu" [class.show]="showExploreDropdown()">
-          <a class="dropdown-item" [routerLink]="['/student/dashboard']" [queryParams]="{view: 'catalog'}" (click)="showExploreDropdown.set(false)">
-            📚 Todos los cursos
-          </a>
-          <div class="dropdown-divider"></div>
-          <h6 class="dropdown-header">Por nivel</h6>
-          <a class="dropdown-item" [routerLink]="['/student/dashboard']" [queryParams]="{view: 'catalog', level: 'A1'}" (click)="showExploreDropdown.set(false)">
-            A1 - Principiante
-          </a>
-          <a class="dropdown-item" [routerLink]="['/student/dashboard']" [queryParams]="{view: 'catalog', level: 'A2'}" (click)="showExploreDropdown.set(false)">
-            A2 - Elemental
-          </a>
-          <a class="dropdown-item" [routerLink]="['/student/dashboard']" [queryParams]="{view: 'catalog', level: 'B1'}" (click)="showExploreDropdown.set(false)">
-            B1 - Intermedio
-          </a>
+  @if (showUser() && currentUser(); as user) {
+    <div ngbDropdown placement="bottom-end" container="body" class="navbar-user">
+      <button ngbDropdownToggle type="button" class="btn btn-ghost btn-sm account-button" aria-label="Menú de cuenta">
+        <span class="user-avatar" aria-hidden="true">{{ user.name.charAt(0).toUpperCase() }}</span>
+        <span class="user-name">{{ user.name }}</span>
+      </button>
+      <div ngbDropdownMenu class="account-menu">
+        <div class="account-menu__head">
+          <strong>{{ user.name }}</strong>
+          <span>{{ user.role === 'teacher' ? 'Profesor' : 'Estudiante' }}</span>
         </div>
-      </div>
-
-      <!-- Links informativos (opcional) -->
-      <a class="nav-link" [routerLink]="['/contact']">Contacto</a>
-      <a class="nav-link" [routerLink]="['/about']">Acerca de</a>
-    </div>
-
-    <!-- User Menu -->
-    <div class="navbar-user">
-      <div class="dropdown">
-        <button class="user-avatar-button" (click)="toggleUserDropdown()">
-          <div class="user-avatar">
-            {{ currentUser()?.name?.charAt(0)?.toUpperCase() }}
-          </div>
-          <span class="user-name d-none d-md-inline">{{ currentUser()?.name }}</span>
-        </button>
-
-        <div class="dropdown-menu dropdown-menu-end" [class.show]="showUserDropdown()">
-          <div class="dropdown-header">
-            <strong>{{ currentUser()?.name }}</strong>
-            <small class="d-block text-muted">
-              {{ currentUser()?.role === 'teacher' ? 'Profesor' : 'Estudiante' }}
-            </small>
-          </div>
-          <div class="dropdown-divider"></div>
-          <a class="dropdown-item" [routerLink]="['/settings']" (click)="showUserDropdown.set(false)">
-            ⚙️ Configuración
-          </a>
-          <div class="dropdown-divider"></div>
-          <button class="dropdown-item text-danger" (click)="logout()">
-            🚪 Cerrar sesión
-          </button>
-        </div>
+        <div class="dropdown-divider"></div>
+        <a ngbDropdownItem routerLink="/settings"><app-icon name="settings" [size]="16" />Configuración</a>
+        <a ngbDropdownItem routerLink="/contact"><app-icon name="mail" [size]="16" />Contacto</a>
+        <a ngbDropdownItem routerLink="/about"><app-icon name="info" [size]="16" />Acerca de</a>
+        <div class="dropdown-divider"></div>
+        <button ngbDropdownItem type="button" (click)="logout()"><app-icon name="log-out" [size]="16" />Cerrar sesión</button>
       </div>
     </div>
-  </div>
-</nav>
+  }
+</header>

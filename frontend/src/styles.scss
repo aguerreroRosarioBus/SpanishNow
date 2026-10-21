@@ -778,6 +778,15 @@ a {
   background: var(--color-danger-soft);
 }
 
+.account-menu__head {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 10px;
+  font-size: 0.8125rem;
+
+  span { color: var(--color-text-light); }
+}
+
 .dropdown-header {
   padding: 6px 10px;
   font-size: 0.75rem;

@@ -1,286 +1,85 @@
 .navbar-top {
-  background-color: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--color-border);
-  height: 64px;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
+  position: relative;
   z-index: 1000;
-  box-shadow: var(--shadow-sm);
-}
-
-.navbar-container {
-  height: 100%;
-  padding: 0 2rem;
+  flex: none;
+  height: var(--header-height);
   display: flex;
   align-items: center;
-  gap: 2rem;
-  max-width: 100%;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 20px;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
 }
 
-// Hamburger Button (mobile only)
 .hamburger-button {
   display: none;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0.5rem;
-  flex-direction: column;
-  gap: 4px;
-  width: 32px;
-  height: 32px;
-  justify-content: center;
-  align-items: center;
-  border-radius: 4px;
-  transition: background-color 0.2s;
-
-  &:hover {
-    background-color: var(--color-primary-soft);
-  }
-
-  &:active {
-    background-color: var(--color-primary-light);
-  }
 }
 
-.hamburger-icon {
-  width: 20px;
-  height: 2px;
-  background-color: var(--color-text);
-  display: block;
-  transition: all 0.3s;
-}
-
-// Logo/Brand
 .navbar-brand {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 10px;
+  margin-right: auto;
+  color: var(--color-text);
   text-decoration: none;
-  white-space: nowrap;
-  flex-shrink: 0;
-  padding: 0;
-
-  &:hover {
-    opacity: 0.9;
-  }
-}
-
-.brand-mark {
-  display: block;
-}
-
-.brand-divider {
-  width: 1.5px;
-  height: 34px;
-  background: var(--color-text);
 }
 
 .brand-word {
-  font-family: 'Jost', var(--font-heading);
-  font-weight: 300;
-  font-size: 1.2rem;
-  line-height: 1;
-  letter-spacing: 0.02em;
-  color: var(--color-text);
+  font: 600 0.9375rem var(--font-heading);
+  letter-spacing: -0.01em;
 }
 
-// Navigation Links
-.navbar-nav {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 0.25rem;
-  flex-shrink: 0;
-}
-
-.nav-item {
-  position: relative;
-  display: inline-block;
-}
-
-.nav-link {
-  background: none;
-  border: none;
-  color: var(--color-text);
-  text-decoration: none;
-  padding: 0.5rem 1rem;
+.role-chip {
+  margin-left: 6px;
+  padding: 2px 8px;
   border-radius: var(--radius-full);
-  cursor: pointer;
-  font-family: var(--font-heading);
-  font-size: 0.95rem;
-  font-weight: 500;
-  transition: background-color 0.2s, color 0.2s;
-  white-space: nowrap;
-
-  &:hover {
-    background-color: var(--color-primary-soft);
-    color: var(--color-primary);
-  }
-
-  &.router-link-active {
-    color: var(--color-primary);
-  }
-}
-
-.dropdown-toggle::after {
-  content: '';
-  display: inline-block;
-  width: 0;
-  height: 0;
-  margin-left: 0.5rem;
-  vertical-align: middle;
-  border-top: 0.3em solid;
-  border-right: 0.3em solid transparent;
-  border-bottom: 0;
-  border-left: 0.3em solid transparent;
-}
-
-// Dropdown Menu
-.dropdown-menu {
-  position: absolute;
-  top: calc(100% + 0.5rem);
-  left: 0;
-  background: white;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
-  min-width: 200px;
-  padding: 0.5rem 0;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(-10px);
-  transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
-  z-index: 1001;
-
-  &.show {
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0);
-  }
-
-  &.dropdown-menu-end {
-    left: auto;
-    right: 0;
-  }
-}
-
-.dropdown-header {
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
+  background: var(--color-bg-dark);
   color: var(--color-text-light);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-size: 0.75rem;
+  font-weight: 700;
 }
 
-.dropdown-item {
-  display: block;
-  width: 100%;
-  padding: 0.5rem 1rem;
-  color: var(--color-text);
-  text-decoration: none;
-  background: none;
-  border: none;
-  text-align: left;
-  cursor: pointer;
-  transition: background-color 0.15s;
-  font-size: 0.95rem;
+.account-button {
+  gap: 8px;
 
-  &:hover {
-    background-color: var(--color-primary-soft);
-  }
-
-  &.text-danger {
-    color: var(--color-danger);
-
-    &:hover {
-      background-color: var(--color-danger-soft);
-    }
-  }
-}
-
-.dropdown-divider {
-  height: 1px;
-  background-color: var(--color-border);
-  margin: 0.5rem 0;
-}
-
-// User Menu
-.navbar-user {
-  margin-left: auto;
-}
-
-.user-avatar-button {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: var(--radius-full);
-  transition: background-color 0.2s;
-
-  &:hover {
-    background-color: var(--color-primary-soft);
+  // Flechita de ngbDropdownToggle
+  &::after {
+    margin: 0 0 0 2px;
+    border-width: 0.3em 0.3em 0;
+    opacity: 0.7;
   }
 }
 
 .user-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: var(--color-primary);
-  color: #fff;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-heading);
-  font-weight: 600;
-  font-size: 1rem;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
 }
 
 .user-name {
-  color: var(--color-text);
-  font-size: 0.95rem;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-// Mobile Responsive
-@media (max-width: 768px) {
+@media (max-width: 767.98px) {
+  .navbar-top {
+    padding: 0 12px;
+  }
+
   .hamburger-button {
-    display: flex;
-  }
-
-  .navbar-container {
-    padding: 0 1rem;
-    gap: 1rem;
-  }
-
-  .navbar-nav {
-    gap: 0.25rem;
-    margin-left: auto;
-  }
-
-  .nav-link {
-    padding: 0.4rem 0.75rem;
-    font-size: 0.9rem;
-  }
-
-  .brand-word {
-    font-size: 1rem;
+    display: inline-flex;
   }
 
   .user-name {
-    display: none !important;
-  }
-}
-
-// Close dropdowns when clicking outside
-@media (min-width: 769px) {
-  .dropdown-menu {
-    min-width: 220px;
+    display: none;
   }
 }

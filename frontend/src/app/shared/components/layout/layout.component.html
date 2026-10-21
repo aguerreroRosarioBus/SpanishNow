@@ -1,37 +1,42 @@
 <div class="app-layout">
-  <app-navbar-top (sidebarToggle)="toggleSidebar()"></app-navbar-top>
+  <app-navbar-top
+    [showUser]="!isAuthPage()"
+    [menuOpen]="sidebarOpen()"
+    (sidebarToggle)="toggleSidebar()"></app-navbar-top>
 
   <div class="layout-content">
-    <app-sidebar-nav
-      *ngIf="showSidebar()"
-      [class.open]="sidebarOpen()">
-    </app-sidebar-nav>
+    @if (showSidebar()) {
+      <app-sidebar-nav
+        [collapsed]="sidebarCollapsed()"
+        [class.open]="sidebarOpen()"
+        [forced]="isPlayer()"
+        (collapseToggle)="toggleCollapse()"></app-sidebar-nav>
+    }
 
-    <main class="main-content">
-      <div class="content-wrapper">
+    <main class="main-content" id="contenido">
+      <div class="content-wrapper" [class.is-wide]="isPlayer()" [class.is-bare]="isAuthPage()">
         <router-outlet></router-outlet>
       </div>
 
-      <footer class="app-footer">
-        <div class="footer-inner">
-          <a class="footer-brand" routerLink="/">
-            <img src="logo-mark.svg" alt="" width="28" height="27">
-            <span>SpanishNow</span>
-          </a>
-          <nav class="footer-links" aria-label="Enlaces del sitio">
-            <a routerLink="/about">Acerca de</a>
-            <a routerLink="/contact">Contacto</a>
-          </nav>
-          <small class="footer-copy">© {{ year }} SpanishNow. Aprende español a tu ritmo.</small>
-        </div>
-      </footer>
+      @if (showFooter()) {
+        <footer class="app-footer">
+          <div class="footer-inner">
+            <a class="footer-brand" routerLink="/">
+              <img src="logo-mark.svg" alt="" width="24" height="23">
+              <span>SpanishNow</span>
+            </a>
+            <nav class="footer-links" aria-label="Enlaces del sitio">
+              <a routerLink="/about">Acerca de</a>
+              <a routerLink="/contact">Contacto</a>
+            </nav>
+            <small class="footer-copy">© {{ year }} SpanishNow</small>
+          </div>
+        </footer>
+      }
     </main>
   </div>
 
-  <!-- Mobile sidebar overlay -->
-  <div
-    class="sidebar-overlay"
-    *ngIf="showSidebar() && sidebarOpen()"
-    (click)="toggleSidebar()">
-  </div>
+  @if (showSidebar() && sidebarOpen()) {
+    <div class="sidebar-overlay" (click)="toggleSidebar()"></div>
+  }
 </div>
