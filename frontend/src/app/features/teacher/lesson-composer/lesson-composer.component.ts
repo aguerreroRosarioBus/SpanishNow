@@ -17,7 +17,7 @@ const PHASE_LABEL: Record<LessonPhase, string> = { before: 'Antes', during: 'Dur
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './lesson-composer.component.html',
-  styleUrl: './lesson-composer.component.scss'
+  styleUrls: ['./lesson-composer.component.scss', './lesson-composer-tutorial.scss']
 })
 export class LessonComposerComponent implements OnInit, OnDestroy {
   @Input({ required: true }) story!: Story;
@@ -221,6 +221,7 @@ export class LessonComposerComponent implements OnInit, OnDestroy {
     if (active.filter(block => block.type === 'full_story').length !== 1) return 'Debe haber exactamente un bloque de lectura completa activo.';
     for (const block of active) {
       if (block.type === 'question' && (!block.questionId || !block.contextBlockKey)) return 'Cada pregunta activa necesita una pregunta y el keyframe que le da contexto.';
+      if (block.type === 'question' && !this.keyframesBefore(block).some(frame => frame.blockKey === block.contextBlockKey)) return 'Cada pregunta debe ir después de su keyframe de contexto activo.';
       if (block.type === 'expression' && !block.vocabularyId) return 'Selecciona una expresión para cada bloque de expresiones activo.';
       if (block.type === 'expression' && block.phase === 'later' && !block.revisitStoryId) return 'Elige la historia futura para cada expresión de Más adelante.';
     }

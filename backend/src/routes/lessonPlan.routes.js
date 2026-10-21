@@ -245,6 +245,11 @@ router.post('/story/:storyId/publish', authMiddleware, isTeacher, async (req, re
       for (const b of blocks.filter(b => b.type === 'question' || b.type === 'expression')) await LessonBlock.update({
         questionSnapshot: b.questionSnapshot || null, vocabularySnapshot: b.vocabularySnapshot || null
       }, { where: { planId: draft.id, blockKey: b.blockKey }, transaction });
+      // Persist trimmed keyframe text so the student's reader (which joins block texts) matches Story.text exactly.
+      for (const b of blocks.filter(b => b.type === 'keyframe' && typeof b.text === 'string' && b.text !== b.text.trim())) {
+        b.text = b.text.trim();
+        await LessonBlock.update({ text: b.text }, { where: { planId: draft.id, blockKey: b.blockKey }, transaction });
+      }
       const fullText = blocks.filter(b => b.type === 'keyframe' && b.active).map(b => b.text.trim()).join('\n\n');
       await draft.update({ status: 'published', audioSlowUrl: story.audioSlowUrl, audioNormalUrl: story.audioNormalUrl }, { transaction });
       await story.update({ text: fullText }, { transaction });
@@ -276,7 +281,7 @@ router.get('/story/:storyId', authMiddleware, isStudent, async (req, res) => {
       const reinforcements = await LessonReinforcement.findAll({ where: { lessonProgressId: progress.id }, transaction });
       return { ...planDto(plan, true), story: { id: story.id, title: story.title,
         fullStoryText, audioSlowUrl: plan.audioSlowUrl, audioNormalUrl: plan.audioNormalUrl },
-        progress: { id: progress.id, lastBlockKey: progress.lastBlockKey, narrativeCompleted: progress.narrativeCompleted,
+        progress: { id: progress.id, lastBlockKey: progress.lastBlockKey ?? null, narrativeCompleted: progress.narrativeCompleted,
           answers: answers.map(a => ({ blockKey: a.blockKey, questionId: a.questionId, studentAnswer: a.studentAnswer, isCorrect: a.isCorrect, attempt: a.attempt })),
           reinforcements: reinforcements.map(r => ({ blockKey: r.blockKey, completed: r.completed })) } };
     });

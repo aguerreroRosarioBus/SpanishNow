@@ -17,14 +17,16 @@ const sequelize = new Sequelize(
   }
 );
 
-// Test connection
-sequelize
-  .authenticate()
-  .then(() => {
-    console.log('✅ Database connected successfully');
-  })
-  .catch((err) => {
-    console.error('❌ Unable to connect to database:', err);
-  });
+// Test connection (skipped under Jest, where the suite manages its own connection)
+if (process.env.NODE_ENV !== 'test') {
+  sequelize
+    .authenticate()
+    .then(() => {
+      console.log('✅ Database connected successfully');
+    })
+    .catch((err) => {
+      console.error('❌ Unable to connect to database:', err);
+    });
+}
 
 module.exports = sequelize;
