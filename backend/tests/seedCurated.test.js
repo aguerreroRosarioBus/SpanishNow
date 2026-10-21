@@ -14,11 +14,11 @@ const SEED_DB = 'spanishnow_jest_test_seed';
 describe('seed content files', () => {
   const content = loadContent();
 
-  test('has the canonical course: 3 units, 9 stories, 16 questions, 24 vocabulary entries', () => {
+  test('has the canonical course: 3 units, 9 stories, at least the original 16 questions and 24 vocabulary entries', () => {
     expect(content.units).toHaveLength(3);
     expect(content.stories).toHaveLength(9);
-    expect(content.stories.flatMap(s => s.questions)).toHaveLength(16);
-    expect(content.units.flatMap(u => u.vocabulary)).toHaveLength(24);
+    expect(content.stories.flatMap(s => s.questions).length).toBeGreaterThanOrEqual(16);
+    expect(content.units.flatMap(u => u.vocabulary).length).toBeGreaterThanOrEqual(24);
   });
 
   test('every text is clean UTF-8 (no mojibake, NFC)', () => {
@@ -128,12 +128,14 @@ describe('full run on an empty database (migrate + seed + verify)', () => {
     const result = node('seed.js');
     expect(result.stderr).toBe('');
     expect(result.status).toBe(0);
-    expect(result.stdout).toContain('plans: 9 initial, 2 curated, 0 already current, 0 skipped');
+    const content = loadContent();
+    const withPlan = [...content.stories].sort((a, b) => a.id - b.id).map(s => Boolean(s.plan));
+    expect(result.stdout).toContain(`plans: 9 initial, ${withPlan.filter(Boolean).length} curated, 0 already current, 0 skipped`);
 
     expect((await query('SELECT COUNT(*) AS n FROM stories'))[0].n).toBe(9);
-    expect((await query('SELECT COUNT(*) AS n FROM questions'))[0].n).toBe(16);
+    expect((await query('SELECT COUNT(*) AS n FROM questions'))[0].n).toBe(content.stories.flatMap(s => s.questions).length);
     const published = await query("SELECT storyId, MAX(revision) AS latest FROM lesson_plans WHERE status = 'published' GROUP BY storyId ORDER BY storyId");
-    expect(published.map(r => r.latest)).toEqual([2, 2, 1, 1, 1, 1, 1, 1, 1]);
+    expect(published.map(r => r.latest)).toEqual(withPlan.map(curated => (curated ? 2 : 1)));
     expect(await query("SELECT 1 FROM lesson_plans WHERE status = 'draft'")).toHaveLength(0);
 
     const maria = await query(`SELECT b.type, b.phase, b.vocabularyRole, b.revisitStoryId FROM lesson_blocks b JOIN lesson_plans p ON p.id = b.planId
@@ -141,9 +143,9 @@ describe('full run on an empty database (migrate + seed + verify)', () => {
     expect(maria.map(b => `${b.phase}:${b.type}`)).toEqual(['before:expression', 'before:expression', 'during:keyframe', 'during:question', 'during:keyframe',
       'during:question', 'during:keyframe', 'after:full_story', 'after:flashcards', 'later:expression']);
     expect(maria[9]).toMatchObject({ vocabularyRole: 'revisit', revisitStoryId: 2 });
-    const first = await query(`SELECT b.vocabularyRole FROM lesson_blocks b JOIN lesson_plans p ON p.id = b.planId
-      WHERE p.storyId = 2 AND p.revision = 2 AND b.type = 'expression' AND b.phase = 'before'`);
-    expect(first).toEqual([{ vocabularyRole: 'revisit' }]); // "Me llamo" reappears in El Primer Día de Clase
+    const first = await query(`SELECT v.word, b.vocabularyRole FROM lesson_blocks b JOIN lesson_plans p ON p.id = b.planId
+      JOIN vocabulary v ON v.id = b.vocabularyId WHERE p.storyId = 2 AND p.revision = 2 AND b.type = 'expression' AND b.phase = 'before'`);
+    expect(first).toContainEqual({ word: 'Me llamo', vocabularyRole: 'revisit' }); // "Me llamo" reappears in El Primer Día de Clase
 
     const { filePassword, accounts } = loadAccounts();
     const student = (await query('SELECT * FROM users WHERE email = ?', [accounts.find(a => a.role === 'student').email]))[0];

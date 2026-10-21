@@ -182,6 +182,13 @@ npm run build      # Build para producción
 npm test           # Ejecutar tests
 ```
 
+### E2E (Playwright, flujo TPRS completo)
+```bash
+cd e2e && npm install && npx playwright install chromium   # solo la primera vez
+npm run e2e        # headless; reconstruye spanishnow_e2e_test, backend :3101 y frontend :4300
+npm run e2e:ui     # modo interactivo
+```
+
 ## Próximos Pasos
 
 1. Crear componentes de Angular para auth, cursos, dashboard

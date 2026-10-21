@@ -7,17 +7,81 @@
   "questions": [
     {
       "id": 6,
-      "text": "¿Cómo se llama el padre de Carlos?",
+      "text": "¿El padre de Carlos se llama Roberto o Miguel?",
       "type": "choice",
-      "options": ["Miguel", "Roberto", "Carlos"],
+      "options": [
+        "Roberto",
+        "Miguel"
+      ],
       "correct": "Roberto"
     },
     {
       "id": 7,
-      "text": "¿Cuántos hermanos tiene Carlos?",
+      "text": "¿Carlos tiene dos hermanos o tres hermanos?",
       "type": "choice",
-      "options": ["Uno", "Dos", "Tres"],
-      "correct": "Dos"
+      "options": [
+        "Dos hermanos",
+        "Tres hermanos"
+      ],
+      "correct": "Dos hermanos"
+    },
+    {
+      "id": 104,
+      "text": "¿Miguel tiene cinco años?",
+      "type": "yes_no",
+      "options": [
+        "Sí",
+        "No"
+      ],
+      "correct": "Sí"
     }
-  ]
+  ],
+  "plan": {
+    "before": [
+      {
+        "expression": "Tiene",
+        "role": "target"
+      },
+      {
+        "expression": "Se llama",
+        "role": "target"
+      },
+      {
+        "expression": "Familia",
+        "role": "target"
+      }
+    ],
+    "keyframes": [
+      {
+        "text": "Carlos tiene una familia grande. Su padre se llama Roberto y su madre se llama Elena.",
+        "questionsAfter": [
+          "¿El padre de Carlos se llama Roberto o Miguel?"
+        ]
+      },
+      {
+        "text": "Carlos tiene dos hermanos: una hermana que se llama Laura y un hermano que se llama Miguel.",
+        "questionsAfter": [
+          "¿Carlos tiene dos hermanos o tres hermanos?"
+        ]
+      },
+      {
+        "text": "Laura tiene diez años y Miguel tiene cinco años. La familia de Carlos es muy feliz.",
+        "questionsAfter": [
+          "¿Miguel tiene cinco años?"
+        ]
+      }
+    ],
+    "after": [
+      "full_story",
+      "flashcards",
+      "matching"
+    ],
+    "later": [
+      {
+        "expression": "Tiene",
+        "role": "revisit",
+        "story": "El Gato de Ana"
+      }
+    ]
+  }
 }

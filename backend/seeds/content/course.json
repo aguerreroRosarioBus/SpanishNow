@@ -55,6 +55,20 @@
           "translation": "Thank you",
           "example": "Gracias por el café",
           "partOfSpeech": "interjection"
+        },
+        {
+          "id": 25,
+          "word": "Soy de",
+          "translation": "I am from",
+          "example": "Soy de México",
+          "partOfSpeech": "phrase"
+        },
+        {
+          "id": 26,
+          "word": "Por favor",
+          "translation": "Please",
+          "example": "Un café, por favor",
+          "partOfSpeech": "phrase"
         }
       ]
     },
@@ -119,6 +133,41 @@
           "translation": "Animal",
           "example": "Los animales son importantes",
           "partOfSpeech": "noun"
+        },
+        {
+          "id": 27,
+          "word": "Tiene",
+          "translation": "Has",
+          "example": "Carlos tiene una familia grande",
+          "partOfSpeech": "verb"
+        },
+        {
+          "id": 28,
+          "word": "Se llama",
+          "translation": "His/her name is",
+          "example": "El gato se llama Michi",
+          "partOfSpeech": "phrase"
+        },
+        {
+          "id": 29,
+          "word": "Come",
+          "translation": "Eats",
+          "example": "Michi come pescado",
+          "partOfSpeech": "verb"
+        },
+        {
+          "id": 30,
+          "word": "Ayuda",
+          "translation": "Helps",
+          "example": "Toby ayuda a los animales",
+          "partOfSpeech": "verb"
+        },
+        {
+          "id": 31,
+          "word": "Hay",
+          "translation": "There is / there are",
+          "example": "Hay un perro",
+          "partOfSpeech": "verb"
         }
       ]
     },
@@ -197,6 +246,41 @@
           "translation": "Five",
           "example": "Cinco euros",
           "partOfSpeech": "number"
+        },
+        {
+          "id": 32,
+          "word": "Quiero",
+          "translation": "I want",
+          "example": "Quiero pizza, por favor",
+          "partOfSpeech": "verb"
+        },
+        {
+          "id": 33,
+          "word": "Cuestan",
+          "translation": "They cost",
+          "example": "Las manzanas cuestan dos euros",
+          "partOfSpeech": "verb"
+        },
+        {
+          "id": 34,
+          "word": "Compra",
+          "translation": "Buys",
+          "example": "María compra cinco manzanas",
+          "partOfSpeech": "verb"
+        },
+        {
+          "id": 35,
+          "word": "Invita",
+          "translation": "Invites",
+          "example": "Luis invita a quince amigos",
+          "partOfSpeech": "verb"
+        },
+        {
+          "id": 36,
+          "word": "Cumpleaños",
+          "translation": "Birthday",
+          "example": "Hoy es el cumpleaños de Luis",
+          "partOfSpeech": "noun"
         }
       ]
     }

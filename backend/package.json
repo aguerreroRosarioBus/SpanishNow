@@ -16,6 +16,7 @@
     "db:migrate:adopt": "node src/db/migrate.js adopt",
     "db:seed:curated": "node src/db/seed.js",
     "db:verify": "node src/db/verify.js",
+    "db:audit:tprs": "node src/db/auditTprs.js",
     "db:rebuild": "bash scripts/db-rebuild.sh",
     "db:seed": "node src/utils/seedData.js",
     "db:migrate:tprs:test": "node src/utils/migrateLessonPlansTest.js",

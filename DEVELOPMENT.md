@@ -584,6 +584,25 @@ El progreso de las lecciones se registra con `/api/lesson-plans/progress/*`. Los
    - Tablas `lesson_progress`, `lesson_answers` y `lesson_reinforcements` registran el avance por historia
    - Los alumnos pueden volver a escuchar historias múltiples veces
 
+### Planes de lección (flujo guiado)
+
+Cada historia se consume según su **plan de lección** publicado (`lesson_plans` + `lesson_blocks`), con revisiones borrador/publicado. Un alumno queda fijado a la revisión que empezó (`lesson_progress.planId`).
+
+| Fase | Bloques | Regla |
+|---|---|---|
+| Antes | `expression` (rol `target`, `support` o `revisit`) | 2–3 estructuras objetivo; las de rol `revisit` se muestran con la etiqueta «Repaso» |
+| Durante | `keyframe` (texto, audio y tooltips propios) y `question` | Cada pregunta va después del keyframe que la responde; sí/no o elección entre dos opciones; un error muestra el fragmento y permite reintentar sin bloquear |
+| Después | `full_story` y refuerzos (`flashcards`, `matching`, `listen_repeat`) | La lectura completa se deriva de los keyframes; los refuerzos son opcionales |
+| Más adelante | `expression` con `revisitStoryId` | Programa la reaparición en una historia posterior (crea un borrador allí, no publica) |
+
+El profesor edita los planes en el compositor («🧩 Componer lección TPRS» en la gestión del curso).
+
+### Contenido curado y auditoría
+
+- El contenido canónico del curso vive como datos en `backend/seeds/content/` (un JSON por historia con su `plan`). Flujo: editar el JSON → `npm run db:seed:curated` (o `npm run db:rebuild` en una base local). Detalle en `backend/docs/database.md`.
+- `npm run db:audit:tprs` (backend) audita el contenido (`--source content`, por defecto) o las revisiones publicadas de una base (`--source db`) con las reglas TPRS de la tabla anterior; sale con código 1 si hay errores.
+- Pruebas: `cd backend && npm test` (Jest + Supertest, base `spanishnow_jest_test` recreada), `cd frontend && npx ng test --watch=false`, y el E2E `cd e2e && npm run e2e` (Playwright; reconstruye `spanishnow_e2e_test` y recorre editar → publicar → consumir → equivocarse → reintentar → salir/volver → completar → reencontrar expresión).
+
 ---
 
 ## Configuración de Variables de Entorno
@@ -684,6 +703,13 @@ npm start          # Iniciar desarrollo (ng serve)
 npm run build      # Build para producción
 npm test           # Ejecutar tests
 ```
+
+### E2E (Playwright)
+```bash
+cd e2e && npm install && npx playwright install chromium   # primera vez
+npm run e2e        # flujo TPRS completo (headless); npm run e2e:ui para el modo interactivo
+```
+Usa la base `spanishnow_e2e_test` (se reconstruye en cada ejecución con `db-rebuild.sh --skip-dump`), backend en :3101 (`CORS_EXTRA_ORIGINS` permite el origen :4300) y `ng serve --configuration e2e --port 4300`. `E2E_REAL_CLOUDINARY=1` activa `audio-real.spec.ts` (sube audio real a Cloudinary).
 
 ---
 

@@ -8,12 +8,17 @@ dotenv.config();
 const app = express();
 
 // CORS configuration
+// Extra origins (comma separated) for local tooling, e.g. E2E: CORS_EXTRA_ORIGINS=http://localhost:4300
+const extraOrigins = (process.env.CORS_EXTRA_ORIGINS || '')
+  .split(',').map((o) => o.trim()).filter(Boolean);
+
 const corsOptions = {
   origin: [
     'http://localhost:4200',
     'http://127.0.0.1:4200',
     'https://spanish-now.vercel.app',
-    /^https:\/\/.*\.vercel\.app$/  // Permitir preview deployments de Vercel
+    /^https:\/\/.*\.vercel\.app$/,  // Permitir preview deployments de Vercel
+    ...extraOrigins
   ],
   credentials: true,
   optionsSuccessStatus: 200,

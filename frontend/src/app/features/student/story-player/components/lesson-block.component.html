@@ -2,7 +2,11 @@
   <small class="text-uppercase text-muted">{{ block().phase === 'before' ? 'Antes' : block().phase === 'during' ? 'Durante' : 'Después' }}</small>
   <ng-container [ngSwitch]="block().type">
     <div *ngSwitchCase="'expression'">
-      <h5 class="mt-2">{{ block().vocabulary?.word || block().text }}</h5>
+      <h5 class="mt-2">
+        {{ block().vocabulary?.word || block().text }}
+        <span *ngIf="block().vocabularyRole === 'revisit'" class="badge text-bg-secondary ms-2 align-middle"
+          title="Ya la viste en una historia anterior">Repaso</span>
+      </h5>
       <p *ngIf="block().vocabulary?.translation">{{ block().vocabulary?.translation }}</p>
       <p *ngIf="block().vocabulary?.example" class="mb-0 fst-italic">{{ block().vocabulary?.example }}</p>
     </div>

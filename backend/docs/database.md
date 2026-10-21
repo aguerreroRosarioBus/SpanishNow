@@ -24,6 +24,7 @@ Todos los comandos leen `DB_HOST`, `DB_PORT` (3306 por defecto), `DB_USER`, `DB_
 | `npm run db:migrate:adopt [-- --dry-run]` | Registra en `SequelizeMeta` las migraciones cuyo efecto **ya está** en el esquema. No modifica el esquema. |
 | `npm run db:seed:curated` | Siembra cuentas de prueba, curso, planes e inscripción (idempotente). |
 | `npm run db:verify` | Comprueba recuentos, una revisión publicada por historia, docente e inscripción. Solo lectura. |
+| `npm run db:audit:tprs` | Auditoría de coherencia TPRS del contenido (`seeds/content`) o de la base. Solo lectura (ver «Auditoría TPRS»). |
 | `npm run db:rebuild -- ...` | Dump previo, borrado, migraciones, semillas y verificación (ver abajo). |
 | `node scripts/db-schema-diff.js <bdA> <bdB>` | Compara tablas, columnas, tipos, nulos, defaults, índices y claves foráneas de dos bases locales. |
 | `npm run db:init` | **Solo desarrollo.** `sync({ alter: true })`, sin migraciones ni conversión de datos. Se niega con `NODE_ENV=production` y con hosts no locales (salvo `ALLOW_DB_INIT_REMOTE=yes`). |
@@ -121,6 +122,32 @@ Reglas de seguridad por defecto: nunca se pisa una fila existente; un plan solo 
 
 Además el dump trae textos sin tildes («Maria en la Fiesta», «Cafe»), que no son mojibake sino contenido distinto; el contenido canónico es el del seed. `db:verify` y la validación de los JSON rechazan estas secuencias. Una base vieja se corrige con `npm run db:seed:curated -- --sync-content`. En las historias sin `plan` el texto del keyframe se corrige publicando una revisión nueva (`--sync-content` lo hace si la última está sin curar).
 
+## Auditoría TPRS
+
+`npm run db:audit:tprs` revisa que cada historia cumpla el diseño del plan TPRS (`spanishnow-plan-refactorizacion-tprs.md`). Solo lee; nunca escribe.
+
+```bash
+npm run db:audit:tprs                          # contenido: seeds/content/course.json + stories/*.json (sin base de datos)
+npm run db:audit:tprs -- --json                # salida para máquina
+npm run db:audit:tprs -- --source db           # revisiones publicadas vigentes de DB_NAME (conexión normal de src/config/database.js)
+npm run db:audit:tprs -- --source db --course 1
+```
+
+- `--source content` (por defecto) usa el mismo cargador que las semillas (`seeds/curated/lib/content.js`) y la misma lectura del `plan` que `plan.js`: una historia sin `plan` se audita como el plan por defecto (un keyframe, todas las preguntas al final). Si el cargador rechaza el contenido (mojibake, duplicados, pregunta `choice` sin su respuesta entre las opciones), la auditoría termina con ese error.
+- `--source db` se niega si `DB_HOST` no es local, salvo `--allow-remote`. Audita el plan publicado más reciente de cada historia (bloques activos); una historia sin revisión publicada sale con todos los faltantes.
+- Salida: una tabla por historia (orden de unidad/historia) con ✓ / ⚠ / ✗ por regla, el detalle de cada observación y un resumen. **Código de salida 1 si hay algún ✗; 0 si solo hay ⚠.**
+- Código: reglas puras en `src/services/tprsAudit.js` (modelo en memoria, sin base ni archivos), CLI en `src/db/auditTprs.js`, tests con fixtures en `tests/tprsAudit.test.js`.
+
+| Regla | ✗ error | ⚠ advertencia |
+| --- | --- | --- |
+| R1 Estructuras objetivo | 0 o más de 4 expresiones `target` en `before`; una objetivo que no aparece en el texto de la historia (sin tildes ni mayúsculas, tolerando flexión simple: gato/gatos, cuesta/cuestan) | 1 o 4 objetivos |
+| R2 Keyframes | ningún keyframe; la unión de los keyframes no coincide con el texto de la historia (salvo espacios) | un solo keyframe; más de 45 o menos de 3 palabras en un keyframe |
+| R3 Preguntas durante | ninguna pregunta `during` con 2+ keyframes; `choice` sin la correcta entre las opciones; `yes_no` con correcta distinta de Sí/No; la respuesta solo aparece en un keyframe posterior al que sigue la pregunta | ninguna pregunta con 1 keyframe; `choice` con 3+ opciones (o 1); opciones de `yes_no` distintas de Sí/No; no se pudo verificar que el keyframe contenga la respuesta (heurística por palabras de contenido: la respuesta correcta en `choice`, las palabras de la pregunta en `yes_no`) |
+| R4 Sin cuestionario final | | más de 1 pregunta en `after` |
+| R5 Reaparición (todas menos la última historia del curso) | `later` hacia una historia anterior, ella misma o inexistente; la expresión no aparece en el texto de la historia destino | ningún `later`; la destino no la incluye en `before` con rol `revisit` |
+| R6 Vocabulario y codificación | expresión que no está en el vocabulario del curso; mojibake (el `MOJIBAKE` del cargador) en título, texto, keyframes, preguntas u opciones | |
+| R7 Lectura y refuerzos | no hay exactamente un `full_story` en `after` | ningún refuerzo (`flashcards`, `matching`, `listen_repeat`) |
+
 ## Reconstruir una base local
 
 ```bash
@@ -130,7 +157,7 @@ scripts/db-rebuild.sh --target local --db spanishnow_rebuild_test --yes
 
 Pasos: (1) `mysqldump --single-transaction --routines --triggers` (utf8mb4) a `~/SpanishNow-backups/local-<db>-<fecha>.sql.gz`, verificado con `gunzip -t` y buscando `CREATE TABLE`; si falla, aborta sin tocar nada (si la base no existe o no tiene tablas, no hay nada que respaldar); (2) `DROP/CREATE DATABASE` con `utf8mb4_0900_ai_ci`; (3) `db:migrate`; (4) `db:seed:curated`; (5) `db:verify`.
 
-Guardas: `--target local` se niega si el host no es `localhost`/`127.0.0.1`/`::1`; `--db spanishnow` exige `--force-dev-db` y además la confirmación escrita del nombre; el nombre solo admite letras, dígitos y `_`. `--dry-run` imprime el plan sin ejecutar nada. Contraseñas: van por `MYSQL_PWD` y por el entorno de node, nunca por la línea de comandos ni por la salida.
+Guardas: `--target local` se niega si el host no es `localhost`/`127.0.0.1`/`::1`; `--db spanishnow` exige `--force-dev-db` y además la confirmación escrita del nombre; el nombre solo admite letras, dígitos y `_`. `--dry-run` imprime el plan sin ejecutar nada. `--skip-dump` omite el respaldo previo y solo se admite con `--target local` y una base cuyo nombre contenga `e2e` (lo usa la suite E2E, `spanishnow_e2e_test`). Contraseñas: van por `MYSQL_PWD` y por el entorno de node, nunca por la línea de comandos ni por la salida.
 
 Para probar la actualización de una base existente sin tocarla: copiarla (`mysqldump bd | mysql copia`), `db:migrate:adopt`, `db:migrate` y `db:seed:curated -- --sync-content`, y comparar recuentos antes y después.
 

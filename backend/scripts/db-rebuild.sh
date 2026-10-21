@@ -11,6 +11,7 @@
 #   --yes                    do not ask for the plain confirmation (railway ALSO needs the typed database name)
 #   --confirm-db NAME        non-interactive "typed" confirmation: must equal the database name
 #   --force-dev-db           allow a local rebuild of the development database `spanishnow`
+#   --skip-dump              skip the pre-rebuild dump. ONLY for --target local AND a database whose name contains `e2e`
 #   --dry-run                check the guards and print the plan; touch nothing
 #
 # local   : connection from DB_HOST / DB_PORT / DB_USER / DB_PASSWORD (environment, else backend/.env); the host must be
@@ -23,7 +24,7 @@
 set -euo pipefail
 
 BACKEND_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TARGET=""; DB=""; DUMP_DIR="$HOME/SpanishNow-backups"; YES=0; FORCE_DEV=0; CONFIRM_DB=""; DRY_RUN=0
+TARGET=""; DB=""; DUMP_DIR="$HOME/SpanishNow-backups"; YES=0; FORCE_DEV=0; CONFIRM_DB=""; DRY_RUN=0; SKIP_DUMP=0
 
 die() { echo "ERROR: $*" >&2; exit 1; }
 log() { echo "==> $*"; }
@@ -38,6 +39,7 @@ while [ $# -gt 0 ]; do
     --yes) YES=1; shift ;;
     --confirm-db) CONFIRM_DB="${2:-}"; shift 2 ;;
     --force-dev-db) FORCE_DEV=1; shift ;;
+    --skip-dump) SKIP_DUMP=1; shift ;;
     --dry-run) DRY_RUN=1; shift ;;
     -h|--help) usage 0 ;;
     *) echo "Unknown option: $1" >&2; usage 1 ;;
@@ -79,6 +81,10 @@ case "$TARGET" in
     ;;
   *) echo "--target must be 'local' or 'railway'" >&2; usage 1 ;;
 esac
+if [ "$SKIP_DUMP" -eq 1 ]; then
+  [ "$TARGET" = local ] || die "--skip-dump is only allowed with --target local"
+  case "$DB" in *e2e*) ;; *) die "--skip-dump is only allowed for databases whose name contains 'e2e'" ;; esac
+fi
 [[ "$DB" =~ ^[A-Za-z0-9_]{1,64}$ ]] || die "invalid database name '$DB' (letters, digits and underscore only)"
 [[ "$PORT" =~ ^[0-9]+$ ]] || die "invalid port '$PORT'"
 
@@ -120,7 +126,9 @@ db_exists="$(mysql_q "SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCH
 table_count=0
 [ "$db_exists" -eq 1 ] && table_count="$(mysql_q "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = '$DB'")"
 
-if [ "$table_count" -gt 0 ]; then
+if [ "$SKIP_DUMP" -eq 1 ]; then
+  log "1/5 Dump skipped (--skip-dump, e2e database '$DB')"
+elif [ "$table_count" -gt 0 ]; then
   log "1/5 Dumping $table_count table(s) of '$DB'"
   ( umask 077; mkdir -p "$DUMP_DIR" ); chmod 700 "$DUMP_DIR" 2>/dev/null || true
   DUMP_FILE="$DUMP_DIR/${TARGET}-${DB}-$(date +%Y%m%d-%H%M%S).sql.gz"

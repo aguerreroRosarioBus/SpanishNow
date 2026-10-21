@@ -7,10 +7,72 @@
   "questions": [
     {
       "id": 10,
-      "text": "¿Qué es Toby?",
+      "text": "¿Toby es médico o profesor?",
       "type": "choice",
-      "options": ["Un profesor", "Un médico", "Un estudiante"],
-      "correct": "Un médico"
+      "options": [
+        "Médico",
+        "Profesor"
+      ],
+      "correct": "Médico"
+    },
+    {
+      "id": 107,
+      "text": "¿Toby ayuda a los animales?",
+      "type": "yes_no",
+      "options": [
+        "Sí",
+        "No"
+      ],
+      "correct": "Sí"
     }
-  ]
+  ],
+  "plan": {
+    "before": [
+      {
+        "expression": "Se llama",
+        "role": "revisit"
+      },
+      {
+        "expression": "Perro",
+        "role": "target"
+      },
+      {
+        "expression": "Hay",
+        "role": "target"
+      },
+      {
+        "expression": "Ayuda",
+        "role": "target"
+      }
+    ],
+    "keyframes": [
+      {
+        "text": "Hay un perro que se llama Toby. Toby no es un perro normal, Toby es médico.",
+        "questionsAfter": [
+          "¿Toby es médico o profesor?"
+        ]
+      },
+      {
+        "text": "Toby tiene una clínica veterinaria. Toby ayuda a muchos animales: gatos, pájaros, conejos.",
+        "questionsAfter": [
+          "¿Toby ayuda a los animales?"
+        ]
+      },
+      {
+        "text": "Los animales aman al Doctor Toby. Toby es un héroe."
+      }
+    ],
+    "after": [
+      "full_story",
+      "flashcards",
+      "matching"
+    ],
+    "later": [
+      {
+        "expression": "Hay",
+        "role": "revisit",
+        "story": "El Mercado de Frutas"
+      }
+    ]
+  }
 }
