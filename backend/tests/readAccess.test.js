@@ -1,5 +1,5 @@
 // Read endpoints that used to be public: tooltips need a course teacher or an enrolled student.
-const { Tooltip } = require('../src/models');
+const { Tooltip, RepetitionActivity } = require('../src/models');
 const { as, createWorld, createStory } = require('./helpers/fixtures');
 
 describe('Authenticated reads of tooltips', () => {
@@ -46,5 +46,52 @@ describe('Authenticated reads of tooltips', () => {
   test('the removed legacy endpoints no longer exist', async () => {
     expect((await as(world.teacher).get(`/api/activity-configs/story/${content.story.id}`)).status).toBe(404);
     expect((await as(world.student).post('/api/question-responses/submit', {})).status).toBe(404);
+  });
+});
+
+// Course content reads are not public: the teacher of the course or an enrolled student only.
+describe('Authenticated reads of course content', () => {
+  let world; let content; let drafted;
+  beforeAll(async () => {
+    world = await createWorld();
+    content = await createStory(world);
+    await RepetitionActivity.create({ storyId: content.story.id, phrase: 'Me llamo María', order: 0 });
+    drafted = world.course; // unpublished and unpriced on purpose: access depends on the enrollment, not on publication
+  });
+
+  const endpoints = () => [
+    ['course', `/api/courses/${world.course.id}`, body => expect(body.id).toBe(world.course.id)],
+    ['unit', `/api/units/${world.unit.id}`, body => expect(body.id).toBe(world.unit.id)],
+    ['unit vocabulary', `/api/vocabulary/unit/${world.unit.id}`, body => expect(body.map(v => v.word).sort()).toEqual(['Me llamo', 'Mucho gusto'])],
+    ['story repetition activities', `/api/repetition-activities/story/${content.story.id}`, body => expect(body.map(a => a.phrase)).toEqual(['Me llamo María'])]
+  ];
+
+  test.each([0, 1, 2, 3])('endpoint %i: 401 without token, 403 outside the course, 200 for the owner teacher and enrolled students', async index => {
+    const [, url, check] = endpoints()[index];
+
+    expect((await as(null).get(url)).status).toBe(401);
+    expect((await as({ token: 'garbage' }).get(url)).status).toBe(401);
+    expect((await as(world.otherTeacher).get(url)).status).toBe(403);
+    expect((await as(world.outsider).get(url)).status).toBe(403);
+    for (const user of [world.teacher, world.student, world.student2]) {
+      const res = await as(user).get(url);
+      expect(res.status).toBe(200);
+      check(res.body);
+    }
+  });
+
+  test('content of a published, paid course stays closed to people who did not buy it', async () => {
+    await drafted.update({ isPublished: true, price: 1999 });
+    for (const [, url] of endpoints()) {
+      expect((await as(null).get(url)).status).toBe(401);
+      expect((await as(world.outsider).get(url)).status).toBe(403);
+    }
+  });
+
+  test('unknown or malformed ids answer 404 to a logged-in user', async () => {
+    for (const url of ['/api/courses/99999999', '/api/units/99999999', '/api/vocabulary/unit/99999999', '/api/repetition-activities/story/99999999',
+      '/api/courses/abc', '/api/units/abc', '/api/vocabulary/unit/abc', '/api/repetition-activities/story/abc']) {
+      expect((await as(world.teacher).get(url)).status).toBe(404);
+    }
   });
 });

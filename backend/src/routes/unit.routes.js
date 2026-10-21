@@ -2,10 +2,14 @@ const express = require('express');
 const router = express.Router();
 const { authMiddleware, isTeacher } = require('../middlewares/auth.middleware');
 const { Unit, Course, Story, Vocabulary } = require('../models');
+const { canReadCourse } = require('../utils/courseAccess');
 
-// Get unit by ID with stories and vocabulary
-router.get('/:id', async (req, res) => {
+// Get unit by ID with stories and vocabulary (the course teacher or an enrolled student)
+router.get('/:id', authMiddleware, async (req, res) => {
   try {
+    if (!/^[1-9]\d{0,9}$/.test(req.params.id) || Number(req.params.id) > 2147483647) {
+      return res.status(404).json({ error: 'Unit not found' });
+    }
     const unit = await Unit.findByPk(req.params.id, {
       include: [
         { model: Story, as: 'stories', order: [['order', 'ASC']] },
@@ -15,6 +19,9 @@ router.get('/:id', async (req, res) => {
 
     if (!unit) {
       return res.status(404).json({ error: 'Unit not found' });
+    }
+    if (!(await canReadCourse(req.user, await Course.findByPk(unit.courseId)))) {
+      return res.status(403).json({ error: 'Not authorized' });
     }
 
     res.json(unit);

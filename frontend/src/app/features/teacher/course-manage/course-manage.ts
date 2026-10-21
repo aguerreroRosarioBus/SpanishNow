@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
@@ -6,6 +6,7 @@ import { PluralPipe } from '../../../shared/pipes/plural.pipe';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { LessonComposerComponent } from '../lesson-composer/lesson-composer.component';
 import { CourseManageStore } from './course-manage.store';
+import { StudentsPanelComponent } from './components/students-panel.component';
 import { UnitListComponent } from './components/unit-list.component';
 import { CourseEditModalComponent } from './components/course-edit-modal.component';
 import { UnitFormModalComponent } from './components/unit-form-modal.component';
@@ -23,7 +24,8 @@ import { TooltipModalComponent } from './components/tooltip-modal.component';
   imports: [
     CommonModule, RouterLink, IconComponent, PluralPipe, ConfirmDialogComponent, LessonComposerComponent, UnitListComponent,
     CourseEditModalComponent, UnitFormModalComponent, StoryCreateModalComponent, StoryEditModalComponent,
-    QuestionModalComponent, VocabularyModalComponent, RepetitionModalComponent, TooltipModalComponent
+    QuestionModalComponent, VocabularyModalComponent, RepetitionModalComponent, TooltipModalComponent,
+    StudentsPanelComponent
   ],
   providers: [CourseManageStore],
   templateUrl: './course-manage.html',
@@ -33,6 +35,9 @@ export class CourseManageComponent implements OnInit {
   store = inject(CourseManageStore);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+
+  /** Pestaña activa: contenido (unidades) o alumnos. */
+  tab = signal<'content' | 'students'>('content');
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');

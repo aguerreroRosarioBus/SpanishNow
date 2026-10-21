@@ -1,0 +1,43 @@
+<div class="page-container">
+  <nav class="public-nav" aria-label="Account">
+    <span></span>
+    @if (currentUser()) {
+      <a [routerLink]="dashboardLink()">Go to my dashboard</a>
+    } @else {
+      <a routerLink="/auth/login">Sign in</a>
+    }
+  </nav>
+
+  <div class="page-header">
+    <div class="page-header__main">
+      <h1 class="page-title">Spanish courses</h1>
+      <p class="page-summary">Learn Spanish with stories you can understand from day one.</p>
+    </div>
+  </div>
+
+  @if (isLoading()) {
+    <div class="text-center py-5" role="status">
+      <div class="spinner-border text-primary" aria-hidden="true"></div>
+      <p class="text-muted mt-2 mb-0">Loading courses…</p>
+    </div>
+  } @else if (errorMessage()) {
+    <div class="alert alert-danger" role="alert">{{ errorMessage() }}</div>
+  } @else if (courses().length === 0) {
+    <div class="state-box">
+      <strong>No courses available yet</strong>
+      <span>Please check back soon.</span>
+    </div>
+  } @else {
+    <div class="card-grid">
+      @for (course of courses(); track course.id) {
+        <app-course-card [title]="course.title" [level]="course.level" [description]="course.description" [imageUrl]="course.imageUrl">
+          @if (course.teacher) {
+            <small card-meta class="text-secondary-ui">By {{ course.teacher.name }}</small>
+          }
+          <span class="price-tag" [class.price-tag--free]="course.price === 0">{{ price(course) }}</span>
+          <a [routerLink]="['/courses', course.slug]" class="btn btn-primary ms-auto">View course</a>
+        </app-course-card>
+      }
+    </div>
+  }
+</div>

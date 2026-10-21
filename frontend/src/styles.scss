@@ -1017,3 +1017,60 @@ a {
 
 /* Icono relleno (estrellas de valoración) */
 .is-filled svg { fill: currentColor; }
+
+/* ============================================
+   PÁGINAS PÚBLICAS (catálogo, venta, checkout) — en inglés
+   ============================================ */
+
+.public-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+  font-size: 0.875rem;
+
+  a { font-weight: 600; }
+}
+
+.price-tag {
+  font: 600 1.25rem/1.2 var(--font-heading);
+  color: var(--color-text);
+}
+
+.price-tag--free {
+  color: var(--color-success-text);
+}
+
+.sales-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: var(--spacing-lg);
+  align-items: start;
+
+  @media (max-width: 860px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.sales-panel {
+  padding: var(--spacing-lg);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.sales-buy {
+  position: sticky;
+  top: calc(var(--header-height) + var(--spacing-md));
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+
+  @media (max-width: 860px) {
+    position: static;
+    order: -1;
+  }
+}

@@ -22,6 +22,21 @@ const Enrollment = sequelize.define('Enrollment', {
       model: 'courses',
       key: 'id'
     }
+  },
+  // How the student got access.
+  source: {
+    type: DataTypes.ENUM('free', 'purchase', 'manual', 'hotmart_import'),
+    allowNull: false,
+    defaultValue: 'free'
+  },
+  // The order that paid for this enrollment (source = 'purchase').
+  orderId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'orders',
+      key: 'id'
+    }
   }
 }, {
   timestamps: true,

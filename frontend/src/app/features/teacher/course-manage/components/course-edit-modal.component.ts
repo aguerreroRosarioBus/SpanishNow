@@ -4,7 +4,7 @@ import { CourseService } from '../../../../core/services/course.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { CourseManageStore } from '../course-manage.store';
 
-/** Edición del título y la descripción del curso. */
+/** Edición del curso: título, descripción y datos de venta (precio, moneda, slug, publicación, texto de venta). */
 @Component({
   selector: 'app-course-edit-modal',
   standalone: true,
@@ -16,31 +16,78 @@ export class CourseEditModalComponent {
   private courseService = inject(CourseService);
   private toast = inject(ToastService);
 
+  readonly currencies = [
+    { code: 'usd', label: 'USD (dólar)' },
+    { code: 'eur', label: 'EUR (euro)' },
+    { code: 'gbp', label: 'GBP (libra)' }
+  ];
+
   form = inject(FormBuilder).group({
     title: ['', [Validators.required, Validators.minLength(3)]],
-    description: ['']
+    description: [''],
+    price: [0, [Validators.required, Validators.min(0)]],
+    currency: ['usd'],
+    slug: ['', [Validators.pattern(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)]],
+    isPublished: [false],
+    salesDescription: ['']
   });
+  isSaving = false;
+  errorMessage = '';
 
   constructor() {
     const course = this.store.course();
-    if (course) this.form.patchValue({ title: course.title, description: course.description || '' });
+    if (course) {
+      this.form.patchValue({
+        title: course.title,
+        description: course.description || '',
+        price: (course.price ?? 0) / 100,
+        currency: course.currency || 'usd',
+        slug: course.slug || '',
+        isPublished: !!course.isPublished,
+        salesDescription: course.salesDescription || ''
+      });
+    }
+  }
+
+  /** Slug actual guardado en el curso (el link a la página de venta solo existe si ya está guardado). */
+  savedSlug(): string | null {
+    return this.store.course()?.slug ?? null;
   }
 
   close(): void { this.store.close(); }
 
   save(): void {
-    if (this.form.invalid) return;
-    const title = this.form.value.title!;
-    const description = this.form.value.description ?? undefined;
-    this.courseService.updateCourse(this.store.courseId(), { title, description }).subscribe({
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+    const v = this.form.value;
+    const payload = {
+      title: v.title!,
+      description: v.description ?? undefined,
+      // El precio se escribe en moneda y se manda en centavos
+      price: Math.round((Number(v.price) || 0) * 100),
+      currency: v.currency || 'usd',
+      isPublished: !!v.isPublished,
+      salesDescription: v.salesDescription ?? ''
+    } as Record<string, unknown>;
+    const slug = (v.slug ?? '').trim();
+    if (slug) payload['slug'] = slug;
+
+    this.isSaving = true;
+    this.errorMessage = '';
+    this.courseService.updateCourse(this.store.courseId(), payload).subscribe({
       next: updated => {
-        this.store.course.set(updated);
+        // El PUT no devuelve las unidades ni el conteo: se conservan los que ya tenía la pantalla
+        const previous = this.store.course();
+        this.store.course.set({ ...previous, ...updated, units: previous?.units, enrollmentCount: previous?.enrollmentCount });
         this.close();
         this.toast.success('Curso actualizado exitosamente');
       },
       error: error => {
         console.error('Error updating course:', error);
-        this.toast.error('Error al actualizar el curso');
+        this.isSaving = false;
+        this.errorMessage = error?.error?.error || 'Error al actualizar el curso';
       }
     });
   }

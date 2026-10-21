@@ -4,10 +4,18 @@ const { authMiddleware, isTeacher } = require('../middlewares/auth.middleware');
 const { Vocabulary, Unit, Course } = require('../models');
 const cloudinary = require('../config/cloudinary');
 const upload = require('../middlewares/upload.middleware');
+const { canReadCourse } = require('../utils/courseAccess');
 
-// Get vocabulary by unit ID (public - for students to view)
-router.get('/unit/:unitId', async (req, res) => {
+// Get vocabulary by unit ID (the course teacher or an enrolled student)
+router.get('/unit/:unitId', authMiddleware, async (req, res) => {
   try {
+    if (!/^[1-9]\d{0,9}$/.test(req.params.unitId) || Number(req.params.unitId) > 2147483647) {
+      return res.status(404).json({ error: 'Unit not found' });
+    }
+    const unit = await Unit.findByPk(req.params.unitId, { include: [{ model: Course, as: 'course' }] });
+    if (!unit) return res.status(404).json({ error: 'Unit not found' });
+    if (!(await canReadCourse(req.user, unit.course))) return res.status(403).json({ error: 'Not authorized' });
+
     const vocabulary = await Vocabulary.findAll({
       where: { unitId: req.params.unitId },
       order: [['createdAt', 'ASC']]

@@ -4,10 +4,18 @@ const { authMiddleware, isTeacher } = require('../middlewares/auth.middleware');
 const { RepetitionActivity, Story, Unit, Course } = require('../models');
 const cloudinary = require('../config/cloudinary');
 const upload = require('../middlewares/upload.middleware');
+const { canReadCourse } = require('../utils/courseAccess');
 
-// Get repetition activities by story ID (public - for students)
-router.get('/story/:storyId', async (req, res) => {
+// Get repetition activities by story ID (the course teacher or an enrolled student)
+router.get('/story/:storyId', authMiddleware, async (req, res) => {
   try {
+    if (!/^[1-9]\d{0,9}$/.test(req.params.storyId) || Number(req.params.storyId) > 2147483647) {
+      return res.status(404).json({ error: 'Story not found' });
+    }
+    const story = await Story.findByPk(req.params.storyId, { include: [{ model: Unit, as: 'unit', include: [{ model: Course, as: 'course' }] }] });
+    if (!story) return res.status(404).json({ error: 'Story not found' });
+    if (!(await canReadCourse(req.user, story.unit.course))) return res.status(403).json({ error: 'Not authorized' });
+
     const activities = await RepetitionActivity.findAll({
       where: { storyId: req.params.storyId },
       order: [['order', 'ASC']]

@@ -1,12 +1,15 @@
 <div class="modal fade show" style="display: block" tabindex="-1">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Editar Curso</h5>
-        <button type="button" class="btn-close" (click)="close()"></button>
+        <button type="button" class="btn-close" (click)="close()" aria-label="Cerrar"></button>
       </div>
-      <form [formGroup]="form" (ngSubmit)="save()">
+      <form [formGroup]="form" (ngSubmit)="save()" class="d-flex flex-column overflow-hidden">
         <div class="modal-body">
+          @if (errorMessage) {
+            <div class="alert alert-danger" role="alert">{{ errorMessage }}</div>
+          }
           <div class="mb-3">
             <label for="courseTitle" class="form-label">Título *</label>
             <input type="text" class="form-control" id="courseTitle" formControlName="title" placeholder="Ej: Español A1" />
@@ -15,10 +18,50 @@
             <label for="courseDescription" class="form-label">Descripción</label>
             <textarea class="form-control" id="courseDescription" formControlName="description" rows="3" placeholder="Descripción del curso"></textarea>
           </div>
+
+          <h6 class="eyebrow mt-4 mb-3">Venta</h6>
+          <div class="row g-3 mb-3">
+            <div class="col-7">
+              <label for="coursePrice" class="form-label">Precio</label>
+              <input type="number" class="form-control" id="coursePrice" formControlName="price" min="0" step="0.01"
+                     [class.is-invalid]="form.controls.price.invalid && form.controls.price.touched" />
+              <div class="form-text">0 = curso gratis.</div>
+            </div>
+            <div class="col-5">
+              <label for="courseCurrency" class="form-label">Moneda</label>
+              <select class="form-select" id="courseCurrency" formControlName="currency">
+                @for (c of currencies; track c.code) {
+                  <option [value]="c.code">{{ c.label }}</option>
+                }
+              </select>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="courseSlug" class="form-label">Slug (URL de la página de venta)</label>
+            <input type="text" class="form-control" id="courseSlug" formControlName="slug" placeholder="ej: learn-spanish-short-film"
+                   [class.is-invalid]="form.controls.slug.invalid" />
+            @if (form.controls.slug.invalid) {
+              <div class="invalid-feedback">Solo minúsculas, números y guiones (sin espacios).</div>
+            } @else {
+              <div class="form-text">Si lo dejas vacío se genera desde el título.</div>
+            }
+            @if (savedSlug(); as slug) {
+              <a class="d-inline-block mt-1 small" [href]="'/courses/' + slug" target="_blank" rel="noopener">Ver página de venta</a>
+            }
+          </div>
+          <div class="mb-3">
+            <label for="courseSales" class="form-label">Texto de venta (en inglés)</label>
+            <textarea class="form-control" id="courseSales" formControlName="salesDescription" rows="5"
+                      placeholder="What students will learn, who it's for…"></textarea>
+          </div>
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch" id="coursePublished" formControlName="isPublished" />
+            <label class="form-check-label" for="coursePublished">Publicado (visible en el catálogo y a la venta)</label>
+          </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" (click)="close()">Cancelar</button>
-          <button type="submit" class="btn btn-primary" [disabled]="form.invalid">Guardar Cambios</button>
+          <button type="submit" class="btn btn-primary" [disabled]="form.invalid || isSaving">Guardar Cambios</button>
         </div>
       </form>
     </div>

@@ -9,6 +9,7 @@ import { Course, Enrollment } from '../../../core/models/course.model';
 import { NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem } from '@ng-bootstrap/ng-bootstrap';
 import { CourseCardComponent } from '../../../shared/components/course-card/course-card.component';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
+import { formatPrice } from '../../../shared/utils/money';
 import { PluralPipe } from '../../../shared/pipes/plural.pipe';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 
@@ -139,13 +140,26 @@ export class StudentDashboardComponent implements OnInit {
       error: (error) => {
         console.error('Error enrolling:', error);
 
-        if (error.status === 400) {
+        if (error.status === 402 && error.error?.checkoutRequired) {
+          // El curso tiene precio: la inscripción solo se da por compra
+          this.router.navigate(['/courses', error.error.slug]);
+        } else if (error.status === 400) {
           this.toastService.warning('Ya estás inscrito en este curso');
         } else {
           this.toastService.error('Error al inscribirse. Intenta de nuevo.');
         }
       }
     });
+  }
+
+  /** Precio formateado de un curso de pago; null si es gratis. */
+  priceLabel(course: Course): string | null {
+    return course.price && course.price > 0 ? formatPrice(course.price, course.currency) : null;
+  }
+
+  /** Un curso con precio (y slug) se compra desde su página de venta. */
+  salesLink(course: Course): string[] | null {
+    return this.priceLabel(course) && course.slug ? ['/courses', course.slug] : null;
   }
 
   isEnrolled(courseId: number): boolean {

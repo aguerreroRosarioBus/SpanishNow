@@ -1,0 +1,105 @@
+<div class="page-container">
+  <nav class="public-nav" aria-label="Navigation">
+    <a routerLink="/courses">&larr; All courses</a>
+    @if (!currentUser()) {
+      <a routerLink="/auth/login">Sign in</a>
+    }
+  </nav>
+
+  @if (isLoading()) {
+    <div class="text-center py-5" role="status">
+      <div class="spinner-border text-primary" aria-hidden="true"></div>
+      <p class="text-muted mt-2 mb-0">Loading course…</p>
+    </div>
+  } @else if (notFound()) {
+    <div class="state-box">
+      <strong>Course not found</strong>
+      <span>This course doesn't exist or is not available.</span>
+      <a routerLink="/courses" class="btn btn-primary mt-2">Browse courses</a>
+    </div>
+  } @else if (loadError()) {
+    <div class="alert alert-danger" role="alert">We could not load this course. Please try again.</div>
+  } @else if (course(); as c) {
+    <div class="sales-layout">
+      <div class="sales-main">
+        <div class="sales-cover">
+          @if (c.imageUrl) {
+            <img [src]="c.imageUrl" alt="">
+          }
+        </div>
+
+        <div class="page-header__title mt-3">
+          <h1 class="page-title">{{ c.title }}</h1>
+          <span class="badge-level">{{ c.level }}</span>
+        </div>
+        @if (c.teacher) {
+          <p class="page-summary mt-1">By {{ c.teacher.name }}</p>
+        }
+        @if (c.description) {
+          <p class="sales-lead">{{ c.description }}</p>
+        }
+
+        @if (c.salesDescription) {
+          <section class="sales-section" aria-labelledby="about-heading">
+            <h2 id="about-heading" class="sales-heading">About this course</h2>
+            <p class="sales-text">{{ c.salesDescription }}</p>
+          </section>
+        }
+
+        <section class="sales-section" aria-labelledby="curriculum-heading">
+          <h2 id="curriculum-heading" class="sales-heading">What's inside</h2>
+          <p class="page-summary mb-2">
+            {{ sortedUnits().length }} {{ sortedUnits().length === 1 ? 'unit' : 'units' }} ·
+            {{ lessonCount() }} {{ lessonCount() === 1 ? 'lesson' : 'lessons' }}
+          </p>
+          @if (sortedUnits().length === 0) {
+            <div class="state-box"><span>The curriculum will be available soon.</span></div>
+          } @else {
+            <ol class="curriculum">
+              @for (unit of sortedUnits(); track unit.id; let i = $index) {
+                <li class="curriculum__unit">
+                  <div class="curriculum__unit-head">
+                    <span class="eyebrow">Unit {{ i + 1 }}</span>
+                    <strong>{{ unit.title }}</strong>
+                  </div>
+                  @if (unit.stories.length > 0) {
+                    <ul class="curriculum__stories">
+                      @for (story of unit.stories; track story.id) {
+                        <li>{{ story.title }}</li>
+                      }
+                    </ul>
+                  }
+                </li>
+              }
+            </ol>
+          }
+        </section>
+      </div>
+
+      <aside class="sales-panel sales-buy" aria-label="Purchase">
+        <span class="price-tag" [class.price-tag--free]="isFree()">{{ priceLabel() }}</span>
+        @if (isFree()) {
+          <p class="page-summary">This course is free.</p>
+          <a [routerLink]="currentUser() ? '/student/dashboard' : '/auth/register'" class="btn btn-primary btn-lg w-100">
+            {{ currentUser() ? 'Go to my dashboard' : 'Sign up to start' }}
+          </a>
+        } @else if (alreadyEnrolled()) {
+          <p class="page-summary">You already have access to this course.</p>
+          <a [routerLink]="['/student/course', enrolledCourseId() ?? c.id, 'play']" class="btn btn-primary btn-lg w-100">Go to course</a>
+        } @else {
+          <p class="page-summary">One-time payment. Lifetime access.</p>
+          @if (buyError()) {
+            <div class="alert alert-danger mb-0" role="alert">{{ buyError() }}</div>
+          }
+          <button type="button" class="btn btn-primary btn-lg w-100" (click)="buy()" [disabled]="isBuying()">
+            @if (isBuying()) {
+              <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            }
+            Buy now
+          </button>
+          <small class="text-secondary-ui">Secure payment. You'll be redirected to checkout.</small>
+        }
+      </aside>
+    </div>
+  }
+</div>

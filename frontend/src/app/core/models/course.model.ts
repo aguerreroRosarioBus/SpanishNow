@@ -12,6 +12,15 @@ export interface Course {
     name: string;
   };
   units?: Unit[];
+  /** URL amigable de la página de venta (puede faltar en cursos viejos). */
+  slug?: string | null;
+  /** Precio en centavos; 0 = gratis. */
+  price?: number;
+  /** Código ISO en minúsculas (usd, eur, gbp). */
+  currency?: string;
+  isPublished?: boolean;
+  /** Texto largo de la página de venta (en inglés). */
+  salesDescription?: string | null;
   /** Solo en el detalle del curso (GET /courses/:id) */
   enrollmentCount?: number;
 }

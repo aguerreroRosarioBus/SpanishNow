@@ -12,6 +12,8 @@ const LessonBlock = require('./LessonBlock');
 const LessonProgress = require('./LessonProgress');
 const LessonAnswer = require('./LessonAnswer');
 const LessonReinforcement = require('./LessonReinforcement');
+const Order = require('./Order');
+const PasswordToken = require('./PasswordToken');
 
 // Define associations
 User.hasMany(Course, { foreignKey: 'teacherId', as: 'courses' });
@@ -53,6 +55,16 @@ LessonProgress.belongsTo(LessonPlan, { foreignKey: 'planId', as: 'plan' });
 LessonProgress.hasMany(LessonAnswer, { foreignKey: 'lessonProgressId', as: 'answers' });
 LessonProgress.hasMany(LessonReinforcement, { foreignKey: 'lessonProgressId', as: 'reinforcements' });
 
+// Sales
+Course.hasMany(Order, { foreignKey: 'courseId', as: 'orders' });
+Order.belongsTo(Course, { foreignKey: 'courseId', as: 'course' });
+User.hasMany(Order, { foreignKey: 'userId', as: 'orders' });
+Order.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+Order.hasMany(Enrollment, { foreignKey: 'orderId', as: 'enrollments' });
+Enrollment.belongsTo(Order, { foreignKey: 'orderId', as: 'order' });
+User.hasMany(PasswordToken, { foreignKey: 'userId', as: 'passwordTokens', onDelete: 'CASCADE' });
+PasswordToken.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
 module.exports = {
   User,
   Course,
@@ -67,5 +79,7 @@ module.exports = {
   LessonBlock,
   LessonProgress,
   LessonAnswer,
-  LessonReinforcement
+  LessonReinforcement,
+  Order,
+  PasswordToken
 };

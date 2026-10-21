@@ -1,0 +1,7 @@
+﻿Transacción,Nombre del comprador,Email del comprador,País
+HP001,María Pérez,Maria.Perez@Example.com,Argentina
+HP002,"Gómez, Juan",juan@example.com,España
+HP003,Ana Díaz,maria.perez@example.com,México
+HP004,Sin Correo,,Chile
+HP005,Roto,no-es-un-email,Chile
+HP006,Luis Soto,luis@example.com,Perú

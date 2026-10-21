@@ -1,0 +1,49 @@
+<div class="auth-page">
+  <div class="auth-card success-card">
+    @switch (state()) {
+      @case ('waiting') {
+        <div role="status" class="text-center">
+          <div class="spinner-border text-primary mb-3" aria-hidden="true"></div>
+          <h1 class="auth-card__title">Confirming your payment…</h1>
+          <p class="auth-card__subtitle mt-2">This usually takes a few seconds. Please don't close this page.</p>
+        </div>
+      }
+      @case ('paid') {
+        <header class="auth-card__head">
+          <h1 class="auth-card__title">You're in!</h1>
+          @if (session(); as s) {
+            <p class="auth-card__subtitle">Your purchase of <strong>{{ s.course.title }}</strong> is confirmed.</p>
+          }
+        </header>
+        @if (session()?.needsPassword) {
+          <div class="alert alert-info" role="status">
+            Check your email ({{ session()?.email }}) to set your password and start learning.
+          </div>
+        }
+        @if (currentUser()) {
+          <a [routerLink]="courseLink()" class="btn btn-primary btn-lg w-100">Go to course</a>
+        } @else if (!session()?.needsPassword) {
+          <a routerLink="/auth/login" class="btn btn-primary btn-lg w-100">Sign in to start</a>
+        } @else {
+          <p class="auth-card__alt"><a routerLink="/auth/login">Already have a password? Sign in</a></p>
+        }
+      }
+      @case ('timeout') {
+        <header class="auth-card__head">
+          <h1 class="auth-card__title">Still processing</h1>
+          <p class="auth-card__subtitle">
+            Your payment is taking longer than usual to confirm. You'll get an email as soon as it goes through.
+          </p>
+        </header>
+        <a routerLink="/courses" class="btn btn-secondary w-100">Back to courses</a>
+      }
+      @case ('error') {
+        <header class="auth-card__head">
+          <h1 class="auth-card__title">We couldn't find this payment</h1>
+          <p class="auth-card__subtitle">If you were charged, please contact us and we'll sort it out.</p>
+        </header>
+        <a routerLink="/courses" class="btn btn-secondary w-100">Back to courses</a>
+      }
+    }
+  </div>
+</div>

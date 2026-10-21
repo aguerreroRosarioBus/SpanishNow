@@ -39,7 +39,8 @@ module.exports = {
     };
 
     const { id: courseId, title, description, level } = content.course;
-    await apply(Course, courseId, { title, description, level, teacherId: teacher.id }, `course ${courseId}`);
+    await apply(Course, courseId, { title, description, level, teacherId: teacher.id }, `course ${courseId}`,
+      { isPublished: true }); // the demo course is visible in the student catalog; existing rows are never touched
     for (const unit of content.units) {
       await apply(Unit, unit.id, { courseId, title: unit.title, description: unit.description, order: unit.order }, `unit ${unit.id}`);
     }

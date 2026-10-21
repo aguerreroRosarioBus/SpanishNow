@@ -68,8 +68,12 @@ describe('migration runner', () => {
   test('down reverts newest first and up applies them again to the same schema', async () => {
     const before = await schemaOf(EMPTY_DB);
     const reverted = await emptyMigrator.umzug.down({ to: '20261021000000-add-keyframe-tooltips.js' });
-    expect(reverted.map(m => m.name)).toEqual(['20261023000000-add-keyframe-images.js', '20261022000000-drop-legacy-progress.js', '20261021000000-add-keyframe-tooltips.js']);
-    expect((await status(emptyMigrator)).pending).toHaveLength(3);
+    expect(reverted.map(m => m.name)).toEqual([
+      '20261101000300-add-enrollment-source.js', '20261101000200-create-password-tokens.js', '20261101000100-create-orders.js',
+      '20261101000000-add-course-sales-fields.js', '20261023000000-add-keyframe-images.js', '20261022000000-drop-legacy-progress.js',
+      '20261021000000-add-keyframe-tooltips.js'
+    ]);
+    expect((await status(emptyMigrator)).pending).toHaveLength(7);
     await emptyMigrator.umzug.up();
     expect(diff(before, await schemaOf(EMPTY_DB))).toEqual([]);
   });
@@ -113,7 +117,11 @@ describe('migration runner', () => {
         '20260927000000-create-lesson-plans.js': 'pending',
         '20261021000000-add-keyframe-tooltips.js': 'pending',
         '20261022000000-drop-legacy-progress.js': 'pending',
-        '20261023000000-add-keyframe-images.js': 'pending'
+        '20261023000000-add-keyframe-images.js': 'pending',
+        '20261101000000-add-course-sales-fields.js': 'pending',
+        '20261101000100-create-orders.js': 'pending',
+        '20261101000200-create-password-tokens.js': 'pending',
+        '20261101000300-add-enrollment-source.js': 'pending'
       });
       expect((await status(migrator)).executed).toHaveLength(2);
     });

@@ -7,8 +7,7 @@ import { AuthService } from '../../../core/services/auth.service';
 /**
  * Componente de Registro
  *
- * Permite crear cuentas nuevas para profesores y alumnos.
- * Similar al Login pero con campos adicionales (name, role).
+ * Permite crear cuentas de alumno (el registro público nunca crea docentes).
  */
 @Component({
   selector: 'app-register',
@@ -36,11 +35,7 @@ export class RegisterComponent {
       email: ['', [Validators.required, Validators.email]],
 
       // Password (requerido, mínimo 6 caracteres)
-      password: ['', [Validators.required, Validators.minLength(6)]],
-
-      // Rol: teacher o student (requerido)
-      // Por defecto: student (mayoría de usuarios serán alumnos)
-      role: ['student', [Validators.required]]
+      password: ['', [Validators.required, Validators.minLength(6)]]
     });
   }
 
@@ -112,8 +107,7 @@ export class RegisterComponent {
       const fieldNames: { [key: string]: string } = {
         name: 'El nombre',
         email: 'El email',
-        password: 'La contraseña',
-        role: 'El rol'
+        password: 'La contraseña'
       };
       return `${fieldNames[field]} es requerido`;
     }

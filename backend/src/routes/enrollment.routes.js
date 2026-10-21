@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authMiddleware, isStudent } = require('../middlewares/auth.middleware');
 const sequelize = require('../config/database');
+const { UniqueConstraintError } = require('sequelize');
 const { Enrollment, Course, Story, Unit, LessonPlan, LessonBlock, LessonProgress, LessonAnswer, LessonReinforcement } = require('../models');
 
 const REINFORCEMENTS = ['flashcards', 'matching', 'listen_repeat'];
@@ -43,9 +44,13 @@ router.post('/', authMiddleware, isStudent, async (req, res) => {
   try {
     const { courseId } = req.body;
 
-    const course = await Course.findByPk(courseId);
-    if (!course) {
+    // Free enrolment is for published courses at price 0. A paid course is bought (POST /api/checkout) or granted by its teacher.
+    const course = validId(courseId) ? await Course.findByPk(courseId) : null;
+    if (!course || !course.isPublished) {
       return res.status(404).json({ error: 'Course not found' });
+    }
+    if (course.price > 0) {
+      return res.status(402).json({ error: 'This course must be purchased', checkoutRequired: true, slug: course.slug });
     }
 
     const existingEnrollment = await Enrollment.findOne({
@@ -58,11 +63,15 @@ router.post('/', authMiddleware, isStudent, async (req, res) => {
 
     const enrollment = await Enrollment.create({
       studentId: req.user.id,
-      courseId
+      courseId: course.id,
+      source: 'free'
     });
 
     res.status(201).json(enrollment);
   } catch (error) {
+    if (error instanceof UniqueConstraintError) {
+      return res.status(400).json({ error: 'Already enrolled in this course' });
+    }
     res.status(500).json({ error: error.message });
   }
 });

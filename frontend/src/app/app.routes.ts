@@ -30,6 +30,30 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/auth/register/register.component').then((m) => m.RegisterComponent)
   },
+  {
+    path: 'auth/forgot-password',
+    loadComponent: () =>
+      import('./features/auth/forgot-password/forgot-password.component').then((m) => m.ForgotPasswordComponent)
+  },
+  {
+    path: 'auth/reset-password',
+    loadComponent: () =>
+      import('./features/auth/reset-password/reset-password.component').then((m) => m.ResetPasswordComponent)
+  },
+
+  // Rutas públicas de venta (sin guard, en inglés)
+  {
+    path: 'courses',
+    loadComponent: () => import('./features/public/courses/public-courses.component').then(m => m.PublicCoursesComponent)
+  },
+  {
+    path: 'courses/:slug',
+    loadComponent: () => import('./features/public/course-sales/course-sales.component').then(m => m.CourseSalesComponent)
+  },
+  {
+    path: 'checkout/success',
+    loadComponent: () => import('./features/public/checkout-success/checkout-success.component').then(m => m.CheckoutSuccessComponent)
+  },
 
   // Rutas de profesor
   {
