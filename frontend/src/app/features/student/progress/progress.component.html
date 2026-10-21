@@ -94,6 +94,10 @@
               }
             }
 
+            @if (course.next && isFinished(course)) {
+              <app-next-course-card [offer]="course.next" [courseId]="nextCourseId(course)" />
+            }
+
             @if (course.stories.length > 0) {
               <table class="progress-table">
                 <thead>

@@ -70,6 +70,21 @@ export const routes: Routes = [
     loadComponent: () => import('./features/teacher/course-manage/course-manage').then(m => m.CourseManageComponent),
     canActivate: [teacherGuard]
   },
+  {
+    path: 'teacher/sales',
+    loadComponent: () => import('./features/teacher/sales/teacher-sales.component').then(m => m.TeacherSalesComponent),
+    canActivate: [teacherGuard]
+  },
+  {
+    path: 'teacher/orders',
+    loadComponent: () => import('./features/teacher/orders/teacher-orders.component').then(m => m.TeacherOrdersComponent),
+    canActivate: [teacherGuard]
+  },
+  {
+    path: 'teacher/coupons',
+    loadComponent: () => import('./features/teacher/coupons/teacher-coupons.component').then(m => m.TeacherCouponsComponent),
+    canActivate: [teacherGuard]
+  },
 
   // Rutas de alumno
   {
@@ -104,6 +119,11 @@ export const routes: Routes = [
   {
     path: 'student/progress',
     loadComponent: () => import('./features/student/progress/progress.component').then(m => m.ProgressComponent),
+    canActivate: [studentGuard]
+  },
+  {
+    path: 'student/purchases',
+    loadComponent: () => import('./features/student/purchases/purchases.component').then(m => m.PurchasesComponent),
     canActivate: [studentGuard]
   },
   {

@@ -5,6 +5,7 @@ const sequelize = require('../config/database');
 const { UniqueConstraintError } = require('sequelize');
 const { Enrollment, Course, Story, Unit, LessonPlan, LessonBlock, LessonProgress, LessonAnswer, LessonReinforcement, UnitQuizAttempt } = require('../models');
 const certificates = require('../services/certificateService');
+const { nextCourseOffer } = require('../services/seriesService');
 
 const REINFORCEMENTS = ['flashcards', 'matching', 'listen_repeat'];
 const validId = value => /^[1-9]\d{0,9}$/.test(String(value)) && Number(value) <= 2147483647;
@@ -200,7 +201,8 @@ router.get('/:enrollmentId/progress', authMiddleware, async (req, res) => {
     res.json({
       stories: result,
       quizzes: completion.quizzes,
-      certificate: await certificates.statusOf(enrollment, completion)
+      certificate: await certificates.statusOf(enrollment, completion),
+      next: await nextCourseOffer(enrollment)
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

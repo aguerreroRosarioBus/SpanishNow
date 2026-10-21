@@ -52,8 +52,15 @@ router.get('/courses/:slug', async (req, res) => {
     const withQuiz = new Set((await UnitQuiz.findAll({
       where: { unitId: { [Op.in]: course.units.map(unit => unit.id) }, isPublished: true }, attributes: ['unitId']
     })).map(quiz => quiz.unitId));
+    // The previous and next course of the series, only while they are published (and the teacher's own).
+    const [previous, next] = await Promise.all([
+      Course.findOne({ where: { nextCourseId: course.id, teacherId: course.teacherId, isPublished: true }, attributes: ['slug', 'title'], order: [['id', 'ASC']] }),
+      course.nextCourseId ? Course.findOne({ where: { id: course.nextCourseId, teacherId: course.teacherId, isPublished: true }, attributes: ['slug', 'title'] }) : null
+    ]);
+    const link = row => (row ? { slug: row.slug, title: row.title } : null);
     res.json({
       ...summary(course),
+      series: { previous: link(previous), next: link(next) },
       salesDescription: course.salesDescription,
       introVideoUrl: course.introVideoUrl,
       materialsCount: await Material.count({ where: { courseId: course.id } }),

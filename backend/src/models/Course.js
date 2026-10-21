@@ -62,6 +62,17 @@ const Course = sequelize.define('Course', {
   introVideoUrl: {
     type: DataTypes.STRING(500),
     allowNull: true
+  },
+  // Series: the course offered after this one (same teacher) and the coupon offered with it.
+  nextCourseId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: { model: 'courses', key: 'id' }
+  },
+  nextCourseCouponId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: { model: 'coupons', key: 'id' }
   }
 }, {
   timestamps: true,

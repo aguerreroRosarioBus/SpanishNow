@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { CheckoutResponse, CheckoutSession, PublicCourse, PublicCourseDetail } from '../models/sales.model';
+import { CheckoutQuote, CheckoutResponse, CheckoutSession, PublicCourse, PublicCourseDetail } from '../models/sales.model';
 import { environment } from '../../../environments/environment';
 
 /** Catálogo público y checkout (el interceptor agrega el token si hay sesión). */
@@ -19,8 +19,18 @@ export class PublicCatalogService {
     return this.http.get<PublicCourseDetail>(`${this.apiUrl}/public/courses/${encodeURIComponent(slug)}`);
   }
 
-  checkout(courseId: number): Observable<CheckoutResponse> {
-    return this.http.post<CheckoutResponse>(`${this.apiUrl}/checkout`, { courseId });
+  /** `email` solo hace falta sin sesión cuando el cupón deja el curso gratis (no pasa por Stripe, que es quien lo pide). */
+  checkout(courseId: number, couponCode?: string | null, email?: string | null): Observable<CheckoutResponse> {
+    return this.http.post<CheckoutResponse>(`${this.apiUrl}/checkout`, {
+      courseId,
+      ...(couponCode ? { couponCode } : {}),
+      ...(email ? { email } : {})
+    });
+  }
+
+  /** Precio final con cupón antes de pagar. Errores 400 con `code` de cupón. */
+  quote(courseId: number, couponCode: string): Observable<CheckoutQuote> {
+    return this.http.post<CheckoutQuote>(`${this.apiUrl}/checkout/quote`, { courseId, couponCode });
   }
 
   getCheckoutSession(sessionId: string): Observable<CheckoutSession> {

@@ -1,6 +1,9 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CourseService } from '../../../../core/services/course.service';
+import { CouponService } from '../../../../core/services/coupon.service';
+import { Course } from '../../../../core/models/course.model';
+import { Coupon } from '../../../../core/models/sales.model';
 import { ToastService } from '../../../../core/services/toast.service';
 import { CourseManageStore } from '../course-manage.store';
 import { VideoEmbedComponent } from '../../../../shared/components/video-embed/video-embed.component';
@@ -15,6 +18,7 @@ import { VideoEmbedComponent } from '../../../../shared/components/video-embed/v
 export class CourseEditModalComponent {
   private store = inject(CourseManageStore);
   private courseService = inject(CourseService);
+  private couponService = inject(CouponService);
   private toast = inject(ToastService);
 
   readonly currencies = [
@@ -31,8 +35,16 @@ export class CourseEditModalComponent {
     slug: ['', [Validators.pattern(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)]],
     isPublished: [false],
     salesDescription: [''],
-    introVideoUrl: ['']
+    introVideoUrl: [''],
+    nextCourseId: [null as number | null],
+    nextCourseCouponId: [null as number | null]
   });
+  /** Otros cursos del docente (candidatos a «curso siguiente») y sus cupones activos. */
+  otherCourses = signal<Course[]>([]);
+  private coupons = signal<Coupon[]>([]);
+  private selectedNext = signal<number | null>(null);
+  /** Cupones activos que sirven para el curso siguiente elegido (los de ese curso o los de todos). */
+  offerCoupons = computed(() => this.coupons().filter(c => c.active && (c.courseId == null || c.courseId === this.selectedNext())));
   isSaving = false;
   errorMessage = '';
 
@@ -47,9 +59,23 @@ export class CourseEditModalComponent {
         slug: course.slug || '',
         isPublished: !!course.isPublished,
         salesDescription: course.salesDescription || '',
-        introVideoUrl: course.introVideoUrl || ''
+        introVideoUrl: course.introVideoUrl || '',
+        nextCourseId: course.nextCourseId ?? null,
+        nextCourseCouponId: course.nextCourseCouponId ?? null
       });
+      this.selectedNext.set(course.nextCourseId ?? null);
     }
+    this.form.controls.nextCourseId.valueChanges.subscribe(id => {
+      this.selectedNext.set(id != null ? Number(id) : null);
+      // Si el cupón elegido ya no sirve para el nuevo curso, se limpia
+      const couponId = this.form.controls.nextCourseCouponId.value;
+      if (couponId != null && !this.offerCoupons().some(c => c.id === Number(couponId))) this.form.controls.nextCourseCouponId.setValue(null);
+    });
+    this.courseService.getCourses().subscribe({
+      next: list => this.otherCourses.set(list.filter(c => c.id !== this.store.courseId())),
+      error: () => { /* sin lista, el select queda vacío */ }
+    });
+    this.couponService.list().subscribe({ next: list => this.coupons.set(list), error: () => { /* idem */ } });
   }
 
   /** Slug actual guardado en el curso (el link a la página de venta solo existe si ya está guardado). */
@@ -79,7 +105,10 @@ export class CourseEditModalComponent {
       isPublished: !!v.isPublished,
       salesDescription: v.salesDescription ?? '',
       // Vacío = quitar el video; el servidor valida el proveedor y devuelve la URL de embed
-      introVideoUrl: (v.introVideoUrl ?? '').trim() || null
+      introVideoUrl: (v.introVideoUrl ?? '').trim() || null,
+      // Vacío = sin curso siguiente / sin cupón
+      nextCourseId: v.nextCourseId != null ? Number(v.nextCourseId) : null,
+      nextCourseCouponId: v.nextCourseId != null && v.nextCourseCouponId != null ? Number(v.nextCourseCouponId) : null
     } as Record<string, unknown>;
     const slug = (v.slug ?? '').trim();
     if (slug) payload['slug'] = slug;

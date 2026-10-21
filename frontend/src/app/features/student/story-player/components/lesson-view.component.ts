@@ -7,6 +7,7 @@ import { LessonSessionStore } from '../lesson-session.store';
 import { LessonBlockComponent } from './lesson-block.component';
 import { FullStoryBlockComponent } from './full-story-block.component';
 import { ReinforcementsComponent } from './reinforcements.component';
+import { NextCourseCardComponent } from '../../../../shared/components/next-course-card/next-course-card.component';
 import { VideoEmbedComponent } from '../../../../shared/components/video-embed/video-embed.component';
 import { MaterialsListComponent } from '../../../../shared/components/materials-list/materials-list.component';
 
@@ -21,7 +22,7 @@ const BLOCK_LABELS: Record<string, string> = {
 @Component({
   selector: 'app-lesson-view',
   standalone: true,
-  imports: [IconComponent, LessonBlockComponent, FullStoryBlockComponent, ReinforcementsComponent, VideoEmbedComponent, MaterialsListComponent],
+  imports: [IconComponent, LessonBlockComponent, FullStoryBlockComponent, ReinforcementsComponent, VideoEmbedComponent, MaterialsListComponent, NextCourseCardComponent],
   templateUrl: './lesson-view.component.html',
   styleUrl: './lesson-view.component.scss'
 })

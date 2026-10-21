@@ -41,6 +41,6 @@ export class EnrollmentService {
 }
 
 export function normalizeProgress(body: StoryProgress[] | Partial<EnrollmentProgress> | null | undefined): EnrollmentProgress {
-  if (Array.isArray(body)) return { stories: body, quizzes: [], certificate: null };
-  return { stories: body?.stories ?? [], quizzes: body?.quizzes ?? [], certificate: body?.certificate ?? null };
+  if (Array.isArray(body)) return { stories: body, quizzes: [], certificate: null, next: null };
+  return { stories: body?.stories ?? [], quizzes: body?.quizzes ?? [], certificate: body?.certificate ?? null, next: body?.next ?? null };
 }

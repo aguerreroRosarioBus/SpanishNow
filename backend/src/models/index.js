@@ -19,6 +19,7 @@ const UnitQuiz = require('./UnitQuiz');
 const UnitQuizQuestion = require('./UnitQuizQuestion');
 const UnitQuizAttempt = require('./UnitQuizAttempt');
 const Certificate = require('./Certificate');
+const Coupon = require('./Coupon');
 
 // Define associations
 User.hasMany(Course, { foreignKey: 'teacherId', as: 'courses' });
@@ -89,6 +90,16 @@ UnitQuizAttempt.belongsTo(Enrollment, { foreignKey: 'enrollmentId', as: 'enrollm
 Enrollment.hasOne(Certificate, { foreignKey: 'enrollmentId', as: 'certificate', onDelete: 'CASCADE' });
 Certificate.belongsTo(Enrollment, { foreignKey: 'enrollmentId', as: 'enrollment' });
 
+// Phase 3: coupons and course series
+User.hasMany(Coupon, { foreignKey: 'teacherId', as: 'coupons' });
+Coupon.belongsTo(User, { foreignKey: 'teacherId', as: 'teacher' });
+Course.hasMany(Coupon, { foreignKey: 'courseId', as: 'coupons' });
+Coupon.belongsTo(Course, { foreignKey: 'courseId', as: 'course' });
+Coupon.hasMany(Order, { foreignKey: 'couponId', as: 'orders' });
+Order.belongsTo(Coupon, { foreignKey: 'couponId', as: 'coupon' });
+Course.belongsTo(Course, { foreignKey: 'nextCourseId', as: 'nextCourse' });
+Course.belongsTo(Coupon, { foreignKey: 'nextCourseCouponId', as: 'nextCourseCoupon' });
+
 module.exports = {
   User,
   Course,
@@ -110,5 +121,6 @@ module.exports = {
   UnitQuiz,
   UnitQuizQuestion,
   UnitQuizAttempt,
-  Certificate
+  Certificate,
+  Coupon
 };

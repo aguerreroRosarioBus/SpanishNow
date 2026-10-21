@@ -4,14 +4,36 @@ const { optionalAuth } = require('../middlewares/auth.middleware');
 const { Course, Enrollment, Order } = require('../models');
 const { createCheckout, PaymentError } = require('../services/paymentService');
 const { hasPendingInvite } = require('../services/passwordTokens');
+const { priceFor, quoteShape, CouponError } = require('../services/couponService');
 
 const validId = value => /^[1-9]\d{0,9}$/.test(String(value)) && Number(value) <= 2147483647;
+
+const couponFailure = (res, error) => res.status(error.status).json({ error: error.message, code: error.code });
+
+// Price of a course with a coupon, to show the discount before paying. Public: nothing is created or consumed.
+router.post('/quote', async (req, res) => {
+  try {
+    const { courseId, couponCode } = req.body || {};
+    if (!validId(courseId)) return res.status(400).json({ error: 'courseId is required' });
+    if (typeof couponCode !== 'string' || !couponCode.trim()) return res.status(400).json({ error: 'couponCode is required', code: 'coupon_invalid' });
+
+    const course = await Course.findByPk(courseId);
+    if (!course || !course.isPublished) return res.status(404).json({ error: 'Course not found' });
+    if (course.price <= 0) return res.status(400).json({ error: 'This course is free: enroll instead of buying it' });
+
+    res.json(quoteShape(await priceFor(course, couponCode)));
+  } catch (error) {
+    if (error instanceof CouponError) return couponFailure(res, error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Start a purchase. Login is optional: a logged-in student buys with their own account.
 router.post('/', optionalAuth, async (req, res) => {
   try {
-    const { courseId, email } = req.body || {};
+    const { courseId, email, couponCode } = req.body || {};
     if (!validId(courseId)) return res.status(400).json({ error: 'courseId is required' });
+    if (couponCode !== undefined && couponCode !== null && typeof couponCode !== 'string') return res.status(400).json({ error: 'couponCode must be text', code: 'coupon_invalid' });
 
     const course = await Course.findByPk(courseId);
     if (!course || !course.isPublished) return res.status(404).json({ error: 'Course not found' });
@@ -23,9 +45,11 @@ router.post('/', optionalAuth, async (req, res) => {
       if (enrolled) return res.status(409).json({ error: 'You are already enrolled in this course' });
     }
 
-    const { url } = await createCheckout({ course, user: req.user, fakeEmail: email });
+    const pricing = await priceFor(course, couponCode);
+    const { url } = await createCheckout({ course, user: req.user, fakeEmail: email, pricing });
     res.json({ url });
   } catch (error) {
+    if (error instanceof CouponError) return couponFailure(res, error);
     if (error instanceof PaymentError) return res.status(error.status).json({ error: error.message, ...error.extra });
     res.status(500).json({ error: error.message });
   }

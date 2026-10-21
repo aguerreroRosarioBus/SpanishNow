@@ -92,4 +92,8 @@
       }
     </footer>
   </article>
+
+  @if (nav.courseFinished() && nav.nextCourse(); as next) {
+    <app-next-course-card [offer]="next" />
+  }
 }

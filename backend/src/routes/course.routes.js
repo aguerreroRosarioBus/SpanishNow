@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authMiddleware, optionalAuth, isTeacher } = require('../middlewares/auth.middleware');
 const { UniqueConstraintError } = require('sequelize');
-const { Course, Unit, User, Story, Question, RepetitionActivity, LessonPlan, Enrollment, Order, Material } = require('../models');
+const { Course, Unit, User, Story, Question, RepetitionActivity, LessonPlan, Enrollment, Order, Material, Coupon } = require('../models');
 const { canReadCourse } = require('../utils/courseAccess');
 const { SLUG_PATTERN, MAX_LENGTH: MAX_SLUG } = require('../utils/slug');
 const cloudinary = require('../config/cloudinary');
@@ -43,6 +43,46 @@ function parseSalesFields(body = {}) {
     else values.slug = slug;
   }
   return { values };
+}
+
+// Series fields of the body: nextCourseId (a course of the same teacher, not this one) and nextCourseCouponId (a coupon of the
+// same teacher that applies to that next course). Blank/null clears them; without a next course there is no coupon.
+// Returns { values } with the columns to update ({} when the body has neither field) or { error }.
+async function parseSeriesFields(body, course) {
+  const has = key => body[key] !== undefined;
+  if (!has('nextCourseId') && !has('nextCourseCouponId')) return { values: {} };
+  const readId = (key, label) => {
+    const raw = body[key];
+    if (raw === null || raw === '' || raw === 'null') return { id: null };
+    if (!/^[1-9]\d{0,9}$/.test(String(raw)) || Number(raw) > 2147483647) return { error: `${label} is not valid` };
+    return { id: Number(raw) };
+  };
+
+  let nextId = course.nextCourseId;
+  let couponId = course.nextCourseCouponId;
+  if (has('nextCourseId')) {
+    const read = readId('nextCourseId', 'nextCourseId');
+    if (read.error) return read;
+    nextId = read.id;
+  }
+  if (has('nextCourseCouponId')) {
+    const read = readId('nextCourseCouponId', 'nextCourseCouponId');
+    if (read.error) return read;
+    couponId = read.id;
+  }
+  if (nextId === course.id) return { error: 'A course cannot be its own next course' };
+  if (nextId !== null) {
+    const next = await Course.findByPk(nextId, { attributes: ['id', 'teacherId'] });
+    if (!next || next.teacherId !== course.teacherId) return { error: 'nextCourseId must be one of your courses' };
+  } else {
+    couponId = null;
+  }
+  if (couponId !== null) {
+    const coupon = await Coupon.findByPk(couponId, { attributes: ['id', 'teacherId', 'courseId'] });
+    if (!coupon || coupon.teacherId !== course.teacherId) return { error: 'nextCourseCouponId must be one of your coupons' };
+    if (coupon.courseId !== null && coupon.courseId !== nextId) return { error: 'That coupon only applies to a different course than the next course' };
+  }
+  return { values: { nextCourseId: nextId, nextCourseCouponId: couponId } };
 }
 
 // Courses: students and anonymous callers see the published ones; a teacher sees their own (published or not).
@@ -192,9 +232,11 @@ router.put('/:id', authMiddleware, isTeacher, upload.single('image'), async (req
     if (sales.error) return res.status(400).json({ error: sales.error });
     const intro = parseVideoField(req.body, 'introVideoUrl');
     if (intro.error) return res.status(400).json({ error: intro.error });
+    const series = await parseSeriesFields(req.body || {}, course);
+    if (series.error) return res.status(400).json({ error: series.error });
 
     try {
-      await course.update({ title, description, level, imageUrl, ...sales.values, ...(intro.skip ? {} : { introVideoUrl: intro.value }) });
+      await course.update({ title, description, level, imageUrl, ...sales.values, ...series.values, ...(intro.skip ? {} : { introVideoUrl: intro.value }) });
     } catch (error) {
       if (error instanceof UniqueConstraintError) return res.status(409).json({ error: 'That slug is already used by another course' });
       throw error;

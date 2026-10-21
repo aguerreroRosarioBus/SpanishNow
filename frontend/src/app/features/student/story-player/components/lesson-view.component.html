@@ -61,6 +61,10 @@
 
   <app-reinforcements />
 
+  @if (nav.courseFinished() && nav.nextCourse(); as next) {
+    <app-next-course-card [offer]="next" />
+  }
+
   <app-materials-list [materials]="storyMaterials()" heading="Materiales de esta historia" />
   <app-materials-list [materials]="unitMaterials()" heading="Materiales de la unidad" />
 }

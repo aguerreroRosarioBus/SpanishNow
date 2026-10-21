@@ -59,11 +59,19 @@ export class SidebarNavComponent {
             { label: 'Maestros', icon: 'users', link: '/teachers' }
           ]
         },
-        { title: 'Cuenta', items: [{ label: 'Configuración', icon: 'settings', link: '/settings' }] }
+        { title: 'Cuenta', items: [{ label: 'Mis compras', icon: 'receipt', link: '/student/purchases' }, { label: 'Configuración', icon: 'settings', link: '/settings' }] }
       ];
     }
     return [
       { title: 'Enseñanza', items: [{ label: 'Mis cursos', icon: 'book-open', link: '/teacher/dashboard', alsoActiveUnder: '/teacher/course/' }] },
+      {
+        title: 'Negocio',
+        items: [
+          { label: 'Ventas', icon: 'shopping-bag', link: '/teacher/sales' },
+          { label: 'Órdenes', icon: 'receipt', link: '/teacher/orders' },
+          { label: 'Cupones', icon: 'tag', link: '/teacher/coupons' }
+        ]
+      },
       { title: 'Cuenta', items: [{ label: 'Configuración', icon: 'settings', link: '/settings' }] }
     ];
   });

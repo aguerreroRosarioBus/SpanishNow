@@ -50,6 +50,20 @@
           </section>
         }
 
+        @if (c.series && (c.series.previous || c.series.next)) {
+          <section class="sales-section series" aria-labelledby="series-heading">
+            <h2 id="series-heading" class="sales-heading">Part of a series</h2>
+            <ul class="series__list">
+              @if (c.series.previous; as prev) {
+                <li><span class="eyebrow">Previous</span><a [routerLink]="['/courses', prev.slug]">{{ prev.title }}</a></li>
+              }
+              @if (c.series.next; as nxt) {
+                <li><span class="eyebrow">Next</span><a [routerLink]="['/courses', nxt.slug]">{{ nxt.title }}</a></li>
+              }
+            </ul>
+          </section>
+        }
+
         <section class="sales-section" aria-labelledby="curriculum-heading">
           <h2 id="curriculum-heading" class="sales-heading">What's inside</h2>
           <p class="page-summary mb-2">
@@ -97,7 +111,17 @@
       </div>
 
       <aside class="sales-panel sales-buy" aria-label="Purchase">
-        <span class="price-tag" [class.price-tag--free]="isFree()">{{ priceLabel() }}</span>
+        <div class="price-row">
+          @if (originalLabel()) {
+            <s class="price-original"><span class="visually-hidden">Original price </span>{{ originalLabel() }}</s>
+          }
+          <span class="price-tag" [class.price-tag--free]="isFree() || priceLabel() === 'Free'">
+            @if (originalLabel()) { <span class="visually-hidden">Price with coupon </span> }{{ priceLabel() }}
+          </span>
+        </div>
+        @if (savingsLabel()) {
+          <p class="coupon-applied" role="status">Coupon <strong>{{ quote()?.coupon?.code }}</strong> applied: you save {{ savingsLabel() }}.</p>
+        }
         @if (isFree()) {
           <p class="page-summary">This course is free.</p>
           <a [routerLink]="currentUser() ? '/student/dashboard' : '/auth/register'" class="btn btn-primary btn-lg w-100">
@@ -108,6 +132,34 @@
           <a [routerLink]="['/student/course', enrolledCourseId() ?? c.id, 'play']" class="btn btn-primary btn-lg w-100">Go to course</a>
         } @else {
           <p class="page-summary">One-time payment. Lifetime access.</p>
+          @if (quote()) {
+            <button type="button" class="btn btn-link btn-sm p-0 align-self-start" (click)="removeCoupon()">Remove coupon</button>
+          } @else if (!showCoupon()) {
+            <button type="button" class="btn btn-link btn-sm p-0 align-self-start" (click)="showCoupon.set(true)" aria-expanded="false" aria-controls="couponBox">Have a coupon?</button>
+          }
+          @if (showCoupon() && !quote()) {
+            <form id="couponBox" class="coupon-form" (submit)="$event.preventDefault(); applyCoupon()">
+              <label for="couponCode" class="visually-hidden">Coupon code</label>
+              <input id="couponCode" type="text" class="form-control text-uppercase" placeholder="Coupon code" maxlength="40" autocomplete="off"
+                     [value]="couponInput()" (input)="couponInput.set($any($event.target).value)"
+                     [class.is-invalid]="!!couponError()" [attr.aria-describedby]="couponError() ? 'couponError' : null">
+              <button type="submit" class="btn btn-secondary" [disabled]="isApplying() || !couponInput().trim()">
+                @if (isApplying()) { <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> }
+                Apply
+              </button>
+            </form>
+            @if (couponError()) {
+              <div id="couponError" class="coupon-error" role="alert">{{ couponError() }}</div>
+            }
+          }
+          @if (needsEmail()) {
+            <div>
+              <label for="buyerEmail" class="form-label">Your email</label>
+              <input id="buyerEmail" type="email" class="form-control" autocomplete="email" placeholder="you@email.com"
+                [value]="buyerEmail()" (input)="buyerEmail.set($any($event.target).value)" (keydown.enter)="buy()">
+              <div class="form-text">We'll create your account and email you a link to set your password.</div>
+            </div>
+          }
           @if (buyError()) {
             <div class="alert alert-danger mb-0" role="alert">{{ buyError() }}</div>
           }
@@ -115,9 +167,13 @@
             @if (isBuying()) {
               <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
             }
-            Buy now
+            {{ price()?.isFree ? 'Get it for free' : 'Buy now' }}
           </button>
-          <small class="text-secondary-ui">Secure payment. You'll be redirected to checkout.</small>
+          @if (price()?.isFree) {
+            <small class="text-secondary-ui">No payment needed with your coupon.</small>
+          } @else {
+            <small class="text-secondary-ui">Secure payment. You'll be redirected to checkout.</small>
+          }
         }
       </aside>
     </div>

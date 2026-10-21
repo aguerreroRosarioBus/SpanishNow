@@ -3,6 +3,7 @@ import { CourseService } from '../../../core/services/course.service';
 import { EnrollmentService } from '../../../core/services/enrollment.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { Course, Enrollment, QuizProgress, Unit } from '../../../core/models/course.model';
+import { NextCourseOffer } from '../../../core/models/sales.model';
 import { NavigationItem } from './navigation-item.model';
 
 /** Estado de navegación del reproductor: curso, unidad, historias del menú y regla de acceso. */
@@ -21,6 +22,15 @@ export class LessonNavigationStore {
   /** Mejor resultado de quiz por unidad (viene del progreso y se actualiza al enviar un intento). */
   quizResults = signal<Record<number, { bestScore: number | null; passed: boolean }>>({});
   introSeen = signal(false);
+  /** Curso siguiente de la serie (viene del progreso de la inscripción). */
+  nextCourse = signal<NextCourseOffer | null>(null);
+  /** Curso terminado: todas las historias leídas y los quizzes de las unidades aprobados. */
+  courseFinished = computed(() => {
+    const { done, total } = this.courseProgress();
+    if (total === 0 || done < total) return false;
+    const results = this.quizResults();
+    return (this.course()?.units ?? []).every(u => !u.quiz || !!results[u.id]?.passed);
+  });
 
   items = signal<NavigationItem[]>([]);
   currentIndex = signal(0);
@@ -98,7 +108,10 @@ export class LessonNavigationStore {
   /** Resultados de quiz: si falla, los quizzes quedan como pendientes (no bloquea el curso). */
   private loadQuizProgress(enrollmentId: number): void {
     this.enrollmentService.getProgressSummary(enrollmentId).subscribe({
-      next: ({ quizzes }) => this.setQuizProgress(quizzes),
+      next: ({ quizzes, next }) => {
+        this.nextCourse.set(next);
+        this.setQuizProgress(quizzes);
+      },
       error: error => console.error('Error loading quiz progress:', error)
     });
   }

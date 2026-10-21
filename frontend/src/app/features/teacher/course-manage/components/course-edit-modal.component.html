@@ -64,10 +64,34 @@
             <textarea class="form-control" id="courseSales" formControlName="salesDescription" rows="5"
                       placeholder="What students will learn, who it's for…"></textarea>
           </div>
-          <div class="form-check form-switch">
+          <div class="form-check form-switch mb-3">
             <input class="form-check-input" type="checkbox" role="switch" id="coursePublished" formControlName="isPublished" />
             <label class="form-check-label" for="coursePublished">Publicado (visible en el catálogo y a la venta)</label>
           </div>
+
+          <h6 class="eyebrow mt-4 mb-3">Serie de cursos</h6>
+          <div class="mb-3">
+            <label for="courseNext" class="form-label">Curso siguiente de la serie</label>
+            <select class="form-select" id="courseNext" formControlName="nextCourseId" aria-describedby="courseNextHelp">
+              <option [ngValue]="null">Ninguno</option>
+              @for (c of otherCourses(); track c.id) {
+                <option [ngValue]="c.id">{{ c.title }}</option>
+              }
+            </select>
+            <div class="form-text" id="courseNextHelp">Se ofrece al alumno cuando termina este curso y aparece en la página de venta («Part of a series»).</div>
+          </div>
+          @if (form.controls.nextCourseId.value != null) {
+            <div class="mb-3">
+              <label for="courseNextCoupon" class="form-label">Cupón para ofrecerlo</label>
+              <select class="form-select" id="courseNextCoupon" formControlName="nextCourseCouponId" aria-describedby="courseNextCouponHelp">
+                <option [ngValue]="null">Sin cupón</option>
+                @for (c of offerCoupons(); track c.id) {
+                  <option [ngValue]="c.id">{{ c.code }}</option>
+                }
+              </select>
+              <div class="form-text" id="courseNextCouponHelp">Solo se listan tus cupones activos que sirven para ese curso. Se aplica solo desde el link que ve el alumno.</div>
+            </div>
+          }
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" (click)="close()">Cancelar</button>

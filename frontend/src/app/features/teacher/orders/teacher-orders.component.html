@@ -1,0 +1,140 @@
+<div class="page-container">
+  <div class="page-header">
+    <div class="page-header__main">
+      <h1 class="page-title">Órdenes</h1>
+      <p class="page-summary">{{ total() }} {{ total() === 1 ? 'orden' : 'órdenes' }} con los filtros actuales</p>
+    </div>
+    <div class="page-actions">
+      <button type="button" class="btn btn-secondary" (click)="exportCsv()" [disabled]="isExporting()">
+        @if (isExporting()) { <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> } @else { <app-icon name="download" [size]="16" /> }
+        Exportar CSV
+      </button>
+    </div>
+  </div>
+
+  <form class="filters" (ngSubmit)="applyFilters()" role="search" aria-label="Filtrar órdenes">
+    <div class="filters__field filters__field--grow">
+      <label for="orderQuery" class="form-label">Buscar</label>
+      <input id="orderQuery" name="q" type="search" class="form-control" placeholder="Email o nombre del comprador"
+             [ngModel]="query()" (ngModelChange)="query.set($event)" autocomplete="off">
+    </div>
+    <div class="filters__field">
+      <label for="orderStatus" class="form-label">Estado</label>
+      <select id="orderStatus" name="status" class="form-select" [ngModel]="status()" (ngModelChange)="status.set($event); applyFilters()">
+        @for (s of statuses; track s.value) { <option [value]="s.value">{{ s.label }}</option> }
+      </select>
+    </div>
+    <div class="filters__field">
+      <label for="orderCourse" class="form-label">Curso</label>
+      <select id="orderCourse" name="course" class="form-select" [ngModel]="courseId()" (ngModelChange)="courseId.set($event ? +$event : null); applyFilters()">
+        <option [ngValue]="null">Todos los cursos</option>
+        @for (c of courses(); track c.id) { <option [ngValue]="c.id">{{ c.title }}</option> }
+      </select>
+    </div>
+    <button type="submit" class="btn btn-secondary">Buscar</button>
+  </form>
+
+  @if (errorMessage()) {
+    <div class="alert alert-danger" role="alert">{{ errorMessage() }}</div>
+  }
+
+  @if (isLoading()) {
+    <div class="text-center py-5" role="status">
+      <div class="spinner-border text-primary" aria-hidden="true"></div>
+      <p class="text-muted mt-2 mb-0">Cargando órdenes…</p>
+    </div>
+  } @else if (rows().length === 0 && !errorMessage()) {
+    <div class="state-box">
+      <strong>No hay órdenes</strong>
+      <span>Cuando alguien compre uno de tus cursos va a aparecer acá. Probá también cambiar los filtros.</span>
+    </div>
+  } @else if (rows().length > 0) {
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th scope="col">Fecha</th><th scope="col">Comprador</th><th scope="col">Curso</th>
+            <th scope="col" class="num">Monto</th><th scope="col">Estado</th><th scope="col">Cupón</th>
+            <th scope="col">Recibo</th><th scope="col"><span class="visually-hidden">Acciones</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (o of rows(); track o.id) {
+            <tr>
+              <td>{{ (o.paidAt ?? o.createdAt) | date:'d MMM y' }}</td>
+              <td>{{ o.buyer.name }}<small class="d-block text-secondary-ui">{{ o.buyer.email }}</small></td>
+              <td>{{ o.course.title }}</td>
+              <td class="num">
+                {{ money(o.amount, o.currency) }}
+                @if (o.discountAmount > 0 && o.originalAmount) {
+                  <small class="d-block text-secondary-ui"><s>{{ money(o.originalAmount, o.currency) }}</s></small>
+                }
+                @if (o.refundedAmount > 0) {
+                  <small class="d-block text-secondary-ui">Devuelto {{ money(o.refundedAmount, o.currency) }}</small>
+                }
+              </td>
+              <td>
+                <span class="badge-status" [class.badge-status--published]="badge(o) === 'paid'" [class.badge-status--draft]="badge(o) !== 'paid' && badge(o) !== 'refunded' && badge(o) !== 'partial'"
+                      [class.badge-status--warn]="badge(o) === 'partial'" [class.badge-status--danger]="badge(o) === 'refunded' || badge(o) === 'failed'">{{ badgeLabel(o) }}</span>
+              </td>
+              <td>@if (o.coupon) { <code>{{ o.coupon.code }}</code> } @else { <span class="text-secondary-ui" aria-label="Sin cupón">—</span> }</td>
+              <td>@if (o.receiptUrl) { <a [href]="o.receiptUrl" target="_blank" rel="noopener">Recibo</a> } @else { <span class="text-secondary-ui" aria-label="Sin recibo">—</span> }</td>
+              <td class="text-end">
+                @if (canRefund(o)) {
+                  <button type="button" class="btn btn-ghost btn-sm" (click)="askRefund(o)" [attr.aria-label]="'Marcar como reembolsada la orden de ' + o.buyer.name">Marcar como reembolsada</button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (pageCount() > 1) {
+      <nav class="pager" aria-label="Paginación">
+        <button type="button" class="btn btn-secondary btn-sm" (click)="goTo(page() - 1)" [disabled]="page() <= 1">Anterior</button>
+        <span class="pager__info">Página {{ page() }} de {{ pageCount() }}</span>
+        <button type="button" class="btn btn-secondary btn-sm" (click)="goTo(page() + 1)" [disabled]="page() >= pageCount()">Siguiente</button>
+      </nav>
+    }
+  }
+</div>
+
+@if (refundTarget(); as order) {
+  <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5)" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="refundTitle" (keydown.escape)="cancelRefund()">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="refundTitle">Marcar como reembolsada</h5>
+          <button type="button" class="btn-close" (click)="cancelRefund()" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <p>
+            Vas a marcar como reembolsada la orden de <strong>{{ order.buyer.name }}</strong> ({{ order.buyer.email }})
+            por <strong>{{ money(order.amount, order.currency) }}</strong> de «{{ order.course.title }}».
+          </p>
+          @if (order.provider === 'stripe') {
+            <div class="alert alert-warning" role="note">
+              Esta compra se pagó con Stripe. Lo normal es devolver el dinero desde el panel de Stripe y SpanishNow lo registra solo.
+              Marcala a mano solo si el reembolso ya se hizo por fuera. Esto no devuelve dinero.
+            </div>
+          }
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="revokeAccess" [checked]="revokeAccess()" (change)="revokeAccess.set($any($event.target).checked)">
+            <label class="form-check-label" for="revokeAccess">Quitar acceso al curso</label>
+          </div>
+          @if (refundError()) {
+            <div class="alert alert-danger mt-3 mb-0" role="alert">{{ refundError() }}</div>
+          }
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="cancelRefund()" [disabled]="isRefunding()">Cancelar</button>
+          <button type="button" class="btn btn-danger" (click)="confirmRefund()" [disabled]="isRefunding()">
+            @if (isRefunding()) { <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> }
+            Marcar como reembolsada
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}

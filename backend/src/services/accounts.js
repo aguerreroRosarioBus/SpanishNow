@@ -41,4 +41,7 @@ async function findOrCreateStudent({ email, name }, { transaction } = {}) {
   }
 }
 
-module.exports = { normalizeEmail, isValidEmail, cleanName, findOrCreateStudent };
+/** The user with that email (any role), or null. */
+const findUserByEmail = email => User.findOne({ where: { email: normalizeEmail(email) } });
+
+module.exports = { normalizeEmail, isValidEmail, cleanName, findOrCreateStudent, findUserByEmail };

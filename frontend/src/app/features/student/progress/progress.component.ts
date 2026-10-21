@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { catchError, forkJoin, of, switchMap } from 'rxjs';
 import { EnrollmentService } from '../../../core/services/enrollment.service';
+import { NextCourseOffer } from '../../../core/models/sales.model';
+import { NextCourseCardComponent } from '../../../shared/components/next-course-card/next-course-card.component';
 import { CertificateStatus, Enrollment, EnrollmentProgress, QuizProgress, StoryProgress } from '../../../core/models/course.model';
 import { AuthService } from '../../../core/services/auth.service';
 import { CertificateService } from '../../../core/services/certificate.service';
@@ -17,13 +19,14 @@ export interface CourseProgress {
   stories: StoryProgress[];
   quizzes: QuizProgress[];
   certificate: CertificateStatus | null;
+  next: NextCourseOffer | null;
   failed: boolean;
 }
 
 @Component({
   selector: 'app-progress',
   standalone: true,
-  imports: [CommonModule, RouterLink, PluralPipe, IconComponent],
+  imports: [CommonModule, RouterLink, PluralPipe, IconComponent, NextCourseCardComponent],
   templateUrl: './progress.component.html',
   styleUrl: './progress.component.scss'
 })
@@ -58,7 +61,7 @@ export class ProgressComponent implements OnInit {
         ))
       ).pipe(
         switchMap(results => of(enrollments.map((enrollment, i): CourseProgress =>
-          ({ enrollment, stories: results[i]?.stories ?? [], quizzes: results[i]?.quizzes ?? [], certificate: results[i]?.certificate ?? null, failed: results[i] === null }))))
+          ({ enrollment, stories: results[i]?.stories ?? [], quizzes: results[i]?.quizzes ?? [], certificate: results[i]?.certificate ?? null, next: results[i]?.next ?? null, failed: results[i] === null }))))
       ))
     ).subscribe({
       next: courses => {
@@ -70,6 +73,17 @@ export class ProgressComponent implements OnInit {
         this.isLoading.set(false);
       }
     });
+  }
+
+  /** Curso terminado: certificado listo o elegible. */
+  isFinished(course: CourseProgress): boolean {
+    return !!(course.certificate?.code || course.certificate?.eligible);
+  }
+
+  /** Id del curso siguiente si el alumno ya lo tiene (para ir directo al reproductor). */
+  nextCourseId(course: CourseProgress): number | null {
+    const slug = course.next?.course.slug;
+    return slug ? (this.courses().find(c => c.enrollment.course?.slug === slug)?.enrollment.courseId ?? null) : null;
   }
 
   unitTitle(title: string): string { return unitDisplayTitle(title); }

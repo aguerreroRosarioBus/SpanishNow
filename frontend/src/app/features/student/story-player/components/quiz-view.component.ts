@@ -2,6 +2,7 @@ import { Component, computed, effect, inject, signal, untracked } from '@angular
 import { Router } from '@angular/router';
 import { QuizAttemptResult, StudentQuiz } from '../../../../core/models/content.model';
 import { QuizService } from '../../../../core/services/quiz.service';
+import { NextCourseCardComponent } from '../../../../shared/components/next-course-card/next-course-card.component';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { unitDisplayTitle } from '../../../../shared/utils/unit-title';
 import { LessonNavigationStore } from '../lesson-navigation.store';
@@ -13,7 +14,7 @@ import {
 @Component({
   selector: 'app-quiz-view',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, NextCourseCardComponent],
   templateUrl: './quiz-view.component.html',
   styleUrls: ['./lesson-view.component.scss', './quiz-view.component.scss']
 })

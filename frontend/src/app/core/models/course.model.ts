@@ -1,3 +1,5 @@
+import { NextCourseOffer } from './sales.model';
+
 export interface Course {
   id: number;
   title: string;
@@ -25,6 +27,9 @@ export interface Course {
   enrollmentCount?: number;
   /** Video de bienvenida (URL de embed normalizada por el servidor) o null. */
   introVideoUrl?: string | null;
+  /** Curso siguiente de la serie y cupón para ofrecerlo (solo lo ve el docente). */
+  nextCourseId?: number | null;
+  nextCourseCouponId?: number | null;
   /** Materiales generales del curso (sin unidad ni historia). Del alumno: sin fileUrl. */
   materials?: Material[];
 }
@@ -145,6 +150,8 @@ export interface EnrollmentProgress {
   stories: StoryProgress[];
   quizzes: QuizProgress[];
   certificate: CertificateStatus | null;
+  /** Curso siguiente de la serie (null si no hay o no está publicado). */
+  next: NextCourseOffer | null;
 }
 
 export interface ResetProgressResult {

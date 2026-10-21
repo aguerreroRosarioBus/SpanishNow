@@ -1,0 +1,74 @@
+:host { display: block; }
+
+.period { display: inline-flex; gap: 4px; }
+
+.currency-block { margin-bottom: var(--spacing-xl); }
+
+.currency-block__title {
+  margin: 0 0 var(--spacing-sm);
+  font: 700 0.75rem var(--font-body);
+  letter-spacing: 0.06em;
+  color: var(--color-text-light);
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--spacing-md);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.kpi__label { font-size: 0.8125rem; color: var(--color-text-light); }
+.kpi__value { font: 600 1.5rem var(--font-heading); }
+.kpi__hint { font-size: 0.8125rem; color: var(--color-text-light); }
+
+.panel-block {
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.panel-block__title { margin: 0 0 var(--spacing-md); font: 600 1.0625rem/1.3 var(--font-heading); }
+
+.chart { width: 100%; height: auto; display: block; }
+.chart__grid { stroke: var(--color-divider); stroke-width: 1; }
+.chart__tick { fill: var(--color-text-light); font: 0.6875rem var(--font-body); }
+.chart__bar { fill: var(--color-primary); }
+.chart__bar:hover { fill: var(--color-primary-hover); }
+
+.chart-table summary { cursor: pointer; font-size: 0.875rem; color: var(--color-text-light); margin-top: var(--spacing-sm); }
+
+.table-wrap { overflow: auto; border: 1px solid var(--color-border); border-radius: var(--radius-md); margin-top: var(--spacing-sm); }
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+
+  th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--color-divider); }
+  thead th {
+    background: var(--color-section-tint);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--color-text-light);
+  }
+  tbody th { font-weight: 600; }
+  tbody tr:last-child > * { border-bottom: 0; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+}
