@@ -1,0 +1,41 @@
+:host { display: block; }
+
+.comments {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: 20px 24px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.comments__title { margin: 0; font: 600 1.125rem/1.3 var(--font-heading); }
+.comments__count { margin-left: 6px; padding: 1px 8px; font: 700 0.75rem/1.5 var(--font-body); background: var(--color-bg-dark); border-radius: var(--radius-full); }
+.comments__empty { margin: 0; color: var(--color-text-light); }
+
+.composer__foot { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-sm); margin-top: var(--spacing-sm); }
+.composer__counter { font-size: 0.8125rem; color: var(--color-text-light); &.is-near { color: var(--color-danger); } }
+
+.thread, .replies { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.thread { gap: var(--spacing-md); }
+.comment { padding-top: var(--spacing-md); border-top: 1px solid var(--color-divider); }
+.thread > .comment:first-child { padding-top: 0; border-top: 0; }
+.replies { margin: var(--spacing-sm) 0 0 var(--spacing-md); padding-left: var(--spacing-md); border-left: 2px solid var(--color-section-border); }
+.comment--reply { padding: var(--spacing-sm) 0 0; border-top: 0; }
+
+.comment__head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.comment__date { font-size: 0.8125rem; color: var(--color-text-light); }
+/* Texto plano de otros usuarios: se respetan los saltos de línea sin interpretar HTML */
+.comment__body { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.comment__actions { display: flex; gap: var(--spacing-md); margin-top: 4px; }
+
+.badge-teacher, .badge-hidden { padding: 1px 8px; font-size: 0.75rem; font-weight: 700; border-radius: var(--radius-sm); }
+.badge-teacher { background: var(--color-primary-soft); color: var(--color-primary-hover); }
+.badge-hidden { background: var(--color-warning-soft); color: var(--color-text); }
+
+.link-btn { padding: 2px 0; background: none; border: 0; font-size: 0.8125rem; font-weight: 600; color: var(--color-primary-hover); cursor: pointer; }
+.link-btn:hover { text-decoration: underline; }
+.link-btn--danger { color: var(--color-danger); }
+
+.reply-form { margin: var(--spacing-sm) 0 0 var(--spacing-md); }

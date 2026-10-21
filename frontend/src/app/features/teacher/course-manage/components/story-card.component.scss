@@ -9,6 +9,11 @@
   &:hover {
     background: var(--color-row-hover);
   }
+
+  &.is-highlighted {
+    background: var(--color-primary-soft);
+    box-shadow: inset 3px 0 0 var(--color-primary);
+  }
 }
 
 .story-row__grip {
@@ -96,4 +101,20 @@
   .story-row__grip {
     display: none;
   }
+}
+
+.story-row__flags {
+  flex: none;
+  min-width: 52px;
+  display: flex;
+  gap: 8px;
+  color: var(--color-text-light);
+}
+
+.story-row__flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.75rem;
+  font-weight: 600;
 }

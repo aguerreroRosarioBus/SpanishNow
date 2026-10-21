@@ -1,0 +1,116 @@
+:host { display: block; }
+
+.sales-cover {
+  height: 220px;
+  overflow: hidden;
+  background: var(--color-section-tint);
+  border: 1px solid var(--color-section-border);
+  border-radius: var(--radius-lg);
+
+  img { width: 100%; height: 100%; object-fit: cover; display: block; }
+}
+
+.sales-lead {
+  margin: var(--spacing-md) 0 0;
+  font-size: 1.0625rem;
+  color: var(--color-text);
+}
+
+.sales-section { margin-top: var(--spacing-xl); }
+
+.sales-heading {
+  margin: 0 0 var(--spacing-sm);
+  font: 600 1.25rem/1.3 var(--font-heading);
+}
+
+.sales-text {
+  margin: 0;
+  white-space: pre-line;
+  color: var(--color-text);
+}
+
+.curriculum {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.curriculum__unit {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.curriculum__unit-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px var(--spacing-md);
+  background: var(--color-section-tint);
+  border-bottom: 1px solid var(--color-section-border);
+}
+
+.curriculum__drip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  font-size: 0.8125rem;
+  color: var(--color-text-light);
+}
+
+.curriculum__stories {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  li {
+    padding: 10px var(--spacing-md);
+    font-size: 0.9375rem;
+    border-top: 1px solid var(--color-divider);
+
+    &:first-child { border-top: 0; }
+  }
+}
+
+.curriculum__story {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+
+  &--quiz { color: var(--color-text-light); font-weight: 600; }
+}
+
+.curriculum__icon { flex: none; color: var(--color-text-light); }
+
+.price-row { display: flex; align-items: baseline; gap: var(--spacing-sm); flex-wrap: wrap; }
+.price-original { color: var(--color-text-light); font-size: 1.125rem; }
+
+.coupon-applied {
+  margin: 0;
+  padding: 8px 12px;
+  background: var(--color-success-soft);
+  color: var(--color-success-text);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+}
+
+.coupon-form { display: flex; gap: var(--spacing-sm); .form-control { min-width: 0; } }
+.coupon-error { color: var(--color-danger); font-size: 0.875rem; }
+
+.series__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+
+  li { display: flex; flex-direction: column; gap: 2px; padding: 12px var(--spacing-md); background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius-lg); }
+  a { font-weight: 600; }
+}

@@ -28,6 +28,11 @@ const corsOptions = {
 
 // Middlewares
 app.use(cors(corsOptions));
+
+// Stripe signs the exact bytes it sends, so this route reads the raw body and must come before express.json().
+const payments = require('./config/payments');
+payments.assertSafe();
+app.use('/api/payments', require('./routes/payments.routes'));
 app.use(express.json({ charset: 'utf-8', limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, charset: 'utf-8' }));
 
@@ -46,8 +51,22 @@ app.use((req, res, next) => {
 // Routes
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/users', require('./routes/user.routes'));
+app.use('/api/courses', require('./routes/courseStudents.routes'));
+app.use('/api/courses', require('./routes/courseMaterials.routes'));
 app.use('/api/courses', require('./routes/course.routes'));
+app.use('/api/public', require('./routes/public.routes'));
+app.use('/api/public', require('./routes/publicAffiliates.routes'));
+app.use('/api/checkout', require('./routes/checkout.routes'));
+app.use('/api/teacher', require('./routes/teacherSales.routes'));
+app.use('/api/teacher', require('./routes/teacherCoupons.routes'));
+app.use('/api/teacher', require('./routes/teacherAffiliates.routes'));
+app.use('/api/teacher', require('./routes/teacherComments.routes'));
+app.use('/api/me', require('./routes/me.routes'));
+app.use('/api/units', require('./routes/unitQuiz.routes'));
 app.use('/api/units', require('./routes/unit.routes'));
+app.use('/api/materials', require('./routes/material.routes'));
+app.use('/api/stories', require('./routes/storyComments.routes'));
+app.use('/api/comments', require('./routes/comment.routes'));
 app.use('/api/stories', require('./routes/story.routes'));
 app.use('/api/lesson-plans', require('./routes/lessonPlan.routes'));
 app.use('/api/enrollments', require('./routes/enrollment.routes'));

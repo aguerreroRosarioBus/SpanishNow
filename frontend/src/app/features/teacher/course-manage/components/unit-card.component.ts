@@ -2,9 +2,11 @@ import { Component, computed, inject, input } from '@angular/core';
 import { NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem } from '@ng-bootstrap/ng-bootstrap';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { unitDisplayTitle } from '../../../../shared/utils/unit-title';
+import { formatAvailableDate } from '../../../../shared/utils/release-date';
 import { PluralPipe } from '../../../../shared/pipes/plural.pipe';
 import { Story, Unit } from '../../../../core/models/course.model';
 import { CourseManageStore } from '../course-manage.store';
+import { CourseContentStore } from '../course-content.store';
 import { StoryCardComponent } from './story-card.component';
 
 // Estado de arrastre compartido entre tarjetas (una unidad arrastrada a la vez).
@@ -20,6 +22,7 @@ let draggedUnit: Unit | null = null;
 })
 export class UnitCardComponent {
   store = inject(CourseManageStore);
+  content = inject(CourseContentStore);
   unit = input.required<Unit>();
   /** Número visible de la unidad (posición en el curso) */
   number = input.required<number>();
@@ -28,6 +31,19 @@ export class UnitCardComponent {
   open = computed(() => this.store.isUnitExpanded(this.unit().id));
   storyCount = computed(() => this.unit().stories?.length ?? 0);
   publishedCount = computed(() => (this.unit().stories ?? []).filter(s => s.lessonStatus === 'published').length);
+  /** PDFs de la unidad y de todas sus historias. */
+  pdfCount = computed(() => this.content.unitMaterialCount(this.unit().id)
+    + (this.unit().stories ?? []).reduce((sum, s) => sum + this.content.storyMaterialCount(s.id), 0));
+  /** Resumen corto de la liberación por fechas (vacío si la unidad está abierta desde el primer día). */
+  dripLabel = computed(() => {
+    const { releaseAfterDays: days, releaseAt } = this.unit();
+    const parts: string[] = [];
+    if (days) parts.push(`Día ${days}`);
+    const date = formatAvailableDate(releaseAt, 'es', 'short');
+    if (date) parts.push(`desde ${date}`);
+    return parts.join(' y ');
+  });
+  quiz = computed(() => this.content.quiz(this.unit().id));
   private draggedStory: Story | null = null;
 
   onDragOver(event: DragEvent): void {

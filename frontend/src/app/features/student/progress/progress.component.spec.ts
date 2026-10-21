@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { map, of, throwError } from 'rxjs';
 import { ProgressComponent } from './progress.component';
 import { EnrollmentService } from '../../../core/services/enrollment.service';
 import { StoryProgress } from '../../../core/models/course.model';
@@ -22,7 +22,7 @@ describe('ProgressComponent (avance por historia)', () => {
             { id: 1, studentId: 1, courseId: 10, createdAt: '', course: { title: 'Curso A', level: 'A1' } },
             { id: 2, studentId: 1, courseId: 20, createdAt: '', course: { title: 'Curso B', level: 'A2' } },
           ]),
-          getProgress,
+          getProgressSummary: (id: number) => getProgress(id).pipe(map((stories: StoryProgress[]) => ({ stories, quizzes: [], certificate: null }))),
         } },
       ],
     }).compileComponents();

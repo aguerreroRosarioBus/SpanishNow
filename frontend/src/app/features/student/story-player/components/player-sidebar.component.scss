@@ -160,3 +160,30 @@
 .state--locked {
   color: var(--color-text-light);
 }
+
+.story-link__kind {
+  flex: none;
+  color: var(--color-text-light);
+}
+
+.story-link__tag {
+  flex: none;
+  padding: 1px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-dark);
+  color: var(--color-text-light);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.index__unit-lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-light);
+}

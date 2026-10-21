@@ -30,6 +30,38 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/auth/register/register.component').then((m) => m.RegisterComponent)
   },
+  {
+    path: 'auth/forgot-password',
+    loadComponent: () =>
+      import('./features/auth/forgot-password/forgot-password.component').then((m) => m.ForgotPasswordComponent)
+  },
+  {
+    path: 'auth/reset-password',
+    loadComponent: () =>
+      import('./features/auth/reset-password/reset-password.component').then((m) => m.ResetPasswordComponent)
+  },
+
+  // Rutas públicas de venta (sin guard, en inglés)
+  {
+    path: 'courses',
+    loadComponent: () => import('./features/public/courses/public-courses.component').then(m => m.PublicCoursesComponent)
+  },
+  {
+    path: 'courses/:slug',
+    loadComponent: () => import('./features/public/course-sales/course-sales.component').then(m => m.CourseSalesComponent)
+  },
+  {
+    path: 'affiliate/:token',
+    loadComponent: () => import('./features/public/affiliate-dashboard/affiliate-dashboard.component').then(m => m.AffiliateDashboardComponent)
+  },
+  {
+    path: 'certificates/:code',
+    loadComponent: () => import('./features/public/certificate-verify/certificate-verify.component').then(m => m.CertificateVerifyComponent)
+  },
+  {
+    path: 'checkout/success',
+    loadComponent: () => import('./features/public/checkout-success/checkout-success.component').then(m => m.CheckoutSuccessComponent)
+  },
 
   // Rutas de profesor
   {
@@ -40,6 +72,31 @@ export const routes: Routes = [
   {
     path: 'teacher/course/:id/manage',
     loadComponent: () => import('./features/teacher/course-manage/course-manage').then(m => m.CourseManageComponent),
+    canActivate: [teacherGuard]
+  },
+  {
+    path: 'teacher/sales',
+    loadComponent: () => import('./features/teacher/sales/teacher-sales.component').then(m => m.TeacherSalesComponent),
+    canActivate: [teacherGuard]
+  },
+  {
+    path: 'teacher/orders',
+    loadComponent: () => import('./features/teacher/orders/teacher-orders.component').then(m => m.TeacherOrdersComponent),
+    canActivate: [teacherGuard]
+  },
+  {
+    path: 'teacher/coupons',
+    loadComponent: () => import('./features/teacher/coupons/teacher-coupons.component').then(m => m.TeacherCouponsComponent),
+    canActivate: [teacherGuard]
+  },
+  {
+    path: 'teacher/affiliates',
+    loadComponent: () => import('./features/teacher/affiliates/teacher-affiliates.component').then(m => m.TeacherAffiliatesComponent),
+    canActivate: [teacherGuard]
+  },
+  {
+    path: 'teacher/comments',
+    loadComponent: () => import('./features/teacher/comments/teacher-comments.component').then(m => m.TeacherCommentsComponent),
     canActivate: [teacherGuard]
   },
 
@@ -76,6 +133,11 @@ export const routes: Routes = [
   {
     path: 'student/progress',
     loadComponent: () => import('./features/student/progress/progress.component').then(m => m.ProgressComponent),
+    canActivate: [studentGuard]
+  },
+  {
+    path: 'student/purchases',
+    loadComponent: () => import('./features/student/purchases/purchases.component').then(m => m.PurchasesComponent),
     canActivate: [studentGuard]
   },
   {

@@ -46,6 +46,58 @@
               </div>
             }
 
+            @if (course.certificate; as cert) {
+              <div class="cert" [class.cert--ready]="!!cert.code" aria-live="polite">
+                <app-icon name="award" [size]="22" class="cert__icon" />
+                <div class="cert__body">
+                  @if (quizSummary(course); as quizzes) {
+                    @if (quizzes.total > 0) {
+                      <div class="cert__meta">Quizzes aprobados: {{ quizzes.passed }}/{{ quizzes.total }}</div>
+                    }
+                  }
+                  @if (cert.code) {
+                    <strong>Tu certificado está listo</strong>
+                    <div class="cert__meta">Código: {{ cert.code }} ·
+                      <a [href]="verificationUrl(cert.code)" target="_blank" rel="noopener">Link de verificación</a>
+                    </div>
+                  } @else if (cert.eligible) {
+                    <strong>¡Completaste el curso!</strong>
+                    <div class="cert__meta">Ya puedes obtener tu certificado.</div>
+                  } @else {
+                    <strong>Certificado</strong>
+                    <div class="cert__meta">{{ missingText(cert) }}</div>
+                  }
+                </div>
+                @if (cert.code) {
+                  <a class="btn btn-primary btn-sm" [href]="pdfUrl(cert.code)" target="_blank" rel="noopener">
+                    <app-icon name="download" [size]="15" />Descargar PDF
+                  </a>
+                } @else if (cert.eligible && claimingId() !== course.enrollment.id) {
+                  <button type="button" class="btn btn-primary btn-sm" (click)="startClaim(course)">Obtener certificado</button>
+                }
+              </div>
+              @if (claimingId() === course.enrollment.id) {
+                <form class="cert-form" (submit)="$event.preventDefault(); issueCertificate(course)">
+                  <label class="form-label" [attr.for]="'certName' + course.enrollment.id">Confirma el nombre que aparecerá en el certificado</label>
+                  <div class="cert-form__row">
+                    <input type="text" class="form-control" [id]="'certName' + course.enrollment.id" name="certName" maxlength="100"
+                           [value]="claimName()" (input)="claimName.set($any($event.target).value)" />
+                    <button type="submit" class="btn btn-primary" [disabled]="isIssuing() || !claimName().trim()">
+                      @if (isIssuing()) { <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> }
+                      Emitir certificado
+                    </button>
+                    <button type="button" class="btn btn-secondary" (click)="cancelClaim()" [disabled]="isIssuing()">Cancelar</button>
+                  </div>
+                  <small class="text-secondary-ui">Una vez emitido, el nombre queda impreso en el PDF.</small>
+                  @if (claimError()) { <div class="alert alert-danger mb-0 mt-2" role="alert">{{ claimError() }}</div> }
+                </form>
+              }
+            }
+
+            @if (course.next && isFinished(course)) {
+              <app-next-course-card [offer]="course.next" [courseId]="nextCourseId(course)" />
+            }
+
             @if (course.stories.length > 0) {
               <table class="progress-table">
                 <thead>

@@ -4,6 +4,9 @@ const { authMiddleware, isTeacher } = require('../middlewares/auth.middleware');
 const { Story, Unit, Course, Question, LessonPlan } = require('../models');
 const cloudinary = require('../config/cloudinary');
 const upload = require('../middlewares/upload.middleware');
+const { parseVideoField } = require('../utils/videoUrl');
+const materials = require('../services/materialService');
+const { ContentLockedError, assertUnitOpen, sendLocked } = require('../services/unitAvailability');
 
 // Get story by ID with questions
 router.get('/:id', authMiddleware, async (req, res) => {
@@ -23,12 +26,14 @@ router.get('/:id', authMiddleware, async (req, res) => {
         where: { studentId: req.user.id, courseId: story.unit.courseId }
       });
       if (!enrollment) return res.status(403).json({ error: 'Not authorized' });
+      await assertUnitOpen(req.user, story.unit, { enrollment }); // drip content
     }
     const questions = await Question.findAll({ where: { storyId: story.id },
       attributes: owner ? undefined : ['id', 'storyId', 'questionText', 'answerType', 'options', 'audioUrl'] });
     const { unit, ...data } = story.toJSON();
     res.json({ ...data, questions });
   } catch (error) {
+    if (error instanceof ContentLockedError) return sendLocked(res, error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -175,6 +180,8 @@ router.put('/:id', authMiddleware, isTeacher, upload.fields([
     }
 
     const { title, text, deleteAudioSlow, deleteAudioNormal } = req.body;
+    const video = parseVideoField(req.body, 'videoUrl');
+    if (video.error) return res.status(400).json({ error: video.error });
 
     // Once the story has a lesson plan (draft or published) its text is owned by the lesson (rebuilt from the keyframes on publish).
     if (text !== undefined && text !== story.text && await LessonPlan.count({ where: { storyId: story.id } }) > 0) {
@@ -224,6 +231,7 @@ router.put('/:id', authMiddleware, isTeacher, upload.fields([
     if (audioSlowUrl !== undefined) updateData.audioSlowUrl = audioSlowUrl;
     if (audioNormalUrl !== undefined) updateData.audioNormalUrl = audioNormalUrl;
     if (order !== undefined) updateData.order = order;
+    if (!video.skip) updateData.videoUrl = video.value;
 
     await story.update(updateData);
 
@@ -267,6 +275,7 @@ router.delete('/:id', authMiddleware, isTeacher, async (req, res) => {
       return res.status(403).json({ error: 'Not authorized' });
     }
 
+    await materials.removeFilesWhere({ storyId: story.id });
     await story.destroy();
     res.json({ message: 'Story deleted successfully' });
   } catch (error) {

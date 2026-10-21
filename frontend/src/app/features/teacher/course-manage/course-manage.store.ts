@@ -17,6 +17,8 @@ export type ManageModal =
   | { kind: 'vocabulary'; unit: Unit }
   | { kind: 'repetitions'; story: Story }
   | { kind: 'story-tooltips'; story: Story }
+  | { kind: 'materials'; unit: Unit | null }
+  | { kind: 'quiz'; unit: Unit }
   | { kind: 'composer'; story: Story; unit: Unit };
 
 export interface ConfirmData {
@@ -41,6 +43,8 @@ export class CourseManageStore {
   isLoading = signal(false);
   errorMessage = signal('');
   expandedUnits = signal<Set<number>>(new Set());
+  /** Historia resaltada al llegar desde el link de un email (`?story=`). */
+  highlightStoryId = signal<number | null>(null);
 
   modal = signal<ManageModal | null>(null);
   confirmData = signal<ConfirmData | null>(null);

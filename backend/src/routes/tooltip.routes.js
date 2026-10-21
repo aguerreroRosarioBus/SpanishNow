@@ -3,6 +3,7 @@ const router = express.Router();
 const { authMiddleware, isTeacher } = require('../middlewares/auth.middleware');
 const { Tooltip, Story, Question, User, Unit, Course, LessonPlan, LessonBlock } = require('../models');
 const { canReadCourse } = require('../utils/courseAccess');
+const { ContentLockedError, assertUnitOpen, sendLocked } = require('../services/unitAvailability');
 const { Op } = require('sequelize');
 
 const TARGET_TYPES = ['story', 'question', 'keyframe'];
@@ -21,13 +22,13 @@ async function resolveTarget(targetType, targetId) {
   if (!validId(targetId)) return null;
   if (targetType === 'story' || targetType === 'keyframe') {
     const target = await Story.findByPk(targetId, { include: courseInclude });
-    return target ? { target, course: target.unit.course } : null;
+    return target ? { target, course: target.unit.course, unit: target.unit } : null;
   }
   if (targetType === 'question') {
     const target = await Question.findByPk(targetId, {
       include: [{ model: Story, as: 'story', include: courseInclude }]
     });
-    return target ? { target, course: target.story.unit.course } : null;
+    return target ? { target, course: target.story.unit.course, unit: target.story.unit } : null;
   }
   return null;
 }
@@ -62,6 +63,7 @@ async function readTooltips(req, res, targetType, targetId, label) {
   if (!(await canReadCourse(req.user, resolved.course))) {
     return res.status(403).json({ error: `Not authorized to view tooltips of this ${label.toLowerCase()}` });
   }
+  await assertUnitOpen(req.user, resolved.unit); // drip content
   const tooltips = await Tooltip.findAll({
     where: { targetType, targetId: Number(targetId), isActive: true },
     order: [['startOffset', 'ASC']],
@@ -75,6 +77,7 @@ router.get('/story/:storyId', authMiddleware, async (req, res) => {
   try {
     await readTooltips(req, res, 'story', req.params.storyId, 'Story');
   } catch (error) {
+    if (error instanceof ContentLockedError) return sendLocked(res, error);
     console.error('Error fetching story tooltips:', error);
     res.status(500).json({ error: error.message });
   }
@@ -85,6 +88,7 @@ router.get('/question/:questionId', authMiddleware, async (req, res) => {
   try {
     await readTooltips(req, res, 'question', req.params.questionId, 'Question');
   } catch (error) {
+    if (error instanceof ContentLockedError) return sendLocked(res, error);
     console.error('Error fetching question tooltips:', error);
     res.status(500).json({ error: error.message });
   }

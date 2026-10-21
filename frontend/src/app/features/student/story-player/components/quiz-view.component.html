@@ -1,0 +1,99 @@
+@if (loading()) {
+  <div class="lesson-card text-center" role="status">Cargando el quiz…</div>
+}
+
+@if (error()) {
+  <div class="alert alert-danger d-flex align-items-center justify-content-between gap-2" role="alert">
+    <span>{{ error() }}</span>
+    <button type="button" class="btn btn-secondary btn-sm" (click)="retryLoad()">Reintentar</button>
+  </div>
+}
+
+@if (quiz(); as q) {
+  <article class="lesson-card">
+    <header class="lesson-head">
+      <span class="lesson-head__meta">Quiz · Unidad {{ nav.unitNumber() }}</span>
+      <h1 class="lesson-head__title">{{ q.title }}</h1>
+      <p class="quiz__summary">
+        {{ q.questions.length }} {{ q.questions.length === 1 ? 'pregunta' : 'preguntas' }} · Para aprobar necesitas {{ q.passingScore }}%
+        @if (best() !== null) { · Tu mejor puntaje: <strong>{{ best() }}%</strong> }
+      </p>
+    </header>
+
+    @if (result(); as r) {
+      <div class="quiz-result" [class.is-passed]="r.passed" role="status" aria-live="polite">
+        <div class="quiz-result__score">{{ r.score }}%</div>
+        <div>
+          <strong>{{ r.passed ? '¡Aprobaste!' : 'Todavía no alcanzas el puntaje para aprobar' }}</strong>
+          <div class="quiz__summary">Acertaste {{ correct() }} de {{ q.questions.length }}. Mejor puntaje: {{ r.bestScore }}%.</div>
+        </div>
+      </div>
+    }
+
+    <ol class="quiz__questions">
+      @for (question of q.questions; track question.id; let qi = $index) {
+        @let res = resultOf(question.id);
+        <li class="quiz-q" [class.is-correct]="res?.correct" [class.is-wrong]="res && !res.correct">
+          <fieldset [disabled]="!!result() || submitting()">
+            <legend class="quiz-q__prompt">{{ qi + 1 }}. {{ question.prompt }}</legend>
+            <div class="quiz-q__options">
+              @for (option of question.options; track $index; let oi = $index) {
+                <label class="quiz-opt"
+                       [class.is-selected]="answers()[qi] === oi"
+                       [class.is-right]="res && res.correctIndex === oi"
+                       [class.is-chosen-wrong]="res && !res.correct && answers()[qi] === oi">
+                  <input type="radio" [name]="'q' + question.id" [checked]="answers()[qi] === oi" (change)="choose(qi, oi)" />
+                  <span class="quiz-opt__letter">{{ letter(oi) }}</span>
+                  <span class="quiz-opt__text">{{ option }}</span>
+                  @if (res && res.correctIndex === oi) { <app-icon name="check" [size]="16" /> }
+                </label>
+              }
+            </div>
+          </fieldset>
+          @if (res) {
+            <p class="quiz-q__feedback" [class.text-success-ui]="res.correct">
+              <strong>{{ res.correct ? 'Correcta.' : 'Incorrecta.' }}</strong>
+              @if (res.explanation) { {{ res.explanation }} }
+            </p>
+          }
+        </li>
+      }
+    </ol>
+
+    @if (showMissing() && pending() > 0 && !result()) {
+      <div class="alert alert-warning mb-0" role="alert">
+        Te falta responder {{ pending() }} {{ pending() === 1 ? 'pregunta' : 'preguntas' }}.
+      </div>
+    }
+    @if (submitError()) {
+      <div class="alert alert-danger mb-0" role="alert">{{ submitError() }}</div>
+    }
+
+    <footer class="lesson-foot">
+      <button type="button" class="btn btn-ghost btn-lg" (click)="nav.goToPrevious()" [disabled]="!nav.canGoPrevious()">
+        <app-icon name="chevron-left" [size]="16" />Anterior
+      </button>
+      @if (result(); as r) {
+        <div class="quiz__actions">
+          <button type="button" class="btn btn-secondary btn-lg" (click)="retry()">
+            <app-icon name="rotate-ccw" [size]="16" />Reintentar
+          </button>
+          @if (r.passed) {
+            <button type="button" class="btn btn-primary btn-lg" (click)="afterQuiz()">
+              {{ nextLabel() }}<app-icon name="chevron-right" [size]="16" />
+            </button>
+          }
+        </div>
+      } @else {
+        <button type="button" class="btn btn-primary btn-lg" (click)="submit()" [disabled]="submitting()">
+          @if (submitting()) { <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> }
+          Enviar respuestas
+        </button>
+      }
+    </footer>
+  </article>
+
+  @if (nav.courseFinished() && nav.nextCourse(); as next) {
+    <app-next-course-card [offer]="next" />
+  }
+}

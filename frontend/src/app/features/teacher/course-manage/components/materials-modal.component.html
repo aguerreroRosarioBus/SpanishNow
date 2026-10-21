@@ -1,0 +1,78 @@
+<div class="modal fade show" style="display: block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="materialsTitle">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="materialsTitle">{{ heading() }}</h5>
+        <button type="button" class="btn-close" (click)="close()" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        @if (items().length === 0) {
+          <p class="text-secondary-ui">Todavía no hay materiales{{ unit() ? ' en esta unidad' : '' }}. Sube el primer PDF abajo.</p>
+        } @else {
+          <ul class="list-group mb-4">
+            @for (item of items(); track item.material.id) {
+              <li class="list-group-item d-flex align-items-center gap-2 flex-wrap">
+                <app-icon name="file-text" [size]="18" />
+                <div class="flex-grow-1" style="min-width: 0">
+                  @if (editingId() === item.material.id) {
+                    <form class="d-flex gap-2" (submit)="$event.preventDefault(); saveRename(item.material)">
+                      <input type="text" class="form-control form-control-sm" name="rename" maxlength="200"
+                             [ngModel]="editingTitle()" (ngModelChange)="editingTitle.set($event)"
+                             aria-label="Nuevo título del material" />
+                      <button type="submit" class="btn btn-primary btn-sm" [disabled]="!editingTitle().trim()">Guardar</button>
+                      <button type="button" class="btn btn-secondary btn-sm" (click)="cancelRename()">Cancelar</button>
+                    </form>
+                  } @else {
+                    <div class="fw-semibold text-truncate">{{ item.material.title }}</div>
+                    <small class="text-secondary-ui">{{ item.where }}@if (item.material.sizeBytes) { · {{ size(item.material.sizeBytes) }} }</small>
+                  }
+                </div>
+                @if (editingId() !== item.material.id) {
+                  <button type="button" class="btn-icon" (click)="preview(item.material)" aria-label="Ver PDF" title="Ver PDF"><app-icon name="eye" [size]="16" /></button>
+                  <button type="button" class="btn-icon" (click)="startRename(item.material)" aria-label="Renombrar" title="Renombrar"><app-icon name="pencil" [size]="16" /></button>
+                  <button type="button" class="btn-icon" (click)="remove(item.material)" aria-label="Eliminar" title="Eliminar"><app-icon name="trash" [size]="16" /></button>
+                }
+              </li>
+            }
+          </ul>
+        }
+
+        <h6 class="eyebrow mb-3">Subir PDF</h6>
+        @if (errorMessage()) {
+          <div class="alert alert-danger" role="alert">{{ errorMessage() }}</div>
+        }
+        <div class="mb-3">
+          <label for="materialFile" class="form-label">Archivo (PDF, máx. 20 MB) *</label>
+          @for (k of [fileInputKey()]; track k) {
+            <input type="file" class="form-control" id="materialFile" accept="application/pdf,.pdf"
+                   (change)="onFile($event)" [class.is-invalid]="!!fileError()" />
+          }
+          @if (fileError()) { <div class="invalid-feedback d-block">{{ fileError() }}</div> }
+        </div>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label for="materialTitle" class="form-label">Título *</label>
+            <input type="text" class="form-control" id="materialTitle" name="title" maxlength="200"
+                   [ngModel]="title()" (ngModelChange)="title.set($event)" placeholder="Ej: Guía de vocabulario" />
+          </div>
+          <div class="col-md-6">
+            <label for="materialDestination" class="form-label">Pertenece a</label>
+            <select class="form-select" id="materialDestination" name="destination"
+                    [ngModel]="destination()" (ngModelChange)="destination.set($event)">
+              @for (d of destinations(); track d.value) {
+                <option [value]="d.value">{{ d.label }}</option>
+              }
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="close()">Cerrar</button>
+        <button type="button" class="btn btn-primary" (click)="upload()" [disabled]="!canUpload()">
+          @if (isUploading()) { <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> }
+          <app-icon name="upload" [size]="16" />Subir PDF
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,175 @@
+<div class="page-container">
+  <div class="page-header">
+    <div class="page-header__main">
+      <h1 class="page-title">Cupones</h1>
+      <p class="page-summary">Descuentos para tus cursos. Un cupón del 100 % da acceso sin pasar por el pago.</p>
+    </div>
+    <div class="page-actions">
+      <button type="button" class="btn btn-primary" (click)="openCreate()"><app-icon name="plus" [size]="16" />Nuevo cupón</button>
+    </div>
+  </div>
+
+  @if (errorMessage()) {
+    <div class="alert alert-danger" role="alert">{{ errorMessage() }}</div>
+  }
+
+  @if (isLoading()) {
+    <div class="text-center py-5" role="status">
+      <div class="spinner-border text-primary" aria-hidden="true"></div>
+      <p class="text-muted mt-2 mb-0">Cargando cupones…</p>
+    </div>
+  } @else if (coupons().length === 0 && !errorMessage()) {
+    <div class="state-box">
+      <strong>No tienes cupones todavía</strong>
+      <span>Creá uno con «Nuevo cupón» para dar descuentos o regalar un curso.</span>
+    </div>
+  } @else if (coupons().length > 0) {
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th scope="col">Código</th><th scope="col">Descuento</th><th scope="col">Curso</th>
+            <th scope="col">Usos</th><th scope="col">Vence</th><th scope="col">Estado</th>
+            <th scope="col"><span class="visually-hidden">Acciones</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of coupons(); track c.id) {
+            <tr>
+              <td><code>{{ c.code }}</code></td>
+              <td>{{ discountLabel(c) }}</td>
+              <td>{{ courseLabel(c) }}</td>
+              <td>{{ usageLabel(c) }}</td>
+              <td>
+                @if (c.expiresAt) {
+                  {{ c.expiresAt | date:'d MMM y' }}
+                  @if (isExpired(c)) { <small class="d-block text-secondary-ui">Vencido</small> }
+                } @else { <span class="text-secondary-ui" aria-label="Sin vencimiento">—</span> }
+              </td>
+              <td>
+                <span class="badge-status" [class.badge-status--published]="c.active" [class.badge-status--draft]="!c.active">{{ c.active ? 'Activo' : 'Inactivo' }}</span>
+              </td>
+              <td class="actions">
+                @if (c.courseId == null) {
+                  <select class="form-select form-select-sm link-select" [attr.aria-label]="'Curso para el link del cupón ' + c.code"
+                          (change)="setLinkCourse(c, $any($event.target).value)">
+                    <option value="">Curso del link…</option>
+                    @for (course of coursesWithSlug(); track course.id) { <option [value]="course.id">{{ course.title }}</option> }
+                  </select>
+                }
+                <button type="button" class="btn btn-ghost btn-sm" (click)="copyLink(c)" [disabled]="!saleLink(c)" [attr.aria-label]="'Copiar link de venta con el cupón ' + c.code">
+                  <app-icon name="link" [size]="15" />Copiar link
+                </button>
+                <button type="button" class="btn btn-ghost btn-sm" (click)="openEdit(c)" [attr.aria-label]="'Editar el cupón ' + c.code">Editar</button>
+                <button type="button" class="btn btn-ghost btn-sm" (click)="toggleActive(c)" [attr.aria-label]="(c.active ? 'Desactivar' : 'Activar') + ' el cupón ' + c.code">{{ c.active ? 'Desactivar' : 'Activar' }}</button>
+                <button type="button" class="btn btn-ghost btn-sm" (click)="askDelete(c)" [attr.aria-label]="'Eliminar el cupón ' + c.code">Eliminar</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+@if (showForm()) {
+  <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5)" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="couponTitle" (keydown.escape)="closeForm()">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="couponTitle">{{ editing() ? 'Editar cupón' : 'Nuevo cupón' }}</h5>
+          <button type="button" class="btn-close" (click)="closeForm()" aria-label="Cerrar"></button>
+        </div>
+        <form [formGroup]="form" (ngSubmit)="save()" class="d-flex flex-column overflow-hidden" novalidate>
+          <div class="modal-body">
+            @if (formError()) { <div class="alert alert-danger" role="alert">{{ formError() }}</div> }
+            @if (locked()) {
+              <div class="alert alert-info" role="note">Este cupón ya se usó {{ editing()!.redemptions }} {{ editing()!.redemptions === 1 ? 'vez' : 'veces' }}: solo puedes cambiar el estado, el vencimiento y el máximo de usos.</div>
+            }
+
+            <div class="mb-3">
+              <label for="couponCode" class="form-label">Código *</label>
+              <input id="couponCode" type="text" class="form-control text-uppercase" formControlName="code" maxlength="40" autocomplete="off"
+                     placeholder="EJ: PRIMAVERA25" aria-describedby="couponCodeHelp" (input)="onCodeInput()">
+              <div id="couponCodeHelp" class="form-text">Letras, números y guiones. Se guarda en mayúsculas.</div>
+            </div>
+
+            <fieldset class="mb-3" [disabled]="locked()">
+              <legend class="form-label">Descuento *</legend>
+              <div class="btn-group mb-2" role="group" aria-label="Tipo de descuento">
+                <button type="button" class="btn btn-sm" [class.btn-primary]="kind() === 'percent'" [class.btn-secondary]="kind() !== 'percent'" [attr.aria-pressed]="kind() === 'percent'" (click)="setKind('percent')">Porcentaje</button>
+                <button type="button" class="btn btn-sm" [class.btn-primary]="kind() === 'amount'" [class.btn-secondary]="kind() !== 'amount'" [attr.aria-pressed]="kind() === 'amount'" (click)="setKind('amount')">Monto fijo</button>
+              </div>
+              @if (kind() === 'percent') {
+                <label for="couponPercent" class="visually-hidden">Porcentaje de descuento</label>
+                <div class="input-group">
+                  <input id="couponPercent" type="number" class="form-control" formControlName="percentOff" min="1" max="100" step="1">
+                  <span class="input-group-text">%</span>
+                </div>
+                <div class="form-text">100 % regala el curso.</div>
+              } @else {
+                <div class="row g-2">
+                  <div class="col-7">
+                    <label for="couponAmount" class="visually-hidden">Monto de descuento</label>
+                    <input id="couponAmount" type="number" class="form-control" formControlName="amountOff" min="0.01" step="0.01" placeholder="10.00">
+                  </div>
+                  <div class="col-5">
+                    <label for="couponCurrency" class="visually-hidden">Moneda</label>
+                    <select id="couponCurrency" class="form-select" formControlName="currency">
+                      @for (cur of currencies; track cur.code) { <option [value]="cur.code">{{ cur.label }}</option> }
+                    </select>
+                  </div>
+                </div>
+                <div class="form-text">Solo se aplica a cursos de esa moneda. El precio nunca baja de 0.</div>
+              }
+            </fieldset>
+
+            <div class="mb-3">
+              <label for="couponCourse" class="form-label">Curso</label>
+              <select id="couponCourse" class="form-select" formControlName="courseId">
+                <option [ngValue]="null">Todos mis cursos</option>
+                @for (c of courses(); track c.id) { <option [ngValue]="c.id">{{ c.title }}</option> }
+              </select>
+              @if (example()) { <div class="form-text">{{ example() }}</div> }
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-6">
+                <label for="couponMax" class="form-label">Máximo de usos</label>
+                <input id="couponMax" type="number" class="form-control" formControlName="maxRedemptions" min="1" step="1" placeholder="Sin límite">
+              </div>
+              <div class="col-6">
+                <label for="couponExpires" class="form-label">Vence</label>
+                <input id="couponExpires" type="date" class="form-control" formControlName="expiresAt">
+              </div>
+            </div>
+
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" role="switch" id="couponActive" formControlName="active">
+              <label class="form-check-label" for="couponActive">Activo</label>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" (click)="closeForm()" [disabled]="isSaving()">Cancelar</button>
+            <button type="submit" class="btn btn-primary" [disabled]="isSaving()">
+              @if (isSaving()) { <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> }
+              {{ editing() ? 'Guardar cambios' : 'Crear cupón' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+}
+
+@if (toDelete(); as target) {
+  <app-confirm-dialog
+    [show]="true"
+    title="Eliminar cupón"
+    [message]="'¿Eliminar el cupón ' + target.code + '? Si ya tiene usos no se borra: se desactiva.'"
+    confirmText="Eliminar"
+    type="danger"
+    (confirmed)="confirmDelete()"
+    (cancelled)="cancelDelete()"
+  ></app-confirm-dialog>
+}

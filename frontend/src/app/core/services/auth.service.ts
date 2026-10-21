@@ -1,7 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
-import { User, AuthResponse, LoginRequest, RegisterRequest } from '../models/user.model';
+import { User, AuthResponse, LoginRequest, RegisterRequest, ResetPasswordRequest } from '../models/user.model';
 import { environment } from '../../../environments/environment';
 
 @Injectable({
@@ -23,6 +23,17 @@ export class AuthService {
 
   login(data: LoginRequest): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.apiUrl}/login`, data).pipe(
+      tap(response => this.handleAuthSuccess(response))
+    );
+  }
+
+  forgotPassword(email: string): Observable<unknown> {
+    return this.http.post(`${this.apiUrl}/forgot-password`, { email });
+  }
+
+  /** Cambia la contraseña con el token del email y deja la sesión iniciada. */
+  resetPassword(data: ResetPasswordRequest): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${this.apiUrl}/reset-password`, data).pipe(
       tap(response => this.handleAuthSuccess(response))
     );
   }

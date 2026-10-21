@@ -4,6 +4,15 @@ const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const { User } = require('../models');
 const { authMiddleware } = require('../middlewares/auth.middleware');
+const { createToken, consumeToken, MIN_PASSWORD_LENGTH } = require('../services/passwordTokens');
+const { sendMail } = require('../services/mailService');
+const { passwordReset } = require('../services/emailTemplates');
+
+const signToken = user => jwt.sign(
+  { id: user.id, role: user.role },
+  process.env.JWT_SECRET || 'your-secret-key',
+  { expiresIn: '7d' }
+);
 
 // Register
 router.post('/register',
@@ -11,7 +20,8 @@ router.post('/register',
     body('name').trim().notEmpty().withMessage('Name is required'),
     body('email').isEmail().withMessage('Valid email is required'),
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
-    body('role').isIn(['teacher', 'student']).withMessage('Role must be teacher or student')
+    // Public sign-up only creates students: teacher accounts come from the seed or the database.
+    body('role').optional().equals('student').withMessage('Role must be student')
   ],
   async (req, res) => {
     try {
@@ -20,14 +30,14 @@ router.post('/register',
         return res.status(400).json({ errors: errors.array() });
       }
 
-      const { name, email, password, role } = req.body;
+      const { name, email, password } = req.body;
 
       const existingUser = await User.findOne({ where: { email } });
       if (existingUser) {
         return res.status(400).json({ error: 'Email already registered' });
       }
 
-      const user = await User.create({ name, email, password, role });
+      const user = await User.create({ name, email, password, role: 'student' });
 
       const token = jwt.sign(
         { id: user.id, role: user.role },
@@ -135,6 +145,52 @@ router.post('/change-password',
       await user.save();
 
       res.json({ message: 'Password changed successfully' });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+// Forgot password: always 200, so the answer never reveals whether the email has an account.
+// The token and the email are handled after answering, so response time does not reveal it either.
+router.post('/forgot-password',
+  [body('email').isEmail().withMessage('Valid email is required')],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ error: errors.array()[0].msg });
+    }
+    const email = String(req.body.email).trim().toLowerCase();
+    res.json({ message: 'If that email has an account, we sent a link to reset the password' });
+    try {
+      const user = await User.findOne({ where: { email } });
+      if (!user) return;
+      const token = await createToken(user, 'reset');
+      await sendMail({ to: user.email, ...passwordReset({ name: user.name, token }) });
+    } catch (error) {
+      console.error('Forgot password failed:', error.message);
+    }
+  }
+);
+
+// Reset (or first-time choice of) password with the token from the email. Signs the user in.
+router.post('/reset-password',
+  [
+    body('token').isString().notEmpty().withMessage('Token is required'),
+    body('password').isLength({ min: MIN_PASSWORD_LENGTH }).withMessage(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`)
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ error: errors.array()[0].msg });
+      }
+      const user = await consumeToken(req.body.token, req.body.password);
+      if (!user) return res.status(400).json({ error: 'This link is invalid or has expired' });
+      res.json({
+        user: { id: user.id, name: user.name, email: user.email, role: user.role },
+        token: signToken(user)
+      });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }

@@ -1,0 +1,37 @@
+<div class="page-container">
+  <nav class="public-nav" aria-label="Navigation">
+    <a routerLink="/courses">&larr; All courses</a>
+  </nav>
+
+  <div class="cert-verify">
+    @if (isLoading()) {
+      <div class="text-center py-5" role="status">
+        <div class="spinner-border text-primary" aria-hidden="true"></div>
+        <p class="text-muted mt-2 mb-0">Verifying certificate…</p>
+      </div>
+    } @else if (notFound()) {
+      <div class="state-box">
+        <strong>Certificate not found</strong>
+        <span>We couldn't find a certificate with the code <code>{{ code() }}</code>. Check the code and try again.</span>
+      </div>
+    } @else if (loadError()) {
+      <div class="alert alert-danger" role="alert">We could not verify this certificate right now. Please try again later.</div>
+    } @else if (certificate(); as c) {
+      <section class="cert-card" aria-labelledby="cert-title">
+        <div class="cert-card__badge"><app-icon name="circle-check" [size]="20" />Valid certificate</div>
+        <p class="eyebrow">Certificate of Completion</p>
+        <h1 id="cert-title" class="cert-card__name">{{ c.studentName }}</h1>
+        <p class="cert-card__text">has successfully completed</p>
+        <h2 class="cert-card__course">{{ c.courseTitle }}</h2>
+        <p class="cert-card__text">taught by {{ c.teacherName }}</p>
+        <dl class="cert-card__meta">
+          <div><dt>Issued on</dt><dd>{{ c.issuedAt | date: 'longDate' : undefined : 'en-US' }}</dd></div>
+          <div><dt>Certificate code</dt><dd>{{ c.code }}</dd></div>
+        </dl>
+        <a class="btn btn-primary btn-lg" [href]="pdfUrl()" target="_blank" rel="noopener">
+          <app-icon name="download" [size]="16" />Download PDF
+        </a>
+      </section>
+    }
+  </div>
+</div>

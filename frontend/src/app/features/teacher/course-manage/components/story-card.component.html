@@ -1,7 +1,12 @@
-<div class="story-row">
+<div class="story-row" [class.is-highlighted]="highlighted()">
   <span class="btn-icon story-row__grip" aria-hidden="true" title="Arrastrar para reordenar"><app-icon name="grip" [size]="14" /></span>
   <span class="story-row__order">{{ number() }}</span>
   <button type="button" class="story-row__title" (click)="compose()" [attr.title]="story().title">{{ story().title }}</button>
+  <span class="story-row__flags">
+    @if (hasVideo()) { <span class="story-row__flag" title="Tiene video" aria-label="Tiene video"><app-icon name="video" [size]="14" /></span> }
+    @if (commentCount() > 0) { <span class="story-row__flag" [attr.title]="commentCount() + ' comentario(s)'" [attr.aria-label]="commentCount() + ' comentarios'"><app-icon name="message-square" [size]="14" />{{ commentCount() }}</span> }
+    @if (pdfCount() > 0) { <span class="story-row__flag" [attr.title]="pdfCount() + ' PDF(s)'" [attr.aria-label]="pdfCount() + ' PDF'"><app-icon name="file-text" [size]="14" />{{ pdfCount() }}</span> }
+  </span>
   <span class="story-row__questions">{{ questionsCount() | plural:'pregunta':'preguntas':'Sin preguntas' }}</span>
   <span class="badge-status story-row__status" [class.badge-status--published]="published()" [class.badge-status--draft]="!published()">
     {{ published() ? 'Publicada' : 'Borrador' }}
@@ -16,6 +21,7 @@
       </button>
       <div ngbDropdownMenu role="menu">
         <button type="button" ngbDropdownItem role="menuitem" (click)="store.open({ kind: 'story-edit', story: story(), unitId: unit().id })">Editar historia</button>
+        <button type="button" ngbDropdownItem role="menuitem" (click)="store.open({ kind: 'materials', unit: unit() })">Materiales de la unidad</button>
         <button type="button" ngbDropdownItem role="menuitem" (click)="store.open({ kind: 'questions', story: story() })">Editar preguntas</button>
         <button type="button" ngbDropdownItem role="menuitem" (click)="store.open({ kind: 'story-tooltips', story: story() })">Tooltips del texto</button>
         <button type="button" ngbDropdownItem role="menuitem" (click)="store.open({ kind: 'repetitions', story: story() })">Audios de repetición</button>

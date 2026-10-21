@@ -1,5 +1,6 @@
-import { Component, inject, input, output } from '@angular/core';
+import { Component, inject, input, output, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { PwaService } from '../../../core/services/pwa.service';
 import { NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem } from '@ng-bootstrap/ng-bootstrap';
 import { AuthService } from '../../../core/services/auth.service';
 import { IconComponent } from '../icon/icon.component';
@@ -15,7 +16,9 @@ export class NavbarTopComponent {
   private authService = inject(AuthService);
   private router = inject(Router);
 
+  pwa = inject(PwaService);
   currentUser = this.authService.currentUser;
+  showIosHelp = signal(false);
 
   /** false en login/registro: el header no muestra datos de usuario */
   showUser = input(true);
@@ -25,6 +28,8 @@ export class NavbarTopComponent {
   toggleSidebar(): void {
     this.sidebarToggle.emit();
   }
+
+  install(): void { void this.pwa.install(); }
 
   logout(): void {
     this.authService.logout();

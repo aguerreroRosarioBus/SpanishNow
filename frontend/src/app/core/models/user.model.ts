@@ -19,5 +19,9 @@ export interface RegisterRequest {
   name: string;
   email: string;
   password: string;
-  role: 'teacher' | 'student';
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  password: string;
 }

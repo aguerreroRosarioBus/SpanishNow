@@ -7,12 +7,13 @@ import { Story } from '../../../../core/models/course.model';
 import { AudioInputComponent } from '../audio/audio-input.component';
 import { CourseManageStore } from '../course-manage.store';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
+import { VideoEmbedComponent } from '../../../../shared/components/video-embed/video-embed.component';
 
 /** Edición de título, texto (si no hay lección) y audios de una historia (reemplazar o eliminar audio actual). */
 @Component({
   selector: 'app-story-edit-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, AudioInputComponent, IconComponent],
+  imports: [CommonModule, ReactiveFormsModule, AudioInputComponent, IconComponent, VideoEmbedComponent],
   templateUrl: './story-edit-modal.component.html'
 })
 export class StoryEditModalComponent {
@@ -29,7 +30,8 @@ export class StoryEditModalComponent {
 
   form = inject(FormBuilder).group({
     title: ['', [Validators.required, Validators.minLength(3)]],
-    text: ['']
+    text: [''],
+    videoUrl: ['']
   });
 
   /** Con lección, el texto lo genera el compositor y aquí es de solo lectura. */
@@ -37,7 +39,7 @@ export class StoryEditModalComponent {
 
   ngOnInit(): void {
     this.textLocked.set(!!this.story().hasLessonPlan);
-    this.form.patchValue({ title: this.story().title, text: this.story().text });
+    this.form.patchValue({ title: this.story().title, text: this.story().text, videoUrl: this.story().videoUrl || '' });
   }
 
   close(): void { this.store.close(); }
@@ -48,6 +50,9 @@ export class StoryEditModalComponent {
     const formData = new FormData();
     formData.append('title', this.form.value.title!);
     if (!this.textLocked() && (this.form.value.text ?? '') !== (story.text ?? '')) formData.append('text', this.form.value.text ?? '');
+
+    // Siempre se manda: vacío borra el video; el servidor valida el proveedor y devuelve la URL de embed
+    formData.append('videoUrl', (this.form.value.videoUrl ?? '').trim());
 
     const slow = this.slow().getFile();
     if (slow) formData.append('audioSlow', slow);
@@ -71,7 +76,7 @@ export class StoryEditModalComponent {
           this.textLocked.set(true);
           this.form.patchValue({ text: story.text });
           this.toast.error('El texto se genera desde la lección. Editalo en el compositor.');
-        } else this.toast.error('Error al actualizar la historia');
+        } else this.toast.error(error?.error?.error || 'Error al actualizar la historia');
       }
     });
   }

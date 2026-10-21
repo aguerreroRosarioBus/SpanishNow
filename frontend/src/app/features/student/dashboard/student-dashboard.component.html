@@ -43,6 +43,9 @@
             @if (isEnrolled(course.id)) {
               <span class="enrolled"><app-icon name="check" [size]="14" />Ya estás inscrito</span>
               <button type="button" class="btn btn-secondary btn-sm ms-auto" (click)="switchView('my-courses')">Ver en Mis cursos</button>
+            } @else if (salesLink(course); as link) {
+              <span class="price">{{ priceLabel(course) }}</span>
+              <a [routerLink]="link" class="btn btn-primary ms-auto">Ver curso</a>
             } @else {
               <button type="button" class="btn btn-primary w-100" (click)="enrollInCourse(course.id)">Inscribirse</button>
             }

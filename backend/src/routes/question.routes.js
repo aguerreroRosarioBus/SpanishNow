@@ -4,6 +4,7 @@ const { authMiddleware, isTeacher } = require('../middlewares/auth.middleware');
 const { Question, Story, Unit, Course } = require('../models');
 const cloudinary = require('../config/cloudinary');
 const upload = require('../middlewares/upload.middleware');
+const { ContentLockedError, assertUnitOpen, sendLocked } = require('../services/unitAvailability');
 
 // Get questions by story ID (public - for students to view)
 router.get('/story/:storyId', authMiddleware, async (req, res) => {
@@ -19,6 +20,7 @@ router.get('/story/:storyId', authMiddleware, async (req, res) => {
         where: { studentId: req.user.id, courseId: story.unit.courseId }
       });
       if (!enrollment) return res.status(403).json({ error: 'Not authorized' });
+      await assertUnitOpen(req.user, story.unit, { enrollment }); // drip content
     }
     const questions = await Question.findAll({
       where: { storyId: req.params.storyId },
@@ -28,6 +30,7 @@ router.get('/story/:storyId', authMiddleware, async (req, res) => {
 
     res.json(questions);
   } catch (error) {
+    if (error instanceof ContentLockedError) return sendLocked(res, error);
     res.status(500).json({ error: error.message });
   }
 });

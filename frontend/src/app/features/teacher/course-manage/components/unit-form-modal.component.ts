@@ -4,6 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { UnitService } from '../../../../core/services/unit.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { Unit } from '../../../../core/models/course.model';
+import { releaseRuleLabel } from '../../../../shared/utils/release-date';
 import { CourseManageStore } from '../course-manage.store';
 
 /** Crear o editar una unidad (modo según `unit`: sin valor crea, con valor edita). */
@@ -22,12 +23,32 @@ export class UnitFormModalComponent {
 
   form = inject(FormBuilder).group({
     title: ['', [Validators.required, Validators.minLength(3)]],
-    description: ['', [Validators.required, Validators.minLength(10)]]
+    description: ['', [Validators.required, Validators.minLength(10)]],
+    // Contenido por fechas (opcional): vacío = disponible desde el primer día
+    releaseAfterDays: [null as number | null, [Validators.min(0), Validators.max(3650)]],
+    releaseAt: ['']
   });
+
+  /** Vista previa de la regla, en el mismo texto que ve el docente en la lista de unidades. */
+  rulePreview(): string {
+    const { releaseAfterDays, releaseAt } = this.form.getRawValue();
+    return releaseRuleLabel(this.cleanDays(releaseAfterDays), releaseAt || null);
+  }
+
+  private cleanDays(value: number | string | null | undefined): number | null {
+    if (value === null || value === undefined || value === '') return null;
+    const n = Math.trunc(Number(value));
+    return Number.isFinite(n) && n >= 0 ? n : null;
+  }
 
   ngOnInit(): void {
     const unit = this.unit();
-    if (unit) this.form.patchValue({ title: unit.title, description: unit.description });
+    if (unit) this.form.patchValue({
+      title: unit.title,
+      description: unit.description,
+      releaseAfterDays: unit.releaseAfterDays ?? null,
+      releaseAt: unit.releaseAt ? unit.releaseAt.slice(0, 10) : ''
+    });
   }
 
   close(): void { this.store.close(); }
@@ -36,9 +57,11 @@ export class UnitFormModalComponent {
     if (this.form.invalid) return;
     const title = this.form.value.title!;
     const description = this.form.value.description!;
+    const releaseAfterDays = this.cleanDays(this.form.value.releaseAfterDays);
+    const releaseAt = this.form.value.releaseAt || null;
     const unit = this.unit();
     if (unit) {
-      this.unitService.updateUnit(unit.id, { title, description }).subscribe({
+      this.unitService.updateUnit(unit.id, { title, description, releaseAfterDays, releaseAt }).subscribe({
         next: updated => {
           this.store.patchUnit(updated);
           this.close();
@@ -52,8 +75,16 @@ export class UnitFormModalComponent {
     } else {
       this.unitService.createUnit({ courseId: this.store.courseId(), title, description }).subscribe({
         next: created => {
-          this.store.addUnit(created);
-          this.close();
+          // El alta no recibe las fechas: se guardan con una actualización si el docente las completó
+          if (releaseAfterDays === null && !releaseAt) { this.store.addUnit(created); this.close(); return; }
+          this.unitService.updateUnit(created.id, { releaseAfterDays, releaseAt }).subscribe({
+            next: updated => { this.store.addUnit({ ...created, ...updated }); this.close(); },
+            error: () => {
+              this.store.addUnit(created);
+              this.close();
+              this.toast.warning('La unidad se creó, pero no se pudo guardar cuándo se libera. Editala para volver a intentarlo.');
+            }
+          });
         },
         error: error => {
           console.error('Error creating unit:', error);

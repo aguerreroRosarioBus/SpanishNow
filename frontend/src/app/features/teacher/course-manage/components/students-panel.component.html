@@ -1,0 +1,167 @@
+<section class="students-panel" aria-label="Alumnos del curso">
+  <!-- Agregar alumno -->
+  <div class="panel-block">
+    <h2 class="panel-block__title">Agregar alumno</h2>
+    <form [formGroup]="addForm" (ngSubmit)="addStudent()" class="add-form" novalidate>
+      <div class="add-form__field">
+        <label for="studentEmail" class="form-label">Email *</label>
+        <input type="email" id="studentEmail" class="form-control" formControlName="email" autocomplete="off"
+               [class.is-invalid]="addForm.controls.email.invalid && addForm.controls.email.touched" placeholder="alumno@email.com">
+      </div>
+      <div class="add-form__field">
+        <label for="studentName" class="form-label">Nombre (opcional)</label>
+        <input type="text" id="studentName" class="form-control" formControlName="name" autocomplete="off" placeholder="Si es un alumno nuevo">
+      </div>
+      <button type="submit" class="btn btn-primary" [disabled]="isAdding()">
+        @if (isAdding()) { <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> }
+        Agregar
+      </button>
+    </form>
+    <p class="form-text mb-0">Si el email no tiene cuenta, se crea y se le envía un email para elegir su contraseña.</p>
+  </div>
+
+  <!-- Importar CSV de Hotmart -->
+  <div class="panel-block">
+    <h2 class="panel-block__title">Importar compradores de Hotmart</h2>
+    <p class="form-text mt-0">Sube el CSV exportado desde Hotmart (máx. 2 MB, 5.000 filas). Vas a ver una vista previa antes de aplicar nada.</p>
+    <input #csvInput type="file" class="form-control" accept=".csv,text/csv" aria-label="Archivo CSV de Hotmart"
+           (change)="onFileSelected($event)" [disabled]="isPreviewing() || isImporting()">
+
+    @if (importError()) {
+      <div class="alert alert-danger mt-3 mb-0" role="alert">{{ importError() }}</div>
+    }
+
+    @if (isPreviewing()) {
+      <div class="text-center py-3" role="status">
+        <div class="spinner-border spinner-border-sm text-primary" aria-hidden="true"></div>
+        <span class="ms-2 text-muted">Analizando archivo…</span>
+      </div>
+    }
+
+    @if (preview(); as p) {
+      <div class="import-summary" role="status">
+        <span><strong>{{ p.summary.total }}</strong> filas</span>
+        <span class="badge-status badge-status--published">{{ p.summary.new }} nuevos</span>
+        <span class="badge-status badge-status--draft">{{ p.summary.existingUser }} con cuenta</span>
+        <span class="badge-status badge-status--draft">{{ p.summary.alreadyEnrolled }} ya inscriptos</span>
+        @if (p.summary.invalid > 0) {
+          <span class="badge-status badge-status--invalid">{{ p.summary.invalid }} inválidas</span>
+        }
+      </div>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr><th scope="col">Línea</th><th scope="col">Nombre</th><th scope="col">Email</th><th scope="col">Estado</th></tr>
+          </thead>
+          <tbody>
+            @for (row of p.rows; track row.line) {
+              <tr [class.is-invalid-row]="row.status === 'invalid'">
+                <td>{{ row.line }}</td>
+                <td>{{ row.name || '—' }}</td>
+                <td>{{ row.email || '—' }}</td>
+                <td>
+                  {{ statusLabel(row.status) }}
+                  @if (row.reason) { <small class="d-block text-secondary-ui">{{ reasonLabel(row.reason) }}</small> }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="form-check mt-3">
+        <input class="form-check-input" type="checkbox" id="sendInvites" [checked]="sendInvites()"
+               (change)="sendInvites.set($any($event.target).checked)">
+        <label class="form-check-label" for="sendInvites">Enviar invitación por email</label>
+      </div>
+
+      <div class="d-flex gap-2 mt-3">
+        <button type="button" class="btn btn-primary" (click)="confirmImport()" [disabled]="isImporting() || importable() === 0">
+          @if (isImporting()) { <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> }
+          Confirmar importación ({{ importable() }})
+        </button>
+        <button type="button" class="btn btn-secondary" (click)="cancelImport(csvInput)" [disabled]="isImporting()">Cancelar</button>
+      </div>
+      @if (importable() === 0) {
+        <p class="form-text">No hay filas nuevas para importar.</p>
+      }
+    }
+
+    @if (importDone(); as done) {
+      <div class="alert alert-success mt-3 mb-0" role="status">
+        Importación lista: {{ done.summary.new }} nuevos, {{ done.summary.existingUser }} con cuenta existente,
+        {{ done.summary.alreadyEnrolled }} ya inscriptos, {{ done.summary.invalid }} inválidas.
+      </div>
+    }
+  </div>
+
+  <!-- Lista de alumnos -->
+  <div class="panel-block">
+    <h2 class="panel-block__title">
+      Alumnos inscritos
+      <span class="text-secondary-ui fw-normal">({{ students().length | plural:'alumno':'alumnos':'ninguno' }})</span>
+    </h2>
+
+    @if (errorMessage()) {
+      <div class="alert alert-danger" role="alert">{{ errorMessage() }}</div>
+    }
+
+    @if (isLoading()) {
+      <div class="text-center py-4" role="status">
+        <div class="spinner-border text-primary" aria-hidden="true"></div>
+        <p class="text-muted mt-2 mb-0">Cargando alumnos…</p>
+      </div>
+    } @else if (students().length === 0 && !errorMessage()) {
+      <div class="state-box">
+        <strong>Todavía no hay alumnos</strong>
+        <span>Se inscriben al comprar el curso, o puedes agregarlos o importarlos arriba.</span>
+      </div>
+    } @else if (students().length > 0) {
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">Nombre</th><th scope="col">Email</th><th scope="col">Origen</th>
+              <th scope="col">Fecha</th><th scope="col">Progreso</th><th scope="col"><span class="visually-hidden">Acciones</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (s of students(); track s.enrollmentId) {
+              <tr>
+                <td>{{ s.user.name }}</td>
+                <td>{{ s.user.email }}</td>
+                <td><span class="badge-status badge-status--draft">{{ sourceLabel(s.source) }}</span></td>
+                <td>{{ s.enrolledAt | date:'d MMM y' }}</td>
+                <td>
+                  <div class="progress-cell">
+                    <div class="progress" role="progressbar" [attr.aria-valuenow]="progressPercent(s)" aria-valuemin="0" aria-valuemax="100"
+                         [attr.aria-label]="'Progreso de ' + s.user.name">
+                      <div class="progress-bar" [style.width.%]="progressPercent(s)"></div>
+                    </div>
+                    <small>{{ s.progress.completedStories }}/{{ s.progress.totalStories }}</small>
+                  </div>
+                </td>
+                <td class="text-end">
+                  <button type="button" class="btn btn-ghost btn-sm" (click)="askRemove(s)" [attr.aria-label]="'Quitar acceso a ' + s.user.name">Quitar acceso</button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</section>
+
+@if (studentToRemove(); as target) {
+  <app-confirm-dialog
+    [show]="true"
+    title="Quitar acceso"
+    [message]="'¿Quitar el acceso de ' + target.user.name + ' (' + target.user.email + ') a este curso? Se borrará también su progreso. Esta acción no se puede deshacer.'"
+    confirmText="Quitar acceso"
+    type="danger"
+    (confirmed)="confirmRemove()"
+    (cancelled)="cancelRemove()"
+  ></app-confirm-dialog>
+}

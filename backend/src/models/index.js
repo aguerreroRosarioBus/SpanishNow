@@ -12,6 +12,17 @@ const LessonBlock = require('./LessonBlock');
 const LessonProgress = require('./LessonProgress');
 const LessonAnswer = require('./LessonAnswer');
 const LessonReinforcement = require('./LessonReinforcement');
+const Order = require('./Order');
+const PasswordToken = require('./PasswordToken');
+const Material = require('./Material');
+const UnitQuiz = require('./UnitQuiz');
+const UnitQuizQuestion = require('./UnitQuizQuestion');
+const UnitQuizAttempt = require('./UnitQuizAttempt');
+const Certificate = require('./Certificate');
+const Coupon = require('./Coupon');
+const Affiliate = require('./Affiliate');
+const AffiliatePayout = require('./AffiliatePayout');
+const LessonComment = require('./LessonComment');
 
 // Define associations
 User.hasMany(Course, { foreignKey: 'teacherId', as: 'courses' });
@@ -53,6 +64,60 @@ LessonProgress.belongsTo(LessonPlan, { foreignKey: 'planId', as: 'plan' });
 LessonProgress.hasMany(LessonAnswer, { foreignKey: 'lessonProgressId', as: 'answers' });
 LessonProgress.hasMany(LessonReinforcement, { foreignKey: 'lessonProgressId', as: 'reinforcements' });
 
+// Sales
+Course.hasMany(Order, { foreignKey: 'courseId', as: 'orders' });
+Order.belongsTo(Course, { foreignKey: 'courseId', as: 'course' });
+User.hasMany(Order, { foreignKey: 'userId', as: 'orders' });
+Order.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+Order.hasMany(Enrollment, { foreignKey: 'orderId', as: 'enrollments' });
+Enrollment.belongsTo(Order, { foreignKey: 'orderId', as: 'order' });
+User.hasMany(PasswordToken, { foreignKey: 'userId', as: 'passwordTokens', onDelete: 'CASCADE' });
+PasswordToken.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+// Phase 2: materials, unit quizzes and certificates
+Course.hasMany(Material, { foreignKey: 'courseId', as: 'materials', onDelete: 'CASCADE' });
+Material.belongsTo(Course, { foreignKey: 'courseId', as: 'course' });
+Unit.hasMany(Material, { foreignKey: 'unitId', as: 'materials', onDelete: 'CASCADE' });
+Material.belongsTo(Unit, { foreignKey: 'unitId', as: 'unit' });
+Story.hasMany(Material, { foreignKey: 'storyId', as: 'materials', onDelete: 'CASCADE' });
+Material.belongsTo(Story, { foreignKey: 'storyId', as: 'story' });
+
+Unit.hasOne(UnitQuiz, { foreignKey: 'unitId', as: 'quiz', onDelete: 'CASCADE' });
+UnitQuiz.belongsTo(Unit, { foreignKey: 'unitId', as: 'unit' });
+UnitQuiz.hasMany(UnitQuizQuestion, { foreignKey: 'quizId', as: 'questions', onDelete: 'CASCADE' });
+UnitQuizQuestion.belongsTo(UnitQuiz, { foreignKey: 'quizId', as: 'quiz' });
+UnitQuiz.hasMany(UnitQuizAttempt, { foreignKey: 'quizId', as: 'attempts', onDelete: 'CASCADE' });
+UnitQuizAttempt.belongsTo(UnitQuiz, { foreignKey: 'quizId', as: 'quiz' });
+Enrollment.hasMany(UnitQuizAttempt, { foreignKey: 'enrollmentId', as: 'quizAttempts', onDelete: 'CASCADE' });
+UnitQuizAttempt.belongsTo(Enrollment, { foreignKey: 'enrollmentId', as: 'enrollment' });
+Enrollment.hasOne(Certificate, { foreignKey: 'enrollmentId', as: 'certificate', onDelete: 'CASCADE' });
+Certificate.belongsTo(Enrollment, { foreignKey: 'enrollmentId', as: 'enrollment' });
+
+// Phase 3: coupons and course series
+User.hasMany(Coupon, { foreignKey: 'teacherId', as: 'coupons' });
+Coupon.belongsTo(User, { foreignKey: 'teacherId', as: 'teacher' });
+Course.hasMany(Coupon, { foreignKey: 'courseId', as: 'coupons' });
+Coupon.belongsTo(Course, { foreignKey: 'courseId', as: 'course' });
+Coupon.hasMany(Order, { foreignKey: 'couponId', as: 'orders' });
+Order.belongsTo(Coupon, { foreignKey: 'couponId', as: 'coupon' });
+Course.belongsTo(Course, { foreignKey: 'nextCourseId', as: 'nextCourse' });
+Course.belongsTo(Coupon, { foreignKey: 'nextCourseCouponId', as: 'nextCourseCoupon' });
+
+// Phase 4: affiliates, lesson comments
+User.hasMany(Affiliate, { foreignKey: 'teacherId', as: 'affiliates' });
+Affiliate.belongsTo(User, { foreignKey: 'teacherId', as: 'teacher' });
+Affiliate.hasMany(AffiliatePayout, { foreignKey: 'affiliateId', as: 'payouts', onDelete: 'CASCADE' });
+AffiliatePayout.belongsTo(Affiliate, { foreignKey: 'affiliateId', as: 'affiliate' });
+Affiliate.hasMany(Order, { foreignKey: 'affiliateId', as: 'orders' });
+Order.belongsTo(Affiliate, { foreignKey: 'affiliateId', as: 'affiliate' });
+
+Story.hasMany(LessonComment, { foreignKey: 'storyId', as: 'comments', onDelete: 'CASCADE' });
+LessonComment.belongsTo(Story, { foreignKey: 'storyId', as: 'story' });
+User.hasMany(LessonComment, { foreignKey: 'userId', as: 'comments', onDelete: 'CASCADE' });
+LessonComment.belongsTo(User, { foreignKey: 'userId', as: 'author' });
+LessonComment.hasMany(LessonComment, { foreignKey: 'parentId', as: 'replies', onDelete: 'CASCADE' });
+LessonComment.belongsTo(LessonComment, { foreignKey: 'parentId', as: 'parent' });
+
 module.exports = {
   User,
   Course,
@@ -67,5 +132,16 @@ module.exports = {
   LessonBlock,
   LessonProgress,
   LessonAnswer,
-  LessonReinforcement
+  LessonReinforcement,
+  Order,
+  PasswordToken,
+  Material,
+  UnitQuiz,
+  UnitQuizQuestion,
+  UnitQuizAttempt,
+  Certificate,
+  Coupon,
+  Affiliate,
+  AffiliatePayout,
+  LessonComment
 };

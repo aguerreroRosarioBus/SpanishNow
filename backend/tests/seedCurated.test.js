@@ -114,7 +114,7 @@ describe('plan builder', () => {
 
 describe('full run on an empty database (migrate + seed + verify)', () => {
   let scratch;
-  const env = { ...process.env, DB_NAME: SEED_DB };
+  const env = { ...process.env, DB_NAME: SEED_DB, MEDIA_FAKE_UPLOADS: '1' }; // the sample PDF is stored locally, never in Cloudinary
   const node = (script, ...args) => spawnSync('node', [path.join(BACKEND, 'src', 'db', script), ...args], { env, encoding: 'utf8' });
   const query = async (sql, replacements) => (await scratch.query(sql, { replacements }))[0];
 
@@ -122,7 +122,11 @@ describe('full run on an empty database (migrate + seed + verify)', () => {
     scratch = await createScratchDb(SEED_DB);
     expect(node('migrate.js', 'up').status).toBe(0);
   }, 60000);
-  afterAll(async () => { await dropScratchDb(SEED_DB, scratch); });
+  afterAll(async () => {
+    const rows = await query('SELECT fileUrl FROM materials').catch(() => []);
+    for (const row of rows) await require('../src/config/fakeUploads').removeFake(row.fileUrl);
+    await dropScratchDb(SEED_DB, scratch);
+  });
 
   test('seeds the course, one published revision per story and the curated plans', async () => {
     const result = node('seed.js');
@@ -151,6 +155,34 @@ describe('full run on an empty database (migrate + seed + verify)', () => {
     const student = (await query('SELECT * FROM users WHERE email = ?', [accounts.find(a => a.role === 'student').email]))[0];
     expect(await bcrypt.compare(filePassword, student.password)).toBe(true);
     expect((await query('SELECT COUNT(*) AS n FROM enrollments WHERE studentId = ?', [student.id]))[0].n).toBe(1);
+  }, 60000);
+
+  test('adds the phase 2 sample content to the demo course once: welcome video, 2 story videos, a PDF and a published quiz in unit 1', async () => {
+    const [course] = await query('SELECT introVideoUrl FROM courses WHERE id = 1');
+    expect(course.introVideoUrl).toBe('https://www.youtube-nocookie.com/embed/jNQXAC9IVRw');
+    expect((await query('SELECT COUNT(*) AS n FROM stories WHERE videoUrl IS NOT NULL'))[0].n).toBe(2);
+    expect((await query('SELECT COUNT(*) AS n FROM stories WHERE videoUrl IS NOT NULL AND unitId = 1'))[0].n).toBe(2);
+    const quizzes = await query('SELECT id, unitId, isPublished, passingScore FROM unit_quizzes');
+    expect(quizzes).toEqual([{ id: expect.any(Number), unitId: 1, isPublished: 1, passingScore: 70 }]);
+    expect((await query('SELECT COUNT(*) AS n FROM unit_quiz_questions WHERE quizId = ?', [quizzes[0].id]))[0].n).toBe(3);
+    const materials = await query('SELECT * FROM materials');
+    expect(materials).toHaveLength(1);
+    expect(materials[0]).toMatchObject({ courseId: 1, unitId: 1, storyId: null, providerPublicId: null });
+    const file = path.join(require('../src/config/fakeUploads').DIR, path.basename(materials[0].fileUrl));
+    expect(fs.readFileSync(file).subarray(0, 5).toString('latin1')).toBe('%PDF-');
+    expect(materials[0].sizeBytes).toBe(fs.statSync(file).size);
+  }, 60000);
+
+  test('the sample content is never added again or over what a teacher already has', async () => {
+    const counts = () => query('SELECT (SELECT COUNT(*) FROM materials) AS m, (SELECT COUNT(*) FROM unit_quizzes) AS q, (SELECT COUNT(*) FROM unit_quiz_questions) AS qq');
+    const before = await counts();
+    await query("UPDATE courses SET introVideoUrl = 'https://player.vimeo.com/video/76979871' WHERE id = 1");
+    const result = node('seed.js');
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('nothing to add');
+    expect(await counts()).toEqual(before);
+    expect((await query('SELECT introVideoUrl FROM courses WHERE id = 1'))[0].introVideoUrl).toBe('https://player.vimeo.com/video/76979871');
+    await query("UPDATE courses SET introVideoUrl = 'https://www.youtube-nocookie.com/embed/jNQXAC9IVRw' WHERE id = 1");
   }, 60000);
 
   test('running it again changes nothing', async () => {

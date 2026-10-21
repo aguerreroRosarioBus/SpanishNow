@@ -53,7 +53,10 @@ describe('StoryPlayerComponent (flujo TPRS)', () => {
         provideRouter([]),
         { provide: ActivatedRoute, useValue: { params: of({ courseId: '1' }) } },
         { provide: AuthService, useValue: { currentUser: signal({ id: 1, role: 'student' }), isStudent: () => true } },
-        { provide: EnrollmentService, useValue: { getMyCourses: () => of([{ id: 1, studentId: 1, courseId: 1, createdAt: '', lessonProgress: [] }]) } },
+        { provide: EnrollmentService, useValue: {
+          getMyCourses: () => of([{ id: 1, studentId: 1, courseId: 1, createdAt: '', lessonProgress: [] }]),
+          getProgressSummary: () => of({ stories: [], quizzes: [], certificate: null }),
+        } },
         { provide: CourseService, useValue: { getCourse: () => of(course) } },
         { provide: StudentLessonService, useValue: lessonApi },
         provideHttpClient(),

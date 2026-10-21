@@ -21,6 +21,7 @@ function extensionOf(buffer) {
   if (head.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return '.png';
   if (head[0] === 0xff && head[1] === 0xd8 && head[2] === 0xff) return '.jpg';
   if (head.subarray(0, 4).toString('latin1') === 'GIF8') return '.gif';
+  if (head.subarray(0, 5).toString('latin1') === '%PDF-') return '.pdf';
   if (head.subarray(0, 4).toString('latin1') === 'RIFF' && head.subarray(8, 12).toString('latin1') === 'WEBP') return '.webp';
   if (head.subarray(0, 4).toString('latin1') === 'RIFF' && head.subarray(8, 12).toString('latin1') === 'WAVE') return '.wav';
   if (head.subarray(0, 4).toString('latin1') === 'OggS') return '.ogg';
@@ -41,4 +42,14 @@ async function saveFake(buffer) {
   return { secure_url: `${baseUrl()}/uploads-dev/${name}` };
 }
 
-module.exports = { DIR, enabled, assertSafe, saveFake, extensionOf };
+/** Removes a file written by saveFake (by its URL). Best effort: resolves false when it was not there. */
+async function removeFake(url) {
+  try {
+    const name = path.basename(new URL(url).pathname);
+    if (!/^[0-9a-f-]{36}\.[a-z0-9]+$/.test(name)) return false;
+    await fs.promises.rm(path.join(DIR, name), { force: true });
+    return true;
+  } catch { return false; }
+}
+
+module.exports = { DIR, enabled, assertSafe, saveFake, removeFake, extensionOf };

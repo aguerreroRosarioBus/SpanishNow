@@ -1,3 +1,5 @@
+import { NextCourseOffer } from './sales.model';
+
 export interface Course {
   id: number;
   title: string;
@@ -12,8 +14,24 @@ export interface Course {
     name: string;
   };
   units?: Unit[];
+  /** URL amigable de la página de venta (puede faltar en cursos viejos). */
+  slug?: string | null;
+  /** Precio en centavos; 0 = gratis. */
+  price?: number;
+  /** Código ISO en minúsculas (usd, eur, gbp). */
+  currency?: string;
+  isPublished?: boolean;
+  /** Texto largo de la página de venta (en inglés). */
+  salesDescription?: string | null;
   /** Solo en el detalle del curso (GET /courses/:id) */
   enrollmentCount?: number;
+  /** Video de bienvenida (URL de embed normalizada por el servidor) o null. */
+  introVideoUrl?: string | null;
+  /** Curso siguiente de la serie y cupón para ofrecerlo (solo lo ve el docente). */
+  nextCourseId?: number | null;
+  nextCourseCouponId?: number | null;
+  /** Materiales generales del curso (sin unidad ni historia). Del alumno: sin fileUrl. */
+  materials?: Material[];
 }
 
 export interface Unit {
@@ -24,6 +42,34 @@ export interface Unit {
   order: number;
   stories?: Story[];
   vocabulary?: Vocabulary[];
+  /** Materiales de la unidad. */
+  materials?: Material[];
+  /** Quiz publicado de la unidad (en el detalle del curso del alumno; el docente lo edita con QuizService). */
+  quiz?: UnitQuizSummary | null;
+  /** Contenido por fechas (docente): días desde la inscripción y/o fecha fija. */
+  releaseAfterDays?: number | null;
+  releaseAt?: string | null;
+  /** Del alumno: la unidad sigue bloqueada y, si se sabe, desde cuándo está disponible. */
+  locked?: boolean;
+  availableAt?: string | null;
+}
+
+/** PDF descargable. El link real nunca viaja: la descarga pasa por GET /materials/:id/download-url. */
+export interface Material {
+  id: number;
+  courseId?: number;
+  unitId?: number | null;
+  storyId?: number | null;
+  title: string;
+  sizeBytes: number;
+  order?: number;
+}
+
+export interface UnitQuizSummary {
+  id: number;
+  title: string;
+  questionCount: number;
+  passingScore: number;
 }
 
 export interface Story {
@@ -40,6 +86,12 @@ export interface Story {
   order: number;
   questions?: Question[];
   repetitionActivities?: RepetitionActivity[];
+  /** Video de la lección (URL de embed normalizada) o null. */
+  videoUrl?: string | null;
+  /** Materiales de la historia. */
+  materials?: Material[];
+  /** Cantidad de comentarios de la lección. */
+  commentCount?: number;
 }
 
 export interface Vocabulary {
@@ -86,6 +138,28 @@ export interface StoryProgress {
   completedAt: string | null;
   answers: { total: number; correct: number; attempts: number };
   reinforcements: { total: number; completed: number };
+}
+
+/** Avance de quizzes y certificado de una inscripción (GET /enrollments/:id/progress). */
+export interface QuizProgress {
+  unitId: number;
+  quizId: number;
+  bestScore: number | null;
+  passed: boolean;
+}
+
+export interface CertificateStatus {
+  eligible: boolean;
+  code: string | null;
+  missing: { stories: number; quizzes: number };
+}
+
+export interface EnrollmentProgress {
+  stories: StoryProgress[];
+  quizzes: QuizProgress[];
+  certificate: CertificateStatus | null;
+  /** Curso siguiente de la serie (null si no hay o no está publicado). */
+  next: NextCourseOffer | null;
 }
 
 export interface ResetProgressResult {
