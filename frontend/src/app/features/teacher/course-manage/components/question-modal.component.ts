@@ -7,12 +7,13 @@ import { Question, Story } from '../../../../core/models/course.model';
 import { AudioInputComponent } from '../audio/audio-input.component';
 import { CourseManageStore } from '../course-manage.store';
 import { TooltipModalComponent } from './tooltip-modal.component';
+import { IconComponent } from '../../../../shared/components/icon/icon.component';
 
 /** Preguntas de una historia: alta/edición con audio opcional, listado, borrado y tooltips por pregunta. */
 @Component({
   selector: 'app-question-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, AudioInputComponent, TooltipModalComponent],
+  imports: [CommonModule, ReactiveFormsModule, AudioInputComponent, TooltipModalComponent, IconComponent],
   templateUrl: './question-modal.component.html',
   styleUrl: './question-modal.component.scss'
 })

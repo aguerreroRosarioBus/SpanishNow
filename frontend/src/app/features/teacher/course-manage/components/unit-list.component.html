@@ -1,30 +1,22 @@
-<div class="row g-4">
-  <!-- Empty State -->
-  <div *ngIf="store.units().length === 0" class="col-12">
-    <div class="card">
-      <div class="card-body text-center py-5">
-        <h2 class="h5 mb-3">No hay unidades creadas</h2>
-        <p class="text-muted mb-4">Comienza creando la primera unidad de tu curso</p>
-        <button class="btn btn-primary" (click)="store.open({ kind: 'unit-create' })">
-          Crear Primera Unidad
-        </button>
-      </div>
+<div class="list-bar">
+  <h2 class="list-bar__title">Contenido del curso</h2>
+  @if (store.units().length > 0) {
+    <div class="list-bar__actions">
+      <button type="button" class="btn btn-ghost btn-sm" (click)="store.expandAllUnits()">Expandir todo</button>
+      <button type="button" class="btn btn-ghost btn-sm" (click)="store.collapseAllUnits()">Colapsar todo</button>
     </div>
-  </div>
+  }
+</div>
 
-  <!-- Expand/Collapse All Controls -->
-  <div *ngIf="store.units().length > 0" class="col-12 mb-3">
-    <div class="d-flex gap-2">
-      <button class="btn btn-sm btn-outline-secondary" (click)="store.expandAllUnits()">
-        ▼ Expandir todas
-      </button>
-      <button class="btn btn-sm btn-outline-secondary" (click)="store.collapseAllUnits()">
-        ▶ Colapsar todas
-      </button>
-    </div>
+@if (store.units().length === 0) {
+  <div class="state-box">
+    <strong>Aún no hay unidades</strong>
+    <span>Crea la primera con «Nueva unidad» para empezar a agregar historias.</span>
   </div>
+}
 
-  <div *ngFor="let unit of store.units(); trackBy: trackById" class="col-12">
-    <app-unit-card [unit]="unit" />
-  </div>
+<div class="unit-stack">
+  @for (unit of store.units(); track unit.id) {
+    <app-unit-card [unit]="unit" [number]="$index + 1" />
+  }
 </div>

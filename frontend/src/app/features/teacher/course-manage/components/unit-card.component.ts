@@ -1,5 +1,8 @@
-import { Component, inject, input } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, computed, inject, input } from '@angular/core';
+import { NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem } from '@ng-bootstrap/ng-bootstrap';
+import { IconComponent } from '../../../../shared/components/icon/icon.component';
+import { unitDisplayTitle } from '../../../../shared/utils/unit-title';
+import { PluralPipe } from '../../../../shared/pipes/plural.pipe';
 import { Story, Unit } from '../../../../core/models/course.model';
 import { CourseManageStore } from '../course-manage.store';
 import { StoryCardComponent } from './story-card.component';
@@ -11,15 +14,20 @@ let draggedUnit: Unit | null = null;
 @Component({
   selector: 'app-unit-card',
   standalone: true,
-  imports: [CommonModule, StoryCardComponent],
+  imports: [NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem, IconComponent, PluralPipe, StoryCardComponent],
   templateUrl: './unit-card.component.html',
   styleUrl: './unit-card.component.scss'
 })
 export class UnitCardComponent {
   store = inject(CourseManageStore);
   unit = input.required<Unit>();
+  /** Número visible de la unidad (posición en el curso) */
+  number = input.required<number>();
 
-  trackById = (_: number, item: { id: number }) => item.id;
+  title = computed(() => unitDisplayTitle(this.unit().title));
+  open = computed(() => this.store.isUnitExpanded(this.unit().id));
+  storyCount = computed(() => this.unit().stories?.length ?? 0);
+  publishedCount = computed(() => (this.unit().stories ?? []).filter(s => s.lessonStatus === 'published').length);
   private draggedStory: Story | null = null;
 
   onDragOver(event: DragEvent): void {

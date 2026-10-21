@@ -1,6 +1,8 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, computed, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { IconComponent } from '../../../shared/components/icon/icon.component';
+import { PluralPipe } from '../../../shared/pipes/plural.pipe';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { LessonComposerComponent } from '../lesson-composer/lesson-composer.component';
 import { CourseManageStore } from './course-manage.store';
@@ -19,7 +21,7 @@ import { TooltipModalComponent } from './components/tooltip-modal.component';
   selector: 'app-course-manage',
   standalone: true,
   imports: [
-    CommonModule, ConfirmDialogComponent, LessonComposerComponent, UnitListComponent,
+    CommonModule, RouterLink, IconComponent, PluralPipe, ConfirmDialogComponent, LessonComposerComponent, UnitListComponent,
     CourseEditModalComponent, UnitFormModalComponent, StoryCreateModalComponent, StoryEditModalComponent,
     QuestionModalComponent, VocabularyModalComponent, RepetitionModalComponent, TooltipModalComponent
   ],
@@ -38,8 +40,8 @@ export class CourseManageComponent implements OnInit {
     else this.router.navigate(['/teacher/dashboard']);
   }
 
-  /** Desde el compositor se pasa a gestionar preguntas o vocabulario cerrando el compositor. */
-  goBack(): void {
-    this.router.navigate(['/teacher/dashboard']);
-  }
+  storyCount = computed(() => this.store.units().reduce((sum, unit) => sum + (unit.stories?.length ?? 0), 0));
+  /** Historias con lección publicada: sin ninguna, el curso todavía no tiene nada para estudiar. */
+  publishedCount = computed(() =>
+    this.store.units().reduce((sum, unit) => sum + (unit.stories ?? []).filter(s => s.lessonStatus === 'published').length, 0));
 }

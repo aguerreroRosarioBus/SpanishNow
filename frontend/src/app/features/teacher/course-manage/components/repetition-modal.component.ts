@@ -7,12 +7,13 @@ import { ToastService } from '../../../../core/services/toast.service';
 import { RepetitionActivity, Story } from '../../../../core/models/course.model';
 import { AudioInputComponent } from '../audio/audio-input.component';
 import { CourseManageStore } from '../course-manage.store';
+import { IconComponent } from '../../../../shared/components/icon/icon.component';
 
 /** Audios de escuchar y repetir de una historia: alta, listado, reordenamiento y borrado. */
 @Component({
   selector: 'app-repetition-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, AudioInputComponent],
+  imports: [CommonModule, ReactiveFormsModule, AudioInputComponent, IconComponent],
   templateUrl: './repetition-modal.component.html'
 })
 export class RepetitionModalComponent implements OnInit {

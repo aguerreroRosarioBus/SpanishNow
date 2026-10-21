@@ -613,7 +613,7 @@ a {
   display: inline-flex;
   padding: 2px 8px;
   border-radius: var(--radius-sm);
-  background: var(--color-primary-soft);
+  background: #fdeee4;
   color: var(--color-primary-hover);
   font-size: 0.75rem;
   font-weight: 700;
@@ -754,6 +754,16 @@ a {
   border: 1px solid var(--color-border);
   border-radius: 10px;
   box-shadow: var(--shadow-menu);
+}
+
+.dropdown-toggle.btn-icon::after,
+.dropdown-toggle.no-caret::after {
+  display: none;
+}
+
+.dropdown-divider {
+  margin: 6px 4px;
+  border-top-color: var(--color-border);
 }
 
 .dropdown-item {

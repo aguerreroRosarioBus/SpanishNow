@@ -2,6 +2,7 @@ import { Component, OnDestroy, inject, input, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToastService } from '../../../../core/services/toast.service';
 import { AudioRecorder } from './audio-recorder';
+import { IconComponent } from '../../../../shared/components/icon/icon.component';
 
 /**
  * Selector de audio reutilizable: subir un archivo o grabar con el micrófono.
@@ -10,7 +11,7 @@ import { AudioRecorder } from './audio-recorder';
 @Component({
   selector: 'app-audio-input',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, IconComponent],
   templateUrl: './audio-input.component.html'
 })
 export class AudioInputComponent implements OnDestroy {
@@ -20,12 +21,12 @@ export class AudioInputComponent implements OnDestroy {
   name = input.required<string>();
   /** inline: botones lado a lado con aviso de grabación; stacked: botones a todo el ancho. */
   layout = input<'inline' | 'stacked'>('inline');
-  uploadLabel = input('📁 Subir archivo');
-  recordLabel = input('🎤 Grabar');
+  uploadLabel = input('Subir archivo');
+  recordLabel = input('Grabar');
   uploadHint = input('');
   recordHint = input('');
   recordingText = input('Grabando... Habla ahora');
-  recordedText = input('✓ Audio grabado correctamente');
+  recordedText = input('Audio grabado correctamente');
   recordedFileName = input('recording.webm');
   startedMessage = input('Grabación iniciada');
   stoppedMessage = input('Grabación detenida');

@@ -112,7 +112,11 @@ export class CourseManageStore {
 
   // ===== Mutaciones locales =====
 
-  addUnit(unit: Unit): void { this.units.update(list => [...list, unit]); }
+  addUnit(unit: Unit): void {
+    this.units.update(list => [...list, unit]);
+    // La unidad nueva se muestra abierta: lo siguiente que se hace es agregarle historias
+    this.expandedUnits.update(set => new Set(set).add(unit.id));
+  }
   patchUnit(updated: Unit): void {
     this.units.update(list => list.map(u => u.id === updated.id ? { ...u, ...updated } : u));
   }
@@ -130,7 +134,8 @@ export class CourseManageStore {
   // ===== Borrados con confirmación =====
 
   deleteUnit(unitId: number): void {
-    this.confirm('Eliminar Unidad', '¿Estás seguro de eliminar esta unidad? Se eliminarán todas sus historias.', 'Eliminar', () => {
+    const title = this.units().find(u => u.id === unitId)?.title;
+    this.confirm('Eliminar unidad', `¿Eliminar la unidad «${title ?? 'sin título'}»? También se eliminarán todas sus historias. Esta acción no se puede deshacer.`, 'Eliminar unidad', () => {
       this.unitService.deleteUnit(unitId).subscribe({
         next: () => {
           this.units.update(list => list.filter(u => u.id !== unitId));
@@ -145,7 +150,8 @@ export class CourseManageStore {
   }
 
   deleteStory(unitId: number, storyId: number): void {
-    this.confirm('Eliminar Historia', '¿Estás seguro de eliminar esta historia?', 'Eliminar', () => {
+    const title = this.units().find(u => u.id === unitId)?.stories?.find(s => s.id === storyId)?.title;
+    this.confirm('Eliminar historia', `¿Eliminar la historia «${title ?? 'sin título'}»? Esta acción no se puede deshacer.`, 'Eliminar historia', () => {
       this.storyService.deleteStory(storyId).subscribe({
         next: () => {
           this.units.update(list => list.map(u => u.id === unitId ? { ...u, stories: (u.stories || []).filter(s => s.id !== storyId) } : u));

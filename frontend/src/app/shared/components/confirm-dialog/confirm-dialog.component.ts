@@ -9,15 +9,11 @@ import { CommonModule } from '@angular/common';
     <div class="modal fade" [class.show]="show" [style.display]="show ? 'block' : 'none'" tabindex="-1">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-          <div class="modal-header" [class.bg-danger]="type === 'danger'" [class.text-white]="type === 'danger'">
-            <h5 class="modal-title">
-              <span *ngIf="type === 'danger'">⚠️</span>
-              <span *ngIf="type === 'warning'">⚠️</span>
-              {{ title }}
-            </h5>
+          <div class="modal-header">
+            <h5 class="modal-title">{{ title }}</h5>
           </div>
           <div class="modal-body">
-            <p>{{ message }}</p>
+            <p class="mb-0">{{ message }}</p>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" (click)="onCancel()">

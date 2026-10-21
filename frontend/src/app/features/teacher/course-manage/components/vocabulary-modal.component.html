@@ -3,7 +3,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">
-          📚 Vocabulario - {{ unit().title }}
+          Vocabulario · {{ unit().title }}
         </h5>
         <button type="button" class="btn-close" (click)="close()"></button>
       </div>
@@ -71,13 +71,13 @@
           <div *ngFor="let vocab of vocabulary()" class="list-group-item">
             <div class="d-flex justify-content-between align-items-start">
               <div class="flex-grow-1">
-                <strong>{{ vocab.word }}</strong> → {{ vocab.translation }}
+                <strong>{{ vocab.word }}</strong> · {{ vocab.translation }}
                 <span *ngIf="vocab.partOfSpeech" class="badge bg-secondary ms-2">{{ vocab.partOfSpeech }}</span>
                 <br>
                 <small class="text-muted" *ngIf="vocab.example">Ejemplo: {{ vocab.example }}</small>
                 <br>
-                <small class="text-success" *ngIf="vocab.audioUrl">🔊 Tiene audio</small>
-                <small class="text-info ms-2" *ngIf="vocab.imageUrl">🖼️ Tiene imagen</small>
+                <small class="text-success d-inline-flex align-items-center gap-1" *ngIf="vocab.audioUrl"><app-icon name="volume" [size]="14" />Tiene audio</small>
+                <small class="text-info ms-2 d-inline-flex align-items-center gap-1" *ngIf="vocab.imageUrl"><app-icon name="image" [size]="14" />Tiene imagen</small>
               </div>
               <button
                 class="btn btn-sm btn-outline-danger"

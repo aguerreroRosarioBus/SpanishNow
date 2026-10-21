@@ -46,12 +46,12 @@ test.describe.serial('Composición incremental de una lección', () => {
 
   test('1-5. Profesor: crea la historia con solo título, compone incrementalmente, revisa el panel y publica', async ({ page }) => {
     await login(page, teacher, /teacher\/dashboard/);
-    await page.locator('.card', { hasText: COURSE_TITLE }).getByRole('link', { name: /Gestionar Contenido/ }).click();
+    await page.locator('.card', { hasText: COURSE_TITLE }).getByRole('link', { name: /Gestionar contenido/i }).click();
     await expect(page).toHaveURL(/teacher\/course\/(\d+)\/manage/);
     courseUrl = /teacher\/course\/(\d+)\/manage/.exec(page.url())![1];
 
     // Unidad nueva (por la regla de desbloqueo secuencial del alumno).
-    await page.getByRole('button', { name: '+ Nueva Unidad' }).click();
+    await page.getByRole('button', { name: 'Nueva unidad' }).click();
     await page.getByLabel('Título *').fill(UNIT_TITLE);
     await page.getByLabel('Descripción *').fill('Unidad creada por el E2E de composición incremental');
     await page.getByRole('button', { name: 'Crear Unidad' }).click();
@@ -59,7 +59,7 @@ test.describe.serial('Composición incremental de una lección', () => {
     await expect(unit).toBeVisible();
 
     // 1. Historia solo con título -> «Crear y componer lección» abre el compositor.
-    await unit.getByRole('button', { name: '+ Historia' }).click();
+    await unit.getByRole('button', { name: 'Agregar historia' }).click();
     const create = page.getByRole('button', { name: 'Crear y componer lección' });
     await expect(create).toBeDisabled();
     await page.getByLabel('Título *').fill(STORY_TITLE);
@@ -137,10 +137,10 @@ test.describe.serial('Composición incremental de una lección', () => {
     // El texto de la historia se reconstruyó desde los keyframes: «Editar Texto» lo muestra de solo lectura.
     await dialog.getByRole('button', { name: 'Cerrar compositor' }).click();
     await expect(dialog).toBeHidden();
-    await page.getByRole('button', { name: /Expandir todas/ }).click();
+    await page.getByRole('button', { name: 'Expandir todo' }).click();
     const card = page.locator('app-story-card').filter({ hasText: STORY_TITLE });
-    await card.getByText(STORY_TITLE).first().click();
-    await card.getByRole('button', { name: /Editar Texto/ }).click();
+    await card.getByRole('button', { name: 'Más acciones de la historia' }).click();
+    await page.getByRole('menuitem', { name: 'Editar historia' }).click();
     const editor = page.locator('.modal-content', { hasText: 'Editar Historia' });
     await expect(editor.getByLabel('Texto de la Historia')).toHaveValue(`${KF1}\n\n${KF2}`);
     await expect(editor.getByLabel('Texto de la Historia')).toHaveJSProperty('readOnly', true);

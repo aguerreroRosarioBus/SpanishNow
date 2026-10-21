@@ -62,17 +62,17 @@ test.describe.serial('Ilustraciones en la lección', () => {
 
   test('1-4. Profesor: dibuja, sube imagen, ilustra una expresión y publica', async ({ page }) => {
     await login(page, teacher, /teacher\/dashboard/);
-    await page.locator('.card', { hasText: COURSE_TITLE }).getByRole('link', { name: /Gestionar Contenido/ }).click();
+    await page.locator('.card', { hasText: COURSE_TITLE }).getByRole('link', { name: /Gestionar contenido/i }).click();
     await expect(page).toHaveURL(/teacher\/course\/(\d+)\/manage/);
     courseUrl = /teacher\/course\/(\d+)\/manage/.exec(page.url())![1];
 
-    await page.getByRole('button', { name: '+ Nueva Unidad' }).click();
+    await page.getByRole('button', { name: 'Nueva unidad' }).click();
     await page.getByLabel('Título *').fill(UNIT_TITLE);
     await page.getByLabel('Descripción *').fill('Unidad creada por el E2E de ilustraciones');
     await page.getByRole('button', { name: 'Crear Unidad' }).click();
     const unit = page.locator('app-unit-card').filter({ hasText: UNIT_TITLE });
     await expect(unit).toBeVisible();
-    await unit.getByRole('button', { name: '+ Historia' }).click();
+    await unit.getByRole('button', { name: 'Agregar historia' }).click();
     await page.getByLabel('Título *').fill(STORY_TITLE);
     await page.getByRole('button', { name: 'Crear y componer lección' }).click();
     const dialog = composerDialog(page);
@@ -176,10 +176,9 @@ test.describe.serial('Ilustraciones en la lección', () => {
     page.on('console', m => { if (/CORS|tainted/i.test(m.text())) corsErrors.push(m.text()); });
     await login(page, teacher, /teacher\/dashboard/);
     await page.goto(`/teacher/course/${courseUrl}/manage`);
-    await page.getByRole('button', { name: /Expandir todas/ }).click();
+    await page.getByRole('button', { name: 'Expandir todo' }).click();
     const card = page.locator('app-story-card').filter({ hasText: STORY_TITLE });
-    await card.getByText(STORY_TITLE).first().click();
-    await card.getByRole('button', { name: /Componer lección TPRS/ }).click();
+    await card.getByRole('button', { name: STORY_TITLE }).click();
     const dialog = composerDialog(page);
     await expect(dialog).toBeVisible();
     await expect(dialog.getByText('Cargando borrador')).toBeHidden();

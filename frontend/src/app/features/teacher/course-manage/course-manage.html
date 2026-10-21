@@ -1,97 +1,47 @@
-<div class="container-fluid mt-4">
-  <div class="row">
-    <div class="col-12">
-      <!-- Loading -->
-      <div *ngIf="store.isLoading()" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
-          <span class="visually-hidden">Cargando...</span>
+<div class="page-container">
+  @if (store.isLoading()) {
+    <div class="text-center py-5" role="status">
+      <div class="spinner-border text-primary" aria-hidden="true"></div>
+      <p class="text-muted mt-2 mb-0">Cargando curso…</p>
+    </div>
+  }
+
+  @if (store.errorMessage()) {
+    <div class="alert alert-danger" role="alert">{{ store.errorMessage() }}</div>
+  }
+
+  @if (!store.isLoading() && store.course(); as course) {
+    <nav class="breadcrumb-nav" aria-label="Ruta">
+      <a routerLink="/teacher/dashboard">Mis cursos</a>
+      <app-icon name="chevron-right" [size]="14" />
+      <span class="current" aria-current="page">{{ course.title }}</span>
+    </nav>
+
+    <div class="page-header">
+      <div class="page-header__main">
+        <div class="page-header__title">
+          <h1 class="page-title">{{ course.title }}</h1>
+          <span class="badge-level">{{ course.level }}</span>
+          <span class="badge-status badge-status--dot" [class.badge-status--published]="publishedCount() > 0" [class.badge-status--draft]="publishedCount() === 0">
+            {{ publishedCount() > 0 ? 'Publicado' : 'Borrador' }}
+          </span>
         </div>
-        <p class="text-muted mt-2">Cargando curso...</p>
+        <p class="page-summary">
+          {{ store.units().length | plural:'unidad':'unidades' }} ·
+          {{ storyCount() | plural:'historia':'historias' }} ·
+          {{ (course.enrollmentCount ?? 0) | plural:'estudiante inscrito':'estudiantes inscritos':'Sin estudiantes inscritos' }}
+        </p>
       </div>
-
-      <!-- Error -->
-      <div *ngIf="store.errorMessage()" class="alert alert-danger">
-        {{ store.errorMessage() }}
-      </div>
-
-      <!-- Course Content -->
-      <div *ngIf="!store.isLoading() && store.course()">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-          <div>
-            <button class="btn btn-outline-secondary btn-sm mb-2" (click)="goBack()">
-              ← Volver al Dashboard
-            </button>
-            <div class="d-flex align-items-center gap-2">
-              <h1 class="h3 mb-1">{{ store.course()?.title }}</h1>
-              <button class="btn btn-sm btn-outline-primary" (click)="store.open({ kind: 'course-edit' })" title="Editar curso">
-                ✏️
-              </button>
-            </div>
-            <p class="text-muted mb-0">Gestión de Contenido del Curso</p>
-          </div>
-          <button class="btn btn-success" (click)="store.open({ kind: 'unit-create' })">
-            + Nueva Unidad
-          </button>
-        </div>
-
-        <app-unit-list />
+      <div class="page-actions">
+        <button type="button" class="btn btn-secondary" (click)="store.open({ kind: 'course-edit' })">
+          <app-icon name="pencil" [size]="16" />Editar curso
+        </button>
+        <button type="button" class="btn btn-primary" (click)="store.open({ kind: 'unit-create' })">
+          <app-icon name="plus" [size]="16" />Nueva unidad
+        </button>
       </div>
     </div>
-  </div>
+
+    <app-unit-list />
+  }
 </div>
-
-<!-- Diálogos: se crean al abrirse y se destruyen al cerrarse -->
-<ng-container *ngIf="store.modal() as modal">
-  <ng-container [ngSwitch]="modal.kind">
-    <app-course-edit-modal *ngSwitchCase="'course-edit'" />
-    <app-unit-form-modal *ngSwitchCase="'unit-create'" />
-    <ng-container *ngSwitchCase="'unit-edit'">
-      <app-unit-form-modal [unit]="$any(modal).unit" />
-    </ng-container>
-    <ng-container *ngSwitchCase="'story-create'">
-      <app-story-create-modal [unitId]="$any(modal).unitId" />
-    </ng-container>
-    <ng-container *ngSwitchCase="'story-edit'">
-      <app-story-edit-modal [story]="$any(modal).story" />
-    </ng-container>
-    <ng-container *ngSwitchCase="'questions'">
-      <app-question-modal [story]="$any(modal).story" />
-    </ng-container>
-    <ng-container *ngSwitchCase="'vocabulary'">
-      <app-vocabulary-modal [unit]="$any(modal).unit" />
-    </ng-container>
-    <ng-container *ngSwitchCase="'repetitions'">
-      <app-repetition-modal [story]="$any(modal).story" />
-    </ng-container>
-    <ng-container *ngSwitchCase="'story-tooltips'">
-      <app-tooltip-modal [title]="$any(modal).story.title" targetType="story"
-        [targetId]="$any(modal).story.id" [text]="$any(modal).story.text" (closed)="store.close()" />
-    </ng-container>
-  </ng-container>
-</ng-container>
-
-<!-- Modal Backdrop -->
-<div class="modal-backdrop fade show" *ngIf="store.hasBackdrop()"></div>
-
-<!-- Confirm Dialog -->
-<app-confirm-dialog
-  *ngIf="store.confirmData() as confirm"
-  [show]="store.showConfirmDialog()"
-  [title]="confirm.title"
-  [message]="confirm.message"
-  [confirmText]="confirm.confirmText"
-  [type]="confirm.type"
-  (confirmed)="store.acceptConfirm()"
-  (cancelled)="store.cancelConfirm()"
-></app-confirm-dialog>
-
-<ng-container *ngIf="store.modal() as modal">
-  <app-lesson-composer
-    *ngIf="modal.kind === 'composer'"
-    [story]="$any(modal).story"
-    [unit]="$any(modal).unit"
-    [courseUnits]="store.units()"
-    (closed)="store.close()"
-    (storyTextPublished)="store.setStoryText($any(modal).story.id, $event)"
-  ></app-lesson-composer>
-</ng-container>

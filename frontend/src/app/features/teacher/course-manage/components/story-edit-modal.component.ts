@@ -6,12 +6,13 @@ import { ToastService } from '../../../../core/services/toast.service';
 import { Story } from '../../../../core/models/course.model';
 import { AudioInputComponent } from '../audio/audio-input.component';
 import { CourseManageStore } from '../course-manage.store';
+import { IconComponent } from '../../../../shared/components/icon/icon.component';
 
 /** Edición de título, texto (si no hay lección) y audios de una historia (reemplazar o eliminar audio actual). */
 @Component({
   selector: 'app-story-edit-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, AudioInputComponent],
+  imports: [CommonModule, ReactiveFormsModule, AudioInputComponent, IconComponent],
   templateUrl: './story-edit-modal.component.html'
 })
 export class StoryEditModalComponent {

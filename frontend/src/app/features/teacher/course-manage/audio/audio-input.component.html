@@ -1,10 +1,10 @@
 <!-- Botones para elegir método -->
 <div class="btn-group w-100 mb-2" role="group">
   <input type="radio" class="btn-check" [name]="name() + 'Method'" [id]="name() + 'MethodUpload'" [checked]="method() === 'upload'" (change)="setMethod('upload')">
-  <label class="btn btn-outline-primary" [for]="name() + 'MethodUpload'">{{ uploadLabel() }}</label>
+  <label class="btn btn-outline-primary" [for]="name() + 'MethodUpload'"><app-icon name="upload" [size]="16" />{{ uploadLabel() }}</label>
 
   <input type="radio" class="btn-check" [name]="name() + 'Method'" [id]="name() + 'MethodRecord'" [checked]="method() === 'record'" (change)="setMethod('record')">
-  <label class="btn btn-outline-primary" [for]="name() + 'MethodRecord'">{{ recordLabel() }}</label>
+  <label class="btn btn-outline-primary" [for]="name() + 'MethodRecord'"><app-icon name="mic" [size]="16" />{{ recordLabel() }}</label>
 </div>
 
 <!-- Subir archivo -->
@@ -18,13 +18,13 @@
   <ng-container *ngIf="layout() === 'inline'; else stacked">
     <div class="d-flex gap-2 mb-2">
       <button type="button" class="btn btn-danger" *ngIf="!rec.isRecording() && !rec.blob()" (click)="rec.start()">
-        ⏺ Iniciar Grabación
+        <app-icon name="circle-dot" [size]="16" />Iniciar grabación
       </button>
       <button type="button" class="btn btn-success" *ngIf="rec.isRecording()" (click)="rec.stop()">
-        ⏹ Detener Grabación
+        <app-icon name="square" [size]="16" />Detener grabación
       </button>
       <button type="button" class="btn btn-warning" *ngIf="rec.blob() && !rec.isRecording()" (click)="rec.clear()">
-        🗑️ Borrar y grabar de nuevo
+        <app-icon name="trash" [size]="16" />Borrar y grabar de nuevo
       </button>
     </div>
 
@@ -43,15 +43,15 @@
 
   <ng-template #stacked>
     <button type="button" class="btn btn-danger w-100 mb-2" *ngIf="!rec.isRecording() && !rec.blob()" (click)="rec.start()">
-      ⏺ Iniciar Grabación
+      <app-icon name="circle-dot" [size]="16" />Iniciar grabación
     </button>
     <button type="button" class="btn btn-success w-100 mb-2" *ngIf="rec.isRecording()" (click)="rec.stop()">
-      ⏹ Detener Grabación
+      <app-icon name="square" [size]="16" />Detener grabación
     </button>
     <div *ngIf="rec.url()" class="mt-2">
       <audio [src]="rec.url()" controls class="w-100 mb-2"></audio>
       <button type="button" class="btn btn-sm btn-warning w-100" (click)="rec.clear()">
-        🗑️ Limpiar Grabación
+        <app-icon name="trash" [size]="16" />Limpiar grabación
       </button>
     </div>
   </ng-template>

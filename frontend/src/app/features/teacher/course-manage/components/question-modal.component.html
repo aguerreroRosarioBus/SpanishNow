@@ -53,7 +53,7 @@
                       class="btn btn-outline-danger"
                       (click)="removeOption(i)"
                     >
-                      ✕
+                      <app-icon name="x" [size]="16" />
                     </button>
                   </div>
                 </div>
@@ -128,7 +128,7 @@
                   [disabled]="form.invalid || isSubmitting()"
                 >
                   <span *ngIf="!isSubmitting()">
-                    {{ isEditing() ? '✓ Guardar Cambios' : '✓ Crear Pregunta' }}
+                    {{ isEditing() ? 'Guardar cambios' : 'Crear pregunta' }}
                   </span>
                   <span *ngIf="isSubmitting()">
                     <span class="spinner-border spinner-border-sm me-2"></span>
@@ -168,10 +168,10 @@
                       }}
                     </span>
                     <span *ngIf="question.correctAnswer" class="badge bg-success mt-2 ms-2">
-                      ✓ {{ question.correctAnswer }}
+                      <app-icon name="check" [size]="12" /> {{ question.correctAnswer }}
                     </span>
                     <span *ngIf="question.audioUrl" class="badge bg-info mt-2 ms-2">
-                      🔊 Con Audio
+                      <app-icon name="volume" [size]="12" /> Con audio
                     </span>
 
                     <!-- Audio Player -->
@@ -191,7 +191,7 @@
                       (click)="tooltipQuestion.set(question)"
                       title="Gestionar Tooltips"
                     >
-                      💡
+                      <app-icon name="lightbulb" [size]="16" />
                     </button>
                     <button
                       class="btn btn-sm btn-outline-primary"

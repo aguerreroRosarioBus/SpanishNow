@@ -25,7 +25,7 @@
                 <div class="d-flex justify-content-between align-items-center mb-2">
                   <small class="text-muted">Audio actual:</small>
                   <button type="button" class="btn btn-sm btn-outline-danger" (click)="deleteAudioSlow.set(true)">
-                    🗑️ Eliminar audio
+                    <app-icon name="trash" [size]="14" />Eliminar audio
                   </button>
                 </div>
                 <audio [src]="story().audioSlowUrl!" controls class="w-100"></audio>
@@ -35,9 +35,9 @@
               <!-- Audio marked for deletion -->
               <div *ngIf="deleteAudioSlow()" class="mb-3 p-3 bg-danger bg-opacity-10 rounded border border-danger">
                 <div class="d-flex justify-content-between align-items-center">
-                  <small class="text-danger fw-bold">⚠️ Este audio se eliminará al guardar</small>
+                  <small class="text-danger fw-bold">Este audio se eliminará al guardar</small>
                   <button type="button" class="btn btn-sm btn-outline-secondary" (click)="deleteAudioSlow.set(false)">
-                    ↩️ Cancelar
+                    Deshacer
                   </button>
                 </div>
               </div>
@@ -48,7 +48,7 @@
               </div>
 
               <app-audio-input #slow name="editAudioSlow" layout="stacked" [validate]="true"
-                uploadLabel="📁 Subir nuevo" recordLabel="🎤 Grabar nuevo" fileInputId="editAudioSlow"
+                uploadLabel="Subir nuevo" recordLabel="Grabar nuevo" fileInputId="editAudioSlow"
                 uploadHint="Selecciona un nuevo archivo de audio" recordedFileName="audio-slow.webm"
                 startedMessage="Grabación de audio lento iniciada" stoppedMessage="Grabación de audio lento detenida" />
             </div>
@@ -61,7 +61,7 @@
                 <div class="d-flex justify-content-between align-items-center mb-2">
                   <small class="text-muted">Audio actual:</small>
                   <button type="button" class="btn btn-sm btn-outline-danger" (click)="deleteAudioNormal.set(true)">
-                    🗑️ Eliminar audio
+                    <app-icon name="trash" [size]="14" />Eliminar audio
                   </button>
                 </div>
                 <audio [src]="story().audioNormalUrl!" controls class="w-100"></audio>
@@ -71,9 +71,9 @@
               <!-- Audio marked for deletion -->
               <div *ngIf="deleteAudioNormal()" class="mb-3 p-3 bg-danger bg-opacity-10 rounded border border-danger">
                 <div class="d-flex justify-content-between align-items-center">
-                  <small class="text-danger fw-bold">⚠️ Este audio se eliminará al guardar</small>
+                  <small class="text-danger fw-bold">Este audio se eliminará al guardar</small>
                   <button type="button" class="btn btn-sm btn-outline-secondary" (click)="deleteAudioNormal.set(false)">
-                    ↩️ Cancelar
+                    Deshacer
                   </button>
                 </div>
               </div>
@@ -84,7 +84,7 @@
               </div>
 
               <app-audio-input #normal name="editAudioNormal" layout="stacked" [validate]="true"
-                uploadLabel="📁 Subir nuevo" recordLabel="🎤 Grabar nuevo" fileInputId="editAudioNormal"
+                uploadLabel="Subir nuevo" recordLabel="Grabar nuevo" fileInputId="editAudioNormal"
                 uploadHint="Selecciona un nuevo archivo de audio" recordedFileName="audio-normal.webm"
                 startedMessage="Grabación de audio normal iniciada" stoppedMessage="Grabación de audio normal detenida" />
             </div>

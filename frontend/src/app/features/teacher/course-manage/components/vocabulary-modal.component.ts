@@ -6,12 +6,13 @@ import { ToastService } from '../../../../core/services/toast.service';
 import { Unit, Vocabulary } from '../../../../core/models/course.model';
 import { AudioInputComponent } from '../audio/audio-input.component';
 import { CourseManageStore } from '../course-manage.store';
+import { IconComponent } from '../../../../shared/components/icon/icon.component';
 
 /** Vocabulario de una unidad: alta con audio e imagen opcionales, listado y borrado. */
 @Component({
   selector: 'app-vocabulary-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, AudioInputComponent],
+  imports: [CommonModule, ReactiveFormsModule, AudioInputComponent, IconComponent],
   templateUrl: './vocabulary-modal.component.html'
 })
 export class VocabularyModalComponent implements OnInit {

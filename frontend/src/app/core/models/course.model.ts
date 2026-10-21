@@ -12,6 +12,8 @@ export interface Course {
     name: string;
   };
   units?: Unit[];
+  /** Solo en el detalle del curso (GET /courses/:id) */
+  enrollmentCount?: number;
 }
 
 export interface Unit {
@@ -33,6 +35,8 @@ export interface Story {
   audioNormalUrl?: string;
   /** La historia ya tiene lección (borrador o publicada): su texto se genera desde el compositor. */
   hasLessonPlan?: boolean;
+  /** Publicada si alguna revisión de su lección está publicada; Borrador en otro caso (solo en el detalle del curso). */
+  lessonStatus?: 'draft' | 'published';
   order: number;
   questions?: Question[];
   repetitionActivities?: RepetitionActivity[];
