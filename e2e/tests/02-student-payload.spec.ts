@@ -8,8 +8,9 @@ test('el alumno no recibe correctAnswer en GET /api/lesson-plans/story/:id', asy
   page.on('response', async r => {
     if (/\/api\/lesson-plans\/story\/\d+$/.test(r.url()) && r.request().method() === 'GET') responses.push(await r.text());
   });
-  const first = page.waitForResponse(r => /\/api\/lesson-plans\/story\/\d+$/.test(r.url()) && r.request().method() === 'GET');
-  await page.goto('/student/course/1/play');
+  const first = page.waitForResponse(r => /\/api\/lesson-plans\/story\/1$/.test(r.url()) && r.request().method() === 'GET');
+  // The first story is a video welcome, not a TPRS question lesson.
+  await page.goto('/student/course/1/play?story=1');
   const response = await first;
   expect(response.ok()).toBe(true);
   const raw = await response.text();

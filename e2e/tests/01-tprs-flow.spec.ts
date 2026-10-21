@@ -76,6 +76,9 @@ test.describe.serial('Flujo TPRS completo', () => {
     await page.locator('app-course-card', { hasText: COURSE_TITLE }).getByRole('link', { name: 'Continuar' }).click();
     await expect(page).toHaveURL(/student\/course\/\d+\/play/);
 
+    // Courses now begin with a video welcome; use the lesson deep link so reload keeps the TPRS story under test.
+    await page.goto('/student/course/1/play?story=1');
+
     await expect(page.getByRole('heading', { level: 1, name: STORY_MARIA })).toBeVisible();
     // Sin metadatos internos para el alumno
     await expect(page.getByText(/revisión/i)).toHaveCount(0);
@@ -177,7 +180,7 @@ test.describe.serial('Flujo TPRS completo', () => {
   test('4. Revisión fija: el alumno conserva su revisión aunque el profesor publique otra con distinto orden', async ({ page, browser }) => {
     const studentLesson = async (p: Page) => {
       const response = p.waitForResponse(r => /\/lesson-plans\/story\/1$/.test(r.url()) && r.request().method() === 'GET');
-      await p.goto('/student/course/1/play');
+      await p.goto('/student/course/1/play?story=1');
       const lesson = await (await response).json();
       return { revision: lesson.revision as number, order: lesson.blocks.map((b: any) => b.blockKey) as string[] };
     };
