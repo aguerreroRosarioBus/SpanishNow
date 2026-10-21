@@ -31,8 +31,6 @@ export class LessonComposerComponent implements OnInit, OnDestroy {
   @Output() closed = new EventEmitter<void>();
   /** Texto de la historia reconstruido al publicar (keyframes activos unidos), para refrescar la lista sin recargar. */
   @Output() storyTextPublished = new EventEmitter<string>();
-  @Output() manageQuestions = new EventEmitter<void>();
-  @Output() manageVocabulary = new EventEmitter<void>();
   @ViewChild('dialog') dialog?: ElementRef<HTMLElement>;
   @ViewChild('closeButton') closeButton?: ElementRef<HTMLButtonElement>;
 

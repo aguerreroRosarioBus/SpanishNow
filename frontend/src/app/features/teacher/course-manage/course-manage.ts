@@ -39,16 +39,6 @@ export class CourseManageComponent implements OnInit {
   }
 
   /** Desde el compositor se pasa a gestionar preguntas o vocabulario cerrando el compositor. */
-  manageQuestionsFromComposer(): void {
-    const modal = this.store.modal();
-    if (modal?.kind === 'composer') this.store.open({ kind: 'questions', story: modal.story });
-  }
-
-  manageVocabularyFromComposer(): void {
-    const modal = this.store.modal();
-    if (modal?.kind === 'composer') this.store.open({ kind: 'vocabulary', unit: modal.unit });
-  }
-
   goBack(): void {
     this.router.navigate(['/teacher/dashboard']);
   }
