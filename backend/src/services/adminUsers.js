@@ -8,6 +8,7 @@ const {
 } = require('../models');
 const { PERMISSION_KEYS, isFixedAdmin, effectivePermissions, hasPermission } = require('../config/permissions');
 const { signToken, serializeAuthUser } = require('./authUser');
+const classData = require('./testAccountClassData');
 
 const ROLES = ['teacher', 'student'];
 const MAX_TEST_USERS = 10;
@@ -204,6 +205,12 @@ async function deleteTestUsers(userIds) {
       L.length ? LiveClassMember.count({ where: { liveClassId: L, userId: notTest }, transaction }) : 0,
       C.length ? Coupon.count({ where: { courseId: C, teacherId: notTest }, transaction }) : 0
     ]);
+    // Chat, packages and sessions (CONTRACT-05): a conversation, offer, purchase or class shared with a real user blocks it.
+    const classScope = await classData.collect(T, transaction);
+    const realClassUsers = await classData.realUsersIn(classScope, transaction);
+    if (realClassUsers > 0) {
+      fail(409, 'No se borró nada: hay conversaciones, compras o clases de estas cuentas de prueba con usuarios reales.');
+    }
     if (realData.some(count => count > 0)) {
       const owners = users.filter(user => courses.some(course => course.teacherId === user.id)).map(user => user.email);
       fail(409, `No se borró nada: los cursos de ${owners.join(', ') || 'una cuenta de prueba'} tienen inscripciones, órdenes o clases con datos de usuarios reales.`);
@@ -217,6 +224,7 @@ async function deleteTestUsers(userIds) {
     for (const { couponId, uses } of redeemed) {
       await Coupon.update({ redemptions: literal(`GREATEST(redemptions - ${Number(uses)}, 0)`) }, { where: { id: couponId, teacherId: { [Op.notIn]: T } }, transaction });
     }
+    await classData.remove(T, classScope, transaction);
     await Order.destroy({ where: orderScope, transaction });
     await Enrollment.destroy({ where: { [Op.or]: [{ studentId: T }, { courseId: C }] }, transaction });
     await LessonComment.destroy({ where: { userId: T }, transaction });

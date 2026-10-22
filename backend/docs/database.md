@@ -31,7 +31,7 @@ Todos los comandos leen `DB_HOST`, `DB_PORT` (3306 por defecto), `DB_USER`, `DB_
 
 `npm run db:migrate:tprs:test` queda como envoltorio obsoleto de `adopt` + `up` sobre `DB_NAME_TEST`.
 
-Las confirmaciones de las migraciones destructivas se respetan tal cual: `CONFIRM_DROP_LEGACY_PROGRESS=yes` (borrar `progress`, `question_responses`, `activity_configs` con filas), `CONFIRM_LESSON_PLAN_DATA_LOSS=yes` (revertir `lesson_*`), `CONFIRM_KEYFRAME_TOOLTIP_DATA_LOSS=yes` y `CONFIRM_DROP_BASELINE=yes` (revertir la línea base). Si faltan, la migración falla antes de borrar nada.
+Las confirmaciones de las migraciones destructivas se respetan tal cual: `CONFIRM_DROP_LEGACY_PROGRESS=yes` (borrar `progress`, `question_responses`, `activity_configs` con filas), `CONFIRM_LESSON_PLAN_DATA_LOSS=yes` (revertir `lesson_*`), `CONFIRM_KEYFRAME_TOOLTIP_DATA_LOSS=yes`, `CONFIRM_CLASSES_FOUNDATION_DATA_LOSS=yes` (revertir el esquema de clases, chat y paquetes de W00 con filas; ver `docs/clases-chat-integraciones/CONTRATO.md`) y `CONFIRM_DROP_BASELINE=yes` (revertir la línea base). Si faltan, la migración falla antes de borrar nada.
 
 El runner toma un `GET_LOCK` de MySQL durante `up`/`down`/`adopt`, así que dos ejecuciones simultáneas (por ejemplo dos réplicas) no se pisan.
 

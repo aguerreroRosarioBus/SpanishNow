@@ -26,6 +26,32 @@ const LessonComment = require('./LessonComment');
 const LiveClass = require('./LiveClass');
 const LiveClassMember = require('./LiveClassMember');
 const GoogleConnection = require('./GoogleConnection');
+// W00: classes, chat, packages and integrations (docs/clases-chat-integraciones/CONTRATO.md)
+const TeacherClassSettings = require('./TeacherClassSettings');
+const Conversation = require('./Conversation');
+const ConversationParticipant = require('./ConversationParticipant');
+const Message = require('./Message');
+const RateLimitBucket = require('./RateLimitBucket');
+const ClassPolicyVersion = require('./ClassPolicyVersion');
+const ClassPackageTemplate = require('./ClassPackageTemplate');
+const ClassPackageTemplateVersion = require('./ClassPackageTemplateVersion');
+const ClassCohort = require('./ClassCohort');
+const ClassCohortMember = require('./ClassCohortMember');
+const ClassOffer = require('./ClassOffer');
+const ClassOfferBeneficiary = require('./ClassOfferBeneficiary');
+const ClassPackageOrder = require('./ClassPackageOrder');
+const PaymentProviderEvent = require('./PaymentProviderEvent');
+const ClassPackagePurchase = require('./ClassPackagePurchase');
+const ClassPackageBeneficiary = require('./ClassPackageBeneficiary');
+const ClassCreditLedger = require('./ClassCreditLedger');
+const ClassSession = require('./ClassSession');
+const ClassSessionProposal = require('./ClassSessionProposal');
+const ClassSessionParticipant = require('./ClassSessionParticipant');
+const ExternalConnection = require('./ExternalConnection');
+const ExternalSyncRef = require('./ExternalSyncRef');
+const OutboxJob = require('./OutboxJob');
+const LegalAcceptance = require('./LegalAcceptance');
+const AuditLog = require('./AuditLog');
 
 // Define associations
 User.hasMany(Course, { foreignKey: 'teacherId', as: 'courses' });
@@ -130,6 +156,80 @@ LiveClassMember.belongsTo(LiveClass, { foreignKey: 'liveClassId', as: 'liveClass
 LiveClassMember.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 GoogleConnection.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
+// W00: classes, chat, packages and integrations
+User.hasOne(TeacherClassSettings, { foreignKey: 'userId', as: 'classSettings' });
+TeacherClassSettings.belongsTo(User, { foreignKey: 'userId', as: 'teacher' });
+
+Conversation.belongsTo(User, { foreignKey: 'teacherId', as: 'teacher' });
+Conversation.belongsTo(User, { foreignKey: 'studentId', as: 'student' });
+Conversation.hasMany(ConversationParticipant, { foreignKey: 'conversationId', as: 'participants' });
+ConversationParticipant.belongsTo(Conversation, { foreignKey: 'conversationId', as: 'conversation' });
+ConversationParticipant.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+Conversation.hasMany(Message, { foreignKey: 'conversationId', as: 'messages' });
+Message.belongsTo(Conversation, { foreignKey: 'conversationId', as: 'conversation' });
+Message.belongsTo(User, { foreignKey: 'senderId', as: 'sender' });
+
+ClassPackageTemplate.belongsTo(User, { foreignKey: 'teacherId', as: 'teacher' });
+ClassPackageTemplate.hasMany(ClassPackageTemplateVersion, { foreignKey: 'templateId', as: 'versions' });
+ClassPackageTemplate.belongsTo(ClassPackageTemplateVersion, { foreignKey: 'currentVersionId', as: 'currentVersion', constraints: false });
+ClassPackageTemplateVersion.belongsTo(ClassPackageTemplate, { foreignKey: 'templateId', as: 'template' });
+ClassPackageTemplateVersion.belongsTo(ClassPolicyVersion, { foreignKey: 'policyVersionId', as: 'policy' });
+
+ClassCohort.belongsTo(User, { foreignKey: 'teacherId', as: 'teacher' });
+ClassCohort.belongsTo(ClassPackageTemplateVersion, { foreignKey: 'templateVersionId', as: 'templateVersion' });
+ClassCohort.hasMany(ClassCohortMember, { foreignKey: 'cohortId', as: 'members' });
+ClassCohortMember.belongsTo(ClassCohort, { foreignKey: 'cohortId', as: 'cohort' });
+ClassCohortMember.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+ClassOffer.belongsTo(Conversation, { foreignKey: 'conversationId', as: 'conversation' });
+ClassOffer.belongsTo(User, { foreignKey: 'teacherId', as: 'teacher' });
+ClassOffer.belongsTo(User, { foreignKey: 'buyerId', as: 'buyer' });
+ClassOffer.belongsTo(ClassCohort, { foreignKey: 'cohortId', as: 'cohort' });
+ClassOffer.belongsTo(ClassPackageTemplateVersion, { foreignKey: 'templateVersionId', as: 'templateVersion' });
+ClassOffer.belongsTo(ClassPolicyVersion, { foreignKey: 'policyVersionId', as: 'policy' });
+ClassOffer.belongsTo(ClassOffer, { foreignKey: 'replacesOfferId', as: 'replacesOffer' });
+ClassOffer.hasMany(ClassOfferBeneficiary, { foreignKey: 'offerId', as: 'beneficiaries' });
+ClassOfferBeneficiary.belongsTo(ClassOffer, { foreignKey: 'offerId', as: 'offer' });
+ClassOfferBeneficiary.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+Message.belongsTo(ClassOffer, { foreignKey: 'offerId', as: 'offer' });
+
+ClassOffer.hasMany(ClassPackageOrder, { foreignKey: 'offerId', as: 'orders' });
+ClassPackageOrder.belongsTo(ClassOffer, { foreignKey: 'offerId', as: 'offer' });
+ClassPackageOrder.belongsTo(User, { foreignKey: 'buyerId', as: 'buyer' });
+ClassPackageOrder.hasMany(PaymentProviderEvent, { foreignKey: 'orderId', as: 'events' });
+PaymentProviderEvent.belongsTo(ClassPackageOrder, { foreignKey: 'orderId', as: 'order' });
+
+ClassPackageOrder.hasOne(ClassPackagePurchase, { foreignKey: 'orderId', as: 'purchase' });
+ClassPackagePurchase.belongsTo(ClassPackageOrder, { foreignKey: 'orderId', as: 'order' });
+ClassPackagePurchase.belongsTo(ClassOffer, { foreignKey: 'offerId', as: 'offer' });
+ClassPackagePurchase.belongsTo(User, { foreignKey: 'teacherId', as: 'teacher' });
+ClassPackagePurchase.belongsTo(User, { foreignKey: 'buyerId', as: 'buyer' });
+ClassPackagePurchase.hasMany(ClassPackageBeneficiary, { foreignKey: 'purchaseId', as: 'beneficiaries' });
+ClassPackageBeneficiary.belongsTo(ClassPackagePurchase, { foreignKey: 'purchaseId', as: 'purchase' });
+ClassPackageBeneficiary.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+ClassPackagePurchase.hasMany(ClassCreditLedger, { foreignKey: 'purchaseId', as: 'ledger' });
+ClassCreditLedger.belongsTo(ClassPackagePurchase, { foreignKey: 'purchaseId', as: 'purchase' });
+
+ClassSession.belongsTo(User, { foreignKey: 'teacherId', as: 'teacher' });
+ClassSession.belongsTo(ClassCohort, { foreignKey: 'cohortId', as: 'cohort' });
+ClassSession.belongsTo(LiveClass, { foreignKey: 'liveClassId', as: 'liveClass' });
+ClassSession.hasMany(ClassSessionProposal, { foreignKey: 'sessionId', as: 'proposals' });
+ClassSessionProposal.belongsTo(ClassSession, { foreignKey: 'sessionId', as: 'session' });
+ClassSession.hasMany(ClassSessionParticipant, { foreignKey: 'sessionId', as: 'participants' });
+ClassSessionParticipant.belongsTo(ClassSession, { foreignKey: 'sessionId', as: 'session' });
+ClassSessionParticipant.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+ClassSessionParticipant.belongsTo(ClassPackagePurchase, { foreignKey: 'purchaseId', as: 'purchase' });
+Message.belongsTo(ClassSession, { foreignKey: 'classSessionId', as: 'classSession' });
+
+User.hasMany(ExternalConnection, { foreignKey: 'userId', as: 'externalConnections' });
+ExternalConnection.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+ClassSession.hasMany(ExternalSyncRef, { foreignKey: 'sessionId', as: 'syncRefs' });
+ExternalSyncRef.belongsTo(ClassSession, { foreignKey: 'sessionId', as: 'session' });
+ExternalSyncRef.belongsTo(ExternalConnection, { foreignKey: 'connectionId', as: 'connection' });
+
+LegalAcceptance.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+AuditLog.belongsTo(User, { foreignKey: 'actorId', as: 'actor' });
+
 module.exports = {
   LiveClass,
   LiveClassMember,
@@ -158,5 +258,30 @@ module.exports = {
   Coupon,
   Affiliate,
   AffiliatePayout,
-  LessonComment
+  LessonComment,
+  TeacherClassSettings,
+  Conversation,
+  ConversationParticipant,
+  Message,
+  RateLimitBucket,
+  ClassPolicyVersion,
+  ClassPackageTemplate,
+  ClassPackageTemplateVersion,
+  ClassCohort,
+  ClassCohortMember,
+  ClassOffer,
+  ClassOfferBeneficiary,
+  ClassPackageOrder,
+  PaymentProviderEvent,
+  ClassPackagePurchase,
+  ClassPackageBeneficiary,
+  ClassCreditLedger,
+  ClassSession,
+  ClassSessionProposal,
+  ClassSessionParticipant,
+  ExternalConnection,
+  ExternalSyncRef,
+  OutboxJob,
+  LegalAcceptance,
+  AuditLog
 };
