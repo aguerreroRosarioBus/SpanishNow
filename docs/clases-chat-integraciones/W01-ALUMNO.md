@@ -1,6 +1,6 @@
 # W01 · Panel del alumno EN/ES
 
-Entrega de #14, Codex. Base: main 0e215a0 con W01/W04. Requisitos I18N-02/03/04/06 y AC17, dentro de dashboard, avance, compras y docentes.
+Entrega de #14, Codex. Base: main 2fd928f con W01/W04/W02; snapshots comerciales/legales de Mis compras preservados. Requisitos I18N-02/03/04/06 y AC17, dentro de dashboard, avance, compras y docentes.
 
 - Catálogo `student.*` en `core/i18n/catalogs/student.ts`, con las mismas claves/parámetros EN/ES y plurales exactos para cero. Los catálogos base solo lo agregan; no se modifican claves ajenas.
 - Formularios de certificado y confirmaciones guardan datos/claves, no frases traducidas. Cambiar idioma conserva el nombre escrito, el progreso y la acción pendiente; no emite ni reinicia nada.
@@ -12,7 +12,7 @@ Superficies compartidas: adición de `student.*` a los catálogos base; etiqueta
 
 ## Validación
 
-Validación del área: 361/361 unitarias frontend, 6/6 E2E en escritorio/móvil, build de producción, TypeScript E2E y diff check aprobados. Ver el PR para la regresión contra main actualizado. Las pruebas unitarias y E2E comprueban confirmación pendiente, borrador de certificado, filtros, datos originales, reembolso parcial, moneda e instante cerca del cambio de fecha. E2E: `cd e2e && npx playwright test --config playwright.student-i18n.config.ts`, API ficticia sin backend/DB/proveedores. Frontend: `cd frontend && npm test -- --watch=false` y `npm run build`.
+Validación del área: 374/374 unitarias frontend, 6/6 E2E en escritorio/móvil, build de producción, TypeScript E2E y diff check aprobados. Ver el PR para la regresión contra main actualizado. Las pruebas unitarias y E2E comprueban confirmación pendiente, borrador de certificado, filtros, datos originales, reembolso parcial, moneda e instante cerca del cambio de fecha. E2E: `cd e2e && npx playwright test --config playwright.student-i18n.config.ts`, API ficticia sin backend/DB/proveedores. Frontend: `cd frontend && npm test -- --watch=false` y `npm run build`.
 
 ## Prueba manual y reversión
 
