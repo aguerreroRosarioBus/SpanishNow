@@ -56,7 +56,7 @@ Base inspeccionada: `main` en commit `618d257bb723ff31d1110eb20cd77a67c8e9b11c`.
 | Administración | [Especificación admin](../admin/SPEC.md), [permisos](../../backend/src/config/permissions.js). | Ya existe administración sobre roles `teacher`/`student`. Usar capacidades explícitas; no inventar un rol incompatible ni dar a todo docente acceso global. |
 | Identidad | [User](../../backend/src/models/User.js), [middleware](../../backend/src/middlewares/auth.middleware.js). | Respetar suspensión, permisos efectivos, cuentas de prueba e impersonación. |
 | Pago de cursos | [Order](../../backend/src/models/Order.js), [pagos](../../backend/src/services/paymentService.js), [fulfillment](../../backend/src/services/orderService.js). | La orden actual exige `courseId`. No simular paquetes como cursos vacíos: diseñar órdenes de paquetes separadas y reutilizar adaptadores donde corresponda. |
-| Hotmart | [Servicio](../../backend/src/services/hotmartService.js). | Conservar ventas de cursos. No suponer que los paquetes personalizados del chat pueden cobrarse por Hotmart sin otro diseño. |
+| Hotmart | [Servicio](../../backend/src/services/hotmartService.js). | Conservar ventas de cursos. Por D10 también cobra paquetes: diseñar en W00 cómo una oferta del chat se vincula a un producto/oferta de Hotmart y cómo el webhook la concilia; no forzar paquetes dentro del flujo de cursos. |
 | Google | [Servicio OAuth/Drive/Classroom](../../backend/src/services/liveGoogleService.js), [GoogleConnection](../../backend/src/models/GoogleConnection.js). | Reutilizar identidad/cifrado con separación de capacidades; hoy no incluye Calendar. Autorizar Calendar no debe exigir Classroom/Drive y viceversa. |
 | Pizarra | [LiveClass](../../backend/src/models/LiveClass.js), [servicio](../../backend/src/services/liveClassService.js), [documentación](../clases-en-vivo/README.md). | Una pizarra no es una reserva. Crear entidad de sesión programada separada y vincular pizarra opcional. |
 | Comunidad | [Comentarios](../../backend/src/services/commentService.js). | No convertir comentarios públicos de curso en mensajes privados. Mantener ambos recorridos. |
@@ -226,7 +226,7 @@ PACK-11. La oferta enviada es inmutable: docente, comprador, participantes/plaza
 
 PACK-12. Un alumno abre su oferta y checkout desde sesión autenticada. Un tercero con el enlace no puede leer detalles ni comprar derechos para otra identidad. El backend obtiene importe, moneda y beneficiarios desde la oferta; nunca confía en valores enviados por el navegador.
 
-PACK-13. Proveedor inicial propuesto: Stripe para paquetes, reutilizando el modo falso local y comprobación de firmas existentes. Si no está configurado, mostrar indisponibilidad; no marcar pagado manualmente en producción. Hotmart se conserva para cursos y queda fuera del checkout de ofertas personalizadas.
+PACK-13. Proveedor de cobro: Hotmart (D10), reutilizando el webhook, la verificación existente y un modo falso local. Cada oferta se cobra mediante un producto/oferta de Hotmart cuyo precio coincide con el snapshot de la oferta, y el checkout lleva una referencia que permite conciliar el webhook con esa oferta sin confiar en datos del cliente. Si Hotmart no está configurado, mostrar indisponibilidad; no marcar pagado manualmente en producción. Stripe queda descartado.
 
 PACK-14. Estados de oferta: `draft/sent/checkout_pending/paid/expired/cancelled/replaced`. Separar los intentos de pago (`pending/paid/failed/refunded/partially_refunded`) y el paquete resultante (`active/paused/exhausted/expired/cancelled`). No condensar todo en un único estado.
 
@@ -485,7 +485,8 @@ Las referencias explican capacidades de proveedores; las reglas de producto de e
 | D01–D09 y cobro de grupos | Confirmado | Respuestas del usuario en este chat. |
 | Catálogo de seis variantes | Verificado al redactar | Página pública de paquetes; importación inicial configurable. |
 | Reglas de sección 4, límites de chat y retención propuesta | Definido como valor inicial configurable | Criterio delegado por el usuario; explícitamente separado de datos del sitio. |
-| Stripe para paquetes y fuente de verdad de agenda en SpanishNow | Diseño inicial propuesto | Reutiliza infraestructura actual y evita mover horarios sin aceptación. |
+| Fuente de verdad de agenda en SpanishNow | Diseño inicial propuesto | Evita mover horarios sin aceptación. |
+| D10: Hotmart cobra los paquetes; Stripe descartado | Confirmado el 22/10/2026 | Andrés: Stripe no es viable desde Argentina. Afecta PACK-13, W00 y W05. |
 | Paquetes primero, suscripción automática fuera de alcance | Confirmado | D01; no construir renovación automática. |
 
 Al cambiar una decisión, añadir fecha, responsable, motivo, requisitos afectados y compatibilidad con compras/sesiones existentes. No reemplazar decisiones confirmadas por inferencias de un agente.
