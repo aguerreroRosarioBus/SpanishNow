@@ -68,12 +68,13 @@ async function assertProductFree(productId, { transaction } = {}) {
 }
 async function present(row, { versions = false, publicView = false, transaction } = {}) {
   const current = await Version.findByPk(row.currentVersionId, { transaction });
+  const currentPolicy = current && await Policy.findByPk(current.policyVersionId, { transaction });
   const visible = v => {
     if (!v) return null;
     const { createdById, hotmartProductId, hotmartOfferCode, hotmartCheckoutUrl, ...rest } = v.toJSON();
     return publicView ? rest : v.toJSON();
   };
-  return { id: row.id, teacherId: row.teacherId, templateKey: row.templateKey, status: row.status, current: visible(current),
+  return { id: row.id, teacherId: row.teacherId, templateKey: row.templateKey, status: row.status, current: visible(current), policy: currentPolicy ? { version: currentPolicy.version, rules: currentPolicy.rules } : null,
     ...(versions ? { versions: (await Version.findAll({ where: { templateId: row.id }, order: [['version', 'DESC']], transaction })).map(visible) } : {}) };
 }
 async function list(user, requested) {

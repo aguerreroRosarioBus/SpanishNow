@@ -1,0 +1,25 @@
+<div class="page-container">
+  @if (error()) { <p class="alert alert-danger" role="alert">{{ error() }}</p> }
+  @if (offer(); as o) {
+    <a [routerLink]="['/messages',o.conversationId]">{{ 'packages.offer.back' | t }}</a>
+    <article class="card p-4 mt-3">
+      <h1>{{ name() }}</h1>
+      <p>{{ 'packages.offer.teacher' | t:{name:o.snapshot.teacherName} }}</p>
+      <p class="h4">{{ i18n.formatMoney(o.amount,o.currency) }}</p>
+      <p>{{ 'packages.summary' | t:{count:o.sessionsCount,minutes:o.minutesPerSession,seats:o.seatsCovered,hours:o.snapshot.validityHours} }}</p>
+      <p>{{ ('packages.offer.status.'+o.status) | t }}</p>
+      <p>{{ 'packages.offer.expires' | t:{time:instant(o.expiresAt),zone:fmt.timeZone()} }}</p>
+      <p>{{ 'packages.offer.versions' | t:{template:o.snapshot.templateVersion,policy:o.snapshot.policyVersion} }}</p>
+      @if (o.replacesOfferId) { <a [routerLink]="['/class-offers',o.replacesOfferId]">{{ 'packages.offer.previous' | t }}</a> }
+      <p>{{ 'packages.offer.immutable' | t }}</p>
+      <dl>@for (field of fields; track field) { <dt>{{ ('packages.expectations.'+field) | t }}</dt><dd class="text-break">{{ o.snapshot.expectations?.[i18n.locale()]?.[field] }}</dd> }</dl>
+      <h2 class="h5">{{ 'packages.offer.rules' | t }}</h2>
+      <p>{{ 'packages.offer.rulesText' | t:{cancel:o.snapshot.policy.freeCancelHours,pause:o.snapshot.policy.maxPauseHours,pauses:o.snapshot.policy.maxPauses} }}</p>
+      <p>{{ 'packages.offer.validity' | t }}</p>
+      @for (doc of o.snapshot.legalDocuments; track doc.documentKey) {
+        <a [routerLink]="['/legal',doc.documentKey]" [queryParams]="{version:doc.version}" target="_blank" rel="noopener">{{ doc.content[i18n.locale()].title }} ({{ doc.version }})</a>
+      }
+      <button class="btn btn-secondary mt-3 align-self-start" (click)="reload()">{{ 'packages.offer.refresh' | t }}</button>
+    </article>
+  }
+</div>

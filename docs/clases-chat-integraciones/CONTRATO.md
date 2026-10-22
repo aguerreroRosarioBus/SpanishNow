@@ -1,6 +1,6 @@
 # Contrato técnico W00: clases, chat, paquetes e integraciones
 
-Versión **1.3** · 22/10/2026 · Paquete W00 ([#13](https://github.com/aguerreroRosarioBus/SpanishNow/issues/13)) · Responsable: orquestador de turno.
+Versión **1.4** · 22/10/2026 · Paquete W00 ([#13](https://github.com/aguerreroRosarioBus/SpanishNow/issues/13)) · Responsable: orquestador de turno.
 
 Este documento convierte la [guía](SPEC.md) §13 en un contrato que los paquetes W01–W09 consumen sin renegociar. La guía manda sobre el *qué*; este contrato fija nombres, tablas, estados, invariantes, formatos y rutas. Cambiarlo exige un PR que suba la versión, actualice la tabla de cambios del final y avise en el issue «Orquestación» (#23) a los paquetes afectados.
 
@@ -397,6 +397,8 @@ Todas bajo autenticación salvo las marcadas *pública*/*callback*. Las rutas qu
 | `GET /api/admin/chat/reports/:conversationId/messages?beforeSeq=&limit=` | `chat.moderate`; solo conversaciones reportadas; cada lectura en `audit_logs` (`chat.report_read`) — *agregada en 1.1* |
 | `POST /api/admin/messages/:id/hide` | `chat.moderate`; `{ reason }`; solo mensajes de conversaciones reportadas |
 
+Metadata aditiva W05 (1.4): `canSendOffers` indica si el participante docente tiene la función de ofertas habilitada; no sustituye la autorización de la mutación. El catálogo agrega `policy: { version, rules }` para la vista previa.
+
 Notas de W04 (1.1): el contexto (`{ type: course|package|session, id }`) viaja en cada mensaje y debe pertenecer a la pareja; el de la conversación es el del último mensaje que lo tiene. Una sesión «ingresar como» (impersonación) recibe `403 forbidden` con `params.reason = impersonation` en todo `/api/conversations*`. W05/W06 crean `offer`/`session_proposal`/`system_event` con `chatService.appendSystemMessage(conversationId, { type, eventCode, eventParams, offerId, classSessionId, proposalVersion, dedupeKey }, { transaction })`, idempotente por `dedupeKey` y sin pasar por bloqueos ni límites.
 
 ### 9.3 Catálogo y configuración docente — W05 (W02 agrega `expectations`)
@@ -420,6 +422,7 @@ Notas de W04 (1.1): el contexto (`{ type: course|package|session, id }`) viaja e
 | --- | --- |
 | `POST /api/teacher/class-cohorts` | Crear cohorte (`groupSize`, `tentativeStartsAt`, invitados) |
 | `GET /api/teacher/class-cohorts/:id` | Estado, miembros, `formingDeadlineAt` |
+| `GET /api/class-cohorts/:id` | Invitación propia autenticada; no revela identidades o pagos de otros miembros |
 | `POST /api/class-cohorts/:id/invitation/accept` · `/decline` | El invitado responde |
 
 ### 9.5 Ofertas y checkout — W05
@@ -582,6 +585,7 @@ Registradas en [COORDINACION.md](COORDINACION.md#decisiones). Ninguna bloquea el
 
 | Versión | Fecha | Cambio |
 | --- | --- | --- |
+| 1.4 | 22/10/2026 | W05 (Codex): lectura propia de invitaciones, metadata de ofertas/política. Sin esquema ni cambios de saldo. |
 | 1.3 | 22/10/2026 | W05 (Codex): agrega importación explícita de catálogo en §9.3; sin cambio de esquema ni contrato de saldo. |
 | 1.0 | 22/10/2026 | Primera versión (W00, Claude). |
 | 1.2 | 22/10/2026 | W04 (Claude): `users.chatUnreadEmail BOOLEAN NOT NULL DEFAULT true` (migración `20261109000000-add-chat-unread-email-preference.js`) expuesto como `chatUnreadEmail` en §9.1 (CHAT-09). |

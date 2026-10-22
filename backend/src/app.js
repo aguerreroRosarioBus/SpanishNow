@@ -53,6 +53,8 @@ app.use((req, res, next) => {
 // Routes
 app.use('/api', require('./routes/legal.routes'));
 app.use('/api', require('./routes/classCatalog.routes')); // W05: catálogo versionado y configuración de clases
+app.use('/api', require('./routes/classOffers.routes')); // W05: ofertas inmutables del chat
+app.use('/api', require('./routes/classCohorts.routes')); // W05: invitaciones privadas a grupos
 app.use('/api/courses', require('./routes/expectations.routes'));
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/users', require('./routes/user.routes'));

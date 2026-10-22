@@ -321,13 +321,22 @@ export class ChatConversationComponent implements OnInit {
    * (W05/W06 agregan los suyos) con sus parámetros estructurados; un código desconocido usa el genérico.
    */
   eventText(m: ChatMessage): string {
-    const key = `chat.event.${m.eventCode}`;
+    const packageKey = `packages.event.${m.eventCode}`;
+    const key = this.i18n.has(packageKey) ? packageKey : `chat.event.${m.eventCode}`;
     if (!m.eventCode || !this.i18n.has(key)) return this.i18n.t('chat.event.generic');
     const params: Record<string, string | number> = {};
     for (const [name, value] of Object.entries(m.eventParams ?? {})) {
       if (typeof value === 'string' || (typeof value === 'number' && Number.isFinite(value))) params[name] = value;
     }
     return this.i18n.t(key, params);
+  }
+
+  offerSummary(m: ChatMessage): string {
+    const p=m.eventParams;
+    if (!p || typeof p['amount'] !== 'number' || !Number.isSafeInteger(p['amount']) || typeof p['currency'] !== 'string' || !/^[A-Z]{3}$/.test(p['currency'])) return '';
+    const count=p['sessionsCount'], minutes=p['minutesPerSession'], seats=p['seatsCovered'];
+    if (typeof count !== 'number' || typeof minutes !== 'number' || typeof seats !== 'number') return '';
+    return this.i18n.t('packages.offer.cardSummary',{price:this.i18n.formatMoney(p['amount'],p['currency']),count,minutes,seats});
   }
 
   contextLabel(): string | null {

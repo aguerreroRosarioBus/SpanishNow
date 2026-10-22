@@ -85,6 +85,21 @@ export const routes: Routes = [
   },
   // Rutas de profesor
   {
+    path: 'class-cohorts/:id',
+    loadComponent: () => import('./features/packages/cohort-invitation.component').then(m => m.CohortInvitationComponent),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'teacher/class-offers/new',
+    loadComponent: () => import('./features/packages/offer-create.component').then(m => m.OfferCreateComponent),
+    canActivate: [teacherGuard]
+  },
+  {
+    path: 'class-offers/:id',
+    loadComponent: () => import('./features/packages/offer-detail.component').then(m => m.OfferDetailComponent),
+    canActivate: [authGuard]
+  },
+  {
     path: 'teacher/class-packages',
     loadComponent: () => import('./features/packages/package-catalog.component').then(m => m.PackageCatalogComponent),
     canActivate: [teacherGuard]

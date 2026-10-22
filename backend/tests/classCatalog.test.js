@@ -77,8 +77,9 @@ test('dinero entero, moneda ISO, capacidad D07, URL segura, claves y producto ex
 test('políticas inmutables, permisos explícitos y flag apagado', async () => {
   const rules={...require('../src/domain/classPolicy').DEFAULT_POLICY_V1,offerTtlHours:48};
   expect((await as(teacher).post('/api/admin/class-policies',{version:2,rules})).status).toBe(403);
-  expect((await as(admin).post('/api/admin/class-policies',{version:2,rules})).status).toBe(201);
-  expect((await as(admin).post('/api/admin/class-policies',{version:2,rules})).body.code).toBe('version_conflict');
+  const latest=await Policy.findOne({order:[['version','DESC']]});const version=latest.version+1;
+  expect((await as(admin).post('/api/admin/class-policies',{version,rules})).status).toBe(201);
+  expect((await as(admin).post('/api/admin/class-policies',{version,rules})).body.code).toBe('version_conflict');
   expect((await Policy.findOne({where:{version:1}})).rules.offerTtlHours).toBe(168);
   process.env.FEATURE_CLASS_PACKAGES='0';
   expect((await as(teacher).post('/api/teacher/class-packages/import-initial')).body.code).toBe('feature_disabled');

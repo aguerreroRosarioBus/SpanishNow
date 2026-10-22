@@ -2,12 +2,18 @@ import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { I18nService } from '../../core/i18n/i18n.service';
-import { ClassSettings, PackageTemplate } from './packages.model';
+import { ClassCohort, ClassOffer, ClassSettings, PackageTemplate } from './packages.model';
 @Injectable({providedIn:'root'})
 export class PackagesService {
   private http = inject(HttpClient);
   private i18n = inject(I18nService);
   private base = environment.apiUrl;
+  group(id:number) { return this.http.get<ClassCohort>(`${this.base}/class-cohorts/${id}`); }
+  respondGroup(id:number,accepted:boolean) { return this.http.post<ClassCohort>(`${this.base}/class-cohorts/${id}/invitation/${accepted?'accept':'decline'}`,{}); }
+  offer(id: number) { return this.http.get<ClassOffer>(`${this.base}/class-offers/${id}`); }
+  sendOffer(conversationId: number, body: { templateVersionId: number; cohortId?: number; beneficiaryIds?: number[] }, key: string) {
+    return this.http.post<ClassOffer>(`${this.base}/conversations/${conversationId}/offers`,body,{headers:{'Idempotency-Key':key}});
+  }
   list() { return this.http.get<PackageTemplate[]>(`${this.base}/teacher/class-packages`); }
   detail(id: number) { return this.http.get<PackageTemplate>(`${this.base}/teacher/class-packages/${id}`); }
   importInitial() { return this.http.post<PackageTemplate[]>(`${this.base}/teacher/class-packages/import-initial`, {}); }
