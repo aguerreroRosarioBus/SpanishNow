@@ -95,4 +95,39 @@ describe('ChatConversationComponent — revisión de #27', () => {
     expect(component.messages().map(m => m.seq)).toEqual([1, 2, 3]);
     fixture.destroy();
   });
+
+  it('P1 · al cambiar de conversación por ruta, una respuesta tardía de la anterior no pisa la actual (CHAT-02)', async () => {
+    const server = fakeServer();
+    server.history.set(7, [message(1, { body: 'Privado de A' })]);
+    server.history.set(8, [message(1, { body: 'Mensaje de B' })]);
+    const lateA = new Subject<Conversation>();
+    const { fixture, component, api, route, sends } = await setup(server, {});
+    // Reabrir A con un GET lento y pasar a B antes de que llegue.
+    api['get'].mockImplementation((id: number) => (id === 7 ? lateA : of(conversation(8))));
+    route.next(convertToParamMap({ id: '7' }));
+    route.next(convertToParamMap({ id: '8' }));
+    lateA.next(conversation(7));
+    lateA.complete();
+    fixture.detectChanges();
+    expect(component.conversationId).toBe(8);
+    expect(component.conversation()?.id).toBe(8);
+    expect(component.messages().map(m => m.body)).toEqual(['Mensaje de B']);
+    // Un envío de A confirmado tarde tampoco aparece en B.
+    expect(sends).toHaveLength(0);
+    fixture.destroy();
+  });
+
+  it('P1 · un envío en curso de la conversación anterior no se mezcla en la nueva', async () => {
+    const server = fakeServer();
+    server.history.set(7, [message(1)]);
+    server.history.set(8, [message(1, { body: 'Mensaje de B' })]);
+    const { fixture, component, route, sends } = await setup(server);
+    component.draft.set('Para A');
+    component.send();
+    route.next(convertToParamMap({ id: '8' }));
+    expect(component.draft()).toBe('');
+    sends[0].next(message(2, { mine: true, body: 'Para A' }));
+    expect(component.messages().map(m => m.body)).toEqual(['Mensaje de B']);
+    fixture.destroy();
+  });
 });

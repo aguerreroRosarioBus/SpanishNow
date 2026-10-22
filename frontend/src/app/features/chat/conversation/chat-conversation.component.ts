@@ -2,7 +2,9 @@ import { Component, DestroyRef, ElementRef, OnInit, computed, inject, signal, vi
 import { DOCUMENT } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
+import { Observable, Subscription } from 'rxjs';
 import { ChatService } from '../../../core/services/chat.service';
 import { ChatBadgeService } from '../../../core/services/chat-badge.service';
 import { CHAT_MAX_LENGTH, ChatMessage, Conversation, PendingMessage } from '../../../core/models/chat.model';
@@ -92,6 +94,9 @@ export class ChatConversationComponent implements OnInit {
    * mueven: entre el último poll y un envío propio puede haber mensajes ajenos que todavía no se pidieron.
    */
   private pollCursor = 0;
+  /** Generación de la conversación abierta: cambia con la ruta y descarta respuestas de la anterior (CHAT-02). */
+  private generation = 0;
+  private requests = new Subscription();
   private timer: ReturnType<typeof setTimeout> | null = null;
   private idlePolls = 0;
   private readSent = 0;
@@ -102,12 +107,37 @@ export class ChatConversationComponent implements OnInit {
 
   ngOnInit(): void {
     this.document.addEventListener('visibilitychange', this.onVisibility);
-    this.destroyRef.onDestroy(() => { this.clearTimer(); this.document.removeEventListener('visibilitychange', this.onVisibility); });
-    this.route.paramMap.subscribe(params => this.open(Number(params.get('id'))));
+    this.destroyRef.onDestroy(() => {
+      this.clearTimer();
+      this.requests.unsubscribe();
+      this.document.removeEventListener('visibilitychange', this.onVisibility);
+    });
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => this.open(Number(params.get('id'))));
+  }
+
+  /**
+   * Suscribe en nombre de la conversación abierta. Al cambiar de ruta se cancelan las pendientes y, si alguna responde
+   * igual, su resultado se descarta: nunca pisa el encabezado, el historial ni el destino de un envío de otra.
+   */
+  private watch<T>(source: Observable<T>, next: (value: T) => void, error: (err: unknown) => void = () => { /* sin cambios */ }): void {
+    const generation = this.generation;
+    this.requests.add(source.subscribe({
+      next: value => { if (generation === this.generation) next(value); },
+      error: err => { if (generation === this.generation) error(err); }
+    }));
   }
 
   private open(id: number): void {
     this.clearTimer();
+    this.generation++;
+    this.requests.unsubscribe();
+    this.requests = new Subscription();
+    this.polling = false;
+    this.isLoadingOlder.set(false);
+    this.isActing.set(false);
+    this.showBlock.set(false);
+    this.showReport.set(false);
+    if (id !== this.conversationId) this.draft.set(''); // un borrador nunca viaja a otra conversación
     this.conversationId = id;
     this.conversation.set(null);
     this.messages.set([]);
@@ -117,25 +147,19 @@ export class ChatConversationComponent implements OnInit {
     this.notFound.set(false);
     this.errorMessage.set('');
     this.isLoading.set(true);
-    this.api.get(id).subscribe({
-      next: conversation => {
-        this.conversation.set(conversation);
-        this.readSent = conversation.lastReadSeq;
-        this.api.messages(id).subscribe({
-          next: page => {
-            this.messages.set(page.items);
-            this.advanceCursor(page.items);
-            this.hasOlder.set(page.hasMore);
-            this.isLoading.set(false);
-            this.scrollToBottom();
-            this.markRead();
-            this.schedule(POLL_MS);
-          },
-          error: err => this.fail(err)
-        });
-      },
-      error: err => this.fail(err)
-    });
+    this.watch(this.api.get(id), conversation => {
+      this.conversation.set(conversation);
+      this.readSent = conversation.lastReadSeq;
+      this.watch(this.api.messages(id), page => {
+        this.messages.set(page.items);
+        this.advanceCursor(page.items);
+        this.hasOlder.set(page.hasMore);
+        this.isLoading.set(false);
+        this.scrollToBottom();
+        this.markRead();
+        this.schedule(POLL_MS);
+      }, err => this.fail(err));
+    }, err => this.fail(err));
   }
 
   private fail(err: unknown): void {
@@ -152,16 +176,13 @@ export class ChatConversationComponent implements OnInit {
     this.isLoadingOlder.set(true);
     const el = this.scroller()?.nativeElement;
     const fromBottom = el ? el.scrollHeight - el.scrollTop : 0;
-    this.api.messages(this.conversationId, { beforeSeq: first.seq }).subscribe({
-      next: page => {
-        this.merge(page.items);
-        this.hasOlder.set(page.hasMore);
-        this.isLoadingOlder.set(false);
-        // Mantener a la vista lo que se estaba leyendo.
-        setTimeout(() => { if (el) el.scrollTop = el.scrollHeight - fromBottom; });
-      },
-      error: err => { this.isLoadingOlder.set(false); this.errorMessage.set(this.fmt.error(err)); }
-    });
+    this.watch(this.api.messages(this.conversationId, { beforeSeq: first.seq }), page => {
+      this.merge(page.items);
+      this.hasOlder.set(page.hasMore);
+      this.isLoadingOlder.set(false);
+      // Mantener a la vista lo que se estaba leyendo.
+      setTimeout(() => { if (el) el.scrollTop = el.scrollHeight - fromBottom; });
+    }, err => { this.isLoadingOlder.set(false); this.errorMessage.set(this.fmt.error(err)); });
   }
 
   /** Une por seq (orden del servidor) sin duplicar; un mensaje repetido por polling y envío queda una sola vez. */
@@ -187,10 +208,8 @@ export class ChatConversationComponent implements OnInit {
     if (this.polling) return;
     this.polling = true;
     const id = this.conversationId;
-    this.api.messages(id, { afterSeq: this.pollCursor }, 100).subscribe({
-      next: page => {
+    this.watch(this.api.messages(id, { afterSeq: this.pollCursor }, 100), page => {
         this.polling = false;
-        if (id !== this.conversationId) return;
         const nearBottom = this.isNearBottom();
         this.merge(page.items);
         this.advanceCursor(page.items);
@@ -199,12 +218,10 @@ export class ChatConversationComponent implements OnInit {
           if (nearBottom) this.scrollToBottom();
           this.markRead();
           // Bloqueos o respuestas del otro lado cambian el estado de la conversación.
-          this.api.get(id).subscribe({ next: c => this.conversation.set(c), error: () => { /* se reintenta en la próxima */ } });
+          this.watch(this.api.get(id), c => this.conversation.set(c));
         }
         this.schedule(page.hasMore ? 0 : this.idlePolls >= IDLE_AFTER ? IDLE_POLL_MS : POLL_MS);
-      },
-      error: () => { this.polling = false; this.schedule(IDLE_POLL_MS); }
-    });
+    }, () => { this.polling = false; this.schedule(IDLE_POLL_MS); });
   }
 
   private advanceCursor(items: ChatMessage[]): void {
@@ -219,7 +236,7 @@ export class ChatConversationComponent implements OnInit {
     const seq = this.pollCursor;
     if (seq <= this.readSent || this.document.visibilityState !== 'visible') return;
     this.readSent = seq;
-    this.api.markRead(this.conversationId, seq).subscribe({ next: () => this.badge.refresh(), error: () => { this.readSent = 0; } });
+    this.watch(this.api.markRead(this.conversationId, seq), () => this.badge.refresh(), () => { this.readSent = 0; });
   }
 
   send(): void {
@@ -239,18 +256,17 @@ export class ChatConversationComponent implements OnInit {
 
   private deliver(message: PendingMessage): void {
     this.updatePending(message.clientMessageId, { status: 'sending', errorKey: null });
-    this.api.send(this.conversationId, message.clientMessageId, message.body).subscribe({
-      next: stored => {
-        this.discard(message);
-        this.merge([stored]);
-        this.scrollToBottom();
-      },
-      error: (err: HttpErrorResponse) => {
+    const id = this.conversationId;
+    this.watch(this.api.send(id, message.clientMessageId, message.body), stored => {
+      this.discard(message);
+      this.merge([stored]);
+      this.scrollToBottom();
+    }, error => {
+        const err = error as HttpErrorResponse;
         const code = err.error?.code as string | undefined;
         const final = err.status === 400 || code === 'conversation_blocked' || code === 'operation_key_conflict' || err.status === 404;
         this.updatePending(message.clientMessageId, { status: 'failed', errorKey: this.fmt.error(err), final });
-        if (code === 'conversation_blocked') this.api.get(this.conversationId).subscribe({ next: c => this.conversation.set(c), error: () => { /* sin cambios */ } });
-      }
+        if (code === 'conversation_blocked') this.watch(this.api.get(id), c => this.conversation.set(c));
     });
   }
 
@@ -278,18 +294,15 @@ export class ChatConversationComponent implements OnInit {
     if (!reason) return;
     this.reportError.set('');
     this.isActing.set(true);
-    this.api.report(this.conversationId, reason).subscribe({
-      next: c => { this.conversation.set(c); this.isActing.set(false); this.showReport.set(false); this.reportReason.set(''); },
-      error: err => { this.isActing.set(false); this.reportError.set(this.fmt.error(err)); }
-    });
+    this.watch(this.api.report(this.conversationId, reason),
+      c => { this.conversation.set(c); this.isActing.set(false); this.showReport.set(false); this.reportReason.set(''); },
+      err => { this.isActing.set(false); this.reportError.set(this.fmt.error(err)); });
   }
 
   private act(request: ReturnType<ChatService['block']>): void {
     this.isActing.set(true);
-    request.subscribe({
-      next: c => { this.conversation.set(c); this.isActing.set(false); },
-      error: err => { this.isActing.set(false); this.errorMessage.set(this.fmt.error(err)); }
-    });
+    this.watch(request, c => { this.conversation.set(c); this.isActing.set(false); },
+      err => { this.isActing.set(false); this.errorMessage.set(this.fmt.error(err)); });
   }
 
   eventText(m: ChatMessage): string {
