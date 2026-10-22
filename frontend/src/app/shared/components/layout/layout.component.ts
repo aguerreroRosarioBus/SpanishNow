@@ -30,13 +30,15 @@ export class LayoutComponent {
   isAuthPage = computed(() => this.url().startsWith('/auth/'));
   /** El reproductor es el único lugar donde el contenido usa el ancho de 1180px. */
   isPlayer = computed(() => /^\/student\/course\/[^/]+\/play/.test(this.url()));
+  isLiveRoom = computed(() => /^\/live\/\d+(?:\?|$)/.test(this.url()));
+  isWorkspace = computed(() => this.isPlayer() || this.isLiveRoom());
   showSidebar = computed(() => !this.isAuthPage() && !!this.authService.currentUser());
   /** El pie público solo se ve fuera de la app autenticada. */
   showFooter = computed(() => !this.authService.currentUser() || this.isAuthPage());
 
   userCollapsed = signal(false);
   /** En el reproductor la barra lateral se pliega sola. */
-  sidebarCollapsed = computed(() => this.isPlayer() || this.userCollapsed());
+  sidebarCollapsed = computed(() => this.isWorkspace() || this.userCollapsed());
   sidebarOpen = signal(false);
 
   constructor() {

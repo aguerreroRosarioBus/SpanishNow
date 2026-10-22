@@ -109,6 +109,14 @@ npm start
 
 El frontend estará disponible en `http://localhost:4200`
 
+## Imágenes en los cursos
+
+Los docentes pueden buscar en Google Imágenes e insertar una selección en portadas, vocabulario e ilustraciones de las lecciones. El backend necesita credenciales del buscador y almacenamiento Cloudinary. Ver [configuración y uso](docs/imagenes-google/README.md).
+
+## Clases en vivo
+
+Pizarra colaborativa con páginas, dibujo, notas, texto, imágenes y control de edición docente. Acceso por curso o invitación, publicación en Google Classroom y copias editables en Google Drive. Configuración, alcance del MVP y pruebas en [Clases en vivo](docs/clases-en-vivo/README.md).
+
 ## Características del Método TPRS
 
 El sistema está diseñado para soportar el método TPRS:

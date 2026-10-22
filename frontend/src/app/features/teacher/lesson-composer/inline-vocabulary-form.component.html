@@ -11,6 +11,7 @@
     <button type="button" class="small-button inline-icon-btn" [disabled]="busy()" (click)="file.click()"><app-icon name="upload" /> {{ image() ? 'Cambiar imagen' : 'Subir imagen' }}</button>
     <button type="button" *ngIf="image()" class="text-button" [disabled]="busy()" (click)="removeImage()">Quitar imagen</button>
   </div>
+  <app-image-search *ngIf="!match()" [initialQuery]="word()" [disabled]="busy()" (imageSelected)="setImage($event)" />
   <p class="inline-help" *ngIf="match()" role="status">«{{ match()!.word }}» ya existe en el vocabulario de la unidad ({{ match()!.translation }}); se reutilizará.</p>
   <p class="inline-error" role="alert" *ngIf="error()">{{ error() }}</p>
   <div class="inline-actions">

@@ -41,7 +41,7 @@
 
       <p class="auth-card__alt">
         ¿No tienes cuenta?
-        <a routerLink="/auth/register">Regístrate</a>
+        <a routerLink="/auth/register" [queryParams]="returnUrl ? { returnUrl } : null">Regístrate</a>
       </p>
     </form>
   </div>

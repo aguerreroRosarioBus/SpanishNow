@@ -20,6 +20,17 @@
           </div>
 
           <div class="mb-3">
+            <label for="courseCover" class="form-label">Imagen de portada</label>
+            <input id="courseCover" type="file" class="form-control" [accept]="imageAccept" [disabled]="isSaving" (change)="onImageFile($event)">
+            <app-image-search [initialQuery]="form.controls.title.value || ''" [disabled]="isSaving" (imageSelected)="selectImage($event)" />
+            @if (coverPreview(); as cover) {
+              <img [src]="cover" alt="Vista previa de la portada del curso" class="img-thumbnail mt-2" style="max-height: 160px">
+            }
+            @if (imageFile) {
+              <button type="button" class="btn btn-sm btn-link" [disabled]="isSaving" (click)="selectImage(null)">Descartar cambio de imagen</button>
+            }
+          </div>
+          <div class="mb-3">
             <label for="courseIntroVideo" class="form-label">Video de bienvenida (YouTube, Vimeo o Bunny)</label>
             <input type="url" class="form-control" id="courseIntroVideo" formControlName="introVideoUrl"
                    placeholder="https://www.youtube.com/watch?v=…" aria-describedby="courseIntroVideoHelp" />

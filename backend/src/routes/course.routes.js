@@ -200,16 +200,14 @@ router.post('/', authMiddleware, isTeacher, upload.single('image'), async (req, 
     const { title, description, level } = req.body;
     let imageUrl = null;
 
-    // Solo subir a Cloudinary si está configurado y hay archivo
-    if (req.file && process.env.CLOUDINARY_CLOUD_NAME) {
+    if (req.file) {
+      if (!cloudinary.canUpload()) return res.status(503).json({ error: 'El almacenamiento de imágenes no está configurado.' });
       try {
-        const result = await cloudinary.uploadFromBuffer(req.file.buffer, {
-          folder: 'spanishnow/courses'
-        });
+        const result = await cloudinary.uploadFromBuffer(req.file.buffer, { folder: 'spanishnow/courses', resource_type: 'image' });
+        if (!result?.secure_url) throw new Error('Missing image URL');
         imageUrl = result.secure_url;
-      } catch (cloudinaryError) {
-        console.warn('Cloudinary upload failed, continuing without image:', cloudinaryError.message);
-        // Continuar sin imagen si Cloudinary falla
+      } catch {
+        return res.status(502).json({ error: 'No se pudo guardar la imagen. El curso no fue modificado.' });
       }
     }
 
@@ -243,13 +241,6 @@ router.put('/:id', authMiddleware, isTeacher, upload.single('image'), async (req
     const { title, description, level } = req.body;
     let imageUrl = course.imageUrl;
 
-    if (req.file) {
-      const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: 'spanishnow/courses'
-      });
-      imageUrl = result.secure_url;
-    }
-
     const sales = parseSalesFields(req.body);
     if (sales.error) return res.status(400).json({ error: sales.error });
     const intro = parseVideoField(req.body, 'introVideoUrl');
@@ -258,6 +249,17 @@ router.put('/:id', authMiddleware, isTeacher, upload.single('image'), async (req
     if (series.error) return res.status(400).json({ error: series.error });
     const hotmartFields = await hotmart.parseCourseFields(req.body || {}, course);
     if (hotmartFields.error) return res.status(hotmartFields.status || 400).json({ error: hotmartFields.error });
+
+    if (req.file) {
+      if (!cloudinary.canUpload()) return res.status(503).json({ error: 'El almacenamiento de imágenes no está configurado.' });
+      try {
+        const result = await cloudinary.uploadFromBuffer(req.file.buffer, { folder: 'spanishnow/courses', resource_type: 'image' });
+        if (!result?.secure_url) throw new Error('Missing image URL');
+        imageUrl = result.secure_url;
+      } catch {
+        return res.status(502).json({ error: 'No se pudo guardar la imagen. El curso no fue modificado.' });
+      }
+    }
 
     try {
       await course.update({ title, description, level, imageUrl, ...sales.values, ...series.values, ...hotmartFields.values, ...(intro.skip ? {} : { introVideoUrl: intro.value }) });

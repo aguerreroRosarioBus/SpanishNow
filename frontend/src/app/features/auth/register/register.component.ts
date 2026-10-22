@@ -1,7 +1,8 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { liveReturnUrl } from '../../../core/guards/live-auth.guard';
 import { AuthService } from '../../../core/services/auth.service';
 
 /**
@@ -20,6 +21,7 @@ export class RegisterComponent {
   private fb = inject(FormBuilder);
   private authService = inject(AuthService);
   private router = inject(Router);
+  readonly returnUrl = liveReturnUrl(inject(ActivatedRoute).snapshot.queryParamMap.get('returnUrl'));
 
   registerForm: FormGroup;
   errorMessage: string = '';
@@ -57,7 +59,7 @@ export class RegisterComponent {
     // Llamar al servicio de registro
     this.authService.register(formData).subscribe({
       next: (response) => {
-        console.log('Registro exitoso:', response);
+        if (this.returnUrl) { void this.router.navigateByUrl(this.returnUrl); return; }
 
         // El backend automáticamente hace login después del registro
         // y devuelve el token, por lo que podemos redirigir directamente

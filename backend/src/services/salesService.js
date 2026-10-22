@@ -35,7 +35,9 @@ function parseRange(query = {}, now = new Date()) {
  *   gross = charged, refunds = returned, net = gross - refunds
  */
 async function summary(teacherId, { from, to }) {
-  const run = sql => sequelize.query(sql, { replacements: { teacherId, from, to }, type: QueryTypes.SELECT });
+  // Named raw-query replacements format Date in the host timezone; order timestamps are stored in UTC.
+  const utcSql = date => date.toISOString().slice(0, 23).replace('T', ' ');
+  const run = sql => sequelize.query(sql, { replacements: { teacherId, from: utcSql(from), to: utcSql(to) }, type: QueryTypes.SELECT });
   const scope = `FROM orders o JOIN courses c ON c.id = o.courseId
     WHERE c.teacherId = :teacherId AND o.status IN ('paid', 'refunded') AND o.paidAt >= :from AND o.paidAt <= :to`;
   const [totals, byMonth, byCourse] = await Promise.all([

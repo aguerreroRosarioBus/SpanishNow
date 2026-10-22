@@ -64,6 +64,17 @@ describe('KeyframeIllustrationComponent', () => {
     expect(altChange).toEqual([{ blockKey: 'k1', imageAlt: 'María llega a la fiesta.' }]);
   });
 
+  it('una imagen de Google usa el mismo guardado previo y upload del fragmento', async () => {
+    const saved = vi.fn(async () => true);
+    setup(kf(), true, saved);
+    const pending = component.upload(png());
+    await fixture.whenStable();
+    expect(saved).toHaveBeenCalledOnce();
+    imageReq().flush({ blockKey: 'k1', imageUrl: 'https://cdn/google.png' });
+    await pending;
+    expect(imageChange).toEqual([{ blockKey: 'k1', imageUrl: 'https://cdn/google.png' }]);
+  });
+
   it('no pisa una descripción ya escrita', async () => {
     setup(kf({ imageAlt: 'Mi descripción' }));
     pickFile(png());
