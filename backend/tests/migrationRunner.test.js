@@ -11,8 +11,8 @@ const { createScratchDb, dropScratchDb, openConnection } = require('./helpers/sc
 
 const silent = { info() {}, warn() {}, error() {}, debug() {} };
 const FILES = fs.readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.js')).sort();
-const EMPTY_DB = 'spanishnow_jest_test_runner_empty';
-const DUMP_DB = 'spanishnow_jest_test_runner_dump';
+const EMPTY_DB = `${TEST_DB_NAME}_runner_empty`;
+const DUMP_DB = `${TEST_DB_NAME}_runner_dump`;
 
 async function schemaOf(name) {
   const connection = await openConnection(name);
@@ -78,10 +78,10 @@ describe('migration runner', () => {
       '20261103000200-add-course-series.js', '20261103000100-add-order-sales-fields.js', '20261103000000-create-coupons.js',
       '20261102000300-create-certificates.js', '20261102000200-create-unit-quizzes.js', '20261102000100-create-materials.js', '20261102000000-add-video-urls.js',
       '20261101000300-add-enrollment-source.js', '20261101000200-create-password-tokens.js', '20261101000100-create-orders.js',
-      '20261101000000-add-course-sales-fields.js', '20261023000000-add-keyframe-images.js', '20261022000000-drop-legacy-progress.js',
+      '20261101000000-add-course-sales-fields.js', '20261023000000-add-keyframe-images.js', '20261022010000-create-sales-legal.js', '20261022000000-drop-legacy-progress.js',
       '20261021000000-add-keyframe-tooltips.js'
     ]);
-    expect((await status(emptyMigrator)).pending).toHaveLength(23);
+    expect((await status(emptyMigrator)).pending).toHaveLength(24);
     await emptyMigrator.umzug.up();
     expect(diff(before, await schemaOf(EMPTY_DB))).toEqual([]);
   });

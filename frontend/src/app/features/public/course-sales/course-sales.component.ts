@@ -10,12 +10,18 @@ import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { formatPrice } from '../../../shared/utils/money';
 import { browserStorage, normalizeAffiliateCode, readAffiliateRef, saveAffiliateRef } from '../../../shared/utils/affiliate-attribution';
 import { couponErrorMessage, normalizeCouponCode, priceView } from '../../../shared/utils/coupon-price';
+import { I18nService } from '../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
+import { ExpectationsViewComponent } from '../../legal/expectations-view/expectations-view.component';
+import { LegalConsentComponent } from '../../legal/legal-consent/legal-consent.component';
+import { CheckoutEvidence } from '../../legal/legal.model';
+import { consentFor, contractual, LegalService } from '../../legal/legal.service';
 
 /** Página de venta de un curso: descripción, índice, precio y botón de compra. */
 @Component({
   selector: 'app-course-sales',
   standalone: true,
-  imports: [RouterLink, VideoEmbedComponent, IconComponent],
+  imports: [RouterLink, VideoEmbedComponent, IconComponent, TranslatePipe, ExpectationsViewComponent, LegalConsentComponent],
   templateUrl: './course-sales.component.html',
   styleUrl: './course-sales.component.scss'
 })
@@ -25,6 +31,8 @@ export class CourseSalesComponent implements OnInit {
   private affiliates = inject(AffiliateService);
   private enrollments = inject(EnrollmentService);
   private auth = inject(AuthService);
+  private i18n = inject(I18nService);
+  private legal = inject(LegalService);
 
   course = signal<PublicCourseDetail | null>(null);
   isLoading = signal(true);
@@ -70,6 +78,14 @@ export class CourseSalesComponent implements OnInit {
     const q = this.quote();
     return c && q && q.discountAmount > 0 ? formatPrice(q.discountAmount, c.currency) : '';
   });
+  // W02 (SALES-04, LEGAL-02): la casilla acepta exactamente las versiones de la instantánea mostrada.
+  commercial = computed(() => this.course()?.commercial ?? null);
+  consentDocs = computed(() => (this.commercial()?.legalDocuments ?? []).map(d => ({
+    documentKey: d.documentKey, version: d.version, title: d.content[this.i18n.locale()].title
+  })));
+  needsConsent = computed(() => contractual(this.consentDocs()).length > 0);
+  legalAccepted = signal(false);
+  consentSubmitted = signal(false);
   lessonCount = computed(() => (this.course()?.units ?? []).reduce((sum, u) => sum + u.stories.length, 0));
   materialsCount = computed(() => this.course()?.materialsCount ?? 0);
   quizCount = computed(() => (this.course()?.units ?? []).filter(u => u.hasQuiz).length);
@@ -162,6 +178,12 @@ export class CourseSalesComponent implements OnInit {
     this.showCoupon.set(false);
   }
 
+  private refreshCommercial(slug: string): void {
+    this.legalAccepted.set(false);
+    this.consentSubmitted.set(false);
+    this.catalog.getCourse(slug).subscribe({ next: course => this.course.set(course), error: () => { /* se mantiene el aviso */ } });
+  }
+
   /** Aparte para poder probar la compra sin navegar. */
   protected redirect(url: string): void { window.location.href = url; }
 
@@ -173,15 +195,27 @@ export class CourseSalesComponent implements OnInit {
       this.buyError.set('Enter a valid email address to get the course.');
       return;
     }
+    this.consentSubmitted.set(true);
+    if (this.needsConsent() && !this.legalAccepted()) return;
+    const commercial = this.commercial();
+    const evidence: CheckoutEvidence | null = commercial ? {
+      locale: this.i18n.locale(),
+      commercialHash: commercial.hash,
+      ...(this.needsConsent() ? { legalConsent: consentFor(commercial.legalDocuments) } : {})
+    } : null;
     this.isBuying.set(true);
     this.buyError.set('');
-    this.catalog.checkout(course.id, this.quote()?.coupon.code, email, this.affiliateCode()).subscribe({
+    this.catalog.checkout(course.id, this.quote()?.coupon.code, email, this.affiliateCode(), evidence).subscribe({
       next: ({ url }) => {
         this.redirect(url);
       },
       error: error => {
         this.isBuying.set(false);
-        if (error?.status === 409) {
+        if (['sales_snapshot_changed', 'legal_version_changed', 'legal_acceptance_required'].includes(error?.error?.code)) {
+          // Cambió precio, expectativas o legales: se muestra la versión nueva y hay que aceptarla otra vez.
+          this.buyError.set(this.legal.errorMessage(error));
+          this.refreshCommercial(course.slug);
+        } else if (error?.status === 409) {
           this.alreadyEnrolled.set(true);
           this.enrolledCourseId.set(course.id);
         } else if (error?.status === 400 && error?.error?.code?.startsWith?.('coupon_')) {

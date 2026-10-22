@@ -60,6 +60,7 @@ router.get('/courses/:slug', async (req, res) => {
     const link = row => (row ? { slug: row.slug, title: row.title } : null);
     res.json({
       ...summary(course),
+      commercial: await require('../services/salesExpectations').commercialView(course),
       series: { previous: link(previous), next: link(next) },
       salesDescription: course.salesDescription,
       introVideoUrl: course.introVideoUrl,

@@ -51,6 +51,9 @@ const ExternalConnection = require('./ExternalConnection');
 const ExternalSyncRef = require('./ExternalSyncRef');
 const OutboxJob = require('./OutboxJob');
 const LegalAcceptance = require('./LegalAcceptance');
+const LegalDocument = require('./LegalDocument');
+const CourseExpectations = require('./CourseExpectations');
+const CourseCheckoutSnapshot = require('./CourseCheckoutSnapshot');
 const AuditLog = require('./AuditLog');
 
 // Define associations
@@ -283,5 +286,8 @@ module.exports = {
   ExternalSyncRef,
   OutboxJob,
   LegalAcceptance,
+  LegalDocument,
+  CourseExpectations,
+  CourseCheckoutSnapshot,
   AuditLog
 };

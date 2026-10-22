@@ -4,7 +4,7 @@ const { Op, literal, fn } = require('sequelize');
 const sequelize = require('../config/database');
 const {
   User, Course, Enrollment, Order, Coupon, Affiliate, LessonComment, LiveClass, LiveClassMember,
-  GoogleConnection, PasswordToken, Tooltip
+  GoogleConnection, PasswordToken, Tooltip, CourseCheckoutSnapshot
 } = require('../models');
 const { PERMISSION_KEYS, isFixedAdmin, effectivePermissions, hasPermission } = require('../config/permissions');
 const { signToken, serializeAuthUser } = require('./authUser');
@@ -203,7 +203,9 @@ async function deleteTestUsers(userIds) {
       C.length ? Enrollment.count({ where: { courseId: C, studentId: notTest }, transaction }) : 0,
       Order.count({ where: { [Op.and]: [orderScope, { [Op.or]: [{ userId: { [Op.is]: null } }, { userId: notTest }] }] }, transaction }),
       L.length ? LiveClassMember.count({ where: { liveClassId: L, userId: notTest }, transaction }) : 0,
-      C.length ? Coupon.count({ where: { courseId: C, teacherId: notTest }, transaction }) : 0
+      C.length ? Coupon.count({ where: { courseId: C, teacherId: notTest }, transaction }) : 0,
+      // W02: evidence of what a real buyer saw and accepted at a test course's checkout, even without an order.
+      C.length ? CourseCheckoutSnapshot.count({ where: { courseId: C, userId: notTest }, transaction }) : 0
     ]);
     // Chat, packages and sessions (CONTRACT-05): a conversation, offer, purchase or class shared with a real user blocks it.
     const classScope = await classData.collect(T, transaction);
@@ -225,6 +227,7 @@ async function deleteTestUsers(userIds) {
       await Coupon.update({ redemptions: literal(`GREATEST(redemptions - ${Number(uses)}, 0)`) }, { where: { id: couponId, teacherId: { [Op.notIn]: T } }, transaction });
     }
     await classData.remove(T, classScope, transaction);
+    await CourseCheckoutSnapshot.destroy({ where: { [Op.or]: [{ userId: T }, { courseId: C }] }, transaction });
     await Order.destroy({ where: orderScope, transaction });
     await Enrollment.destroy({ where: { [Op.or]: [{ studentId: T }, { courseId: C }] }, transaction });
     await LessonComment.destroy({ where: { userId: T }, transaction });

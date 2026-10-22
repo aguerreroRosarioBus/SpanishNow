@@ -1,6 +1,6 @@
 // Single source of truth for the test database and the safety guard.
 // The suite never touches the database named in backend/.env (DB_NAME).
-const TEST_DB_NAME = 'spanishnow_jest_test';
+const TEST_DB_NAME = process.env.DB_NAME_TEST || 'spanishnow_jest_test';
 
 function assertSafeTestDatabase(name) {
   if (!name || !/jest|test/i.test(name)) {

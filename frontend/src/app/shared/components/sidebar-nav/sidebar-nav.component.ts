@@ -99,6 +99,7 @@ export class SidebarNavComponent {
     if (!(this.currentUser()?.permissions?.length)) return groups;
     // «Administración» va antes de «Cuenta», que siempre es el último grupo
     const admin: NavGroup = { title: 'nav.admin', items: [{ label: 'nav.users', icon: 'users', link: '/admin/users' }] };
+    if (this.authService.hasPermission('legal.manage')) admin.items.push({ label: 'legal.nav', icon: 'file-text', link: '/admin/legal' });
     return [...groups.slice(0, -1), admin, groups[groups.length - 1]];
   });
 

@@ -64,6 +64,13 @@
           </section>
         }
 
+        @if (commercial()?.expectations; as expectations) {
+          <section class="sales-section" aria-labelledby="expectations-heading">
+            <h2 id="expectations-heading" class="sales-heading">{{ 'sales.expectations.title' | t }}</h2>
+            <app-expectations-view [expectations]="expectations" />
+          </section>
+        }
+
         <section class="sales-section" aria-labelledby="curriculum-heading">
           <h2 id="curriculum-heading" class="sales-heading">What's inside</h2>
           <p class="page-summary mb-2">
@@ -165,6 +172,9 @@
                 [value]="buyerEmail()" (input)="buyerEmail.set($any($event.target).value)" (keydown.enter)="buy()">
               <div class="form-text">We'll create your account and email you a link to set your password.</div>
             </div>
+          }
+          @if (needsConsent()) {
+            <app-legal-consent [documents]="consentDocs()" [(accepted)]="legalAccepted" [submitted]="consentSubmitted()" />
           }
           @if (buyError()) {
             <div class="alert alert-danger mb-0" role="alert">{{ buyError() }}</div>

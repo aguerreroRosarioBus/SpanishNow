@@ -1,4 +1,5 @@
 /** Modelos de la venta de cursos (Fase 1): catálogo público, checkout y alumnos del curso. */
+import type { CommercialSnapshot } from '../../features/legal/legal.model';
 
 export interface PublicCourse {
   id: number;
@@ -22,6 +23,8 @@ export interface PublicCourseDetail extends PublicCourse {
   materialsCount?: number;
   /** Serie de cursos: anterior y siguiente (solo cursos publicados). */
   series?: CourseSeries;
+  /** W02 (SALES-04): misma instantánea que se acepta en el checkout y se guarda en la compra. */
+  commercial?: CommercialSnapshot;
   units: Array<{
     id: number;
     title: string;
@@ -166,6 +169,8 @@ export interface MyOrder {
   status: OrderStatus;
   refundedAmount: number;
   receiptUrl: string | null;
+  /** W02: condiciones y versiones legales congeladas al iniciar el checkout (null en compras anteriores). */
+  commercial?: CommercialSnapshot | null;
 }
 
 /** Curso siguiente que se ofrece al terminar (GET /enrollments/:id/progress → next). */
