@@ -38,6 +38,17 @@
         }
       </div>
 
+      @if (legalUnavailable()) {
+        <div class="alert alert-warning" role="alert">{{ 'legal.consent.unavailable' | t }}</div>
+      } @else if (needsConsent()) {
+        <div class="mb-4">
+          <app-legal-consent [documents]="consentDocs()" [(accepted)]="legalAccepted" [submitted]="consentSubmitted()" />
+        </div>
+      }
+      @if (legalError()) {
+        <div class="alert alert-danger" role="alert">{{ legalError() }}</div>
+      }
+
       <button type="submit" class="btn btn-primary btn-lg w-100" [disabled]="registerForm.invalid || isLoading()">
         @if (isLoading()) {
           <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>

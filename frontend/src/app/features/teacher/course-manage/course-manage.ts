@@ -19,6 +19,7 @@ import { QuestionModalComponent } from './components/question-modal.component';
 import { VocabularyModalComponent } from './components/vocabulary-modal.component';
 import { RepetitionModalComponent } from './components/repetition-modal.component';
 import { TooltipModalComponent } from './components/tooltip-modal.component';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 
 /** Pantalla de gestión de contenido de un curso: orquesta la lista de unidades y los diálogos. */
 @Component({
@@ -28,7 +29,7 @@ import { TooltipModalComponent } from './components/tooltip-modal.component';
     CommonModule, RouterLink, IconComponent, PluralPipe, ConfirmDialogComponent, LessonComposerComponent, UnitListComponent,
     CourseEditModalComponent, UnitFormModalComponent, StoryCreateModalComponent, StoryEditModalComponent,
     QuestionModalComponent, VocabularyModalComponent, RepetitionModalComponent, TooltipModalComponent,
-    StudentsPanelComponent, MaterialsModalComponent, QuizModalComponent
+    StudentsPanelComponent, MaterialsModalComponent, QuizModalComponent, TranslatePipe
   ],
   providers: [CourseManageStore, CourseContentStore],
   templateUrl: './course-manage.html',

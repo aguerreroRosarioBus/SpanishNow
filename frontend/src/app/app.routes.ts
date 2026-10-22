@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard, teacherGuard, studentGuard, adminGuard } from './core/guards/auth.guard';
 import { liveAuthGuard } from './core/guards/live-auth.guard';
+import { legalManageGuard } from './features/legal/legal-manage.guard';
 
 /**
  * Configuración de rutas de la aplicación
@@ -165,6 +166,12 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
 
+  // W02: páginas legales públicas (?version= para versiones publicadas anteriores)
+  {
+    path: 'legal/:documentKey',
+    loadComponent: () => import('./features/legal/legal-page/legal-page.component').then(m => m.LegalPageComponent)
+  },
+
   // Rutas de información pública
   {
     path: 'contact',
@@ -180,6 +187,19 @@ export const routes: Routes = [
     path: 'admin/users',
     loadComponent: () => import('./features/admin/users/admin-users.component').then(m => m.AdminUsersComponent),
     canActivate: [adminGuard]
+  },
+
+  // W02: editor legal con permiso explícito legal.manage
+  {
+    path: 'admin/legal',
+    loadComponent: () => import('./features/legal/admin-legal/admin-legal.component').then(m => m.AdminLegalComponent),
+    canActivate: [legalManageGuard]
+  },
+  // W02: expectativas de venta del curso (solo el docente dueño; el servidor lo verifica)
+  {
+    path: 'teacher/course/:id/expectations',
+    loadComponent: () => import('./features/legal/expectations-editor/expectations-editor.component').then(m => m.ExpectationsEditorComponent),
+    canActivate: [teacherGuard]
   },
 
   // Ruta de configuración (compartida)

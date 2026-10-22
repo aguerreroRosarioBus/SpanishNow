@@ -29,3 +29,9 @@
   .data-table td { display: flex; justify-content: space-between; gap: 12px; border: 0; padding: 4px 12px; text-align: right; }
   .data-table td::before { content: attr(data-label); font-weight: 700; color: var(--color-text-light); text-align: left; }
 }
+
+.purchase-terms {
+  margin-top: .35rem;
+  font-size: .875rem;
+  summary { cursor: pointer; color: var(--color-primary, #0d6efd); }
+}

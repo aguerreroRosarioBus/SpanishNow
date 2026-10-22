@@ -34,7 +34,26 @@
           @for (o of orders(); track o.id) {
             <tr>
               <td data-label="Fecha">{{ o.paidAt | date:'d MMM y' }}</td>
-              <td data-label="Curso"><a [routerLink]="['/courses', o.course.slug]">{{ o.course.title }}</a></td>
+              <td data-label="Curso">
+                <a [routerLink]="['/courses', o.course.slug]">{{ o.course.title }}</a>
+                @if (o.commercial; as c) {
+                  <details class="purchase-terms">
+                    <summary>{{ 'sales.snapshot.show' | t }}</summary>
+                    <p class="mb-1">{{ 'sales.snapshot.price' | t : { price: snapshotPrice(c) } }}</p>
+                    @if (c.expectations) {
+                      <app-expectations-view [expectations]="c.expectations" />
+                    }
+                    @if (c.legalDocuments.length) {
+                      <p class="mb-1 mt-2"><strong>{{ 'sales.snapshot.documents' | t }}</strong></p>
+                      <ul class="mb-0">
+                        @for (d of c.legalDocuments; track d.documentKey) {
+                          <li><a [routerLink]="docLink(d).path" [queryParams]="docLink(d).query">{{ docTitle(d) }}</a> · {{ 'legal.version' | t : { version: d.version } }}</li>
+                        }
+                      </ul>
+                    }
+                  </details>
+                }
+              </td>
               <td data-label="Monto" class="num">
                 {{ money(o.amount, o.currency) }}
                 @if (o.refundedAmount > 0) { <small class="d-block text-secondary-ui">Devuelto {{ money(o.refundedAmount, o.currency) }}</small> }

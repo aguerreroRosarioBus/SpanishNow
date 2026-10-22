@@ -8,14 +8,17 @@ import { AffiliateService } from '../../../core/services/affiliate.service';
 import { EnrollmentService } from '../../../core/services/enrollment.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { PublicCourseDetail } from '../../../core/models/sales.model';
+import { I18N_CATALOGS, I18nService } from '../../../core/i18n/i18n.service';
+import { LEGAL_SALES_MESSAGES } from '../../legal/legal-messages';
+import { CommercialSnapshot, EXPECTATION_FIELDS, Expectations } from '../../legal/legal.model';
 
 function course(provider: 'hotmart' | 'site'): PublicCourseDetail {
   return { id: 7, slug: 'c', title: 'Course', level: 'A1', price: 5000, currency: 'usd', units: [], checkoutProvider: provider };
 }
 
-function setup(provider: 'hotmart' | 'site', query: Record<string, string> = {}) {
+function setup(provider: 'hotmart' | 'site', query: Record<string, string> = {}, commercial?: CommercialSnapshot) {
   const catalog = {
-    getCourse: vi.fn(() => of(course(provider))),
+    getCourse: vi.fn(() => of({ ...course(provider), ...(commercial ? { commercial } : {}) })),
     quote: vi.fn(() => throwError(() => ({ status: 400, error: { code: 'coupon_not_applicable', error: 'Discounts for this course are applied at the Hotmart checkout' } }))),
     checkout: vi.fn(() => of({ url: 'https://pay.hotmart.com/X' }))
   };
@@ -26,7 +29,8 @@ function setup(provider: 'hotmart' | 'site', query: Record<string, string> = {})
       { provide: PublicCatalogService, useValue: catalog },
       { provide: AffiliateService, useValue: { validateCode: vi.fn(() => of({ valid: false })) } },
       { provide: EnrollmentService, useValue: { getMyCourses: vi.fn(() => of([])) } },
-      { provide: AuthService, useValue: { currentUser: () => null, isAuthenticated: () => false, isStudent: () => false } }
+      { provide: AuthService, useValue: { currentUser: () => null, isAuthenticated: () => false, isStudent: () => false } },
+      { provide: I18N_CATALOGS, multi: true, useValue: LEGAL_SALES_MESSAGES }
     ]
   });
   const fixture = TestBed.createComponent(CourseSalesComponent);
@@ -52,7 +56,7 @@ describe('CourseSalesComponent', () => {
     const { fixture, catalog } = setup('hotmart');
     vi.spyOn(fixture.componentInstance as any, 'redirect').mockImplementation(() => {});
     fixture.componentInstance.buy();
-    expect(catalog.checkout).toHaveBeenCalledWith(7, undefined, null, null);
+    expect(catalog.checkout).toHaveBeenCalledWith(7, undefined, null, null, null);
   });
 
   it('Hotmart: ?coupon= se aplica solo; un cupón parcial rechazado muestra el mensaje sin formulario', () => {
@@ -71,5 +75,57 @@ describe('CourseSalesComponent', () => {
     fixture.detectChanges();
     expect(fixture.componentInstance.needsEmail()).toBe(true);
     expect(el.querySelector('#buyerEmail')).not.toBeNull();
+  });
+});
+
+describe('CourseSalesComponent · W02 instantánea y aceptación', () => {
+  const text = (l: 'en' | 'es') => Object.fromEntries(EXPECTATION_FIELDS.map(f => [f, `${l} ${f}`])) as Expectations['en'];
+  const doc = (documentKey: 'terms' | 'privacy' | 'refunds', version: string) => ({
+    documentKey, version, effectiveAt: '2026-01-01T00:00:00.000Z',
+    content: { en: { title: `EN ${documentKey}`, body: 'x' }, es: { title: `ES ${documentKey}`, body: 'x' } },
+    business: { responsibleName: 'R', address: 'A', contactEmail: 'c@x.invalid', privacyEmail: 'p@x.invalid', commercialRetention: 'C' }
+  });
+  const commercial = (hash = 'h1'): CommercialSnapshot => ({
+    courseId: 7, title: 'Course', teacherId: 1, price: 5000, currency: 'usd', version: 2, expectations: { en: text('en'), es: text('es') },
+    legalDocuments: [doc('terms', '4'), doc('privacy', '2'), doc('refunds', '1')], hash
+  });
+
+  it('muestra expectativas en el idioma activo y la casilla sin marcar', () => {
+    const { fixture, el } = setup('site', {}, commercial());
+    TestBed.inject(I18nService).setLocale('es');
+    fixture.detectChanges();
+    expect(el.textContent).toContain('es audience');
+    expect(el.textContent).toContain('El acceso vitalicio al contenido del curso no incluye clases en vivo');
+    expect(el.querySelector<HTMLInputElement>('.legal-consent input')!.checked).toBe(false);
+  });
+
+  it('sin aceptar no llama al checkout; aceptando envía hash, idioma y versiones contractuales', () => {
+    const { fixture, catalog, el } = setup('hotmart', {}, commercial());
+    TestBed.inject(I18nService).setLocale('en');
+    vi.spyOn(fixture.componentInstance as any, 'redirect').mockImplementation(() => {});
+    fixture.componentInstance.buy();
+    fixture.detectChanges();
+    expect(catalog.checkout).not.toHaveBeenCalled();
+    expect(el.textContent).toContain('Check the box');
+    fixture.componentInstance.legalAccepted.set(true);
+    fixture.componentInstance.buy();
+    expect(catalog.checkout).toHaveBeenCalledWith(7, undefined, null, null, {
+      locale: 'en', commercialHash: 'h1',
+      legalConsent: { accepted: true, documents: [{ documentKey: 'terms', documentVersion: '4' }, { documentKey: 'refunds', documentVersion: '1' }] }
+    });
+  });
+
+  it('si cambió la instantánea, muestra el aviso, recarga y pide aceptar de nuevo (no lo confunde con "ya inscripto")', () => {
+    const { fixture, catalog, el } = setup('site', {}, commercial());
+    TestBed.inject(I18nService).setLocale('en');
+    catalog.checkout.mockReturnValue(throwError(() => ({ status: 409, error: { code: 'sales_snapshot_changed' } })) as any);
+    catalog.getCourse.mockReturnValue(of({ ...course('site'), commercial: commercial('h2') }) as any);
+    fixture.componentInstance.legalAccepted.set(true);
+    fixture.componentInstance.buy();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.alreadyEnrolled()).toBe(false);
+    expect(el.textContent).toContain('The conditions of this course changed');
+    expect(fixture.componentInstance.legalAccepted()).toBe(false);
+    expect(fixture.componentInstance.commercial()?.hash).toBe('h2');
   });
 });
