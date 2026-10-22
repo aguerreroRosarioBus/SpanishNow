@@ -10,7 +10,7 @@ export interface ImageSearchResult {
   source: string;
   token: string;
 }
-export interface ImageSearchPage { results: ImageSearchResult[]; page: number; hasMore: boolean; }
+export interface ImageSearchPage { results: ImageSearchResult[]; page: number; hasMore: boolean; provider?: 'pixabay' | 'google'; }
 
 @Injectable({ providedIn: 'root' })
 export class ImageSearchService {

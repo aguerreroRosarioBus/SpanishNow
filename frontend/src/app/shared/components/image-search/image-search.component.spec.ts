@@ -21,7 +21,7 @@ describe('ImageSearchComponent', () => {
   function findSearch(page = 1) { return http.expectOne(r => r.url.endsWith('/images/search') && r.params.get('page') === String(page)); }
   async function populate() {
     component.toggle(); const pending = component.search();
-    findSearch().flush({ results: [image], page: 1, hasMore: true }); await pending; fixture.detectChanges();
+    findSearch().flush({ results: [image], page: 1, hasMore: true, provider: 'pixabay' }); await pending; fixture.detectChanges();
   }
   it('opens with the suggested query and searches only on request, without a nested form', async () => {
     component.toggle(); fixture.detectChanges();
@@ -39,6 +39,14 @@ describe('ImageSearchComponent', () => {
     req.flush(new Blob(['png'], { type: 'image/png' })); await pending;
     expect(selected).toHaveLength(1); expect(selected[0]).toBeInstanceOf(File); expect(selected[0].type).toBe('image/png');
     expect(component.expanded()).toBe(false);
+  });
+  it('labels the search generically and credits Pixabay when returning its catalog', async () => {
+    expect(fixture.nativeElement.textContent).toContain('Buscar imágenes');
+    expect(fixture.nativeElement.textContent).not.toContain('Google Imágenes');
+    await populate();
+    const credit = fixture.nativeElement.querySelector('a[href="https://pixabay.com/"]');
+    expect(credit.textContent).toBe('Pixabay'); expect(credit.rel).toBe('noopener noreferrer');
+    expect(fixture.nativeElement.querySelector('input[type="search"]').maxLength).toBe(100);
   });
   it('preserves the selected file on download failure and displays the server error from a Blob', async () => {
     await populate(); const pending = component.select(image);

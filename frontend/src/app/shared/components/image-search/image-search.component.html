@@ -1,17 +1,18 @@
 <button type="button" class="btn btn-sm btn-outline-secondary" [disabled]="disabled() || !!importing()"
         [attr.aria-expanded]="expanded()" (click)="toggle()">
-  <app-icon name="search" [size]="16" /> {{ expanded() ? 'Cerrar búsqueda' : 'Buscar en Google Imágenes' }}
+  <app-icon name="search" [size]="16" /> {{ expanded() ? 'Cerrar búsqueda' : 'Buscar imágenes' }}
 </button>
 @if (expanded()) {
-  <section class="image-search" aria-label="Buscar en Google Imágenes" [attr.aria-busy]="loading() || !!importing()">
+  <section class="image-search" aria-label="Buscar imágenes" [attr.aria-busy]="loading() || !!importing()">
     <div class="search-controls">
-      <input #queryInput type="search" class="form-control" aria-label="Qué imagen quieres buscar" maxlength="200"
+      <input #queryInput type="search" class="form-control" aria-label="Qué imagen quieres buscar" maxlength="100"
              placeholder="Ej.: una casa junto al mar" [value]="query()" (input)="query.set(queryInput.value)"
              (keydown.enter)="onEnter($event)" [disabled]="disabled() || loading() || !!importing()">
       <button type="button" class="btn btn-secondary btn-sm" (click)="search()"
               [disabled]="disabled() || !query().trim() || loading() || !!importing()">Buscar</button>
     </div>
     <p class="form-text">Selecciona una imagen para insertarla. Revisa los permisos de uso en el sitio de origen.</p>
+    @if (provider() === 'pixabay') { <p class="form-text">Imágenes de <a href="https://pixabay.com/" target="_blank" rel="noopener noreferrer">Pixabay</a> · Fotos, ilustraciones y vectores.</p> }
     @if (error()) { <p class="text-danger small" role="alert">{{ error() }}</p> }
     @if (loading()) { <p class="small" role="status">Buscando imágenes…</p> }
     @if (importing()) { <p class="small" role="status">Preparando imagen…</p> }

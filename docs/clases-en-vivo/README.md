@@ -6,12 +6,12 @@ Pizarra colaborativa propia de SpanishNow, inspirada en Jamboard. Google retiró
 
 1. Entrar como docente a **Clases en vivo** en el menú lateral (`/live`).
 2. Crear una clase independiente o asociada a un curso propio. Preparar las páginas en estado **Preparando**.
-3. Dibujar con mouse, lápiz o pantalla táctil; agregar formas, texto, notas adhesivas, imágenes subidas o de Google Imágenes. **Seleccionar** permite mover, editar y cambiar el tamaño. El menú de cada elemento permite eliminarlo con confirmación.
+3. Dibujar con mouse, lápiz o pantalla táctil; agregar formas, texto, notas adhesivas, imágenes subidas o de Pixabay. **Seleccionar** permite mover, editar y cambiar el tamaño. El menú de cada elemento permite eliminarlo con confirmación.
 4. **Iniciar clase** y **Invitar alumnos**. El enlace requiere una cuenta de alumno de SpanishNow; se conserva al iniciar sesión o registrarse.
 5. Los alumnos siguen la página activa del docente. Pueden explorar otra página y activar nuevamente **Seguir al docente**. Cada alumno modifica sus propios elementos; el docente administra todo el contenido.
 6. En **Participantes**, el docente puede pausar la edición. **Más acciones → Finalizar clase** deja la pizarra en modo lectura para alumnos. Quienes ya participaron pueden volver por el mismo enlace; alumnos inscritos en un curso asociado también pueden consultarla. El docente puede seguir preparando el contenido o reabrir la sala.
 
-Una sala admite 20 páginas, 500 elementos por página y 1,5 MB de contenido estructurado. Las imágenes se guardan en Cloudinary y se referencian por URL, con límite de 5 MB por subida. La búsqueda de Google usa la [configuración de imágenes](../imagenes-google/README.md).
+Una sala admite 20 páginas, 500 elementos por página y 1,5 MB de contenido estructurado. Las imágenes se guardan en Cloudinary y se referencian por URL, con límite de 5 MB por subida. La búsqueda de imágenes usa la [configuración de imágenes](../imagenes-google/README.md).
 
 La interfaz usa el sistema de [REDISENO_UI.md](../rediseno-ui/REDISENO_UI.md): tokens cálidos, Poppins/Nunito Sans, controles compactos, un botón principal, menús para acciones destructivas y confirmaciones.
 

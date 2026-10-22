@@ -27,6 +27,7 @@ export class ImageSearchComponent {
   searched = signal(false);
   page = signal(1);
   hasMore = signal(false);
+  provider = signal('');
   private searchedQuery = '';
 
   constructor() { inject(DestroyRef).onDestroy(() => { this.alive = false; this.request++; }); }
@@ -34,7 +35,7 @@ export class ImageSearchComponent {
   toggle(): void {
     if (this.disabled() || this.importing()) return;
     this.expanded.update(value => !value);
-    if (this.expanded() && !this.query()) this.query.set(this.initialQuery().slice(0, 200));
+    if (this.expanded() && !this.query()) this.query.set(this.initialQuery().slice(0, 100));
   }
 
   async search(page = 1): Promise<void> {
@@ -47,6 +48,7 @@ export class ImageSearchComponent {
       const result = await firstValueFrom(this.api.search(query, page));
       if (!this.alive || request !== this.request) return;
       this.results.set(result.results); this.page.set(result.page); this.hasMore.set(result.hasMore);
+      this.provider.set(result.provider || '');
       this.searched.set(true); this.searchedQuery = query;
     } catch (e: any) {
       if (this.alive && request === this.request) this.error.set(e?.error?.error || 'No se pudo buscar. Inténtalo de nuevo.');
@@ -61,7 +63,7 @@ export class ImageSearchComponent {
       if (!this.alive || this.disabled()) return;
       const extension: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif' };
       if (!extension[blob.type]) throw new Error();
-      this.imageSelected.emit(new File([blob], `google-image.${extension[blob.type]}`, { type: blob.type }));
+      this.imageSelected.emit(new File([blob], `imagen.${extension[blob.type]}`, { type: blob.type }));
       this.expanded.set(false);
     } catch (e: any) {
       let message = e?.error?.error;

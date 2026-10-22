@@ -2,6 +2,7 @@ const dns = require('node:dns').promises;
 const https = require('node:https');
 const net = require('node:net');
 const jwt = require('jsonwebtoken');
+const { cachedSearch } = require('./imageSearchCache');
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const error = (status, message) => Object.assign(new Error(message), { status });
@@ -52,8 +53,14 @@ async function searchImages(query, page, userId) {
   }
   if (!Number.isInteger(page) || page < 1 || page > 10) throw error(400, 'Página de búsqueda no válida.');
   let url;
+  const pixabay = process.env.PIXABAY_API_KEY;
   const serp = process.env.SERPAPI_API_KEY;
-  if (serp) {
+  if (pixabay) {
+    if (query.trim().length > 100) throw error(400, 'Escribe una búsqueda de hasta 100 caracteres para Pixabay.');
+    url = new URL('https://pixabay.com/api/');
+    url.search = new URLSearchParams({ key: pixabay, q: query.trim(), lang: 'es', image_type: 'all',
+      safesearch: 'true', per_page: '20', page: String(page) }).toString();
+  } else if (serp) {
     url = new URL('https://serpapi.com/search.json');
     url.search = new URLSearchParams({ engine: 'google_images', q: query.trim(), api_key: serp,
       hl: 'es', safe: 'active', ijn: String(page - 1) }).toString();
@@ -64,31 +71,36 @@ async function searchImages(query, page, userId) {
   } else {
     throw error(503, 'La búsqueda de imágenes aún no está configurada. Contacta al administrador.');
   }
-  let response, data;
+  let data;
   try {
-    response = await fetch(url, { signal: AbortSignal.timeout(15000) });
-    if (response.status === 429) throw error(429, 'Se alcanzó el límite del buscador. Inténtalo más tarde.');
-    if (!response.ok) throw new Error();
-    data = await response.json();
-    if (data.error) throw new Error();
+    const load = async () => {
+      const response = await fetch(url, { signal: AbortSignal.timeout(15000), redirect: 'error' });
+      if (response.status === 429) throw error(429, 'Se alcanzó el límite del buscador. Inténtalo más tarde.');
+      if (pixabay && [400, 401, 403].includes(response.status)) throw error(503, 'Pixabay rechazó la consulta. Revisa la API key y el acceso de la cuenta.');
+      if (!response.ok) throw new Error();
+      const value = await response.json();
+      if (value.error || (pixabay && (!Array.isArray(value.hits) || !Number.isInteger(value.totalHits) || value.totalHits < 0))) throw new Error();
+      return pixabay ? { hits: value.hits.slice(0, 20), totalHits: value.totalHits } : value;
+    };
+    data = pixabay ? await cachedSearch('pixabay-v1:' + url.href, load) : await load();
   } catch (e) {
     if (e.status) throw e;
-    throw error(502, 'No se pudo consultar Google Imágenes. Inténtalo de nuevo.');
+    throw error(502, 'No se pudo consultar el buscador de imágenes. Inténtalo de nuevo.');
   }
-  const raw = serp ? data.images_results || [] : data.items || [];
+  const raw = pixabay ? data.hits : serp ? data.images_results || [] : data.items || [];
   const seen = new Set();
   const results = raw.slice(0, 100).flatMap(item => {
-    const original = imageUrl(serp ? item.original : item.link);
-    const thumb = imageUrl(serp ? item.thumbnail : item.image?.thumbnailLink);
-    const source = imageUrl(serp ? item.link : item.image?.contextLink);
+    const original = imageUrl(pixabay ? item.largeImageURL || item.webformatURL : serp ? item.original : item.link);
+    const thumb = imageUrl(pixabay ? item.previewURL : serp ? item.thumbnail : item.image?.thumbnailLink);
+    const source = imageUrl(pixabay ? item.pageURL : serp ? item.link : item.image?.contextLink);
     if (!original || !thumb || seen.has(original.href)) return [];
     seen.add(original.href);
-    return [{ title: String(item.title || 'Imagen').slice(0, 300), thumbnailUrl: thumb.href,
-      sourceUrl: source?.href || null, source: source?.hostname || original.hostname,
+    return [{ title: String((pixabay ? item.tags : item.title) || 'Imagen').slice(0, 300), thumbnailUrl: thumb.href,
+      sourceUrl: source?.href || null, source: pixabay ? 'Pixabay' + (item.user ? ' · ' + String(item.user).slice(0, 100) : '') : source?.hostname || original.hostname,
       token: signImage(original.href, userId) }];
   });
-  const hasMore = page < 10 && Boolean(serp ? data.serpapi_pagination?.next || data.pagination?.next : data.queries?.nextPage?.length);
-  return { results, page, hasMore };
+  const hasMore = page < 10 && Boolean(pixabay ? data.totalHits > page * 20 : serp ? data.serpapi_pagination?.next || data.pagination?.next : data.queries?.nextPage?.length);
+  return { results, page, hasMore, provider: pixabay ? 'pixabay' : 'google' };
 }
 
 // Pin the checked DNS address to the socket. Redirects repeat validation to prevent SSRF and DNS rebinding.
