@@ -57,6 +57,12 @@ const User = sequelize.define('User', {
   timeZoneConfirmedAt: {
     type: DataTypes.DATE,
     allowNull: true
+  },
+  // Grouped email about unread chat messages (CHAT-09); the user turns it off from settings.
+  chatUnreadEmail: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true
   }
 }, {
   timestamps: true,

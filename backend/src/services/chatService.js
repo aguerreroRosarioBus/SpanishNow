@@ -4,7 +4,8 @@
 // - Every message gets a server sequence under the conversation's row lock; history pages by that seq (CHAT-03).
 // - Sending is idempotent per sender and conversation through clientMessageId (CHAT-03).
 // - Anti-spam limits are fixed windows shared by replicas (CHAT-07); read cursors only move forward (CHAT-10).
-// - Unread activity is emailed through the outbox, grouped and without the message text (CHAT-09).
+// - Unread activity is emailed through the outbox, grouped, without the message text, in the recipient's locale and
+//   only if they keep users.chatUnreadEmail on (CHAT-09).
 const { Op, QueryTypes, UniqueConstraintError } = require('sequelize');
 const sequelize = require('../config/database');
 const {
@@ -15,6 +16,7 @@ const { DEFAULT_POLICY_V1 } = require('../domain/classPolicy');
 const rateLimit = require('./rateLimit');
 const outbox = require('./outbox');
 const { sendMail } = require('./mailService');
+const { chatUnread } = require('./emailTemplates');
 
 const HOUR = 3600e3;
 const DAY = 24 * HOUR;
@@ -604,17 +606,6 @@ async function scheduleUnreadEmail(participant, seq, { transaction, now }) {
   }, { transaction });
 }
 
-const EMAIL_TEXT = {
-  es: (name, count, url) => ({
-    subject: `Tenés ${count === 1 ? 'un mensaje nuevo' : `${count} mensajes nuevos`} de ${name}`,
-    text: `${name} te escribió en SpanishNow.\n\nLeé y respondé la conversación acá: ${url}\n\nNo incluimos el texto del mensaje en este correo por privacidad.`
-  }),
-  en: (name, count, url) => ({
-    subject: `You have ${count === 1 ? 'a new message' : `${count} new messages`} from ${name}`,
-    text: `${name} wrote to you on SpanishNow.\n\nRead and reply to the conversation here: ${url}\n\nFor privacy, this email does not include the message text.`
-  })
-};
-
 /** Outbox handler: emails the recipient only if something is still unread and not yet notified. Idempotent. */
 async function sendUnreadEmail(job, ctx = {}) {
   const { conversationId, userId } = job.payload || {};
@@ -627,13 +618,15 @@ async function sendUnreadEmail(job, ctx = {}) {
   });
   if (!pending.length) return;
   const [recipient, conversation] = await Promise.all([User.findByPk(userId), Conversation.findByPk(conversationId)]);
-  if (!recipient || recipient.suspendedAt) return;
+  // The user's own switch (settings, /api/me/preferences); CHAT_UNREAD_EMAIL=0 is the global one.
+  if (!recipient || recipient.suspendedAt || recipient.chatUnreadEmail === false) return;
   const otherId = conversation.teacherId === userId ? conversation.studentId : conversation.teacherId;
   const other = await User.findByPk(otherId, { attributes: ['name'] });
   if (ctx.stillOwned && !(await ctx.stillOwned())) return;
-  const url = `${(process.env.FRONTEND_URL || 'http://localhost:4200').replace(/\/$/, '')}/messages/${conversationId}`;
-  const mail = (EMAIL_TEXT[recipient.locale] || EMAIL_TEXT.es)(other ? other.name : 'SpanishNow', pending.length, url);
-  await sendMail({ to: recipient.email, ...mail });
+  await sendMail({
+    to: recipient.email,
+    ...chatUnread({ recipientName: recipient.name, senderName: other && other.name, count: pending.length, conversationId, locale: recipient.locale })
+  });
   await sequelize.query(
     'UPDATE conversation_participants SET emailNotifiedSeq = GREATEST(emailNotifiedSeq, ?) WHERE id = ?',
     { replacements: [pending[0].seq, participant.id] }

@@ -13,7 +13,8 @@ class PreferenceError extends Error {
 const serializePreferences = user => ({
   locale: user.locale ?? null,
   timeZone: user.timeZone ?? null,
-  timeZoneConfirmedAt: user.timeZoneConfirmedAt ?? null
+  timeZoneConfirmedAt: user.timeZoneConfirmedAt ?? null,
+  chatUnreadEmail: user.chatUnreadEmail !== false // W04, CHAT-09
 });
 
 /** Valida identificadores IANA y sus aliases, nunca abreviaturas ni offsets sueltos. No convierte horarios. */
@@ -26,13 +27,14 @@ function isTimeZone(value) {
 }
 
 function validatePatch(body) {
-  const allowed = ['locale', 'timeZone', 'confirmTimeZone'];
+  const allowed = ['locale', 'timeZone', 'confirmTimeZone', 'chatUnreadEmail'];
   if (!body || typeof body !== 'object' || Array.isArray(body) || !Object.keys(body).length) {
     throw new PreferenceError('validation_failed', 'Se requiere al menos una preferencia.', { fields: allowed });
   }
   const fields = Object.keys(body).filter(key => !allowed.includes(key));
   if (Object.hasOwn(body, 'locale') && !['en', 'es'].includes(body.locale)) fields.push('locale');
   if (Object.hasOwn(body, 'confirmTimeZone') && typeof body.confirmTimeZone !== 'boolean') fields.push('confirmTimeZone');
+  if (Object.hasOwn(body, 'chatUnreadEmail') && typeof body.chatUnreadEmail !== 'boolean') fields.push('chatUnreadEmail');
   if (fields.length) throw new PreferenceError('validation_failed', 'Revisa las preferencias indicadas.', { fields });
   if (Object.hasOwn(body, 'timeZone') && !isTimeZone(body.timeZone)) {
     throw new PreferenceError('time_zone_invalid', 'Elige una zona horaria IANA válida.', { fields: ['timeZone'] });
@@ -48,6 +50,7 @@ async function updatePreferences(userId, body) {
     if (!user) { const error = new PreferenceError('not_found', 'El usuario no está disponible.'); error.statusCode = 404; throw error; }
     const changes = {};
     if (Object.hasOwn(patch, 'locale')) changes.locale = patch.locale;
+    if (Object.hasOwn(patch, 'chatUnreadEmail')) changes.chatUnreadEmail = patch.chatUnreadEmail;
     const zone = Object.hasOwn(patch, 'timeZone') ? patch.timeZone : user.timeZone;
     const changedZone = zone !== user.timeZone;
     if (Object.hasOwn(patch, 'timeZone')) changes.timeZone = zone;

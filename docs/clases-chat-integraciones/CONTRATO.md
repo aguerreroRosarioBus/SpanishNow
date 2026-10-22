@@ -1,6 +1,6 @@
 # Contrato técnico W00: clases, chat, paquetes e integraciones
 
-Versión **1.1** · 22/10/2026 · Paquete W00 ([#13](https://github.com/aguerreroRosarioBus/SpanishNow/issues/13)) · Responsable: orquestador de turno.
+Versión **1.2** · 22/10/2026 · Paquete W00 ([#13](https://github.com/aguerreroRosarioBus/SpanishNow/issues/13)) · Responsable: orquestador de turno.
 
 Este documento convierte la [guía](SPEC.md) §13 en un contrato que los paquetes W01–W09 consumen sin renegociar. La guía manda sobre el *qué*; este contrato fija nombres, tablas, estados, invariantes, formatos y rutas. Cambiarlo exige un PR que suba la versión, actualice la tabla de cambios del final y avise en el issue «Orquestación» (#23) a los paquetes afectados.
 
@@ -376,8 +376,8 @@ Todas bajo autenticación salvo las marcadas *pública*/*callback*. Las rutas qu
 
 | Método y ruta | Uso |
 | --- | --- |
-| `GET /api/me/preferences` | `{ locale, timeZone, timeZoneConfirmedAt }` |
-| `PATCH /api/me/preferences` | `{ locale?, timeZone?, confirmTimeZone? }`; `400 time_zone_invalid` |
+| `GET /api/me/preferences` | `{ locale, timeZone, timeZoneConfirmedAt, chatUnreadEmail }` |
+| `PATCH /api/me/preferences` | `{ locale?, timeZone?, confirmTimeZone?, chatUnreadEmail? }`; `400 time_zone_invalid` |
 
 ### 9.2 Chat — W04
 
@@ -582,4 +582,5 @@ Registradas en [COORDINACION.md](COORDINACION.md#decisiones). Ninguna bloquea el
 | Versión | Fecha | Cambio |
 | --- | --- | --- |
 | 1.0 | 22/10/2026 | Primera versión (W00, Claude). |
+| 1.2 | 22/10/2026 | W04 (Claude): `users.chatUnreadEmail BOOLEAN NOT NULL DEFAULT true` (migración `20261109000000-add-chat-unread-email-preference.js`) expuesto como `chatUnreadEmail` en §9.1 (CHAT-09). |
 | 1.1 | 22/10/2026 | W04 (Claude): §9.2 agrega `GET /api/conversations/unread` y la lectura auditada de conversaciones reportadas para `chat.moderate`; precisa respuestas, contexto, impersonación y `appendSystemMessage`. Sin cambios de esquema. |

@@ -424,6 +424,7 @@ describe('CHAT-04/08/10: block, report, system events and moderation', () => {
 describe('CHAT-09: grouped email about unread activity', () => {
   test('one pending job per recipient, delayed; the email has no message text and is skipped once read', async () => {
     const teacher = await availableTeacher();
+    await teacher.update({ locale: 'es' });
     const student = await createUser('student', 'chat-email');
     const conversation = await open(student, teacher);
     const before = Date.now();
@@ -443,6 +444,7 @@ describe('CHAT-09: grouped email about unread activity', () => {
     expect(mails).toHaveLength(1);
     expect(mails[0].subject).toContain('2 mensajes nuevos');
     expect(mails[0].text).not.toContain('Texto privado');
+    expect(mails[0].html).not.toContain('Texto privado');
     expect(mails[0].text).toContain(`/messages/${conversation.id}`);
     await teacherPart.reload();
     expect(teacherPart.emailNotifiedSeq).toBe(2);
@@ -460,6 +462,38 @@ describe('CHAT-09: grouped email about unread activity', () => {
     await as(teacher).post(`/api/conversations/${conversation.id}/read`, { seq: 3 });
     clearOutbox();
     await chat.sendUnreadEmail(next);
+    expect(getOutbox()).toHaveLength(0);
+  });
+});
+
+describe('CHAT-09: the recipient\'s language and email preference', () => {
+  async function pendingJob(recipient, conversationId) {
+    const part = await ConversationParticipant.findOne({ where: { conversationId, userId: recipient.id } });
+    return OutboxJob.findOne({ where: { topic: chat.EMAIL_TOPIC, aggregateId: part.id, status: 'pending' } });
+  }
+
+  test('without a chosen language the email is in English (W01 rule)', async () => {
+    const teacher = await availableTeacher();
+    const student = await createUser('student', 'chat-email-en');
+    const conversation = await open(student, teacher);
+    await send(student, conversation.id, 'Hello');
+    clearOutbox();
+    await chat.sendUnreadEmail(await pendingJob(teacher, conversation.id));
+    const [mail] = getOutbox().filter(m => m.to === teacher.email);
+    expect(mail.subject).toBe(`You have a new message from ${student.name}`);
+    expect(mail.text).not.toContain('Hello');
+  });
+
+  test('a user who turned the email off through /api/me/preferences gets none', async () => {
+    const teacher = await availableTeacher();
+    const student = await createUser('student', 'chat-email-off');
+    const conversation = await open(student, teacher);
+    const off = await require('supertest')(require('../src/app')).patch('/api/me/preferences')
+      .set('Authorization', `Bearer ${teacher.token}`).send({ chatUnreadEmail: false });
+    expect(off.body.chatUnreadEmail).toBe(false);
+    await send(student, conversation.id, 'Hola');
+    clearOutbox();
+    await chat.sendUnreadEmail(await pendingJob(teacher, conversation.id));
     expect(getOutbox()).toHaveLength(0);
   });
 });
