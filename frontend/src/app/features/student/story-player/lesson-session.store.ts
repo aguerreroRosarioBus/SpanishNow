@@ -17,7 +17,7 @@ export class LessonSessionStore {
   lesson = signal<StudentLesson | null>(null);
   loading = signal(false);
   error = signal('');
-  visibleError = computed(() => this.error() || this.audio.error());
+  visibleError = this.error.asReadonly();
 
   answerText = signal('');
   answerResult = signal<StudentAnswerResult | null>(null);
@@ -36,14 +36,9 @@ export class LessonSessionStore {
   });
   currentBlockIndex = computed(() => this.activeBlocks().findIndex(block => block.blockKey === this.currentBlock()?.blockKey));
   narrativeCompleted = computed(() => Boolean(this.lesson()?.progress.narrativeCompleted));
-  fullStoryAudioUrl = computed(() => {
-    const story = this.lesson()?.story;
-    return this.audio.speed() === 'slow' ? story?.audioSlowUrl || null : story?.audioNormalUrl || null;
-  });
 
   load(storyId: number): void {
     this.audio.stop();
-    this.audio.error.set('');
     this.loading.set(true);
     this.error.set('');
     this.answerResult.set(null);
@@ -155,12 +150,6 @@ export class LessonSessionStore {
 
   isReinforcementComplete(blockKey: string): boolean {
     return Boolean(this.lesson()?.progress.reinforcements.some(item => item.blockKey === blockKey && item.completed));
-  }
-
-  toggleFullStoryAudio(): void { this.audio.toggle(this.fullStoryAudioUrl()); }
-
-  switchAudioSpeed(speed: 'slow' | 'normal'): void {
-    this.audio.switchSpeed(speed, () => this.fullStoryAudioUrl());
   }
 
   private patchProgress(change: (progress: StudentLesson['progress']) => StudentLesson['progress']): void {
