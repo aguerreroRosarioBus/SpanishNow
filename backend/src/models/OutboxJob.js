@@ -10,7 +10,7 @@ module.exports = sequelize.define('OutboxJob', {
   status: { type: D.ENUM('pending', 'running', 'done', 'failed', 'cancelled'), allowNull: false, defaultValue: 'pending' },
   attempts: { type: D.INTEGER, allowNull: false, defaultValue: 0 },
   maxAttempts: { type: D.INTEGER, allowNull: false, defaultValue: 8 },
-  runAt: { type: D.DATE, allowNull: false },
-  lockedBy: D.STRING(64), lockedUntil: D.DATE,
+  runAt: { type: D.DATE(3), allowNull: false },
+  lockedBy: D.STRING(64), lockedUntil: D.DATE(3),
   lastError: D.STRING(500), doneAt: D.DATE
 }, { tableName: 'outbox_jobs', timestamps: true });

@@ -301,7 +301,9 @@ function tables(S) {
         id: bigId, topic: str(64, false), aggregateType: str(64), aggregateId: int(undefined, true), aggregateVersion: int(undefined, true),
         dedupeKey: str(191, false), payload: { type: S.JSON },
         status: { type: S.ENUM('pending', 'running', 'done', 'failed', 'cancelled'), allowNull: false, defaultValue: 'pending' },
-        attempts: int(0), maxAttempts: int(8), runAt: date(false), lockedBy: str(64), lockedUntil: date(), lastError: str(500), doneAt: date(),
+        // Millisecond precision: leases are renewed every few seconds and compared at that resolution.
+        attempts: int(0), maxAttempts: int(8), runAt: { type: S.DATE(3), allowNull: false }, lockedBy: str(64), lockedUntil: { type: S.DATE(3) },
+        lastError: str(500), doneAt: date(),
         ...timestamps
       },
       indexes: [[['dedupeKey'], { unique: true }], [['status', 'runAt']], [['aggregateType', 'aggregateId']]]
@@ -377,6 +379,13 @@ module.exports = {
     }
 
     await pendingCheckoutUnique(q);
+    // Earlier draft of this migration: outbox times without milliseconds.
+    const [precise] = await q.sequelize.query(
+      "SELECT COLUMN_NAME AS name, DATETIME_PRECISION AS p FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'outbox_jobs' AND COLUMN_NAME IN ('runAt', 'lockedUntil')"
+    );
+    for (const { name, p } of precise) {
+      if (Number(p) !== 3) await q.changeColumn('outbox_jobs', name, { type: S.DATE(3), allowNull: name === 'lockedUntil' });
+    }
 
     const users = await q.describeTable('users');
     for (const [name, spec] of Object.entries(USER_COLUMNS(S))) {

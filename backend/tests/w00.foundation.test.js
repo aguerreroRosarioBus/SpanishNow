@@ -270,6 +270,47 @@ describe('outbox and durable jobs (CONTRACT-03/04)', () => {
     expect(runs).toBe(1);
   });
 
+  test('a handler that outlives the lease keeps its job, and the rest of the batch is not held (two live workers)', async () => {
+    const runs = new Map();
+    let release;
+    const gate = new Promise(resolve => { release = resolve; });
+    let slowId;
+    outbox.register('test.slow', async (job, ctx) => {
+      runs.set(job.id, (runs.get(job.id) || 0) + 1);
+      if (job.id === slowId) {
+        await gate;
+        expect(await ctx.stillOwned()).toBe(true);
+      }
+    });
+    slowId = (await outbox.enqueue({ topic: 'test.slow', dedupeKey: `slow:${unique()}`, runAt: new Date(Date.now() - 1000) })).job.id;
+    const nextId = (await outbox.enqueue({ topic: 'test.slow', dedupeKey: `slow:${unique()}` })).job.id;
+    const leaseMs = 300;
+
+    const a = outbox.runOnce({ workerId: 'jest-a', limit: 2, leaseMs });
+    await new Promise(resolve => setTimeout(resolve, leaseMs * 3)); // A is still inside the first handler
+    const b = await outbox.runOnce({ workerId: 'jest-b', limit: 2, leaseMs });
+    release();
+    const resultA = await a;
+
+    expect(runs.get(slowId)).toBe(1); // B did not take the job A is still running
+    expect(runs.get(nextId)).toBe(1); // B ran the other one; A did not run it again
+    expect(b).toMatchObject({ claimed: 1, done: 1 });
+    expect(resultA).toMatchObject({ claimed: 1, done: 1, lost: 0 });
+    const statuses = (await OutboxJob.findAll({ where: { id: [slowId, nextId] } })).map(job => job.status);
+    expect(statuses).toEqual(['done', 'done']);
+  });
+
+  test('a worker that lost its lease does not settle the job', async () => {
+    let jobId;
+    outbox.register('test.lost', async () => {
+      // Another worker took the job over (as after an expired lease) while this handler was running.
+      await OutboxJob.update({ lockedBy: 'jest-other:takeover' }, { where: { id: jobId } });
+    });
+    jobId = (await outbox.enqueue({ topic: 'test.lost', dedupeKey: `lost:${unique()}` })).job.id;
+    expect(await outbox.runOnce(worker('a'))).toMatchObject({ claimed: 1, done: 0, lost: 1 });
+    expect((await OutboxJob.findByPk(jobId)).status).toBe('running');
+  });
+
   test('cancel() invalidates pending jobs of older versions of an aggregate (AGENDA-08)', async () => {
     const id = Math.floor(Math.random() * 1e9);
     const enqueue = version => outbox.enqueue({ topic: 'reminder.session', aggregateType: 'class_sessions', aggregateId: id, aggregateVersion: version, dedupeKey: `reminder:${id}:v${version}:1:60` });

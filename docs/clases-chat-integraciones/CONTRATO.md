@@ -354,14 +354,14 @@ Implementado en `backend/src/services/outbox.js`:
 ```js
 await outbox.enqueue({ topic, aggregateType, aggregateId, aggregateVersion, dedupeKey, payload, runAt }, { transaction });
 await outbox.cancel({ aggregateType, aggregateId, topicPrefix, beforeVersion }, { transaction }); // invalida pendientes viejos
-outbox.register(topic, async (job, ctx) => { ... });   // handler idempotente
-await outbox.runOnce({ workerId, limit });               // reclama y ejecuta un lote
+outbox.register(topic, async (job, ctx) => { ... });   // handler idempotente; ctx.stillOwned()
+await outbox.runOnce({ workerId, limit, leaseMs });       // reclama y ejecuta de a un job
 outbox.start({ intervalMs }) / outbox.stop();            // bucle del proceso (solo si OUTBOX_WORKER=1)
 ```
 
 - `enqueue` se llama **dentro** de la transacción de negocio: si la transacción se revierte, el job no existe. Con un `dedupeKey` repetido no crea otro (devuelve el existente).
-- `runOnce` reclama con `SELECT … FOR UPDATE SKIP LOCKED` (MySQL 8) jobs `pending` con `runAt <= now`, o `running` con `lockedUntil` vencido (proceso caído), los marca `running` con `lockedBy`/`lockedUntil` y confirma; ejecuta el handler **fuera** de la transacción. Éxito → `done`. Error → `attempts++`, `runAt` con *backoff* exponencial (30 s × 2^n, tope 6 h) y `lastError` saneado; al llegar a `maxAttempts` → `failed` (visible en métricas y panel de recuperación).
-- Dos workers no ejecutan el mismo job a la vez; un reinicio no pierde trabajos. Los handlers deben ser idempotentes (por `dedupeKey` / versión del agregado), porque un job puede ejecutarse dos veces si el proceso muere después del efecto y antes de marcar `done`.
+- `runOnce` reclama **de a un job** con `SELECT … FOR UPDATE SKIP LOCKED` (MySQL 8) entre los `pending` con `runAt <= now` y los `running` con `lockedUntil` vencido (proceso caído). Cada reclamo lleva un **token de propiedad** en `lockedBy` y un lease (`leaseMs`, 5 min por defecto) que se **renueva cada `leaseMs/3`** mientras corre el handler. El handler corre **fuera** de la transacción y recibe `ctx.stillOwned()` para verificar la propiedad antes de un efecto externo. El job se cierra solo si el token sigue siendo dueño: éxito → `done`; error → `attempts++`, `runAt` con *backoff* exponencial (30 s × 2^n, tope 6 h) y `lastError` saneado; al llegar a `maxAttempts` → `failed` (visible en métricas y panel de recuperación). Si otro worker se quedó con el job, el resultado cuenta como `lost` y no se toca la fila.
+- Dos workers vivos no ejecutan el mismo job: un handler largo mantiene su lease y no retiene los demás jobs del lote. Un reinicio no pierde trabajos. `runAt` y `lockedUntil` tienen precisión de milisegundos. Los handlers deben ser idempotentes (por `dedupeKey` / versión del agregado), porque un job puede ejecutarse dos veces si el proceso muere después del efecto y antes de marcar `done`.
 - Recordatorios: un job por (sesión, versión, destinatario, tipo), `dedupeKey = reminder:<sessionId>:v<version>:<userId>:<minutes>`, `runAt = startsAt - minutes`; solo se encolan los que sigan siendo futuros. Reprogramar o cancelar llama a `cancel(beforeVersion)` y el handler además descarta si `aggregateVersion` ≠ versión vigente (AGENDA-08).
 - Tópicos reservados: `email.*`, `reminder.session`, `offer.expire`, `proposal.expire`, `cohort.deadline`, `purchase.expire`, `calendar.sync`, `zoom.sync`, `review.*`. Cada paquete registra los suyos.
 - `setTimeout` solo como disparador del bucle, nunca como garantía (CONTRACT-04).

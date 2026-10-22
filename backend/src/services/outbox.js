@@ -1,8 +1,11 @@
 // Durable jobs (CONTRACT-03/04, CONTRATO.md §8). enqueue() is called inside the business transaction, so the job exists
-// only if that state was committed. Workers claim jobs with SELECT ... FOR UPDATE SKIP LOCKED: several replicas never run
-// the same job at once, and a job whose worker died is claimed again once its lock expires. Handlers run outside any
-// transaction and must be idempotent (a job may run twice if the process dies between the effect and marking it done).
+// only if that state was committed. Workers claim one job at a time with SELECT ... FOR UPDATE SKIP LOCKED and an
+// ownership token, renew the lease while the handler runs and settle the job only if they still own it: several live
+// replicas never run the same job at once, and a job whose worker died is claimed again once its lease expires. Handlers
+// run outside any transaction and must be idempotent (a job may run twice if the process dies between the effect and
+// marking it done); before an external effect they can call ctx.stillOwned().
 const os = require('os');
+const { randomUUID } = require('crypto');
 const { Op } = require('sequelize');
 const sequelize = require('../config/database');
 const { OutboxJob } = require('../models');
@@ -57,10 +60,11 @@ function sanitize(error) {
 
 const backoff = attempts => Math.min(BASE_BACKOFF_MS * 2 ** Math.max(attempts - 1, 0), MAX_BACKOFF_MS);
 
-/** Claims up to `limit` due jobs for this worker, in one short transaction. */
-async function claim({ workerId, limit, now }) {
+/** Claims the next due job for `token` (one job per claim, so a long handler never holds other jobs' leases). */
+async function claimOne({ token, leaseMs, clock }) {
   return sequelize.transaction(async transaction => {
-    const due = await OutboxJob.findAll({
+    const now = clock();
+    const job = await OutboxJob.findOne({
       where: {
         [Op.or]: [
           { status: 'pending', runAt: { [Op.lte]: now } },
@@ -68,40 +72,81 @@ async function claim({ workerId, limit, now }) {
         ]
       },
       order: [['runAt', 'ASC'], ['id', 'ASC']],
-      limit,
       transaction,
       lock: transaction.LOCK.UPDATE,
       skipLocked: true
     });
-    if (!due.length) return [];
-    const lockedUntil = new Date(now.getTime() + LOCK_MS);
-    await OutboxJob.update({ status: 'running', lockedBy: workerId, lockedUntil }, { where: { id: due.map(job => job.id) }, transaction });
-    return due.map(job => Object.assign(job, { status: 'running', lockedBy: workerId, lockedUntil }));
+    if (!job) return null;
+    const lockedUntil = new Date(now.getTime() + leaseMs);
+    await OutboxJob.update({ status: 'running', lockedBy: token, lockedUntil }, { where: { id: job.id }, transaction });
+    return Object.assign(job, { status: 'running', lockedBy: token, lockedUntil });
   });
 }
 
-/** Runs one batch. Returns { claimed, done, retried, failed }. */
-async function runOnce({ workerId = DEFAULT_WORKER, limit = 20, now = new Date() } = {}) {
-  const jobs = await claim({ workerId, limit, now });
-  const result = { claimed: jobs.length, done: 0, retried: 0, failed: 0 };
-  for (const job of jobs) {
-    const handler = handlers.get(job.topic);
-    // Only the worker that holds the lock may settle the job.
-    const mine = { id: job.id, status: 'running', lockedBy: workerId };
+/**
+ * Keeps the lease of a running job alive every leaseMs / 3 while its handler runs. If the row no longer belongs to this
+ * token (another worker took it after an expiry), `lost` turns true and the job is not settled by this worker.
+ */
+function keepLease({ job, token, leaseMs, clock }) {
+  const owned = { id: job.id, lockedBy: token, status: 'running' };
+  const state = { lost: false, stopped: false };
+  let timeout = null;
+  const beat = async () => {
+    if (state.stopped) return;
     try {
+      await OutboxJob.update({ lockedUntil: new Date(clock().getTime() + leaseMs) }, { where: owned });
+      // Checked by query, not by affected rows: MySQL reports 0 when the new value equals the old one.
+      if (!(await OutboxJob.count({ where: owned }))) state.lost = true;
+    } catch (error) {
+      console.error('Outbox lease renewal:', sanitize(error));
+    }
+    if (!state.stopped && !state.lost) timeout = setTimeout(beat, Math.max(Math.floor(leaseMs / 3), 10));
+  };
+  timeout = setTimeout(beat, Math.max(Math.floor(leaseMs / 3), 10));
+  return {
+    state,
+    /** For handlers: true while this worker still owns the job (checked in the database). Call it before an effect. */
+    stillOwned: async () => !state.lost && Boolean(await OutboxJob.count({ where: owned })),
+    stop: () => { state.stopped = true; clearTimeout(timeout); }
+  };
+}
+
+/**
+ * Runs up to `limit` due jobs, claiming them one at a time. Returns { claimed, done, retried, failed, lost }.
+ * Each claim gets its own ownership token (lockedBy); the job is settled only while that token still owns it.
+ * `now` shifts this worker's clock (tests); `leaseMs` is how long a claim lasts without renewal.
+ */
+async function runOnce({ workerId = DEFAULT_WORKER, limit = 20, now = null, leaseMs = LOCK_MS } = {}) {
+  const offset = now ? now.getTime() - Date.now() : 0;
+  const clock = () => new Date(Date.now() + offset);
+  const result = { claimed: 0, done: 0, retried: 0, failed: 0, lost: 0 };
+  for (let i = 0; i < limit; i += 1) {
+    const token = `${String(workerId).slice(0, 52)}:${randomUUID().slice(0, 8)}`;
+    const job = await claimOne({ token, leaseMs, clock });
+    if (!job) break;
+    result.claimed += 1;
+    const lease = keepLease({ job, token, leaseMs, clock });
+    const owned = { id: job.id, lockedBy: token, status: 'running' };
+    let changes;
+    try {
+      const handler = handlers.get(job.topic);
       if (!handler) throw new Error(`No handler for topic ${job.topic}`);
-      await handler(job);
-      await OutboxJob.update({ status: 'done', doneAt: new Date(), lockedBy: null, lockedUntil: null, lastError: null }, { where: mine });
-      result.done += 1;
+      await handler(job, { stillOwned: lease.stillOwned });
+      changes = { status: 'done', doneAt: new Date(), lockedBy: null, lockedUntil: null, lastError: null };
     } catch (error) {
       const attempts = job.attempts + 1;
       const failed = attempts >= job.maxAttempts;
-      await OutboxJob.update({
+      changes = {
         status: failed ? 'failed' : 'pending', attempts, lastError: sanitize(error), lockedBy: null, lockedUntil: null,
-        ...(failed ? {} : { runAt: new Date(Date.now() + backoff(attempts)) })
-      }, { where: mine });
-      result[failed ? 'failed' : 'retried'] += 1;
+        ...(failed ? {} : { runAt: new Date(clock().getTime() + backoff(attempts)) })
+      };
+    } finally {
+      lease.stop();
     }
+    const [count] = await OutboxJob.update(changes, { where: owned });
+    if (!count) result.lost += 1;
+    else if (changes.status === 'done') result.done += 1;
+    else result[changes.status === 'failed' ? 'failed' : 'retried'] += 1;
   }
   return result;
 }
