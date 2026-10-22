@@ -24,7 +24,7 @@ router.post('/quote', async (req, res) => {
     if (!validId(courseId)) return res.status(400).json({ error: 'courseId is required' });
     if (typeof couponCode !== 'string' || !couponCode.trim()) return res.status(400).json({ error: 'couponCode is required', code: 'coupon_invalid' });
 
-    let course = await Course.findByPk(courseId);
+    const course = await Course.findByPk(courseId);
     if (!course || !course.isPublished) return res.status(404).json({ error: 'Course not found' });
     if (course.price <= 0) return res.status(400).json({ error: 'This course is free: enroll instead of buying it' });
 
