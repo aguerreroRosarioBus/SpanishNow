@@ -13,7 +13,6 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { ChatFormat } from '../chat-format';
-import { CHAT_MESSAGES } from '../chat.i18n';
 
 const POLL_MS = 5_000;
 const IDLE_POLL_MS = 20_000;
@@ -311,9 +310,18 @@ export class ChatConversationComponent implements OnInit {
       err => { this.isActing.set(false); this.errorMessage.set(this.fmt.error(err)); });
   }
 
+  /**
+   * Texto de un evento del sistema (CHAT-04, I18N-04): `chat.event.<eventCode>` en cualquier catálogo registrado
+   * (W05/W06 agregan los suyos) con sus parámetros estructurados; un código desconocido usa el genérico.
+   */
   eventText(m: ChatMessage): string {
     const key = `chat.event.${m.eventCode}`;
-    return Object.hasOwn(CHAT_MESSAGES.en, key) ? this.i18n.t(key) : this.i18n.t('chat.event.generic');
+    if (!m.eventCode || !this.i18n.has(key)) return this.i18n.t('chat.event.generic');
+    const params: Record<string, string | number> = {};
+    for (const [name, value] of Object.entries(m.eventParams ?? {})) {
+      if (typeof value === 'string' || (typeof value === 'number' && Number.isFinite(value))) params[name] = value;
+    }
+    return this.i18n.t(key, params);
   }
 
   contextLabel(): string | null {

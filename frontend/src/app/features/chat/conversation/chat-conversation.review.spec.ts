@@ -144,4 +144,18 @@ describe('ChatConversationComponent — revisión de #27', () => {
     expect((fixture.nativeElement as HTMLElement).querySelector('textarea#chatDraft')).not.toBeNull();
     fixture.destroy();
   });
+
+  it('P2 · los eventos del sistema se traducen con los catálogos registrados y sus parámetros (I18N-04, CHAT-04)', async () => {
+    const server = fakeServer();
+    server.history.set(7, [message(1, { type: 'system_event', senderId: null, senderRole: 'system', body: null, eventCode: 'purchase_paid', eventParams: { units: 4 } }),
+      message(2, { type: 'system_event', senderId: null, senderRole: 'system', body: null, eventCode: 'unknown_code' })]);
+    const bundle = { es: { 'chat.event.purchase_paid': 'Pago recibido: {units} clases' }, en: { 'chat.event.purchase_paid': 'Payment received: {units} sessions' } };
+    const { fixture, component } = await setup(server, {}, bundle);
+    const [paid, unknown] = component.messages();
+    expect(component.eventText(paid)).toBe('Pago recibido: 4 clases');
+    expect(component.eventText(unknown)).toBe('Actualización de la conversación');
+    TestBed.inject(I18nService).setLocale('en');
+    expect(component.eventText(paid)).toBe('Payment received: 4 sessions');
+    fixture.destroy();
+  });
 });
