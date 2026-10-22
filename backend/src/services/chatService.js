@@ -199,7 +199,7 @@ async function startConversation(user, { teacherId, context } = {}, { ip = null 
   await resolveContext(context, { teacherId: tid, studentId: user.id });
   const rules = await currentRules();
   try {
-    const conversation = await sequelize.transaction(async transaction => {
+    const conversation = await withDeadlockRetry(() => sequelize.transaction(async transaction => {
       const now = new Date();
       await rateLimit.hit({ bucketKey: `chat:newconv:student:${user.id}`, windowMs: DAY, limit: rules.chatLimits.newConversationsPerDay, now, scope: 'new_conversations' }, { transaction });
       if (ip) await rateLimit.hit({ bucketKey: `chat:ip:${ip}`, windowMs: HOUR, limit: ipActionsPerHour(), now, scope: 'ip' }, { transaction });
@@ -209,7 +209,7 @@ async function startConversation(user, { teacherId, context } = {}, { ip = null 
         { conversationId: created.id, userId: user.id, role: 'student' }
       ], { transaction });
       return created;
-    });
+    }));
     return respond(conversation, true);
   } catch (error) {
     // Two tabs opening the same pair at once: the unique (teacherId, studentId) wins and both get one conversation.
@@ -411,6 +411,18 @@ async function append(conversation, participants, fields, { transaction, now = n
   return message;
 }
 
+// New rate-limit rows inserted at once can deadlock in InnoDB; one side is rolled back and simply tries again.
+const isDeadlock = error => Boolean(error && error.parent && ['ER_LOCK_DEADLOCK', 'ER_LOCK_WAIT_TIMEOUT'].includes(error.parent.code));
+async function withDeadlockRetry(work, attempts = 3) {
+  for (let i = 1; ; i += 1) {
+    try {
+      return await work();
+    } catch (error) {
+      if (!isDeadlock(error) || i >= attempts) throw error;
+    }
+  }
+}
+
 /**
  * A participant sends a text (CHAT-03/05/07/08). The same clientMessageId from the same sender returns the message
  * already stored (200) instead of a second one; reused with another text it is a 409 operation_key_conflict.
@@ -420,7 +432,8 @@ async function sendMessage(user, conversationId, { clientMessageId, body, contex
   if (typeof clientMessageId !== 'string' || !CLIENT_MESSAGE_ID.test(clientMessageId)) throw invalid(['clientMessageId']);
   const rules = await currentRules();
   const text = normalizeBody(body, rules.chatMaxMessageLength);
-  return sequelize.transaction(async transaction => {
+  // Retrying is safe: the clientMessageId check runs again inside the new transaction.
+  return withDeadlockRetry(() => sequelize.transaction(async transaction => {
     const { conversation, me, participants } = await loadForParticipant(user, conversationId, { transaction, lock: true });
     const roles = new Map(participants.map(p => [p.userId, p.role]));
     const repeated = await Message.findOne({ where: { conversationId: conversation.id, senderId: user.id, clientMessageId }, transaction });
@@ -434,7 +447,7 @@ async function sendMessage(user, conversationId, { clientMessageId, body, contex
     for (const limit of messageLimits({ user, me, conversation, rules, ip })) await rateLimit.hit({ ...limit, now }, { transaction });
     const message = await append(conversation, participants, { senderId: user.id, type: 'text', body: text, clientMessageId, ...ctx }, { transaction, now });
     return { message: presentMessage(message, user, roles), created: true };
-  });
+  }));
 }
 
 /**
