@@ -45,7 +45,7 @@ module.exports = {
       const refs = { questions: questionRefs, vocabulary: vocabularyRefs, stories: storiesByTitle };
       const notes = [];
 
-      await sequelize.transaction(async transaction => {
+      await service.draftTransaction(async transaction => {
         const story = await Story.findByPk(spec.id, { include: [{ model: Unit, as: 'unit' }], transaction, lock: transaction.LOCK.UPDATE });
         if (!story) throw new Error(`Story ${spec.id} is not in the database; run the course-content seed first`);
         const hadDraft = draftsBefore.has(story.id);

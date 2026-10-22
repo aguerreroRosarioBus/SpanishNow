@@ -2,6 +2,7 @@
 const { randomUUID } = require('crypto');
 const { Story, LessonPlan, LessonBlock } = require('../src/models');
 const { as, createWorld, createStory, standardBlocks, planUrl, saveDraft, publishPlan, openLesson } = require('./helpers/fixtures');
+const { draftTransaction, currentDraft } = require('../src/services/lessonPlanService');
 
 describe('TPRS lesson plans: draft editing and publishing', () => {
   let world;
@@ -18,6 +19,47 @@ describe('TPRS lesson plans: draft editing and publishing', () => {
     expect(saved.status).toBe(200);
     return { ...content, keys, blocks, draft: saved.body };
   }
+
+  describe('concurrent drafts', () => {
+    // Regression: under REPEATABLE READ, opening drafts of new stories at the same time deadlocked (500): both requests
+    // locked the same gap of lesson_plan_story_revision while looking for a draft that did not exist, then both inserted.
+    test('two new drafts created at the same time do not deadlock', async () => {
+      const a = (await createStory(world, 'Concurrente A')).story;
+      const b = (await createStory(world, 'Concurrente B')).story;
+      // Hold both transactions right before their INSERT until both have looked for their draft: the interleaving that
+      // deadlocked under REPEATABLE READ. A timeout releases the barrier if one of them is (correctly) made to wait.
+      const create = LessonPlan.create.bind(LessonPlan);
+      let arrived = 0;
+      let release;
+      const barrier = new Promise(resolve => { release = resolve; });
+      const spy = jest.spyOn(LessonPlan, 'create').mockImplementation(async (...args) => {
+        arrived += 1;
+        if (arrived === 2) release();
+        await Promise.race([barrier, new Promise(resolve => setTimeout(resolve, 2000))]);
+        return create(...args);
+      });
+      try {
+        const open = story => draftTransaction(async transaction => {
+          await Story.findByPk(story.id, { transaction, lock: transaction.LOCK.UPDATE });
+          return currentDraft(story, transaction);
+        });
+        const drafts = await Promise.all([open(a), open(b)]);
+        expect(drafts.map(d => d.storyId)).toEqual([a.id, b.id]);
+      } finally {
+        spy.mockRestore();
+      }
+      expect(arrived).toBe(2);
+      for (const story of [a, b]) expect(await LessonPlan.count({ where: { storyId: story.id, status: 'draft' } })).toBe(1);
+    });
+
+    test('opening the same new draft twice at once creates it once', async () => {
+      const { story } = await createStory(world, 'Doble');
+      const [a, b] = await Promise.all([getDraft(story.id), getDraft(story.id)]);
+      expect([a.status, b.status]).toEqual([200, 200]);
+      expect(a.body.revision).toBe(b.body.revision);
+      expect(await LessonPlan.count({ where: { storyId: story.id, status: 'draft' } })).toBe(1);
+    });
+  });
 
   describe('atomic updates of the draft (PUT /draft)', () => {
     const put = (storyId, revision, blocks) => as(world.teacher).put(`${planUrl(storyId)}/draft`, { revision, blocks });
