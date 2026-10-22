@@ -31,3 +31,6 @@ tmpclaude-*
 backend/tmpclaude-*
 frontend/tmpclaude-*
 nul
+
+# Copia fija de main (scripts/run-main.sh)
+.run/
