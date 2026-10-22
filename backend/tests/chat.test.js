@@ -497,3 +497,22 @@ describe('CHAT-09: the recipient\'s language and email preference', () => {
     expect(getOutbox()).toHaveLength(0);
   });
 });
+
+describe('CHAT-09: queued emails follow the global switch', () => {
+  test('turning CHAT_UNREAD_EMAIL off after a job was queued stops that email', async () => {
+    const teacher = await availableTeacher();
+    const student = await createUser('student', 'chat-email-global');
+    const conversation = await open(student, teacher);
+    await send(student, conversation.id, 'Hola');
+    const job = await OutboxJob.findOne({ where: { topic: chat.EMAIL_TOPIC, status: 'pending', payload: { conversationId: conversation.id } } });
+    expect(job).toBeTruthy();
+    process.env.CHAT_UNREAD_EMAIL = '0';
+    try {
+      clearOutbox();
+      await chat.sendUnreadEmail(job);
+      expect(getOutbox()).toHaveLength(0);
+    } finally {
+      delete process.env.CHAT_UNREAD_EMAIL;
+    }
+  });
+});

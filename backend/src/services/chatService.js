@@ -608,6 +608,8 @@ async function scheduleUnreadEmail(participant, seq, { transaction, now }) {
 
 /** Outbox handler: emails the recipient only if something is still unread and not yet notified. Idempotent. */
 async function sendUnreadEmail(job, ctx = {}) {
+  // The global switch is read when the job runs too: turning it off stops emails already queued (CHAT-09).
+  if (!emailEnabled()) return;
   const { conversationId, userId } = job.payload || {};
   const participant = await ConversationParticipant.findOne({ where: { conversationId, userId } });
   if (!participant || participant.blockedAt) return;
