@@ -9,6 +9,8 @@ const sequelize = new Sequelize(
     port: Number(process.env.DB_PORT) || 3306, // Railway's public proxy listens on a non-standard port
     dialect: 'mysql',
     logging: false,
+    // Instants are stored and read as UTC whatever TZ the process or MySQL has (TZ-01, CONTRATO.md §1.2).
+    timezone: '+00:00',
     pool: {
       max: 5,
       min: 0,
