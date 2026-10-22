@@ -410,6 +410,34 @@ describe('test account cleanup covers the new modules (CONTRACT-05, AC20)', () =
   });
 });
 
+describe('test account cleanup under concurrency (CONTRACT-05)', () => {
+  test('a real participant added while the cleanup runs is seen (409), never deleted by the cascade', async () => {
+    const chain = await packageChain({ units: 1, test: true });
+    const session = await makeSession(chain.teacher, chain.student, chain.purchase);
+    const real = await makeUser('student');
+
+    // Writer: adds a real student to the test teacher's session and commits only after the cleanup has started.
+    let commit;
+    const committed = new Promise(resolve => { commit = resolve; });
+    const writer = sequelize.transaction(async transaction => {
+      await ClassSessionParticipant.create({ sessionId: session.id, userId: real.id }, { transaction });
+      await committed;
+    });
+    await new Promise(resolve => setTimeout(resolve, 200)); // the insert is done, not committed
+    const cleanup = deleteTestUser(chain.teacher.id).then(() => 'deleted', error => error.statusCode);
+    await new Promise(resolve => setTimeout(resolve, 500)); // the cleanup is running (or waiting on the writer)
+    commit();
+    await writer;
+
+    expect(await cleanup).toBe(409);
+    expect(await ClassSessionParticipant.count({ where: { sessionId: session.id, userId: real.id } })).toBe(1);
+    expect(await ClassSession.findByPk(session.id)).not.toBeNull();
+    expect(await User.findByPk(chain.teacher.id)).not.toBeNull();
+    await chain.teacher.update({ isTestAccount: false }); // other suites delete every test account
+    await chain.student.update({ isTestAccount: false });
+  });
+});
+
 describe('migration rollback guard', () => {
   test('rolling back with class data refuses without CONFIRM_CLASSES_FOUNDATION_DATA_LOSS and changes nothing', async () => {
     await packageChain({ units: 1 });

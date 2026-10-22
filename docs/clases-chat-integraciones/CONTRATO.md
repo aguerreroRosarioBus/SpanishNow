@@ -552,6 +552,7 @@ Ninguna capacidad da lectura general de mensajes privados ni el `start_url` de Z
 `deleteTestUsers` (`services/adminUsers.js`) se extiende así, en la misma transacción:
 
 - **Se niega (409)** si alguna cuenta de prueba tiene relación con un usuario real en: conversaciones, ofertas, órdenes de paquete, compras/beneficiarios, sesiones/participantes o cohortes. Esos datos (mensajes y referencias comerciales) no son nuestros para borrar.
+- La búsqueda y la comprobación usan **lecturas con bloqueo** (`FOR UPDATE`, una por columna indexada) dentro de la transacción de borrado: una relación con un usuario real creada en paralelo espera a la limpieza (y luego falla su FK) o es vista por ella (409). Nunca la borra el `CASCADE`.
 - Si todo es entre cuentas de prueba, borra en orden de dependencias: jobs de outbox y referencias externas de sus sesiones, participantes, propuestas, sesiones, ledger, beneficiarios, compras, eventos de proveedor y órdenes de paquete, beneficiarios de oferta, ofertas, miembros y cohortes, mensajes, participantes, conversaciones, versiones y plantillas, conexiones externas, configuración docente, aceptaciones legales; los `audit_logs` se conservan con `actorId` nulo (`SET NULL`).
 - Las FK nuevas hacia `users` son `RESTRICT` para datos comerciales (así un borrado accidental de un usuario real falla) y `CASCADE` solo en preferencias/configuración propias.
 
