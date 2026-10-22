@@ -1,0 +1,23 @@
+{
+  "conversions": [
+    { "id": "TZ-T01", "localStart": "2026-10-22T09:00", "timeZone": "America/New_York", "offset": "-04:00", "startsAt": "2026-10-22T13:00:00.000Z", "cordoba": "2026-10-22T10:00:00.000", "london": "2026-10-22T14:00:00.000" },
+    { "id": "TZ-T02", "localStart": "2026-10-29T09:00", "timeZone": "America/New_York", "offset": "-04:00", "startsAt": "2026-10-29T13:00:00.000Z", "cordoba": "2026-10-29T10:00:00.000", "london": "2026-10-29T13:00:00.000" },
+    { "id": "TZ-T03", "localStart": "2026-11-05T09:00", "timeZone": "America/New_York", "offset": "-05:00", "startsAt": "2026-11-05T14:00:00.000Z", "cordoba": "2026-11-05T11:00:00.000", "london": "2026-11-05T14:00:00.000" },
+    { "id": "TZ-T11 Kolkata", "localStart": "2026-10-22T09:00", "timeZone": "Asia/Kolkata", "offset": "+05:30", "startsAt": "2026-10-22T03:30:00.000Z" },
+    { "id": "TZ-T11 Kathmandu", "localStart": "2026-10-22T09:00", "timeZone": "Asia/Kathmandu", "offset": "+05:45", "startsAt": "2026-10-22T03:15:00.000Z" }
+  ],
+  "gap": {
+    "localStart": "2027-03-14T02:30", "timeZone": "America/New_York", "offset": "-05:00", "minutes": 50,
+    "alternatives": [
+      { "localStart": "2027-03-14T01:30", "timeZone": "America/New_York", "offset": "-05:00", "startsAt": "2027-03-14T06:30:00.000Z" },
+      { "localStart": "2027-03-14T03:30", "timeZone": "America/New_York", "offset": "-04:00", "startsAt": "2027-03-14T07:30:00.000Z" }
+    ]
+  },
+  "fold": {
+    "localStart": "2026-11-01T01:30", "timeZone": "America/New_York", "minutes": 50,
+    "options": [
+      { "offset": "-04:00", "startsAt": "2026-11-01T05:30:00.000Z" },
+      { "offset": "-05:00", "startsAt": "2026-11-01T06:30:00.000Z" }
+    ]
+  }
+}
