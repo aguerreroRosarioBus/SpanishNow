@@ -140,8 +140,8 @@ describe('ChatConversationComponent (CHAT-03/06)', () => {
     component.send();
     sends[0].error(new HttpErrorResponse({ status: 429, error: { code: 'rate_limited', params: { retryAt: '2026-10-22T14:00:00.000Z' } } }));
     expect(component.pending()[0].final).toBe(false);
-    expect(component.pending()[0].errorKey).toContain('Puedes volver a intentar a las');
-    expect(component.pending()[0].errorKey).toContain('11:00'); // 14:00Z en Córdoba (UTC−3)
+    expect(component.failureText(component.pending()[0])).toContain('Puedes volver a intentar a las');
+    expect(component.failureText(component.pending()[0])).toContain('11:00'); // 14:00Z en Córdoba (UTC−3)
     fixture.destroy();
   });
 

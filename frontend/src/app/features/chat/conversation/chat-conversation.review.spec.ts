@@ -158,4 +158,22 @@ describe('ChatConversationComponent — revisión de #27', () => {
     expect(component.eventText(paid)).toBe('Payment received: 4 sessions');
     fixture.destroy();
   });
+
+  it('P2 · el aviso de un envío fallido cambia con el idioma: se guarda el código, no el texto (AC17)', async () => {
+    const server = fakeServer();
+    server.history.set(7, [message(1)]);
+    const { fixture, component, sends } = await setup(server);
+    component.draft.set('Hola');
+    component.send();
+    sends[0].error(new HttpErrorResponse({ status: 0 }));
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.textContent).toContain('No pudimos conectarnos');
+    TestBed.inject(I18nService).setLocale('en');
+    fixture.detectChanges();
+    expect(el.textContent).not.toContain('No pudimos conectarnos');
+    expect(el.textContent).toContain('Not sent');
+    expect(el.textContent).toMatch(/connect/i);
+    fixture.destroy();
+  });
 });

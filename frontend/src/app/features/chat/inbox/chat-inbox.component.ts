@@ -31,13 +31,16 @@ export class ChatInboxComponent implements OnInit {
   nextCursor = signal<string | null>(null);
   isLoading = signal(true);
   isLoadingMore = signal(false);
-  errorMessage = signal('');
+  /** Errores guardados como llegaron; el texto sigue al idioma vigente (AC17). */
+  private listFailure = signal<unknown>(null);
+  private startFailure = signal<unknown>(null);
+  errorMessage = computed(() => (this.listFailure() ? this.fmt.error(this.listFailure()) : ''));
 
   teachers = signal<AvailableTeacher[]>([]);
   teachersLoaded = signal(false);
   selectedTeacher = signal<number | null>(null);
   isStarting = signal(false);
-  startError = signal('');
+  startError = computed(() => (this.startFailure() ? this.fmt.error(this.startFailure()) : ''));
 
   ngOnInit(): void {
     this.load();
@@ -51,7 +54,7 @@ export class ChatInboxComponent implements OnInit {
 
   load(): void {
     this.isLoading.set(true);
-    this.errorMessage.set('');
+    this.listFailure.set(null);
     this.api.list().subscribe({
       next: page => {
         this.items.set(page.items);
@@ -59,7 +62,7 @@ export class ChatInboxComponent implements OnInit {
         this.isLoading.set(false);
         this.badge.refresh();
       },
-      error: err => { this.errorMessage.set(this.fmt.error(err)); this.isLoading.set(false); }
+      error: err => { this.listFailure.set(err); this.isLoading.set(false); }
     });
   }
 
@@ -74,7 +77,7 @@ export class ChatInboxComponent implements OnInit {
         this.nextCursor.set(page.nextCursor);
         this.isLoadingMore.set(false);
       },
-      error: err => { this.errorMessage.set(this.fmt.error(err)); this.isLoadingMore.set(false); }
+      error: err => { this.listFailure.set(err); this.isLoadingMore.set(false); }
     });
   }
 
@@ -82,10 +85,10 @@ export class ChatInboxComponent implements OnInit {
     const teacherId = this.selectedTeacher();
     if (!teacherId || this.isStarting()) return;
     this.isStarting.set(true);
-    this.startError.set('');
+    this.startFailure.set(null);
     this.api.start(teacherId).subscribe({
       next: conversation => { this.isStarting.set(false); this.router.navigate(['/messages', conversation.id]); },
-      error: err => { this.startError.set(this.fmt.error(err)); this.isStarting.set(false); }
+      error: err => { this.startFailure.set(err); this.isStarting.set(false); }
     });
   }
 

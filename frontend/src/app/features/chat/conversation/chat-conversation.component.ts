@@ -73,12 +73,15 @@ export class ChatConversationComponent implements OnInit {
   isLoading = signal(true);
   isLoadingOlder = signal(false);
   notFound = signal(false);
-  errorMessage = signal('');
+  /** Errores guardados como llegaron; el texto se deriva del idioma y la zona vigentes (AC17, I18N-04). */
+  private pageFailure = signal<unknown>(null);
+  private reportFailure = signal<unknown>(null);
+  errorMessage = computed(() => (this.pageFailure() ? this.fmt.error(this.pageFailure()) : ''));
   draft = signal('');
   showBlock = signal(false);
   showReport = signal(false);
   reportReason = signal('');
-  reportError = signal('');
+  reportError = computed(() => (this.reportFailure() ? this.fmt.error(this.reportFailure()) : ''));
   isActing = signal(false);
 
   lastSeq = computed(() => { const list = this.messages(); return list.length ? list[list.length - 1].seq : 0; });
@@ -146,7 +149,7 @@ export class ChatConversationComponent implements OnInit {
     this.readSent = 0;
     this.pollCursor = 0;
     this.notFound.set(false);
-    this.errorMessage.set('');
+    this.pageFailure.set(null);
     this.isLoading.set(true);
     this.watch(this.api.get(id), conversation => {
       this.conversation.set(conversation);
@@ -166,7 +169,7 @@ export class ChatConversationComponent implements OnInit {
   private fail(err: unknown): void {
     this.isLoading.set(false);
     if (err instanceof HttpErrorResponse && err.status === 404 && err.error?.code === 'not_found') this.notFound.set(true);
-    else this.errorMessage.set(this.fmt.error(err));
+    else this.pageFailure.set(err);
   }
 
   reload(): void { this.open(this.conversationId); }
@@ -183,7 +186,7 @@ export class ChatConversationComponent implements OnInit {
       this.isLoadingOlder.set(false);
       // Mantener a la vista lo que se estaba leyendo.
       setTimeout(() => { if (el) el.scrollTop = el.scrollHeight - fromBottom; });
-    }, err => { this.isLoadingOlder.set(false); this.errorMessage.set(this.fmt.error(err)); });
+    }, err => { this.isLoadingOlder.set(false); this.pageFailure.set(err); });
   }
 
   /** Une por seq (orden del servidor) sin duplicar; un mensaje repetido por polling y envío queda una sola vez. */
@@ -246,7 +249,7 @@ export class ChatConversationComponent implements OnInit {
 
   send(): void {
     if (!this.canSend()) return;
-    const message: PendingMessage = { clientMessageId: newClientMessageId(), body: this.draft(), status: 'sending', errorKey: null, final: false };
+    const message: PendingMessage = { clientMessageId: newClientMessageId(), body: this.draft(), status: 'sending', error: null, final: false };
     this.pending.update(list => [...list, message]);
     this.draft.set('');
     this.scrollToBottom();
@@ -255,12 +258,15 @@ export class ChatConversationComponent implements OnInit {
 
   retry(message: PendingMessage): void { this.deliver(message); }
 
+  /** Motivo de un envío fallido en el idioma y la zona actuales. */
+  failureText(message: PendingMessage): string { return message.error ? this.fmt.error(message.error) : ''; }
+
   discard(message: PendingMessage): void {
     this.pending.update(list => list.filter(p => p.clientMessageId !== message.clientMessageId));
   }
 
   private deliver(message: PendingMessage): void {
-    this.updatePending(message.clientMessageId, { status: 'sending', errorKey: null });
+    this.updatePending(message.clientMessageId, { status: 'sending', error: null });
     const id = this.conversationId;
     this.watch(this.api.send(id, message.clientMessageId, message.body), stored => {
       this.discard(message);
@@ -270,7 +276,7 @@ export class ChatConversationComponent implements OnInit {
         const err = error as HttpErrorResponse;
         const code = err.error?.code as string | undefined;
         const final = err.status === 400 || code === 'conversation_blocked' || code === 'operation_key_conflict' || err.status === 404;
-        this.updatePending(message.clientMessageId, { status: 'failed', errorKey: this.fmt.error(err), final });
+        this.updatePending(message.clientMessageId, { status: 'failed', error: err, final });
         if (code === 'conversation_blocked') this.watch(this.api.get(id), c => this.conversation.set(c));
     });
   }
@@ -297,17 +303,17 @@ export class ChatConversationComponent implements OnInit {
   submitReport(): void {
     const reason = this.reportReason().trim();
     if (!reason) return;
-    this.reportError.set('');
+    this.reportFailure.set(null);
     this.isActing.set(true);
     this.watch(this.api.report(this.conversationId, reason),
       c => { this.conversation.set(c); this.isActing.set(false); this.showReport.set(false); this.reportReason.set(''); },
-      err => { this.isActing.set(false); this.reportError.set(this.fmt.error(err)); });
+      err => { this.isActing.set(false); this.reportFailure.set(err); });
   }
 
   private act(request: ReturnType<ChatService['block']>): void {
     this.isActing.set(true);
     this.watch(request, c => { this.conversation.set(c); this.isActing.set(false); },
-      err => { this.isActing.set(false); this.errorMessage.set(this.fmt.error(err)); });
+      err => { this.isActing.set(false); this.pageFailure.set(err); });
   }
 
   /**

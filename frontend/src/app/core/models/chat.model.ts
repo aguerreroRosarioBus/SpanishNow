@@ -67,8 +67,11 @@ export interface PendingMessage {
   clientMessageId: string;
   body: string;
   status: 'sending' | 'failed';
-  /** Clave chat.* del motivo del fallo. */
-  errorKey: string | null;
+  /**
+   * Error tal como llegó (code/params/status), no el texto: el aviso se traduce al mostrarlo, con el idioma y la zona
+   * vigentes (AC17).
+   */
+  error: unknown;
   /** El reintento no tiene sentido (p. ej. conversación bloqueada o texto inválido). */
   final: boolean;
 }

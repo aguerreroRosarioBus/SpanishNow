@@ -86,7 +86,7 @@
                   {{ 'chat.conv.sending' | t }}
                 } @else {
                   <app-icon name="alert-triangle" [size]="14" /> <span>{{ 'chat.conv.failed' | t }}</span>
-                  @if (p.errorKey) { <span>· {{ p.errorKey }}</span> }
+                  @if (p.error) { <span>· {{ failureText(p) }}</span> }
                   @if (!p.final) { <button type="button" class="btn btn-link btn-sm p-0 ms-1" (click)="retry(p)">{{ 'chat.conv.retry' | t }}</button> }
                   <button type="button" class="btn btn-link btn-sm p-0 ms-1" (click)="discard(p)">{{ 'chat.conv.discard' | t }}</button>
                 }
