@@ -1,41 +1,43 @@
-<header class="navbar-top">
+<header class="navbar-top" [class.has-user]="showUser() && !!currentUser()">
   @if (showUser() && currentUser()) {
     <button class="btn-icon hamburger-button" type="button" (click)="toggleSidebar()"
-            [attr.aria-label]="menuOpen() ? 'Cerrar menú' : 'Abrir menú'" [attr.aria-expanded]="menuOpen()">
+            [attr.aria-label]="(menuOpen() ? 'nav.closeMenu' : 'nav.openMenu') | t" [attr.aria-expanded]="menuOpen()">
       <app-icon [name]="menuOpen() ? 'close' : 'menu'" [size]="18" />
     </button>
   }
 
-  <a class="navbar-brand" [routerLink]="!showUser() || !currentUser() ? '/auth/login' : currentUser()?.role === 'student' ? '/student/dashboard' : '/teacher/dashboard'">
+  <a class="navbar-brand" aria-label="SpanishNow" [routerLink]="!showUser() || !currentUser() ? '/auth/login' : currentUser()?.role === 'student' ? '/student/dashboard' : '/teacher/dashboard'">
     <img src="logo-mark.svg" alt="" class="brand-mark" width="28" height="27">
     <span class="brand-word">SpanishNow</span>
     @if (showUser() && currentUser()?.role === 'teacher') {
-      <span class="role-chip">Profesor</span>
+      <span class="role-chip">{{ 'common.teacher' | t }}</span>
     }
   </a>
 
+  <app-language-selector />
+
   @if (showUser() && currentUser(); as user) {
     <div ngbDropdown placement="bottom-end" container="body" class="navbar-user">
-      <button ngbDropdownToggle type="button" class="btn btn-ghost btn-sm account-button" aria-label="Menú de cuenta">
+      <button ngbDropdownToggle type="button" class="btn btn-ghost btn-sm account-button" [attr.aria-label]="'nav.accountMenu' | t">
         <span class="user-avatar" aria-hidden="true">{{ user.name.charAt(0).toUpperCase() }}</span>
         <span class="user-name">{{ user.name }}</span>
       </button>
       <div ngbDropdownMenu class="account-menu">
         <div class="account-menu__head">
           <strong>{{ user.name }}</strong>
-          <span>{{ user.role === 'teacher' ? 'Profesor' : 'Estudiante' }}</span>
+          <span>{{ (user.role === 'teacher' ? 'common.teacher' : 'common.student') | t }}</span>
         </div>
         <div class="dropdown-divider"></div>
-        <a ngbDropdownItem routerLink="/settings"><app-icon name="settings" [size]="16" />Configuración</a>
-        <a ngbDropdownItem routerLink="/contact"><app-icon name="mail" [size]="16" />Contacto</a>
-        <a ngbDropdownItem routerLink="/about"><app-icon name="info" [size]="16" />Acerca de</a>
+        <a ngbDropdownItem routerLink="/settings"><app-icon name="settings" [size]="16" />{{ 'nav.settings' | t }}</a>
+        <a ngbDropdownItem routerLink="/contact"><app-icon name="mail" [size]="16" />{{ 'nav.contact' | t }}</a>
+        <a ngbDropdownItem routerLink="/about"><app-icon name="info" [size]="16" />{{ 'nav.about' | t }}</a>
         @if (pwa.canInstall()) {
-          <button ngbDropdownItem type="button" (click)="install()"><app-icon name="smartphone" [size]="16" />Instalar app</button>
+          <button ngbDropdownItem type="button" (click)="install()"><app-icon name="smartphone" [size]="16" />{{ 'nav.install' | t }}</button>
         } @else if (pwa.showIosHelp()) {
-          <button ngbDropdownItem type="button" (click)="showIosHelp.set(true)"><app-icon name="smartphone" [size]="16" />Instalar app</button>
+          <button ngbDropdownItem type="button" (click)="showIosHelp.set(true)"><app-icon name="smartphone" [size]="16" />{{ 'nav.install' | t }}</button>
         }
         <div class="dropdown-divider"></div>
-        <button ngbDropdownItem type="button" (click)="logout()"><app-icon name="log-out" [size]="16" />Cerrar sesión</button>
+        <button ngbDropdownItem type="button" (click)="logout()"><app-icon name="log-out" [size]="16" />{{ 'nav.logout' | t }}</button>
       </div>
     </div>
   }
@@ -46,17 +48,17 @@
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="iosInstallTitle">Instalar SpanishNow en tu iPhone</h5>
-          <button type="button" class="btn-close" (click)="showIosHelp.set(false)" aria-label="Cerrar"></button>
+          <h5 class="modal-title" id="iosInstallTitle">{{ 'pwa.iosTitle' | t }}</h5>
+          <button type="button" class="btn-close" (click)="showIosHelp.set(false)" [attr.aria-label]="'common.close' | t"></button>
         </div>
         <div class="modal-body">
           <ol class="mb-0">
-            <li>Toca el botón <strong>Compartir</strong> (el cuadrado con una flecha hacia arriba) en la barra de Safari.</li>
-            <li>Baja en el menú y elige <strong>Agregar a inicio</strong>.</li>
-            <li>Confirma con <strong>Agregar</strong>. SpanishNow aparece como una app más en tu pantalla de inicio.</li>
+            <li>{{ 'pwa.iosShare' | t }}</li>
+            <li>{{ 'pwa.iosHome' | t }}</li>
+            <li>{{ 'pwa.iosConfirm' | t }}</li>
           </ol>
         </div>
-        <div class="modal-footer"><button type="button" class="btn btn-primary" (click)="showIosHelp.set(false)">Entendido</button></div>
+        <div class="modal-footer"><button type="button" class="btn btn-primary" (click)="showIosHelp.set(false)">{{ 'common.gotIt' | t }}</button></div>
       </div>
     </div>
   </div>

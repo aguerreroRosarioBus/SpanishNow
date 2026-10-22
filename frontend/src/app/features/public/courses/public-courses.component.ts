@@ -1,25 +1,28 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { I18nService } from '../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { PublicCatalogService } from '../../../core/services/public-catalog.service';
 import { PublicCourse } from '../../../core/models/sales.model';
 import { CourseCardComponent } from '../../../shared/components/course-card/course-card.component';
-import { formatPrice } from '../../../shared/utils/money';
 
-/** Catálogo público de cursos publicados (sin login, en inglés). */
+/** Catálogo público de cursos publicados (sin login, EN/ES). */
 @Component({
   selector: 'app-public-courses',
   standalone: true,
-  imports: [RouterLink, CourseCardComponent],
+  imports: [TranslatePipe, RouterLink, CourseCardComponent],
   templateUrl: './public-courses.component.html'
 })
 export class PublicCoursesComponent implements OnInit {
+  readonly i18n = inject(I18nService);
   private catalog = inject(PublicCatalogService);
   private auth = inject(AuthService);
 
   courses = signal<PublicCourse[]>([]);
   isLoading = signal(true);
-  errorMessage = signal('');
+  private failure = signal<unknown>(null);
+  errorMessage = computed(() => this.failure() ? this.i18n.errorMessage(this.failure(), 'catalog.loadError') : '');
   currentUser = this.auth.currentUser;
 
   ngOnInit(): void {
@@ -28,15 +31,15 @@ export class PublicCoursesComponent implements OnInit {
         this.courses.set(courses);
         this.isLoading.set(false);
       },
-      error: () => {
-        this.errorMessage.set('We could not load the courses. Please try again.');
+      error: error => {
+        this.failure.set(error);
         this.isLoading.set(false);
       }
     });
   }
 
   price(course: PublicCourse): string {
-    return course.price > 0 ? formatPrice(course.price, course.currency) : 'Free';
+    return course.price > 0 ? this.i18n.formatMoney(course.price, course.currency) : this.i18n.t('catalog.free');
   }
 
   dashboardLink(): string {

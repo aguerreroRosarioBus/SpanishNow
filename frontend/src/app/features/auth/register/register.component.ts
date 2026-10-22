@@ -1,3 +1,5 @@
+import { I18nService } from '../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
@@ -13,18 +15,21 @@ import { AuthService } from '../../../core/services/auth.service';
 @Component({
   selector: 'app-register',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [TranslatePipe, CommonModule, ReactiveFormsModule, RouterLink],
   templateUrl: './register.component.html',
   styleUrl: './register.component.scss'
 })
 export class RegisterComponent {
   private fb = inject(FormBuilder);
+  readonly i18n = inject(I18nService);
   private authService = inject(AuthService);
   private router = inject(Router);
   readonly returnUrl = liveReturnUrl(inject(ActivatedRoute).snapshot.queryParamMap.get('returnUrl'));
 
   registerForm: FormGroup;
-  errorMessage: string = '';
+  private failure: unknown = null;
+  private errorKey = '';
+  get errorMessage(): string { return this.errorKey ? this.i18n.errorMessage(this.failure, this.errorKey) : ''; }
   isLoading: boolean = false;
 
   constructor() {
@@ -51,7 +56,8 @@ export class RegisterComponent {
     }
 
     this.isLoading = true;
-    this.errorMessage = '';
+    this.errorKey = '';
+    this.failure = null;
 
     // Obtener todos los valores del formulario
     const formData = this.registerForm.value;
@@ -73,15 +79,15 @@ export class RegisterComponent {
       },
 
       error: (error) => {
-        console.error('Error en registro:', error);
+        this.failure = error;
         this.isLoading = false;
 
         // Manejar diferentes tipos de errores
         if (error.status === 400) {
           // Error de validación (ej: email ya existe)
-          this.errorMessage = error.error.error || 'Datos inválidos';
+          this.errorKey = 'auth.invalidData';
         } else {
-          this.errorMessage = 'Error al registrarse. Por favor intenta de nuevo.';
+          this.errorKey = 'auth.registerError';
         }
       },
 
@@ -107,20 +113,20 @@ export class RegisterComponent {
 
     if (control?.hasError('required')) {
       const fieldNames: { [key: string]: string } = {
-        name: 'El nombre',
-        email: 'El email',
-        password: 'La contraseña'
+        name: 'auth.nameRequired',
+        email: 'auth.emailRequired',
+        password: 'auth.passwordRequired'
       };
-      return `${fieldNames[field]} es requerido`;
+      return this.i18n.t(fieldNames[field]);
     }
 
     if (control?.hasError('email')) {
-      return 'Ingresa un email válido';
+      return this.i18n.t('auth.emailInvalid');
     }
 
     if (control?.hasError('minlength')) {
       const minLength = control.errors?.['minlength'].requiredLength;
-      return `Debe tener al menos ${minLength} caracteres`;
+      return this.i18n.t('auth.minLength', { min: minLength });
     }
 
     return '';
