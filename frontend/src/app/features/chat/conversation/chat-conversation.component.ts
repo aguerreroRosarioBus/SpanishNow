@@ -18,6 +18,7 @@ import { CHAT_MESSAGES } from '../chat.i18n';
 const POLL_MS = 5_000;
 const IDLE_POLL_MS = 20_000;
 const IDLE_AFTER = 6; // consultas seguidas sin novedades antes de espaciar el polling
+const METADATA_EVERY = 6; // sin novedades ni bloqueo, el estado de la conversación se relee cada tantas consultas
 const URL_PATTERN = /\bhttps?:\/\/[^\s<>"']+/gi;
 
 export interface TextSegment { text: string; href: string | null }
@@ -99,6 +100,7 @@ export class ChatConversationComponent implements OnInit {
   private requests = new Subscription();
   private timer: ReturnType<typeof setTimeout> | null = null;
   private idlePolls = 0;
+  private polls = 0;
   private readSent = 0;
   private polling = false;
   private onVisibility = () => {
@@ -208,19 +210,23 @@ export class ChatConversationComponent implements OnInit {
     if (this.polling) return;
     this.polling = true;
     const id = this.conversationId;
+    this.polls++;
     this.watch(this.api.messages(id, { afterSeq: this.pollCursor }, 100), page => {
-        this.polling = false;
-        const nearBottom = this.isNearBottom();
-        this.merge(page.items);
-        this.advanceCursor(page.items);
-        this.idlePolls = page.items.length ? 0 : this.idlePolls + 1;
-        if (page.items.length) {
-          if (nearBottom) this.scrollToBottom();
-          this.markRead();
-          // Bloqueos o respuestas del otro lado cambian el estado de la conversación.
-          this.watch(this.api.get(id), c => this.conversation.set(c));
-        }
-        this.schedule(page.hasMore ? 0 : this.idlePolls >= IDLE_AFTER ? IDLE_POLL_MS : POLL_MS);
+      this.polling = false;
+      const nearBottom = this.isNearBottom();
+      this.merge(page.items);
+      this.advanceCursor(page.items);
+      this.idlePolls = page.items.length ? 0 : this.idlePolls + 1;
+      if (page.items.length) {
+        if (nearBottom) this.scrollToBottom();
+        this.markRead();
+      }
+      // Bloqueos, desbloqueos y la primera respuesta no agregan mensajes humanos: el estado se relee con cada poll
+      // mientras hay un bloqueo (para volver a habilitar el editor), con novedades, y cada METADATA_EVERY consultas.
+      if (page.items.length || this.isBlocked() || this.polls % METADATA_EVERY === 0) {
+        this.watch(this.api.get(id), c => this.conversation.set(c));
+      }
+      this.schedule(page.hasMore ? 0 : this.idlePolls >= IDLE_AFTER ? IDLE_POLL_MS : POLL_MS);
     }, () => { this.polling = false; this.schedule(IDLE_POLL_MS); });
   }
 

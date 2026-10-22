@@ -130,4 +130,18 @@ describe('ChatConversationComponent — revisión de #27', () => {
     expect(component.messages().map(m => m.body)).toEqual(['Mensaje de B']);
     fixture.destroy();
   });
+
+  it('P2 · el polling actualiza el bloqueo aunque no haya mensajes nuevos (CHAT-08)', async () => {
+    const server = fakeServer();
+    server.history.set(7, [message(1)]);
+    server.meta.set(7, conversation(7, { blockedByOther: true }));
+    const { fixture, component, poll } = await setup(server);
+    expect(component.isBlocked()).toBe(true);
+    server.meta.set(7, conversation(7, { blockedByOther: false })); // el otro desbloquea: no hay mensaje nuevo
+    poll();
+    fixture.detectChanges();
+    expect(component.isBlocked()).toBe(false);
+    expect((fixture.nativeElement as HTMLElement).querySelector('textarea#chatDraft')).not.toBeNull();
+    fixture.destroy();
+  });
 });
