@@ -1,15 +1,19 @@
+import { UserPreferencesService } from './user-preferences.service';
+import { I18nService } from '../i18n/i18n.service';
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Material } from '../models/course.model';
 import { DownloadUrl } from '../models/content.model';
 import { ToastService } from './toast.service';
-import { availableOnLabel, contentLockedFrom } from '../../shared/utils/release-date';
+import { contentLockedFrom } from '../../shared/utils/release-date';
 import { environment } from '../../../environments/environment';
 
 /** PDFs descargables: gestión del docente y descarga del alumno (siempre vía download-url). */
 @Injectable({ providedIn: 'root' })
 export class MaterialService {
+  private preferences = inject(UserPreferencesService);
+  private i18n = inject(I18nService);
   private http = inject(HttpClient);
   private toast = inject(ToastService);
   private apiUrl = environment.apiUrl;
@@ -51,10 +55,10 @@ export class MaterialService {
       error: error => {
         tab?.close();
         const locked = contentLockedFrom(error);
-        if (locked) this.toast.warning(availableOnLabel(locked.availableAt));
+        if (locked) this.toast.warning(locked.availableAt ? this.i18n.t('lessonComments.availableOn', {date: this.i18n.formatInstant(locked.availableAt, this.preferences.preferences()?.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', {dateStyle: 'long'})}) : this.i18n.t('lessonComments.soon'));
         else this.toast.error(error?.status === 403 || error?.status === 401
-          ? 'No tienes acceso a este material'
-          : 'No se pudo preparar la descarga. Intenta nuevamente.');
+          ? this.i18n.t('lessonComments.materialDenied')
+          : this.i18n.errorMessage(error, 'lessonComments.materialError'));
         onDone?.();
       }
     });
@@ -62,8 +66,8 @@ export class MaterialService {
 }
 
 /** «1,2 MB», «340 KB». */
-export function formatFileSize(bytes: number): string {
+export function formatFileSize(bytes: number, locale = 'es-AR'): string {
   if (!bytes || bytes < 0) return '';
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1).replace('.', ',')} MB`;
+  if (bytes < 1024 * 1024) return `${new Intl.NumberFormat(locale).format(Math.max(1, Math.round(bytes / 1024)))} KB`;
+  return `${new Intl.NumberFormat(locale, {minimumFractionDigits: 1, maximumFractionDigits: 1}).format(bytes / (1024 * 1024))} MB`;
 }

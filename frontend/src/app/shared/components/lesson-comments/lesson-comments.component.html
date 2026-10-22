@@ -1,18 +1,18 @@
 <section class="comments" aria-labelledby="comments-title">
-  <h3 id="comments-title" class="comments__title">Preguntas y comentarios @if (total() > 0) { <span class="comments__count">{{ total() }}</span> }</h3>
+  <h3 id="comments-title" class="comments__title">{{ 'lessonComments.title' | t }} @if (total() > 0) { <span class="comments__count">{{ total() }}</span> }</h3>
 
   @if (lockedMessage()) {
-    <div class="state-box"><app-icon name="lock" [size]="18" /><strong>{{ lockedMessage() }}</strong><span>Los comentarios se habilitan cuando se libera la unidad.</span></div>
+    <div class="state-box"><app-icon name="lock" [size]="18" /><strong>{{ lockedMessage() }}</strong><span>{{ 'lessonComments.lockedHint' | t }}</span></div>
   } @else {
     <form class="composer" (submit)="$event.preventDefault(); post()">
-      <label for="newComment" class="visually-hidden">Escribe tu pregunta o comentario</label>
-      <textarea id="newComment" class="form-control" rows="3" [attr.maxlength]="maxLength" placeholder="Escribe tu pregunta o comentario…"
+      <label for="newComment" class="visually-hidden">{{ 'lessonComments.write' | t }}</label>
+      <textarea id="newComment" class="form-control" rows="3" [attr.maxlength]="maxLength" [placeholder]="'lessonComments.writePlaceholder' | t"
                 [value]="draft()" (input)="onInput($event, draft.set)"></textarea>
       <div class="composer__foot">
-        <span class="composer__counter" [class.is-near]="remaining(draft()) < 100">{{ remaining(draft()) }} caracteres restantes</span>
+        <span class="composer__counter" [class.is-near]="remaining(draft()) < 100">{{ 'lessonComments.remaining' | t: {count: remaining(draft())} }}</span>
         <button type="submit" class="btn btn-primary btn-sm" [disabled]="posting() || !valid(draft())">
           @if (posting()) { <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> }
-          Publicar
+          {{ 'lessonComments.post' | t }}
         </button>
       </div>
       @if (postError()) { <div class="alert alert-danger mt-2 mb-0" role="alert">{{ postError() }}</div> }
@@ -21,14 +21,14 @@
     @if (error()) {
       <div class="alert alert-danger d-flex align-items-center justify-content-between gap-2" role="alert">
         <span>{{ error() }}</span>
-        <button type="button" class="btn btn-secondary btn-sm" (click)="reload()">Reintentar</button>
+        <button type="button" class="btn btn-secondary btn-sm" (click)="reload()">{{ 'lessonComments.retry' | t }}</button>
       </div>
     }
 
     @if (loading()) {
-      <p class="text-muted mb-0" role="status">Cargando comentarios…</p>
+      <p class="text-muted mb-0" role="status">{{ 'lessonComments.loading' | t }}</p>
     } @else if (comments().length === 0 && !error()) {
-      <p class="comments__empty">Todavía no hay comentarios. Sé el primero en preguntar.</p>
+      <p class="comments__empty">{{ 'lessonComments.empty' | t }}</p>
     }
 
     <ul class="thread">
@@ -44,14 +44,14 @@
           }
           @if (replyingTo() === c.id) {
             <form class="reply-form" (submit)="$event.preventDefault(); sendReply(c)">
-              <label [for]="'reply-' + c.id" class="visually-hidden">Tu respuesta</label>
-              <textarea [id]="'reply-' + c.id" class="form-control" rows="2" [attr.maxlength]="maxLength" placeholder="Escribe tu respuesta…"
+              <label [for]="'reply-' + c.id" class="visually-hidden">{{ 'lessonComments.yourReply' | t }}</label>
+              <textarea [id]="'reply-' + c.id" class="form-control" rows="2" [attr.maxlength]="maxLength" [placeholder]="'lessonComments.replyPlaceholder' | t"
                         [value]="replyDraft()" (input)="onInput($event, replyDraft.set)"></textarea>
               <div class="composer__foot">
-                <span class="composer__counter">{{ remaining(replyDraft()) }} restantes</span>
+                <span class="composer__counter">{{ 'lessonComments.remaining' | t: {count: remaining(replyDraft())} }}</span>
                 <span class="d-flex gap-2">
-                  <button type="button" class="btn btn-ghost btn-sm" (click)="cancelReply()">Cancelar</button>
-                  <button type="submit" class="btn btn-primary btn-sm" [disabled]="posting() || !valid(replyDraft())">Responder</button>
+                  <button type="button" class="btn btn-ghost btn-sm" (click)="cancelReply()">{{ 'lessonComments.cancel' | t }}</button>
+                  <button type="submit" class="btn btn-primary btn-sm" [disabled]="posting() || !valid(replyDraft())">{{ 'lessonComments.reply' | t }}</button>
                 </span>
               </div>
               @if (actionError()) { <div class="alert alert-danger mt-2 mb-0" role="alert">{{ actionError() }}</div> }
@@ -63,7 +63,7 @@
 
     @if (hasMore()) {
       <button type="button" class="btn btn-secondary btn-sm align-self-center" (click)="loadMore()" [disabled]="loadingMore()">
-        {{ loadingMore() ? 'Cargando…' : 'Ver más comentarios' }}
+        {{ (loadingMore() ? 'lessonComments.loadingMore' : 'lessonComments.more') | t }}
       </button>
     }
   }
@@ -72,21 +72,21 @@
 <ng-template #item let-c let-reply="reply">
   <div class="comment__head">
     <strong class="comment__author">{{ c.author.name }}</strong>
-    @if (c.author.isTeacher) { <span class="badge-teacher">Profesor/a</span> }
-    @if (c.hidden) { <span class="badge-hidden" title="Solo lo ven el docente y vos">Oculto</span> }
-    <time class="comment__date" [attr.datetime]="c.createdAt">{{ c.createdAt | date:'d MMM y, HH:mm' }}</time>
-    @if (c.editedAt) { <span class="comment__date">(editado)</span> }
+    @if (c.author.isTeacher) { <span class="badge-teacher">{{ 'lessonComments.teacher' | t }}</span> }
+    @if (c.hidden) { <span class="badge-hidden" [title]="'lessonComments.hiddenTitle' | t">{{ 'lessonComments.hidden' | t }}</span> }
+    <time class="comment__date" [attr.datetime]="c.createdAt">{{ date(c.createdAt) }}</time>
+    @if (c.editedAt) { <span class="comment__date">{{ 'lessonComments.edited' | t }}</span> }
   </div>
 
   @if (editingId() === c.id) {
     <form (submit)="$event.preventDefault(); saveEdit(c)">
-      <label [for]="'edit-' + c.id" class="visually-hidden">Editar comentario</label>
+      <label [for]="'edit-' + c.id" class="visually-hidden">{{ 'lessonComments.editComment' | t }}</label>
       <textarea [id]="'edit-' + c.id" class="form-control" rows="3" [attr.maxlength]="maxLength" [value]="editDraft()" (input)="onInput($event, editDraft.set)"></textarea>
       <div class="composer__foot">
-        <span class="composer__counter">{{ remaining(editDraft()) }} restantes</span>
+        <span class="composer__counter">{{ 'lessonComments.remaining' | t: {count: remaining(editDraft())} }}</span>
         <span class="d-flex gap-2">
-          <button type="button" class="btn btn-ghost btn-sm" (click)="cancelEdit()">Cancelar</button>
-          <button type="submit" class="btn btn-primary btn-sm" [disabled]="busy() || !valid(editDraft())">Guardar</button>
+          <button type="button" class="btn btn-ghost btn-sm" (click)="cancelEdit()">{{ 'lessonComments.cancel' | t }}</button>
+          <button type="submit" class="btn btn-primary btn-sm" [disabled]="busy() || !valid(editDraft())">{{ 'lessonComments.save' | t }}</button>
         </span>
       </div>
       @if (actionError()) { <div class="alert alert-danger mt-2 mb-0" role="alert">{{ actionError() }}</div> }
@@ -94,15 +94,15 @@
   } @else {
     <p class="comment__body">{{ c.body }}</p>
     <div class="comment__actions">
-      @if (!reply) { <button type="button" class="link-btn" (click)="startReply(c)">Responder</button> }
-      @if (c.canEdit) { <button type="button" class="link-btn" (click)="startEdit(c)">Editar</button> }
-      @if (c.canDelete) { <button type="button" class="link-btn link-btn--danger" (click)="askDelete(c)">Eliminar</button> }
+      @if (!reply) { <button type="button" class="link-btn" (click)="startReply(c)">{{ 'lessonComments.reply' | t }}</button> }
+      @if (c.canEdit) { <button type="button" class="link-btn" (click)="startEdit(c)">{{ 'lessonComments.edit' | t }}</button> }
+      @if (c.canDelete) { <button type="button" class="link-btn link-btn--danger" (click)="askDelete(c)">{{ 'lessonComments.delete' | t }}</button> }
     </div>
   }
 </ng-template>
 
 @if (toDelete(); as c) {
-  <app-confirm-dialog [show]="true" title="Eliminar comentario"
-    [message]="c.replies?.length ? 'Se eliminará el comentario y sus respuestas. ¿Continuar?' : '¿Eliminar este comentario?'"
-    confirmText="Eliminar" type="danger" (confirmed)="confirmDelete()" (cancelled)="cancelDelete()"></app-confirm-dialog>
+  <app-confirm-dialog [show]="true" [title]="'lessonComments.deleteTitle' | t"
+    [message]="(c.replies?.length ? 'lessonComments.deleteReplies' : 'lessonComments.deleteMessage') | t"
+    [confirmText]="'lessonComments.delete' | t" type="danger" (confirmed)="confirmDelete()" (cancelled)="cancelDelete()"></app-confirm-dialog>
 }

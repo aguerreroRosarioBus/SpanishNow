@@ -1,20 +1,20 @@
 <div class="page-container">
   <div class="page-header">
     <div class="page-header__main">
-      <h1 class="page-title">Comentarios</h1>
-      <p class="page-summary">Preguntas y comentarios de tus alumnos en las lecciones. «Sin responder» muestra los comentarios que todavía no tienen una respuesta tuya.</p>
+      <h1 class="page-title">{{ 'lessonComments.inboxTitle' | t }}</h1>
+      <p class="page-summary">{{ 'lessonComments.inboxSummary' | t }}</p>
     </div>
   </div>
 
-  <div class="filters" role="search" aria-label="Filtrar comentarios">
-    <div class="btn-group" role="group" aria-label="Estado">
-      <button type="button" class="btn btn-sm" [class.btn-primary]="status() === 'unanswered'" [class.btn-secondary]="status() !== 'unanswered'" [attr.aria-pressed]="status() === 'unanswered'" (click)="setStatus('unanswered')">Sin responder</button>
-      <button type="button" class="btn btn-sm" [class.btn-primary]="status() === 'all'" [class.btn-secondary]="status() !== 'all'" [attr.aria-pressed]="status() === 'all'" (click)="setStatus('all')">Todos</button>
+  <div class="filters" role="search" [attr.aria-label]="'lessonComments.filters' | t">
+    <div class="btn-group" role="group" [attr.aria-label]="'lessonComments.status' | t">
+      <button type="button" class="btn btn-sm" [class.btn-primary]="status() === 'unanswered'" [class.btn-secondary]="status() !== 'unanswered'" [attr.aria-pressed]="status() === 'unanswered'" (click)="setStatus('unanswered')">{{ 'lessonComments.unanswered' | t }}</button>
+      <button type="button" class="btn btn-sm" [class.btn-primary]="status() === 'all'" [class.btn-secondary]="status() !== 'all'" [attr.aria-pressed]="status() === 'all'" (click)="setStatus('all')">{{ 'lessonComments.all' | t }}</button>
     </div>
     <div class="filters__field">
-      <label for="commentCourse" class="form-label">Curso</label>
+      <label for="commentCourse" class="form-label">{{ 'lessonComments.course' | t }}</label>
       <select id="commentCourse" class="form-select" (change)="setCourse($any($event.target).value)">
-        <option value="">Todos los cursos</option>
+        <option value="">{{ 'lessonComments.allCourses' | t }}</option>
         @for (c of courses(); track c.id) { <option [value]="c.id">{{ c.title }}</option> }
       </select>
     </div>
@@ -23,19 +23,19 @@
   @if (errorMessage()) {
     <div class="alert alert-danger d-flex align-items-center justify-content-between gap-2" role="alert">
       <span>{{ errorMessage() }}</span>
-      <button type="button" class="btn btn-secondary btn-sm" (click)="load()">Reintentar</button>
+      <button type="button" class="btn btn-secondary btn-sm" (click)="load()">{{ 'lessonComments.retry' | t }}</button>
     </div>
   }
 
   @if (isLoading()) {
     <div class="text-center py-5" role="status">
       <div class="spinner-border text-primary" aria-hidden="true"></div>
-      <p class="text-muted mt-2 mb-0">Cargando comentarios…</p>
+      <p class="text-muted mt-2 mb-0">{{ 'lessonComments.loading' | t }}</p>
     </div>
   } @else if (rows().length === 0 && !errorMessage()) {
     <div class="state-box">
-      <strong>{{ status() === 'unanswered' ? 'No hay comentarios sin responder' : 'Todavía no hay comentarios' }}</strong>
-      <span>{{ status() === 'unanswered' ? 'Estás al día con tus alumnos.' : 'Cuando tus alumnos comenten una lección van a aparecer acá.' }}</span>
+      <strong>{{ (status() === 'unanswered' ? 'lessonComments.emptyUnanswered' : 'lessonComments.emptyInbox') | t }}</strong>
+      <span>{{ (status() === 'unanswered' ? 'lessonComments.upToDate' : 'lessonComments.inboxHint') | t }}</span>
     </div>
   } @else if (rows().length > 0) {
     <ul class="inbox">
@@ -43,10 +43,10 @@
         <li class="item" [class.is-hidden]="c.hidden">
           <div class="item__meta">
             <strong>{{ c.author.name }}</strong>
-            <time [attr.datetime]="c.createdAt">{{ c.createdAt | date:'d MMM y, HH:mm' }}</time>
-            <span class="badge-status" [class.badge-status--published]="c.answeredByTeacher" [class.badge-status--draft]="!c.answeredByTeacher">{{ c.answeredByTeacher ? 'Respondido' : 'Sin responder' }}</span>
-            @if (c.hidden) { <span class="badge-status badge-status--warn">Oculto</span> }
-            @if (c.replies > 0) { <span class="item__replies">{{ c.replies }} {{ c.replies === 1 ? 'respuesta' : 'respuestas' }}</span> }
+            <time [attr.datetime]="c.createdAt">{{ date(c.createdAt) }}</time>
+            <span class="badge-status" [class.badge-status--published]="c.answeredByTeacher" [class.badge-status--draft]="!c.answeredByTeacher">{{ (c.answeredByTeacher ? 'lessonComments.answered' : 'lessonComments.unanswered') | t }}</span>
+            @if (c.hidden) { <span class="badge-status badge-status--warn">{{ 'lessonComments.hidden' | t }}</span> }
+            @if (c.replies > 0) { <span class="item__replies">{{ 'lessonComments.replies' | t: {count: c.replies} }}</span> }
           </div>
           <p class="item__where">{{ c.course.title }} · {{ unitTitle(c.unit.title) }} · {{ c.story.title }}</p>
           <!-- Texto plano de un alumno: interpolación y white-space: pre-wrap, nunca innerHTML -->
@@ -54,27 +54,27 @@
 
           @if (replyingTo() === c.id) {
             <form class="reply" (ngSubmit)="sendReply(c)">
-              <label [for]="'reply-' + c.id" class="visually-hidden">Tu respuesta a {{ c.author.name }}</label>
-              <textarea [id]="'reply-' + c.id" class="form-control" rows="3" [maxlength]="maxLength" placeholder="Escribe tu respuesta…"
+              <label [for]="'reply-' + c.id" class="visually-hidden">{{ 'lessonComments.replyTo' | t: {name: c.author.name} }}</label>
+              <textarea [id]="'reply-' + c.id" class="form-control" rows="3" [maxlength]="maxLength" [placeholder]="'lessonComments.replyPlaceholder' | t"
                         [ngModel]="replyDraft()" (ngModelChange)="replyDraft.set($event)" name="reply"></textarea>
               @if (replyError()) { <div class="alert alert-danger mt-2 mb-0" role="alert">{{ replyError() }}</div> }
               <div class="reply__foot">
-                <small class="text-secondary-ui">{{ maxLength - replyDraft().length }} caracteres restantes</small>
+                <small class="text-secondary-ui">{{ 'lessonComments.remaining' | t: {count: maxLength - replyDraft().length} }}</small>
                 <span class="d-flex gap-2">
-                  <button type="button" class="btn btn-ghost btn-sm" (click)="cancelReply()">Cancelar</button>
+                  <button type="button" class="btn btn-ghost btn-sm" (click)="cancelReply()">{{ 'lessonComments.cancel' | t }}</button>
                   <button type="submit" class="btn btn-primary btn-sm" [disabled]="isSending() || !validReply()">
                     @if (isSending()) { <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> }
-                    Responder
+                    {{ 'lessonComments.reply' | t }}
                   </button>
                 </span>
               </div>
             </form>
           } @else {
             <div class="item__actions">
-              <button type="button" class="btn btn-secondary btn-sm" (click)="startReply(c)" [attr.aria-label]="'Responder a ' + c.author.name">Responder</button>
-              <button type="button" class="btn btn-ghost btn-sm" (click)="toggleHidden(c)" [attr.aria-label]="(c.hidden ? 'Mostrar' : 'Ocultar') + ' el comentario de ' + c.author.name">{{ c.hidden ? 'Mostrar' : 'Ocultar' }}</button>
-              <button type="button" class="btn btn-ghost btn-sm" (click)="askDelete(c)" [attr.aria-label]="'Eliminar el comentario de ' + c.author.name">Eliminar</button>
-              <a class="btn btn-ghost btn-sm" [routerLink]="['/teacher/course', c.course.id, 'manage']">Ver curso</a>
+              <button type="button" class="btn btn-secondary btn-sm" (click)="startReply(c)" [attr.aria-label]="'lessonComments.replyAria' | t: {name: c.author.name}">{{ 'lessonComments.reply' | t }}</button>
+              <button type="button" class="btn btn-ghost btn-sm" (click)="toggleHidden(c)" [attr.aria-label]="(c.hidden ? 'lessonComments.showAria' : 'lessonComments.hideAria') | t: {name: c.author.name}">{{ (c.hidden ? 'lessonComments.show' : 'lessonComments.hide') | t }}</button>
+              <button type="button" class="btn btn-ghost btn-sm" (click)="askDelete(c)" [attr.aria-label]="'lessonComments.deleteAria' | t: {name: c.author.name}">{{ 'lessonComments.delete' | t }}</button>
+              <a class="btn btn-ghost btn-sm" [routerLink]="['/teacher/course', c.course.id, 'manage']">{{ 'lessonComments.viewCourse' | t }}</a>
             </div>
           }
         </li>
@@ -82,17 +82,17 @@
     </ul>
 
     @if (pageCount() > 1) {
-      <nav class="pager" aria-label="Paginación">
-        <button type="button" class="btn btn-secondary btn-sm" (click)="goTo(page() - 1)" [disabled]="page() <= 1">Anterior</button>
-        <span class="pager__info">Página {{ page() }} de {{ pageCount() }}</span>
-        <button type="button" class="btn btn-secondary btn-sm" (click)="goTo(page() + 1)" [disabled]="page() >= pageCount()">Siguiente</button>
+      <nav class="pager" [attr.aria-label]="'lessonComments.pagination' | t">
+        <button type="button" class="btn btn-secondary btn-sm" (click)="goTo(page() - 1)" [disabled]="page() <= 1">{{ 'lessonComments.previous' | t }}</button>
+        <span class="pager__info">{{ 'lessonComments.page' | t: {page: page(), total: pageCount()} }}</span>
+        <button type="button" class="btn btn-secondary btn-sm" (click)="goTo(page() + 1)" [disabled]="page() >= pageCount()">{{ 'lessonComments.next' | t }}</button>
       </nav>
     }
   }
 </div>
 
 @if (toDelete(); as c) {
-  <app-confirm-dialog [show]="true" title="Eliminar comentario"
-    [message]="'¿Eliminar el comentario de ' + c.author.name + '? Si tiene respuestas, también se eliminan.'"
-    confirmText="Eliminar" type="danger" (confirmed)="confirmDelete()" (cancelled)="cancelDelete()"></app-confirm-dialog>
+  <app-confirm-dialog [show]="true" [title]="'lessonComments.deleteTitle' | t"
+    [message]="'lessonComments.deleteNamed' | t: {name: c.author.name}"
+    [confirmText]="'lessonComments.delete' | t" type="danger" (confirmed)="confirmDelete()" (cancelled)="cancelDelete()"></app-confirm-dialog>
 }

@@ -1,11 +1,14 @@
-import { Component, ElementRef, effect, inject, input, signal, untracked } from '@angular/core';
-import { DatePipe, NgTemplateOutlet } from '@angular/common';
+import { UserPreferencesService } from '../../../core/services/user-preferences.service';
+import { I18nService } from '../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
+import { Component, ElementRef, effect, inject, input, computed, signal, untracked } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { CommentService } from '../../../core/services/comment.service';
 import { LessonComment } from '../../../core/models/community.model';
 import { ToastService } from '../../../core/services/toast.service';
 import { IconComponent } from '../icon/icon.component';
 import { ConfirmDialogComponent } from '../confirm-dialog/confirm-dialog.component';
-import { availableOnLabel, contentLockedFrom } from '../../utils/release-date';
+import { contentLockedFrom } from '../../utils/release-date';
 
 export const COMMENT_MAX_LENGTH = 2000;
 const PAGE_SIZE = 20;
@@ -18,11 +21,14 @@ const PAGE_SIZE = 20;
 @Component({
   selector: 'app-lesson-comments',
   standalone: true,
-  imports: [DatePipe, NgTemplateOutlet, IconComponent, ConfirmDialogComponent],
+  imports: [TranslatePipe, NgTemplateOutlet, IconComponent, ConfirmDialogComponent],
   templateUrl: './lesson-comments.component.html',
   styleUrl: './lesson-comments.component.scss'
 })
 export class LessonCommentsComponent {
+  i18n = inject(I18nService);
+  private preferences = inject(UserPreferencesService);
+  date(value: string, options: Intl.DateTimeFormatOptions = {dateStyle: 'medium', timeStyle: 'short'}): string { return this.i18n.formatInstant(value, this.preferences.preferences()?.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', options); }
   private api = inject(CommentService);
   private toast = inject(ToastService);
 
@@ -38,20 +44,24 @@ export class LessonCommentsComponent {
   page = signal(1);
   loading = signal(false);
   loadingMore = signal(false);
-  error = signal('');
+  private errorFailure = signal<{key: string; error?: unknown} | null>(null);
+  error = computed(() => { const f = this.errorFailure(); return f ? (f.error ? this.i18n.errorMessage(f.error, f.key) : this.i18n.t(f.key)) : ''; });
   /** 403 content_locked: mensaje «Disponible el …» en lugar de error genérico. */
-  lockedMessage = signal('');
+  private lockedAt = signal<string | null | undefined>(undefined);
+  lockedMessage = computed(() => this.lockedAt() === undefined ? '' : this.lockedAt() ? this.i18n.t('lessonComments.availableOn', {date: this.date(this.lockedAt()!, {dateStyle: 'long'})}) : this.i18n.t('lessonComments.soon'));
 
   draft = signal('');
   posting = signal(false);
-  postError = signal('');
+  private postErrorFailure = signal<{key: string; error?: unknown} | null>(null);
+  postError = computed(() => { const f = this.postErrorFailure(); return f ? (f.error ? this.i18n.errorMessage(f.error, f.key) : this.i18n.t(f.key)) : ''; });
 
   replyingTo = signal<number | null>(null);
   replyDraft = signal('');
   editingId = signal<number | null>(null);
   editDraft = signal('');
   busy = signal(false);
-  actionError = signal('');
+  private actionErrorFailure = signal<{key: string; error?: unknown} | null>(null);
+  actionError = computed(() => { const f = this.actionErrorFailure(); return f ? (f.error ? this.i18n.errorMessage(f.error, f.key) : this.i18n.t(f.key)) : ''; });
   toDelete = signal<LessonComment | null>(null);
 
   constructor() {
@@ -65,8 +75,8 @@ export class LessonCommentsComponent {
     this.comments.set([]);
     this.total.set(0);
     this.page.set(1);
-    this.error.set('');
-    this.lockedMessage.set('');
+    this.errorFailure.set(null);
+    this.lockedAt.set(undefined);
     this.draft.set('');
     this.replyingTo.set(null);
     this.editingId.set(null);
@@ -90,7 +100,7 @@ export class LessonCommentsComponent {
         if (storyId !== this.storyId()) return;
         this.loading.set(false);
         this.loadingMore.set(false);
-        this.handleError(error, 'No se pudieron cargar los comentarios.', message => this.error.set(message));
+        this.handleError(error, 'lessonComments.loadError', message => this.errorFailure.set(message));
       }
     });
   }
@@ -102,14 +112,14 @@ export class LessonCommentsComponent {
   }
 
   /** Aplica el mismo tratamiento a todos los errores: bloqueo por fecha, límite por hora o mensaje del servidor. */
-  private handleError(error: any, fallback: string, show: (message: string) => void): void {
+  private handleError(error: any, fallback: string, show: (message: {key: string; error?: unknown}) => void): void {
     const locked = contentLockedFrom(error);
-    if (locked) { this.lockedMessage.set(availableOnLabel(locked.availableAt)); return; }
+    if (locked) { this.lockedAt.set(locked.availableAt); return; }
     if (error?.status === 429 || error?.error?.code === 'rate_limited') {
-      show('Publicaste muchos comentarios en poco tiempo (el máximo es 10 por hora). Prueba de nuevo más tarde.');
+      show({key: 'lessonComments.rateLimit'});
       return;
     }
-    show(error?.error?.error || fallback);
+    show({key: fallback, error});
   }
 
   hasMore(): boolean { return this.comments().length < this.total(); }
@@ -126,7 +136,7 @@ export class LessonCommentsComponent {
   startReply(c: LessonComment): void {
     this.replyingTo.set(c.id);
     this.replyDraft.set('');
-    this.actionError.set('');
+    this.actionErrorFailure.set(null);
     this.editingId.set(null);
   }
   cancelReply(): void { this.replyingTo.set(null); }
@@ -136,13 +146,13 @@ export class LessonCommentsComponent {
     const body = text.trim();
     if (!this.valid(body) || this.posting()) return;
     this.posting.set(true);
-    this.postError.set('');
-    this.actionError.set('');
+    this.postErrorFailure.set(null);
+    this.actionErrorFailure.set(null);
     this.api.create(this.storyId(), body, parentId).subscribe({
-      next: () => { this.posting.set(false); done(); this.toast.success(parentId ? 'Respuesta publicada' : 'Comentario publicado'); this.reload(); },
+      next: () => { this.posting.set(false); done(); this.toast.success(this.i18n.t(parentId ? 'lessonComments.replyPosted' : 'lessonComments.posted')); this.reload(); },
       error: error => {
         this.posting.set(false);
-        this.handleError(error, 'No se pudo publicar. Intentá de nuevo.', message => parentId ? this.actionError.set(message) : this.postError.set(message));
+        this.handleError(error, 'lessonComments.postError', message => parentId ? this.actionErrorFailure.set(message) : this.postErrorFailure.set(message));
       }
     });
   }
@@ -152,7 +162,7 @@ export class LessonCommentsComponent {
   startEdit(c: LessonComment): void {
     this.editingId.set(c.id);
     this.editDraft.set(c.body);
-    this.actionError.set('');
+    this.actionErrorFailure.set(null);
     this.replyingTo.set(null);
   }
   cancelEdit(): void { this.editingId.set(null); }
@@ -161,10 +171,10 @@ export class LessonCommentsComponent {
     const body = this.editDraft().trim();
     if (!this.valid(body) || this.busy()) return;
     this.busy.set(true);
-    this.actionError.set('');
+    this.actionErrorFailure.set(null);
     this.api.update(c.id, body).subscribe({
-      next: () => { this.busy.set(false); this.editingId.set(null); this.toast.success('Comentario actualizado'); this.reload(); },
-      error: error => { this.busy.set(false); this.handleError(error, 'No se pudo guardar el cambio.', m => this.actionError.set(m)); }
+      next: () => { this.busy.set(false); this.editingId.set(null); this.toast.success(this.i18n.t('lessonComments.updated')); this.reload(); },
+      error: error => { this.busy.set(false); this.handleError(error, 'lessonComments.saveError', m => this.actionErrorFailure.set(m)); }
     });
   }
 
@@ -175,8 +185,8 @@ export class LessonCommentsComponent {
     this.toDelete.set(null);
     if (!c) return;
     this.api.remove(c.id).subscribe({
-      next: () => { this.toast.success('Comentario eliminado'); this.reload(); },
-      error: error => this.handleError(error, 'No se pudo eliminar el comentario.', m => this.toast.error(m))
+      next: () => { this.toast.success(this.i18n.t('lessonComments.deleted')); this.reload(); },
+      error: error => this.handleError(error, 'lessonComments.deleteError', m => this.toast.error(this.i18n.errorMessage(m.error, m.key)))
     });
   }
 
