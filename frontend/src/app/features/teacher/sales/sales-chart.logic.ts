@@ -64,12 +64,11 @@ export function currenciesOf(totals: SalesTotal[], byMonth: SalesByMonth[]): str
   return seen;
 }
 
-const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-
-/** 'YYYY-MM' → 'mar 26' (corto, para el eje) o 'marzo 2026' no hace falta: se usa siempre la forma corta. */
-export function monthLabel(month: string): string {
+/** Mes calendario: solo se localiza la etiqueta, nunca se desplaza por zona horaria. */
+export function monthLabel(month: string, locale = 'es'): string {
   const [y, m] = month.split('-').map(Number);
-  return `${MONTHS[(m || 1) - 1]} ${String(y).slice(-2)}`;
+  const label = new Intl.DateTimeFormat(locale, {month: 'short', timeZone: 'UTC'}).format(new Date(Date.UTC(y, (m || 1) - 1, 1))).replace(/\.$/, '');
+  return `${label} ${String(y).slice(-2)}`;
 }
 
 /** Fechas 'YYYY-MM-DD' de un período del selector, hasta hoy. `all` no manda fechas. */

@@ -1,37 +1,37 @@
 <div class="page-container">
   <div class="page-header">
     <div class="page-header__main">
-      <h1 class="page-title">Órdenes</h1>
-      <p class="page-summary">{{ total() }} {{ total() === 1 ? 'orden' : 'órdenes' }} con los filtros actuales</p>
+      <h1 class="page-title">{{ 'teacherCommerce.orders' | t }}</h1>
+      <p class="page-summary">{{ 'teacherCommerce.filteredCount' | t: {count: total()} }}</p>
     </div>
     <div class="page-actions">
       <button type="button" class="btn btn-secondary" (click)="exportCsv()" [disabled]="isExporting()">
         @if (isExporting()) { <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> } @else { <app-icon name="download" [size]="16" /> }
-        Exportar CSV
+        {{ 'teacherCommerce.export' | t }}
       </button>
     </div>
   </div>
 
-  <form class="filters" (ngSubmit)="applyFilters()" role="search" aria-label="Filtrar órdenes">
+  <form class="filters" (ngSubmit)="applyFilters()" role="search" [attr.aria-label]="'teacherCommerce.filterOrders' | t">
     <div class="filters__field filters__field--grow">
-      <label for="orderQuery" class="form-label">Buscar</label>
-      <input id="orderQuery" name="q" type="search" class="form-control" placeholder="Email o nombre del comprador"
+      <label for="orderQuery" class="form-label">{{ 'teacherCommerce.search' | t }}</label>
+      <input id="orderQuery" name="q" type="search" class="form-control" [placeholder]="'teacherCommerce.searchPlaceholder' | t"
              [ngModel]="query()" (ngModelChange)="query.set($event)" autocomplete="off">
     </div>
     <div class="filters__field">
-      <label for="orderStatus" class="form-label">Estado</label>
+      <label for="orderStatus" class="form-label">{{ 'teacherCommerce.status' | t }}</label>
       <select id="orderStatus" name="status" class="form-select" [ngModel]="status()" (ngModelChange)="status.set($event); applyFilters()">
-        @for (s of statuses; track s.value) { <option [value]="s.value">{{ s.label }}</option> }
+        @for (s of statuses; track s.value) { <option [value]="s.value">{{ s.label | t }}</option> }
       </select>
     </div>
     <div class="filters__field">
-      <label for="orderCourse" class="form-label">Curso</label>
+      <label for="orderCourse" class="form-label">{{ 'teacherCommerce.course' | t }}</label>
       <select id="orderCourse" name="course" class="form-select" [ngModel]="courseId()" (ngModelChange)="courseId.set($event ? +$event : null); applyFilters()">
-        <option [ngValue]="null">Todos los cursos</option>
+        <option [ngValue]="null">{{ 'teacherCommerce.allCourses' | t }}</option>
         @for (c of courses(); track c.id) { <option [ngValue]="c.id">{{ c.title }}</option> }
       </select>
     </div>
-    <button type="submit" class="btn btn-secondary">Buscar</button>
+    <button type="submit" class="btn btn-secondary">{{ 'teacherCommerce.search' | t }}</button>
   </form>
 
   @if (errorMessage()) {
@@ -41,27 +41,27 @@
   @if (isLoading()) {
     <div class="text-center py-5" role="status">
       <div class="spinner-border text-primary" aria-hidden="true"></div>
-      <p class="text-muted mt-2 mb-0">Cargando órdenes…</p>
+      <p class="text-muted mt-2 mb-0">{{ 'teacherCommerce.loadingOrders' | t }}</p>
     </div>
   } @else if (rows().length === 0 && !errorMessage()) {
     <div class="state-box">
-      <strong>No hay órdenes</strong>
-      <span>Cuando alguien compre uno de tus cursos va a aparecer acá. Prueba también cambiar los filtros.</span>
+      <strong>{{ 'teacherCommerce.emptyOrders' | t }}</strong>
+      <span>{{ 'teacherCommerce.emptyOrdersHint' | t }}</span>
     </div>
   } @else if (rows().length > 0) {
     <div class="table-wrap">
       <table class="data-table">
         <thead>
           <tr>
-            <th scope="col">Fecha</th><th scope="col">Comprador</th><th scope="col">Curso</th>
-            <th scope="col" class="num">Monto</th><th scope="col">Estado</th><th scope="col">Proveedor</th><th scope="col">Cupón</th><th scope="col">Afiliado</th>
-            <th scope="col">Recibo</th><th scope="col"><span class="visually-hidden">Acciones</span></th>
+            <th scope="col">{{ 'teacherCommerce.date' | t }}</th><th scope="col">{{ 'teacherCommerce.buyer' | t }}</th><th scope="col">{{ 'teacherCommerce.course' | t }}</th>
+            <th scope="col" class="num">{{ 'teacherCommerce.amount' | t }}</th><th scope="col">{{ 'teacherCommerce.status' | t }}</th><th scope="col">{{ 'teacherCommerce.provider' | t }}</th><th scope="col">{{ 'teacherCommerce.coupon' | t }}</th><th scope="col">{{ 'teacherCommerce.affiliate' | t }}</th>
+            <th scope="col">{{ 'teacherCommerce.receipt' | t }}</th><th scope="col"><span class="visually-hidden">{{ 'teacherCommerce.actions' | t }}</span></th>
           </tr>
         </thead>
         <tbody>
           @for (o of rows(); track o.id) {
             <tr>
-              <td>{{ (o.paidAt ?? o.createdAt) | date:'d MMM y' }}</td>
+              <td>{{ date(o.paidAt ?? o.createdAt) }}</td>
               <td>{{ o.buyer.name }}<small class="d-block text-secondary-ui">{{ o.buyer.email }}</small></td>
               <td>{{ o.course.title }}</td>
               <td class="num">
@@ -70,7 +70,7 @@
                   <small class="d-block text-secondary-ui"><s>{{ money(o.originalAmount, o.currency) }}</s></small>
                 }
                 @if (o.refundedAmount > 0) {
-                  <small class="d-block text-secondary-ui">Devuelto {{ money(o.refundedAmount, o.currency) }}</small>
+                  <small class="d-block text-secondary-ui">{{ 'teacherCommerce.returned' | t: {amount: money(o.refundedAmount, o.currency)} }}</small>
                 }
               </td>
               <td>
@@ -78,16 +78,16 @@
                       [class.badge-status--warn]="badge(o) === 'partial'" [class.badge-status--danger]="badge(o) === 'refunded' || badge(o) === 'failed'">{{ badgeLabel(o) }}</span>
               </td>
               <td>{{ providerLabel(o.provider) }}</td>
-              <td>@if (o.coupon) { <code>{{ o.coupon.code }}</code> } @else { <span class="text-secondary-ui" aria-label="Sin cupón">—</span> }</td>
+              <td>@if (o.coupon) { <code>{{ o.coupon.code }}</code> } @else { <span class="text-secondary-ui" [attr.aria-label]="'teacherCommerce.noCoupon' | t">—</span> }</td>
               <td>
                 @if (o.affiliate) {
-                  {{ o.affiliate.name }}<small class="d-block text-secondary-ui"><code>{{ o.affiliate.code }}</code> · Comisión {{ money(o.commissionAmount ?? 0, o.currency) }}</small>
-                } @else { <span class="text-secondary-ui" aria-label="Sin afiliado">—</span> }
+                  {{ o.affiliate.name }}<small class="d-block text-secondary-ui"><code>{{ o.affiliate.code }}</code> · {{ 'teacherCommerce.commission' | t: {amount: money(o.commissionAmount ?? 0, o.currency)} }}</small>
+                } @else { <span class="text-secondary-ui" [attr.aria-label]="'teacherCommerce.noAffiliate' | t">—</span> }
               </td>
-              <td>@if (o.receiptUrl) { <a [href]="o.receiptUrl" target="_blank" rel="noopener">Recibo</a> } @else { <span class="text-secondary-ui" aria-label="Sin recibo">—</span> }</td>
+              <td>@if (o.receiptUrl) { <a [href]="o.receiptUrl" target="_blank" rel="noopener">{{ 'teacherCommerce.receipt' | t }}</a> } @else { <span class="text-secondary-ui" [attr.aria-label]="'teacherCommerce.noReceipt' | t">—</span> }</td>
               <td class="text-end">
                 @if (canRefund(o)) {
-                  <button type="button" class="btn btn-ghost btn-sm" (click)="askRefund(o)" [attr.aria-label]="'Marcar como reembolsada la orden de ' + o.buyer.name">Marcar como reembolsada</button>
+                  <button type="button" class="btn btn-ghost btn-sm" (click)="askRefund(o)" [attr.aria-label]="'teacherCommerce.refundAria' | t: {name: o.buyer.name}">{{ 'teacherCommerce.markRefund' | t }}</button>
                 }
               </td>
             </tr>
@@ -97,10 +97,10 @@
     </div>
 
     @if (pageCount() > 1) {
-      <nav class="pager" aria-label="Paginación">
-        <button type="button" class="btn btn-secondary btn-sm" (click)="goTo(page() - 1)" [disabled]="page() <= 1">Anterior</button>
-        <span class="pager__info">Página {{ page() }} de {{ pageCount() }}</span>
-        <button type="button" class="btn btn-secondary btn-sm" (click)="goTo(page() + 1)" [disabled]="page() >= pageCount()">Siguiente</button>
+      <nav class="pager" [attr.aria-label]="'teacherCommerce.pagination' | t">
+        <button type="button" class="btn btn-secondary btn-sm" (click)="goTo(page() - 1)" [disabled]="page() <= 1">{{ 'teacherCommerce.previous' | t }}</button>
+        <span class="pager__info">{{ 'teacherCommerce.page' | t: {page: page(), total: pageCount()} }}</span>
+        <button type="button" class="btn btn-secondary btn-sm" (click)="goTo(page() + 1)" [disabled]="page() >= pageCount()">{{ 'teacherCommerce.next' | t }}</button>
       </nav>
     }
   }
@@ -111,38 +111,36 @@
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="refundTitle">Marcar como reembolsada</h5>
-          <button type="button" class="btn-close" (click)="cancelRefund()" aria-label="Cerrar"></button>
+          <h5 class="modal-title" id="refundTitle">{{ 'teacherCommerce.markRefund' | t }}</h5>
+          <button type="button" class="btn-close" (click)="cancelRefund()" [attr.aria-label]="'teacherCommerce.close' | t"></button>
         </div>
         <div class="modal-body">
           <p>
-            Vas a marcar como reembolsada la orden de <strong>{{ order.buyer.name }}</strong> ({{ order.buyer.email }})
-            por <strong>{{ money(order.amount, order.currency) }}</strong> de «{{ order.course.title }}».
+            {{ 'teacherCommerce.refundMessage' | t: {name: order.buyer.name, email: order.buyer.email, amount: money(order.amount, order.currency), title: order.course.title} }}
           </p>
           @if (order.provider === 'stripe') {
             <div class="alert alert-warning" role="note">
-              Esta compra se pagó con Stripe. Lo normal es devolver el dinero desde el panel de Stripe y SpanishNow lo registra solo.
-              Marcala a mano solo si el reembolso ya se hizo por fuera. Esto no devuelve dinero.
+              {{ 'teacherCommerce.stripeHint' | t }}
             </div>
           }
           @if (order.provider === 'hotmart') {
             <div class="alert alert-warning" role="note">
-              Esta compra se pagó con Hotmart. Los reembolsos se hacen desde Hotmart y SpanishNow se entera solo por el aviso. Márcala a mano solo si el reembolso ya se hizo por fuera. Esto no devuelve dinero.
+              {{ 'teacherCommerce.hotmartHint' | t }}
             </div>
           }
           <div class="form-check">
             <input class="form-check-input" type="checkbox" id="revokeAccess" [checked]="revokeAccess()" (change)="revokeAccess.set($any($event.target).checked)">
-            <label class="form-check-label" for="revokeAccess">Quitar acceso al curso</label>
+            <label class="form-check-label" for="revokeAccess">{{ 'teacherCommerce.revoke' | t }}</label>
           </div>
           @if (refundError()) {
             <div class="alert alert-danger mt-3 mb-0" role="alert">{{ refundError() }}</div>
           }
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" (click)="cancelRefund()" [disabled]="isRefunding()">Cancelar</button>
+          <button type="button" class="btn btn-secondary" (click)="cancelRefund()" [disabled]="isRefunding()">{{ 'teacherCommerce.cancel' | t }}</button>
           <button type="button" class="btn btn-danger" (click)="confirmRefund()" [disabled]="isRefunding()">
             @if (isRefunding()) { <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> }
-            Marcar como reembolsada
+            {{ 'teacherCommerce.markRefund' | t }}
           </button>
         </div>
       </div>
