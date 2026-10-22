@@ -1,5 +1,5 @@
 import { Component, DestroyRef, ElementRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
-import { DOCUMENT, DatePipe } from '@angular/common';
+import { DOCUMENT } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -8,8 +8,10 @@ import { ChatBadgeService } from '../../../core/services/chat-badge.service';
 import { CHAT_MAX_LENGTH, ChatMessage, Conversation, PendingMessage } from '../../../core/models/chat.model';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
-import { ChatText, ChatTextPipe } from '../chat-text';
-import { CHAT_I18N } from '../chat.i18n';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
+import { I18nService } from '../../../core/i18n/i18n.service';
+import { ChatFormat } from '../chat-format';
+import { CHAT_MESSAGES } from '../chat.i18n';
 
 const POLL_MS = 5_000;
 const IDLE_POLL_MS = 20_000;
@@ -44,7 +46,7 @@ const newClientMessageId = (): string =>
 @Component({
   selector: 'app-chat-conversation',
   standalone: true,
-  imports: [DatePipe, FormsModule, RouterLink, IconComponent, ConfirmDialogComponent, ChatTextPipe],
+  imports: [FormsModule, RouterLink, IconComponent, ConfirmDialogComponent, TranslatePipe],
   templateUrl: './chat-conversation.component.html',
   styleUrl: './chat-conversation.component.scss'
 })
@@ -54,7 +56,8 @@ export class ChatConversationComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private document = inject(DOCUMENT);
   private destroyRef = inject(DestroyRef);
-  readonly text = inject(ChatText);
+  private i18n = inject(I18nService);
+  readonly fmt = inject(ChatFormat);
   readonly maxLength = CHAT_MAX_LENGTH;
   readonly segments = linkSegments;
 
@@ -131,7 +134,7 @@ export class ChatConversationComponent implements OnInit {
   private fail(err: unknown): void {
     this.isLoading.set(false);
     if (err instanceof HttpErrorResponse && err.status === 404 && err.error?.code === 'not_found') this.notFound.set(true);
-    else this.errorMessage.set(this.text.error(err));
+    else this.errorMessage.set(this.fmt.error(err));
   }
 
   reload(): void { this.open(this.conversationId); }
@@ -150,7 +153,7 @@ export class ChatConversationComponent implements OnInit {
         // Mantener a la vista lo que se estaba leyendo.
         setTimeout(() => { if (el) el.scrollTop = el.scrollHeight - fromBottom; });
       },
-      error: err => { this.isLoadingOlder.set(false); this.errorMessage.set(this.text.error(err)); }
+      error: err => { this.isLoadingOlder.set(false); this.errorMessage.set(this.fmt.error(err)); }
     });
   }
 
@@ -230,7 +233,7 @@ export class ChatConversationComponent implements OnInit {
       error: (err: HttpErrorResponse) => {
         const code = err.error?.code as string | undefined;
         const final = err.status === 400 || code === 'conversation_blocked' || code === 'operation_key_conflict' || err.status === 404;
-        this.updatePending(message.clientMessageId, { status: 'failed', errorKey: this.text.error(err), final });
+        this.updatePending(message.clientMessageId, { status: 'failed', errorKey: this.fmt.error(err), final });
         if (code === 'conversation_blocked') this.api.get(this.conversationId).subscribe({ next: c => this.conversation.set(c), error: () => { /* sin cambios */ } });
       }
     });
@@ -262,7 +265,7 @@ export class ChatConversationComponent implements OnInit {
     this.isActing.set(true);
     this.api.report(this.conversationId, reason).subscribe({
       next: c => { this.conversation.set(c); this.isActing.set(false); this.showReport.set(false); this.reportReason.set(''); },
-      error: err => { this.isActing.set(false); this.reportError.set(this.text.error(err)); }
+      error: err => { this.isActing.set(false); this.reportError.set(this.fmt.error(err)); }
     });
   }
 
@@ -270,20 +273,20 @@ export class ChatConversationComponent implements OnInit {
     this.isActing.set(true);
     request.subscribe({
       next: c => { this.conversation.set(c); this.isActing.set(false); },
-      error: err => { this.isActing.set(false); this.errorMessage.set(this.text.error(err)); }
+      error: err => { this.isActing.set(false); this.errorMessage.set(this.fmt.error(err)); }
     });
   }
 
   eventText(m: ChatMessage): string {
     const key = `chat.event.${m.eventCode}`;
-    return Object.hasOwn(CHAT_I18N.es, key) ? this.text.t(key) : this.text.t('chat.event.generic');
+    return Object.hasOwn(CHAT_MESSAGES.en, key) ? this.i18n.t(key) : this.i18n.t('chat.event.generic');
   }
 
   contextLabel(): string | null {
     const ctx = this.conversation()?.context;
     if (!ctx) return null;
-    if (ctx.type === 'session') return this.text.t('chat.conv.context.session');
-    return ctx.title ? this.text.t(`chat.conv.context.${ctx.type}`, { title: ctx.title[this.text.locale] || ctx.title.es }) : null;
+    if (ctx.type === 'session') return this.i18n.t('chat.conv.context.session');
+    return ctx.title ? this.i18n.t(`chat.conv.context.${ctx.type}`, { title: ctx.title[this.i18n.locale()] || ctx.title.es }) : null;
   }
 
   private isNearBottom(): boolean {

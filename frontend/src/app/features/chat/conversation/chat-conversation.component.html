@@ -1,15 +1,15 @@
 <div class="page-container chat-page">
   <a routerLink="/messages" class="btn btn-ghost btn-sm back">
-    <app-icon name="arrow-left" [size]="16" /> {{ 'chat.conv.back' | chatT }}
+    <app-icon name="arrow-left" [size]="16" /> {{ 'chat.conv.back' | t }}
   </a>
 
   @if (isLoading()) {
     <div class="text-center py-5" role="status">
       <div class="spinner-border text-primary" aria-hidden="true"></div>
-      <p class="text-muted mt-2 mb-0">{{ 'chat.conv.loading' | chatT }}</p>
+      <p class="text-muted mt-2 mb-0">{{ 'chat.conv.loading' | t }}</p>
     </div>
   } @else if (notFound()) {
-    <div class="state-box"><strong>{{ 'chat.conv.notFound' | chatT }}</strong></div>
+    <div class="state-box"><strong>{{ 'chat.conv.notFound' | t }}</strong></div>
   } @else if (conversation(); as c) {
     <section class="chat" [attr.aria-label]="c.counterpart.name">
       <header class="chat__head">
@@ -17,18 +17,18 @@
         <div class="chat__who">
           <h1 class="chat__name">{{ c.counterpart.name }}</h1>
           <span class="chat__sub">
-            {{ (c.counterpart.role === 'teacher' ? 'chat.conv.roleTeacher' : 'chat.conv.roleStudent') | chatT }}
+            {{ (c.counterpart.role === 'teacher' ? 'chat.conv.roleTeacher' : 'chat.conv.roleStudent') | t }}
             @if (contextLabel(); as ctx) { · {{ ctx }} }
           </span>
         </div>
-        <div class="chat__actions" role="group" [attr.aria-label]="'chat.actions.menu' | chatT">
+        <div class="chat__actions" role="group" [attr.aria-label]="'chat.actions.menu' | t">
           @if (c.blockedByMe) {
-            <button type="button" class="btn btn-ghost btn-sm" (click)="unblock()" [disabled]="isActing()">{{ 'chat.actions.unblock' | chatT }}</button>
+            <button type="button" class="btn btn-ghost btn-sm" (click)="unblock()" [disabled]="isActing()">{{ 'chat.actions.unblock' | t }}</button>
           } @else {
-            <button type="button" class="btn btn-ghost btn-sm" (click)="showBlock.set(true)" [disabled]="isActing()">{{ 'chat.actions.block' | chatT }}</button>
+            <button type="button" class="btn btn-ghost btn-sm" (click)="showBlock.set(true)" [disabled]="isActing()">{{ 'chat.actions.block' | t }}</button>
           }
           @if (!c.reportedByMe) {
-            <button type="button" class="btn btn-ghost btn-sm" (click)="showReport.set(true)" [disabled]="isActing()">{{ 'chat.actions.report' | chatT }}</button>
+            <button type="button" class="btn btn-ghost btn-sm" (click)="showReport.set(true)" [disabled]="isActing()">{{ 'chat.actions.report' | t }}</button>
           }
         </div>
       </header>
@@ -36,18 +36,18 @@
       @if (errorMessage()) {
         <div class="alert alert-danger d-flex align-items-center justify-content-between gap-2 m-2" role="alert">
           <span>{{ errorMessage() }}</span>
-          <button type="button" class="btn btn-secondary btn-sm" (click)="reload()">{{ 'chat.conv.retry' | chatT }}</button>
+          <button type="button" class="btn btn-secondary btn-sm" (click)="reload()">{{ 'chat.conv.retry' | t }}</button>
         </div>
       }
 
       <div class="chat__scroll" #scroller>
         @if (hasOlder()) {
           <div class="older">
-            <button type="button" class="btn btn-secondary btn-sm" (click)="loadOlder()" [disabled]="isLoadingOlder()">{{ 'chat.conv.loadOlder' | chatT }}</button>
+            <button type="button" class="btn btn-secondary btn-sm" (click)="loadOlder()" [disabled]="isLoadingOlder()">{{ 'chat.conv.loadOlder' | t }}</button>
           </div>
         }
         @if (messages().length === 0 && pending().length === 0) {
-          <p class="empty">{{ 'chat.conv.empty' | chatT }}</p>
+          <p class="empty">{{ 'chat.conv.empty' | t }}</p>
         }
         <ol class="messages" aria-live="polite" data-testid="chat-messages">
           @for (m of messages(); track m.seq) {
@@ -55,25 +55,25 @@
               <!-- Evento confiable del sistema, distinto de los mensajes de personas (CHAT-04) -->
               <li class="event" data-kind="system">
                 <app-icon name="circle-dot" [size]="14" />
-                <span><span class="visually-hidden">{{ 'chat.conv.system' | chatT }}: </span>{{ eventText(m) }}</span>
-                <time [attr.datetime]="m.createdAt">{{ m.createdAt | date:'d MMM, HH:mm' }}</time>
+                <span><span class="visually-hidden">{{ 'chat.conv.system' | t }}: </span>{{ eventText(m) }}</span>
+                <time [attr.datetime]="m.createdAt">{{ fmt.instant(m.createdAt) }}</time>
               </li>
             } @else if (m.type === 'offer' || m.type === 'session_proposal') {
               <li class="card-msg" data-kind="system">
-                <strong>{{ m.type === 'offer' ? ('chat.conv.offerCard' | chatT:{ id: m.offerId ?? '' }) : ('chat.conv.proposalCard' | chatT) }}</strong>
-                <time [attr.datetime]="m.createdAt">{{ m.createdAt | date:'d MMM, HH:mm' }}</time>
+                <strong>{{ m.type === 'offer' ? ('chat.conv.offerCard' | t:{ id: m.offerId ?? '' }) : ('chat.conv.proposalCard' | t) }}</strong>
+                <time [attr.datetime]="m.createdAt">{{ fmt.instant(m.createdAt) }}</time>
               </li>
             } @else {
               <li class="msg" [class.msg--mine]="m.mine" [attr.data-seq]="m.seq">
                 @if (m.hidden) {
-                  <p class="bubble bubble--hidden">{{ 'chat.conv.hidden' | chatT }}</p>
+                  <p class="bubble bubble--hidden">{{ 'chat.conv.hidden' | t }}</p>
                 } @else {
                   <!-- Texto plano de una persona: interpolación y enlaces http(s) con rel seguro; nunca innerHTML -->
                   <p class="bubble">@for (s of segments(m.body ?? ''); track $index) {@if (s.href) {<a [href]="s.href" target="_blank" rel="noopener noreferrer nofollow ugc">{{ s.text }}</a>} @else {<span>{{ s.text }}</span>}}</p>
                 }
                 <span class="meta">
-                  <time [attr.datetime]="m.createdAt">{{ m.createdAt | date:'d MMM, HH:mm' }}</time>
-                  @if (m.mine && m.seq === lastMineSeq() && pending().length === 0) { · {{ 'chat.conv.sent' | chatT }} }
+                  <time [attr.datetime]="m.createdAt">{{ fmt.instant(m.createdAt) }}</time>
+                  @if (m.mine && m.seq === lastMineSeq() && pending().length === 0) { · {{ 'chat.conv.sent' | t }} }
                 </span>
               </li>
             }
@@ -83,12 +83,12 @@
               <p class="bubble">{{ p.body }}</p>
               <span class="meta" role="status">
                 @if (p.status === 'sending') {
-                  {{ 'chat.conv.sending' | chatT }}
+                  {{ 'chat.conv.sending' | t }}
                 } @else {
-                  <app-icon name="alert-triangle" [size]="14" /> <span>{{ 'chat.conv.failed' | chatT }}</span>
+                  <app-icon name="alert-triangle" [size]="14" /> <span>{{ 'chat.conv.failed' | t }}</span>
                   @if (p.errorKey) { <span>· {{ p.errorKey }}</span> }
-                  @if (!p.final) { <button type="button" class="btn btn-link btn-sm p-0 ms-1" (click)="retry(p)">{{ 'chat.conv.retry' | chatT }}</button> }
-                  <button type="button" class="btn btn-link btn-sm p-0 ms-1" (click)="discard(p)">{{ 'chat.conv.discard' | chatT }}</button>
+                  @if (!p.final) { <button type="button" class="btn btn-link btn-sm p-0 ms-1" (click)="retry(p)">{{ 'chat.conv.retry' | t }}</button> }
+                  <button type="button" class="btn btn-link btn-sm p-0 ms-1" (click)="discard(p)">{{ 'chat.conv.discard' | t }}</button>
                 }
               </span>
             </li>
@@ -97,18 +97,18 @@
       </div>
 
       @if (isBlocked()) {
-        <p class="notice" role="status">{{ (c.blockedByMe ? 'chat.conv.blockedByMe' : 'chat.conv.blockedByOther') | chatT }}</p>
+        <p class="notice" role="status">{{ (c.blockedByMe ? 'chat.conv.blockedByMe' : 'chat.conv.blockedByOther') | t }}</p>
       } @else {
         <form class="composer" (ngSubmit)="send()">
-          @if (waitingReply()) { <p class="composer__hint">{{ 'chat.conv.waitingReply' | chatT:{ count: 10 } }}</p> }
-          <label for="chatDraft" class="visually-hidden">{{ 'chat.conv.label' | chatT:{ name: c.counterpart.name } }}</label>
+          @if (waitingReply()) { <p class="composer__hint">{{ 'chat.conv.waitingReply' | t:{ count: 10 } }}</p> }
+          <label for="chatDraft" class="visually-hidden">{{ 'chat.conv.label' | t:{ name: c.counterpart.name } }}</label>
           <div class="composer__row">
-            <textarea id="chatDraft" class="form-control" rows="2" name="draft" [placeholder]="'chat.conv.placeholder' | chatT"
+            <textarea id="chatDraft" class="form-control" rows="2" name="draft" [placeholder]="'chat.conv.placeholder' | t"
                       [ngModel]="draft()" (ngModelChange)="draft.set($event)" (keydown)="onKeydown($event)"></textarea>
-            <button type="submit" class="btn btn-primary btn-sm" [disabled]="!canSend()">{{ 'chat.conv.send' | chatT }}</button>
+            <button type="submit" class="btn btn-primary btn-sm" [disabled]="!canSend()">{{ 'chat.conv.send' | t }}</button>
           </div>
           @if (remaining() < 200) {
-            <small class="composer__count" [class.text-danger]="remaining() < 0">{{ 'chat.conv.remaining' | chatT:{ count: remaining() } }}</small>
+            <small class="composer__count" [class.text-danger]="remaining() < 0">{{ 'chat.conv.remaining' | t:{ count: remaining() } }}</small>
           }
         </form>
       }
@@ -116,30 +116,30 @@
   } @else if (errorMessage()) {
     <div class="alert alert-danger d-flex align-items-center justify-content-between gap-2" role="alert">
       <span>{{ errorMessage() }}</span>
-      <button type="button" class="btn btn-secondary btn-sm" (click)="reload()">{{ 'chat.conv.retry' | chatT }}</button>
+      <button type="button" class="btn btn-secondary btn-sm" (click)="reload()">{{ 'chat.conv.retry' | t }}</button>
     </div>
   }
 </div>
 
-<app-confirm-dialog [show]="showBlock()" [title]="'chat.block.title' | chatT" [message]="'chat.block.message' | chatT"
-                    [confirmText]="'chat.block.confirm' | chatT" type="warning"
+<app-confirm-dialog [show]="showBlock()" [title]="'chat.block.title' | t" [message]="'chat.block.message' | t"
+                    [confirmText]="'chat.block.confirm' | t" type="warning"
                     (confirmed)="confirmBlock()" (cancelled)="showBlock.set(false)" />
 
 @if (showReport()) {
   <div class="modal fade show d-block report-modal" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="reportTitle">
     <div class="modal-dialog modal-dialog-centered">
       <form class="modal-content" (ngSubmit)="submitReport()">
-        <div class="modal-header"><h2 id="reportTitle" class="modal-title h5">{{ 'chat.report.title' | chatT }}</h2></div>
+        <div class="modal-header"><h2 id="reportTitle" class="modal-title h5">{{ 'chat.report.title' | t }}</h2></div>
         <div class="modal-body">
-          <p>{{ 'chat.report.hint' | chatT }}</p>
-          <label for="reportReason" class="form-label">{{ 'chat.report.reason' | chatT }}</label>
+          <p>{{ 'chat.report.hint' | t }}</p>
+          <label for="reportReason" class="form-label">{{ 'chat.report.reason' | t }}</label>
           <textarea id="reportReason" class="form-control" rows="3" maxlength="500" name="reason"
                     [ngModel]="reportReason()" (ngModelChange)="reportReason.set($event)"></textarea>
           @if (reportError()) { <div class="alert alert-danger mt-2 mb-0" role="alert">{{ reportError() }}</div> }
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" (click)="showReport.set(false)">{{ 'chat.report.cancel' | chatT }}</button>
-          <button type="submit" class="btn btn-danger" [disabled]="!reportReason().trim() || isActing()">{{ 'chat.report.confirm' | chatT }}</button>
+          <button type="button" class="btn btn-secondary" (click)="showReport.set(false)">{{ 'chat.report.cancel' | t }}</button>
+          <button type="submit" class="btn btn-danger" [disabled]="!reportReason().trim() || isActing()">{{ 'chat.report.confirm' | t }}</button>
         </div>
       </form>
     </div>

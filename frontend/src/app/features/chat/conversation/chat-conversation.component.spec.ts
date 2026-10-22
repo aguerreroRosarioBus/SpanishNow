@@ -6,6 +6,17 @@ import { ChatConversationComponent, linkSegments } from './chat-conversation.com
 import { ChatService } from '../../../core/services/chat.service';
 import { ChatBadgeService } from '../../../core/services/chat-badge.service';
 import { ChatMessage, Conversation } from '../../../core/models/chat.model';
+import { signal } from '@angular/core';
+import { I18N_CATALOGS, LOCALE_STORAGE_KEY } from '../../../core/i18n/i18n.service';
+import { UserPreferencesService } from '../../../core/services/user-preferences.service';
+import { CHAT_MESSAGES } from '../chat.i18n';
+
+const i18nProviders = [
+  { provide: I18N_CATALOGS, multi: true, useValue: CHAT_MESSAGES },
+  { provide: UserPreferencesService, useValue: { preferences: signal({ locale: 'es', timeZone: 'America/Argentina/Cordoba', timeZoneConfirmedAt: null }) } }
+];
+beforeEach(() => localStorage.setItem(LOCALE_STORAGE_KEY, 'es'));
+afterEach(() => localStorage.removeItem(LOCALE_STORAGE_KEY));
 
 const conversation = (extra: Partial<Conversation> = {}): Conversation => ({
   id: 7, role: 'student', counterpart: { id: 2, name: 'Solange', role: 'teacher' }, context: null, lastMessage: null,
@@ -49,6 +60,7 @@ describe('ChatConversationComponent (CHAT-03/06)', () => {
       imports: [ChatConversationComponent],
       providers: [
         provideRouter([]),
+        ...i18nProviders,
         { provide: ChatService, useValue: api },
         { provide: ChatBadgeService, useValue: { refresh: vi.fn() } },
         { provide: ActivatedRoute, useValue: { paramMap: new BehaviorSubject(convertToParamMap({ id: '7' })) } }
@@ -128,7 +140,8 @@ describe('ChatConversationComponent (CHAT-03/06)', () => {
     component.send();
     sends[0].error(new HttpErrorResponse({ status: 429, error: { code: 'rate_limited', params: { retryAt: '2026-10-22T14:00:00.000Z' } } }));
     expect(component.pending()[0].final).toBe(false);
-    expect(component.pending()[0].errorKey).toContain('Enviaste muchos mensajes');
+    expect(component.pending()[0].errorKey).toContain('Puedes volver a intentar a las');
+    expect(component.pending()[0].errorKey).toContain('11:00'); // 14:00Z en Córdoba (UTC−3)
     fixture.destroy();
   });
 
@@ -144,6 +157,16 @@ describe('ChatConversationComponent (CHAT-03/06)', () => {
     fixture.destroy();
   });
 
+  it('muestra las fechas en la zona del usuario y textos en inglés si elige EN, sin traducir mensajes', async () => {
+    localStorage.setItem(LOCALE_STORAGE_KEY, 'en');
+    const fixture = await create([message(1, { body: 'Hola, ¿qué tal?', createdAt: '2026-10-22T13:05:00.000Z' })]);
+    const text = (fixture.nativeElement as HTMLElement).textContent!;
+    expect(text).toContain('Hola, ¿qué tal?');
+    expect(text).toContain('10:05'); // Córdoba, UTC−3
+    expect(text).toContain('Back to messages');
+    fixture.destroy();
+  });
+
   it('una conversación ajena o inexistente muestra «no encontrada»', async () => {
     sends = [];
     api = { get: vi.fn(() => throwError(() => new HttpErrorResponse({ status: 404, error: { code: 'not_found' } }))), messages: vi.fn(), markRead: vi.fn() };
@@ -151,6 +174,7 @@ describe('ChatConversationComponent (CHAT-03/06)', () => {
       imports: [ChatConversationComponent],
       providers: [
         provideRouter([]),
+        ...i18nProviders,
         { provide: ChatService, useValue: api },
         { provide: ChatBadgeService, useValue: { refresh: vi.fn() } },
         { provide: ActivatedRoute, useValue: { paramMap: new BehaviorSubject(convertToParamMap({ id: '9' })) } }
