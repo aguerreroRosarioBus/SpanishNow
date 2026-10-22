@@ -53,7 +53,7 @@ export class PackageCatalogComponent implements OnInit {
   }
   status(t: PackageTemplate, status: string) {
     if(this.busy()) return; this.busy.set(true); this.failure.set(null);
-    this.api.status(t.id,status).subscribe({next:s=>{this.replace(s);this.busy.set(false);},error:e=>this.fail(e)});
+    this.api.status(t.id,status,t.current.version).subscribe({next:s=>{this.replace(s);this.busy.set(false);},error:e=>this.fail(e)});
   }
   pause() {
     const s=this.settings(); if(!s || this.busy()) return; this.busy.set(true); this.failure.set(null);

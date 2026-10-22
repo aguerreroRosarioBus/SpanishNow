@@ -12,9 +12,9 @@ Pantalla `/teacher/class-packages`: importa, edita ambas traducciones, condicion
 
 ## Contratos y superficies compartidas
 
-Adición: `POST /api/teacher/class-packages/import-initial` (200, repetible; `?teacherId=` solo con capacidad global). CONTRATO pasa a 1.3; consumidores W06 sin cambios. Códigos nuevos `hotmart_product_conflict` y `template_key_conflict`.
+Adición: `POST /api/teacher/class-packages/import-initial` (200, repetible; `?teacherId=` solo con capacidad global). CONTRATO pasa a 1.3.1; cambiar estado exige `{status, version}` y rechaza una pestaña comercial obsoleta; consumidores W06 sin cambios. Códigos nuevos `hotmart_product_conflict` y `template_key_conflict`.
 
-Superficies compartidas: registro aditivo en `backend/src/app.js`; ruta lazy en `frontend/src/app/app.routes.ts`; bundle propio `packages.*` registrado en `app.config.ts`; ítem de menú condicionado en `sidebar-nav.component.ts`. Validación mínima de producto paquete/curso en `hotmartService.parseCourseFields`. Sin migraciones, permisos nuevos ni cambios al ledger de W00.
+Superficies compartidas: registro aditivo en `backend/src/app.js`; ruta lazy en `frontend/src/app/app.routes.ts`; bundle propio `packages.*` registrado en `app.config.ts`; ítem de menú condicionado en `sidebar-nav.component.ts`. Validación mínima de producto paquete/curso en `hotmartService.parseCourseFields`. Migración aditiva `20261022180000-create-hotmart-product-locks.js` y servicio de cerrojo compartido; el PUT de cursos repite validación y escritura en la misma transacción después de subir imágenes. Sin permisos nuevos ni cambios al ledger de W00.
 
 ## Validación
 
@@ -23,7 +23,7 @@ Superficies compartidas: registro aditivo en `backend/src/app.js`; ruta lazy en 
 - Build de producción: **aprobado**, `npm run build` (necesita acceso a las fuentes públicas de Google ya usadas por la app).
 - `git diff --check`.
 
-La API se prueba con cuentas ficticias creadas por la suite, sin proveedor, cobros ni correos externos. No se verificó sandbox real de Hotmart; el precio del producto remoto debe coincidir con el configurado antes de habilitar ventas. El editor no comprueba el precio remoto. Las comprobaciones de colisión de producto cubren ambos servicios, sin índice global entre tablas; la configuración simultánea de un mismo producto entre módulos requiere coordinación administrativa.
+La API se prueba con cuentas ficticias creadas por la suite, sin proveedor, cobros ni correos externos. No se verificó sandbox real de Hotmart; el precio del producto remoto debe coincidir con el configurado antes de habilitar ventas. El editor no comprueba el precio remoto. La exclusividad de producto entre cursos y paquetes se serializa por producto hasta confirmar la escritura. Incluye regresiones con una subida de imagen demorada y escrituras concurrentes.
 
 ## Prueba manual y desactivación
 
@@ -32,8 +32,12 @@ La API se prueba con cuentas ficticias creadas por la suite, sin proveedor, cobr
 3. Editar la variante 4×50, completar EN/ES y vínculo ficticio `https://pay.hotmart.com/...`. Guardar: sube la versión. Otra pestaña con la versión vieja recibe conflicto sin pisar cambios.
 4. Activar requiere condiciones completas; reanudar ventas no habilita al docente por sí solo. Un administrador con capacidad puede habilitarlo por la API. Consultar el catálogo público y pausar ventas: deja de ofrecer paquetes.
 5. Cambiar idioma con un borrador abierto: se conservan formulario, precio y moneda.
-6. Desactivar con `FEATURE_CLASS_PACKAGES=0`; no borra versiones ni configuración. No se necesita rollback de base.
+6. Desactivar con `FEATURE_CLASS_PACKAGES=0`; no borra versiones ni configuración. No se necesita rollback de base para desactivar; la tabla técnica de cerrojos puede permanecer.
 
 ## Pendientes del paquete
 
 Ofertas/chat/snapshots y vencimiento; checkout/conciliación fake Hotmart; compras, grupos, pausa y renovación. P01 bloquea la definición de reembolso parcial solicitado por la escuela; no se inventó política. AC02/03/09–14/19 completo y AC22 todavía no se declaran satisfechos.
+
+## Revisión de #32
+
+Correcciones de P2 en exclusividad Hotmart y activación de condiciones obsoletas: backend pertinente **56/56** (catálogo, tres regresiones de revisión, Hotmart, imágenes, legal y migraciones); frontend **3/3**; build producción y diff-check aprobados. La migración de mutex fue comprobada desde base vacía y por upgrade desde dump, con rollback/up equivalentes. Los endpoints de curso sin cambios Hotmart conservan su camino anterior.

@@ -20,7 +20,7 @@ export class PackagesService {
   settings() { return this.http.get<ClassSettings>(`${this.base}/teacher/class-settings`); }
   pause(salesPaused: boolean) { return this.http.patch<ClassSettings>(`${this.base}/teacher/class-settings`, {salesPaused}); }
   save(id: number, body: unknown) { return this.http.post<PackageTemplate>(`${this.base}/teacher/class-packages/${id}/versions`, body); }
-  status(id: number, status: string) { return this.http.patch<PackageTemplate>(`${this.base}/teacher/class-packages/${id}/status`, {status}); }
+  status(id: number, status: string, version: number) { return this.http.patch<PackageTemplate>(`${this.base}/teacher/class-packages/${id}/status`, {status, version}); }
   error(error: unknown) {
     const code = (error as {error?:{code?:string}})?.error?.code;
     return code && this.i18n.has(`packages.errors.${code}`) ? this.i18n.t(`packages.errors.${code}`) : this.i18n.errorMessage(error);

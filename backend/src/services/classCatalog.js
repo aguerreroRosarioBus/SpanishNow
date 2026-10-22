@@ -64,7 +64,9 @@ function assertReady(version) {
   validateExpectations(version.expectations);
 }
 async function assertProductFree(productId, { transaction } = {}) {
-  if (productId && await Course.findOne({ where: { hotmartProductId: productId }, attributes: ['id'], transaction })) throw fail(409, 'hotmart_product_conflict');
+  if (!productId) return;
+  await require('./hotmartProductLocks').lock(productId, transaction);
+  if (await Course.findOne({ where: { hotmartProductId: productId }, attributes: ['id'], transaction, lock: transaction.LOCK.UPDATE })) throw fail(409, 'hotmart_product_conflict');
 }
 async function present(row, { versions = false, publicView = false, transaction } = {}) {
   const current = await Version.findByPk(row.currentVersionId, { transaction });
@@ -111,11 +113,13 @@ async function newVersion(user, id, body) {
   });
 }
 async function setStatus(user, id, body) {
-  if (!only(body, ['status']) || !['active', 'paused', 'archived'].includes(body.status)) throw invalid(['status']);
+  if (!only(body, ['status', 'version']) || !['active', 'paused', 'archived'].includes(body.status) || !positive(body.version)) throw invalid(['status', 'version']);
   return sequelize.transaction(async transaction => {
     const row = await owned(user, id, { transaction, lock: transaction.LOCK.UPDATE });
+    const current = await Version.findByPk(row.currentVersionId, { transaction });
+    if (current.version !== body.version) throw fail(409, 'version_conflict');
     if (row.status === 'archived' && body.status !== 'archived') throw fail(409, 'version_conflict');
-    if (body.status === 'active') assertReady(await Version.findByPk(row.currentVersionId, { transaction }));
+    if (body.status === 'active') assertReady(current);
     await row.update({ status: body.status }, { transaction });
     return present(row, { transaction });
   });

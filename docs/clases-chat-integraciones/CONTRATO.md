@@ -300,7 +300,7 @@ Dentro del lock: validar versión vigente de la propuesta, permisos, compra acti
 
 - La cuenta de Hotmart es de la escuela. Cada **versión de plantilla** se vincula a un **producto** (`hotmartProductId`) y a una **oferta de Hotmart** (`hotmartOfferCode`, el código del parámetro `off=` del link de pago) cuyo precio en Hotmart es exactamente `priceAmount`/`currency`. La URL base `hotmartCheckoutUrl` valida igual que en cursos (`https://pay.hotmart.com/...`). Un mismo producto puede tener varias ofertas (1 clase, 4 clases, grupos).
 - No se puede enviar una oferta cuya versión de plantilla no tenga vínculo completo: `409 hotmart_mapping_missing`. Una «variante autorizada» con otro precio necesita su propio `hotmartOfferCode`.
-- Editan el vínculo el dueño de la plantilla y quien tenga `class_packages.manage_all`. Un `hotmartProductId` no puede estar a la vez en un curso y en un paquete (validación de servicio en ambos lados: el webhook necesita saber qué es).
+- Editan el vínculo el dueño de la plantilla y quien tenga `class_packages.manage_all`. Un `hotmartProductId` no puede estar a la vez en un curso y en un paquete. Ambos módulos adquieren el mismo cerrojo transaccional por producto (`hotmart_product_locks`) y validan el vínculo inmediatamente antes de escribir; las llamadas externas no mantienen ese lock. El webhook necesita saber qué es.
 
 ### 7.2 Checkout (PACK-12, PACK-15)
 
@@ -411,7 +411,7 @@ Notas de W04 (1.1): el contexto (`{ type: course|package|session, id }`) viaja e
 | `POST /api/teacher/class-packages/import-initial` | Importar explícitamente las seis variantes como borradores; idempotente, no pisa las existentes; `?teacherId=` solo con capacidad global |
 | `GET /api/teacher/class-packages/:id` | Plantilla con versiones |
 | `POST /api/teacher/class-packages/:id/versions` | Nueva versión (= editar); `{ version }` actual para `409 version_conflict` |
-| `PATCH /api/teacher/class-packages/:id/status` | `{ status }` `active/paused/archived`; activar exige vínculo Hotmart |
+| `PATCH /api/teacher/class-packages/:id/status` | `{ status, version }` `active/paused/archived`; compara la versión comercial vista bajo lock (`409 version_conflict`); activar exige vínculo Hotmart |
 | `GET /api/public/teachers/:id/class-packages` | *Pública*: catálogo activo con instantánea vigente |
 | `GET /api/admin/class-teachers`, `PATCH /api/admin/class-teachers/:userId` | `class_teachers.manage`: activar docentes |
 | `GET` / `POST /api/admin/class-policies` | `class_packages.manage_all`: versiones de política |
@@ -586,6 +586,7 @@ Registradas en [COORDINACION.md](COORDINACION.md#decisiones). Ninguna bloquea el
 | Versión | Fecha | Cambio |
 | --- | --- | --- |
 | 1.4 | 22/10/2026 | W05 (Codex): lectura propia de invitaciones, metadata de ofertas/política. Sin esquema ni cambios de saldo. |
+| 1.3.1 | 22/10/2026 | Correcciones de revisión W05: activación exige versión comercial vista; exclusividad Hotmart serializada entre curso y paquete. Sin cambios de saldo. |
 | 1.3 | 22/10/2026 | W05 (Codex): agrega importación explícita de catálogo en §9.3; sin cambio de esquema ni contrato de saldo. |
 | 1.0 | 22/10/2026 | Primera versión (W00, Claude). |
 | 1.2 | 22/10/2026 | W04 (Claude): `users.chatUnreadEmail BOOLEAN NOT NULL DEFAULT true` (migración `20261109000000-add-chat-unread-email-preference.js`) expuesto como `chatUnreadEmail` en §9.1 (CHAT-09). |

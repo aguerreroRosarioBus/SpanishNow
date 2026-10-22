@@ -9,7 +9,7 @@ async function packageWorld({key='individual-4x50',modality}={}) {
   const expectations=Object.fromEntries(['en','es'].map(l=>[l,Object.fromEntries(require('../../src/services/salesExpectations').FIELDS.map(k=>[k,`${l}: ${k}`]))]));
   const values=Object.fromEntries(catalog.FIELDS.map(k=>[k,t.current[k]]));
   const configured=await catalog.newVersion(teacher,t.id,{...values,version:1,expectations,hotmartProductId:`PKG-${randomUUID().slice(0,8)}`,hotmartOfferCode:`O-${t.id}`,hotmartCheckoutUrl:`https://pay.hotmart.com/PKG${t.id}`});
-  await catalog.setStatus(teacher,t.id,{status:'active'});
+  await catalog.setStatus(teacher,t.id,{status:'active',version:configured.current.version});
   await TeacherClassSettings.update({classesEnabledAt:new Date(),salesPausedAt:null,acceptsInquiries:true},{where:{userId:teacher.id}});
   const {conversation}=await chat.startConversation(buyer,{teacherId:teacher.id});
   return {teacher,buyer,other,template:configured,version:await Version.findByPk(configured.current.id),conversation};
