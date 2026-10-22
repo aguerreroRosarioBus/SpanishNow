@@ -7,12 +7,15 @@ import { RouterLink } from '@angular/router';
 import { SalesService } from '../../../core/services/sales.service';
 import { MyOrder } from '../../../core/models/sales.model';
 import { OrderBadge, orderBadge } from '../../../shared/utils/order-status';
+import { ExpectationsViewComponent } from '../../legal/expectations-view/expectations-view.component';
+import { CommercialSnapshot, SnapshotLegalDocument } from '../../legal/legal.model';
+import { snapshotLink } from '../../legal/legal.service';
 
 /** «Mis compras»: historial de compras del alumno con link al recibo. */
 @Component({
   selector: 'app-purchases',
   standalone: true,
-  imports: [LocaleDatePipe, TranslatePipe, RouterLink],
+  imports: [LocaleDatePipe, TranslatePipe, RouterLink, ExpectationsViewComponent],
   templateUrl: './purchases.component.html',
   styleUrl: './purchases.component.scss'
 })
@@ -35,6 +38,10 @@ export class PurchasesComponent implements OnInit {
   }
 
   money(cents: number, currency: string): string { return this.i18n.formatMoney(cents, currency); }
+  // W02 (AC19): conservar el snapshot comercial y legal adquirido.
+  snapshotPrice(c: CommercialSnapshot): string { return this.i18n.formatMoney(c.price, c.currency); }
+  docTitle(d: SnapshotLegalDocument): string { return d.content[this.i18n.locale()].title; }
+  docLink = snapshotLink;
   badge(o: MyOrder): OrderBadge { return orderBadge(o.status, o.refundedAmount); }
   badgeLabel(o: MyOrder): string { return this.i18n.t('student.order.' + this.badge(o)); }
 }

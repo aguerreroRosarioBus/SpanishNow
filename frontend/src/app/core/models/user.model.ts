@@ -24,6 +24,9 @@ export interface RegisterRequest {
   name: string;
   email: string;
   password: string;
+  /** W02: idioma en que se mostró el texto aceptado y versiones aceptadas (casilla sin premarcar). */
+  locale?: 'en' | 'es';
+  legalConsent?: { accepted: true; documents: Array<{ documentKey: string; documentVersion: string }> };
 }
 
 export interface ResetPasswordRequest {

@@ -1,0 +1,62 @@
+<div class="page-container legal-page">
+  @if (key(); as k) {
+    <p class="eyebrow">{{ ('legal.doc.' + k) | t }}</p>
+  }
+
+  @switch (state()) {
+    @case ('loading') {
+      <div class="text-center py-5" role="status">
+        <div class="spinner-border text-primary" aria-hidden="true"></div>
+        <p class="text-muted mt-2 mb-0">{{ 'legal.loading' | t }}</p>
+      </div>
+    }
+    @case ('missing') {
+      <div class="state-box"><span>{{ 'legal.notPublished' | t }}</span></div>
+    }
+    @case ('error') {
+      <div class="alert alert-danger" role="alert">{{ 'legal.loadError' | t }}</div>
+    }
+    @case ('ready') {
+      @if (doc(); as d) {
+        <article class="legal-doc" [attr.lang]="d.locale">
+          <h1 class="page-title">{{ d.title }}</h1>
+          <p class="page-summary legal-doc__meta">
+            <span>{{ 'legal.version' | t : { version: d.documentVersion } }}</span>
+            <span>{{ 'legal.effective' | t : { date: effective() } }}</span>
+          </p>
+          @if (version()) {
+            <div class="alert alert-info legal-doc__old" role="note">
+              {{ 'legal.previousVersion' | t }}
+              <a [routerLink]="['/legal', d.documentKey]">{{ 'legal.seeCurrent' | t }}</a>
+            </div>
+          }
+          <div class="legal-doc__body">{{ d.body }}</div>
+
+          <section class="legal-doc__business" aria-labelledby="legal-business">
+            <h2 id="legal-business" class="h5">{{ 'legal.business' | t }}</h2>
+            <dl>
+              @for (field of businessFields; track field) {
+                <dt>{{ ('legal.field.' + field) | t }}</dt>
+                <dd>
+                  @if (field === 'contactEmail' || field === 'privacyEmail') {
+                    <a [href]="'mailto:' + d.business[field]">{{ d.business[field] }}</a>
+                  } @else {
+                    {{ d.business[field] }}
+                  }
+                </dd>
+              }
+            </dl>
+          </section>
+        </article>
+      }
+    }
+  }
+
+  <nav class="legal-page__others" [attr.aria-label]="'legal.links' | t">
+    @for (k of otherKeys; track k) {
+      @if (k !== key()) {
+        <a [routerLink]="['/legal', k]">{{ ('legal.doc.' + k) | t }}</a>
+      }
+    }
+  </nav>
+</div>

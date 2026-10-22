@@ -408,8 +408,8 @@ describe('sales management', () => {
       const res = await as(student).get('/api/me/orders');
       expect(res.status).toBe(200);
       expect(res.body).toEqual([
-        { id: expect.any(Number), paidAt: expect.any(String), course: { title: course.title, slug: course.slug }, amount: 4000, currency: 'usd', status: 'refunded', refundedAmount: 4000, receiptUrl: null },
-        { id: expect.any(Number), paidAt: expect.any(String), course: { title: course.title, slug: course.slug }, amount: 5000, currency: 'usd', status: 'paid', refundedAmount: 0, receiptUrl: 'https://pay.stripe.com/receipts/m1' }
+        { id: expect.any(Number), paidAt: expect.any(String), course: { title: course.title, slug: course.slug }, amount: 4000, currency: 'usd', status: 'refunded', refundedAmount: 4000, receiptUrl: null, commercial: null },
+        { id: expect.any(Number), paidAt: expect.any(String), course: { title: course.title, slug: course.slug }, amount: 5000, currency: 'usd', status: 'paid', refundedAmount: 0, receiptUrl: 'https://pay.stripe.com/receipts/m1', commercial: null }
       ]);
       expect((await as(null).get('/api/me/orders')).status).toBe(401);
       expect((await as(await createUser('student', 'me-none')).get('/api/me/orders')).body).toEqual([]);

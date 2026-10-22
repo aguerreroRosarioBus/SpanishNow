@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const { User } = require('../models');
+const sequelize = require('../config/database');
+const legal = require('../services/legalDocuments');
 const { authMiddleware } = require('../middlewares/auth.middleware');
 const { createToken, consumeToken, MIN_PASSWORD_LENGTH } = require('../services/passwordTokens');
 const { sendMail } = require('../services/mailService');
@@ -31,10 +33,18 @@ router.post('/register',
         return res.status(400).json({ error: 'Email already registered', code: 'email_already_registered', params: {} });
       }
 
-      const user = await User.create({ name, email, password, role: 'student' });
+      const user = await sequelize.transaction(async transaction => {
+        const docs = await legal.currentSet(['terms'], { transaction });
+        const locale = req.body.locale || 'en';
+        legal.validateConsent(req.body.legalConsent, docs, locale);
+        const created = await User.create({ name, email, password, role: 'student' }, { transaction });
+        await legal.recordAcceptances(created.id, docs, { locale, context: 'signup', transaction });
+        return created;
+      });
 
       res.status(201).json({ user: serializeAuthUser(user), token: signToken(user) });
     } catch (error) {
+      if (error.statusCode) return res.status(error.statusCode).json({ error: error.message, code: error.code, params: error.params || {} });
       res.status(500).json({ error: error.message });
     }
   }

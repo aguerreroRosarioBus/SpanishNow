@@ -1,0 +1,129 @@
+<div class="page-container">
+  <div class="page-header">
+    <div class="page-header__main">
+      <h1 class="page-title">{{ 'legal.admin.title' | t }}</h1>
+      <p class="page-summary">{{ 'legal.admin.summary' | t }}</p>
+    </div>
+  </div>
+
+  <div class="legal-keys" role="tablist" [attr.aria-label]="'legal.admin.document' | t">
+    @for (k of keys; track k) {
+      <button type="button" role="tab" class="btn btn-sm" [class.btn-primary]="key() === k" [class.btn-outline-secondary]="key() !== k"
+              [attr.aria-selected]="key() === k" (click)="selectKey(k)">{{ ('legal.doc.' + k) | t }}</button>
+    }
+  </div>
+
+  @if (notice(); as n) {
+    <div class="alert alert-success" role="status">{{ n.key | t : { version: n.version } }}</div>
+  }
+  @if (error()) {
+    <div class="alert alert-danger" role="alert">
+      {{ error() }}
+      @if (missingLabels()) { <div class="mt-1">{{ 'legal.admin.missing' | t : { fields: missingLabels() } }}</div> }
+    </div>
+  }
+
+  @if (state() === 'loading') {
+    <div class="text-center py-5" role="status"><div class="spinner-border text-primary" aria-hidden="true"></div></div>
+  } @else if (state() === 'error') {
+    <div class="alert alert-danger" role="alert">{{ 'legal.admin.loadError' | t }}</div>
+  } @else {
+    <div class="legal-admin">
+      <section class="legal-admin__versions" aria-labelledby="legal-versions">
+        <h2 id="legal-versions" class="h5">{{ 'legal.admin.versions' | t }}</h2>
+        @if (versions().length === 0) {
+          <p class="text-secondary-ui">{{ 'legal.admin.empty' | t }}</p>
+        }
+        <ul class="version-list">
+          @for (doc of versions(); track doc.id) {
+            <li class="version-item" [class.version-item--selected]="selected() === doc">
+              <button type="button" class="version-item__main" (click)="selectedId.set(doc.id)" [attr.aria-pressed]="selected() === doc">
+                <strong>{{ 'legal.version' | t : { version: doc.documentVersion } }}</strong>
+                <span class="badge-status" [class.badge-status--published]="status(doc) === 'current'" [class.badge-status--draft]="status(doc) === 'draft'"
+                      [class.badge-status--warn]="status(doc) === 'scheduled'">{{ statusLabel(doc) }}</span>
+                <small class="text-secondary-ui">{{ 'legal.effective' | t : { date: date(doc.effectiveAt) } }}</small>
+              </button>
+              <div class="version-item__actions">
+                <button type="button" class="btn btn-link btn-sm p-0" (click)="useAsBase(doc)">{{ 'legal.admin.useAsBase' | t }}</button>
+                @if (!doc.publishedAt) {
+                  <button type="button" class="btn btn-sm" [class.btn-outline-primary]="confirming() !== doc.id" [class.btn-primary]="confirming() === doc.id"
+                          [disabled]="busy()" (click)="publish(doc)">
+                    {{ confirming() === doc.id ? ('legal.admin.confirmPublish' | t : { version: doc.documentVersion }) : ('legal.admin.publish' | t) }}
+                  </button>
+                }
+              </div>
+              @if (confirming() === doc.id) { <small class="text-secondary-ui">{{ 'legal.admin.publishHint' | t }}</small> }
+            </li>
+          }
+        </ul>
+      </section>
+
+      @if (selected(); as doc) {
+        <section class="legal-admin__preview" aria-labelledby="legal-preview">
+          <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+            <h2 id="legal-preview" class="h5 mb-0">{{ 'legal.admin.preview' | t }} · {{ 'legal.version' | t : { version: doc.documentVersion } }}</h2>
+            <div class="btn-group btn-group-sm ms-auto" role="group">
+              @for (l of locales; track l) {
+                <button type="button" class="btn" [class.btn-secondary]="previewLocale() === l" [class.btn-outline-secondary]="previewLocale() !== l"
+                        [attr.aria-pressed]="previewLocale() === l" (click)="previewLocale.set(l)">{{ (l === 'en' ? 'legal.admin.english' : 'legal.admin.spanish') | t }}</button>
+              }
+            </div>
+          </div>
+          <article class="preview-doc" [attr.lang]="previewLocale()">
+            <h3 class="h4">{{ doc.content[previewLocale()].title }}</h3>
+            <div class="preview-doc__body">{{ doc.content[previewLocale()].body }}</div>
+            <dl class="preview-doc__business">
+              @for (field of businessFields; track field) {
+                <dt>{{ ('legal.field.' + field) | t }}</dt>
+                <dd>{{ doc.business[field] }}</dd>
+              }
+            </dl>
+          </article>
+        </section>
+      }
+    </div>
+
+    <section class="legal-admin__form" aria-labelledby="legal-new">
+      <h2 id="legal-new" class="h5">{{ 'legal.admin.newDraft' | t }} · {{ ('legal.doc.' + key()) | t }}</h2>
+      <form [formGroup]="form" (ngSubmit)="saveDraft()" novalidate>
+        <div class="mb-3 legal-date">
+          <label class="form-label" for="legal-effective">{{ 'legal.admin.effectiveAt' | t }}</label>
+          <input id="legal-effective" type="date" class="form-control" formControlName="effectiveAt"
+                 [class.is-invalid]="form.controls.effectiveAt.invalid && form.controls.effectiveAt.touched">
+        </div>
+        <div class="row g-4" formGroupName="content">
+          @for (l of locales; track l) {
+            <fieldset class="col-12 col-lg-6" [formGroupName]="l" [attr.lang]="l">
+              <legend class="h6">{{ (l === 'en' ? 'legal.admin.english' : 'legal.admin.spanish') | t }}</legend>
+              <div class="mb-3">
+                <label class="form-label" [for]="'legal-title-' + l">{{ 'legal.admin.titleField' | t }}</label>
+                <input type="text" class="form-control" maxlength="200" [id]="'legal-title-' + l" formControlName="title">
+              </div>
+              <div class="mb-3">
+                <label class="form-label" [for]="'legal-body-' + l">{{ 'legal.admin.bodyField' | t }}</label>
+                <textarea class="form-control legal-body" rows="12" [id]="'legal-body-' + l" formControlName="body"></textarea>
+              </div>
+            </fieldset>
+          }
+        </div>
+        <fieldset formGroupName="business">
+          <legend class="h6">{{ 'legal.business' | t }}</legend>
+          <p class="form-text mt-0">{{ 'legal.admin.businessHint' | t }}</p>
+          <div class="row g-3">
+            @for (field of businessFields; track field) {
+              <div class="col-12" [class.col-md-6]="field !== 'commercialRetention'">
+                <label class="form-label" [for]="'legal-' + field">{{ ('legal.field.' + field) | t }}</label>
+                @if (field === 'commercialRetention') {
+                  <textarea class="form-control" rows="3" [id]="'legal-' + field" [formControlName]="field"></textarea>
+                } @else {
+                  <input [type]="field.endsWith('Email') ? 'email' : 'text'" class="form-control" [id]="'legal-' + field" [formControlName]="field">
+                }
+              </div>
+            }
+          </div>
+        </fieldset>
+        <button type="submit" class="btn btn-primary mt-3" [disabled]="busy()">{{ 'legal.admin.saveDraft' | t }}</button>
+      </form>
+    </section>
+  }
+</div>

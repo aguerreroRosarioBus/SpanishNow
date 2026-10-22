@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { CheckoutQuote, CheckoutResponse, CheckoutSession, PublicCourse, PublicCourseDetail } from '../models/sales.model';
 import { environment } from '../../../environments/environment';
+import type { CheckoutEvidence } from '../../features/legal/legal.model';
 
 /** Catálogo público y checkout (el interceptor agrega el token si hay sesión). */
 @Injectable({ providedIn: 'root' })
@@ -20,9 +21,11 @@ export class PublicCatalogService {
   }
 
   /** `email` solo hace falta sin sesión cuando el cupón deja el curso gratis (no pasa por Stripe, que es quien lo pide). */
-  checkout(courseId: number, couponCode?: string | null, email?: string | null, affiliateCode?: string | null): Observable<CheckoutResponse> {
+  /** `evidence` (W02): instantánea vista y aceptación de las versiones legales mostradas. */
+  checkout(courseId: number, couponCode?: string | null, email?: string | null, affiliateCode?: string | null, evidence?: CheckoutEvidence | null): Observable<CheckoutResponse> {
     return this.http.post<CheckoutResponse>(`${this.apiUrl}/checkout`, {
       courseId,
+      ...(evidence ?? {}),
       ...(couponCode ? { couponCode } : {}),
       ...(email ? { email } : {}),
       ...(affiliateCode ? { affiliateCode } : {})

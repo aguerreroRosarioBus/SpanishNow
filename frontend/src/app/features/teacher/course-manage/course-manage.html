@@ -36,6 +36,9 @@
         <button type="button" class="btn btn-secondary" (click)="store.open({ kind: 'course-edit' })">
           <app-icon name="pencil" [size]="16" />Editar curso
         </button>
+        <a class="btn btn-secondary" [routerLink]="['/teacher/course', course.id, 'expectations']">
+          <app-icon name="file-text" [size]="16" />{{ 'sales.editor.open' | t }}
+        </a>
         @if (tab() === 'content') {
           <button type="button" class="btn btn-secondary" (click)="store.open({ kind: 'materials', unit: null })">
             <app-icon name="file-text" [size]="16" />Materiales

@@ -1,0 +1,63 @@
+<div class="page-container">
+  <nav class="breadcrumb-nav" [attr.aria-label]="'sales.editor.back' | t">
+    <a [routerLink]="['/teacher/course', courseId, 'manage']">{{ 'sales.editor.back' | t }}</a>
+  </nav>
+
+  <div class="page-header">
+    <div class="page-header__main">
+      <h1 class="page-title">{{ 'sales.editor.title' | t }}</h1>
+      <p class="page-summary">{{ 'sales.editor.summary' | t }}</p>
+      <p class="page-summary">
+        @if (version() > 0) { {{ 'sales.editor.version' | t : { version: version() } }} } @else { {{ 'sales.editor.notSet' | t }} }
+      </p>
+    </div>
+  </div>
+
+  @if (state() === 'loading') {
+    <div class="text-center py-5" role="status"><div class="spinner-border text-primary" aria-hidden="true"></div></div>
+  } @else if (state() === 'error') {
+    <div class="alert alert-danger" role="alert">{{ 'sales.editor.loadError' | t }}</div>
+  } @else {
+    <form [formGroup]="form" (ngSubmit)="save()" novalidate>
+      <div class="row g-4">
+        @for (locale of locales; track locale) {
+          <fieldset class="col-12 col-lg-6" [formGroupName]="locale" [attr.lang]="locale">
+            <legend class="h5">{{ (locale === 'en' ? 'legal.admin.english' : 'legal.admin.spanish') | t }}</legend>
+            @for (field of fields; track field) {
+              <div class="mb-3">
+                <label class="form-label" [for]="'exp-' + locale + '-' + field">{{ ('sales.field.' + field) | t }}</label>
+                <textarea class="form-control" rows="2" maxlength="4000" [id]="'exp-' + locale + '-' + field" [formControlName]="field"
+                          [class.is-invalid]="control(locale, field)?.invalid && control(locale, field)?.touched"
+                          [attr.aria-describedby]="field === 'selfStudy' ? 'exp-' + locale + '-hint' : null"></textarea>
+                @if (field === 'selfStudy') {
+                  <div class="form-text" [id]="'exp-' + locale + '-hint'">{{ 'sales.editor.selfStudyHint' | t }}</div>
+                }
+              </div>
+            }
+          </fieldset>
+        }
+      </div>
+
+      @if (missing()) {
+        <div class="alert alert-danger" role="alert">{{ 'sales.editor.required' | t }}</div>
+      }
+      @if (error()) {
+        <div class="alert alert-danger" role="alert">{{ error() }}</div>
+      }
+      @if (message()) {
+        <div class="alert alert-success" role="status">{{ 'sales.editor.saved' | t : { version: message() } }}</div>
+      }
+      <button type="submit" class="btn btn-primary" [disabled]="saving()">
+        @if (saving()) { <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> }
+        {{ 'sales.editor.save' | t }}
+      </button>
+    </form>
+
+    @if (preview(); as p) {
+      <section class="mt-5" aria-labelledby="exp-preview">
+        <h2 id="exp-preview" class="h5">{{ 'legal.admin.preview' | t }} · {{ 'sales.expectations.title' | t }}</h2>
+        <app-expectations-view [expectations]="p" />
+      </section>
+    }
+  }
+</div>

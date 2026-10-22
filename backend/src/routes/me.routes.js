@@ -15,7 +15,10 @@ router.get('/orders', authMiddleware, async (req, res) => {
       include: [{ model: Course, as: 'course', attributes: ['title', 'slug'] }],
       order: [['paidAt', 'DESC'], ['id', 'DESC']]
     });
+    const snapshots = orders.length ? await require('../models/CourseCheckoutSnapshot').findAll({ where: { orderId: orders.map(o => o.id) } }) : [];
+    const byOrder = new Map(snapshots.map(s => [s.orderId, s]));
     res.json(orders.map(order => ({
+      commercial: byOrder.get(order.id)?.snapshot || null,
       id: order.id,
       paidAt: order.paidAt,
       course: { title: order.course.title, slug: order.course.slug },

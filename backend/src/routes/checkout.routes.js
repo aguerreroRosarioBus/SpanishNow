@@ -7,6 +7,7 @@ const { hasPendingInvite } = require('../services/passwordTokens');
 const { priceFor, quoteShape, CouponError } = require('../services/couponService');
 const { resolveCode } = require('../services/affiliateService');
 const hotmart = require('../services/hotmartService');
+const evidence = require('../services/courseCheckoutEvidence');
 
 // Courses sold on Hotmart only take 100 % coupons here (gifts); other discounts are Hotmart's.
 const hotmartDiscount = () => new CouponError('coupon_not_applicable', 'Discounts for this course are applied at the Hotmart checkout');
@@ -53,18 +54,23 @@ router.post('/', optionalAuth, async (req, res) => {
       if (enrolled) return res.status(409).json({ error: 'You are already enrolled in this course' });
     }
 
+    if (req.impersonatedBy) return res.status(403).json({ error: 'forbidden', code: 'forbidden', params: {} });
+    // W02: validate what the buyer saw and accepted first; it is stored only once the checkout can no longer fail.
+    const prepared = await evidence.prepare(course.id, req.body);
     const pricing = await priceFor(course, couponCode);
     if (hotmart.isHotmartCourse(course) && pricing.amount > 0) {
       if (pricing.coupon) throw hotmartDiscount();
-      // Hotmart charges and tells us through its webhook: no order until then.
+      // Hotmart charges and tells us through its webhook: no order until then (reconciliation with the evidence is pending, AC19).
+      await evidence.record(req.user, prepared);
       return res.json({ url: hotmart.checkoutUrlFor(course, req.user) });
     }
     // Attribution (last click, kept by the web app): a code that is invalid, inactive or another teacher's is ignored, never an error.
     const affiliate = await resolveCode(affiliateCode, course);
-    const { url } = await createCheckout({ course, user: req.user, fakeEmail: email, pricing, affiliate });
+    const { url } = await createCheckout({ course, user: req.user, fakeEmail: email, pricing, affiliate, recordEvidence: orderId => evidence.record(req.user, prepared, { orderId }) });
     res.json({ url });
   } catch (error) {
     if (error instanceof CouponError) return couponFailure(res, error);
+    if (error.statusCode) return res.status(error.statusCode).json({ error: error.message, code: error.code, params: error.params || {} });
     if (error instanceof PaymentError) return res.status(error.status).json({ error: error.message, ...error.extra });
     res.status(500).json({ error: error.message });
   }

@@ -10,6 +10,11 @@ const PERMISSIONS = Object.freeze([
     label: 'Usuarios de prueba',
     description: 'Crear cuentas de prueba, entrar como una cuenta de prueba y borrar cuentas de prueba con sus datos.'
   },
+  {
+    key: 'legal.manage',
+    label: 'Documentos legales',
+    description: 'Crear borradores bilingües y publicar versiones legales con identidad y contacto completos.'
+  },
   // Classes, chat and packages (docs/clases-chat-integraciones/CONTRATO.md §12). Teachers act on their own resources
   // by ownership once enabled; none of these is implied by the teacher role.
   {
