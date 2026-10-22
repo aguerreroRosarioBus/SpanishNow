@@ -117,6 +117,10 @@ Los docentes pueden buscar en Google Imágenes e insertar una selección en port
 
 Pizarra colaborativa con páginas, dibujo, notas, texto, imágenes y control de edición docente. Acceso por curso o invitación, publicación en Google Classroom y copias editables en Google Drive. Configuración, alcance del MVP y pruebas en [Clases en vivo](docs/clases-en-vivo/README.md).
 
+## Guía de desarrollo
+
+La [guía de desarrollo de clases, chat, paquetes e integraciones](docs/clases-chat-integraciones/SPEC.md) detalla el alcance acordado, zonas horarias, Google Calendar, Zoom, interfaz EN/ES, políticas configurables y coordinación de múltiples agentes IA.
+
 ## Características del Método TPRS
 
 El sistema está diseñado para soportar el método TPRS:
