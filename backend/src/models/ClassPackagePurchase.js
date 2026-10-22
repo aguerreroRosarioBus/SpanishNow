@@ -2,7 +2,8 @@ const { DataTypes: D } = require('sequelize');
 const sequelize = require('../config/database');
 // A paid package. Balances are materialized here and only change through services/classCredits.js:
 // unitsGranted = unitsAvailable + unitsReserved + unitsConsumed + unitsExpired + unitsRefunded (CHECK in the database).
-const units = { type: D.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 };
+// A fresh definition per column: Sequelize mutates attribute definitions, so they cannot be shared.
+const units = () => ({ type: D.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 });
 module.exports = sequelize.define('ClassPackagePurchase', {
   id: { type: D.INTEGER, primaryKey: true, autoIncrement: true },
   orderId: { type: D.INTEGER, allowNull: false, unique: true },
@@ -23,5 +24,5 @@ module.exports = sequelize.define('ClassPackagePurchase', {
   pauseCount: { type: D.INTEGER, allowNull: false, defaultValue: 0 },
   cancelledAt: D.DATE,
   version: { type: D.INTEGER, allowNull: false, defaultValue: 1 },
-  unitsGranted: units, unitsAvailable: units, unitsReserved: units, unitsConsumed: units, unitsExpired: units, unitsRefunded: units
+  unitsGranted: units(), unitsAvailable: units(), unitsReserved: units(), unitsConsumed: units(), unitsExpired: units(), unitsRefunded: units()
 }, { tableName: 'class_package_purchases', timestamps: true });

@@ -179,7 +179,7 @@ Estados de sesión (AGENDA-01): individual `draft → proposed → confirmed →
 
 ### 3.11 Outbox / jobs durables — `outbox_jobs` (CONTRACT-03/04)
 
-`topic VARCHAR(64)`, `aggregateType`, `aggregateId`, `aggregateVersion NULL`, `dedupeKey VARCHAR(191)` (**UNIQUE**), `payload JSON` (sin secretos ni texto de mensajes), `status ENUM('pending','running','done','failed','cancelled')`, `attempts`, `maxAttempts`, `runAt`, `lockedBy`, `lockedUntil`, `lastError VARCHAR(500)` (saneado), `doneAt`. idx (`status`,`runAt`), (`aggregateType`,`aggregateId`). Mecánica en §8.
+`topic VARCHAR(64)`, `aggregateType` (**nombre de la tabla** del agregado: `class_sessions`, `class_offers`…; la limpieza de cuentas de prueba depende de esto), `aggregateId`, `aggregateVersion NULL`, `dedupeKey VARCHAR(191)` (**UNIQUE**), `payload JSON` (sin secretos ni texto de mensajes), `status ENUM('pending','running','done','failed','cancelled')`, `attempts`, `maxAttempts`, `runAt`, `lockedBy`, `lockedUntil`, `lastError VARCHAR(500)` (saneado), `doneAt`. idx (`status`,`runAt`), (`aggregateType`,`aggregateId`). Mecánica en §8.
 
 ### 3.12 Legal y auditoría (W02 y todos)
 

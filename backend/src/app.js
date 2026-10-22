@@ -41,6 +41,8 @@ app.use('/uploads', express.static('uploads'));
 const fakeUploads = require('./config/fakeUploads');
 fakeUploads.assertSafe();
 if (fakeUploads.enabled()) app.use('/uploads-dev', express.static(fakeUploads.DIR)); // local stand-in for Cloudinary (dev/E2E only)
+const features = require('./config/features');
+features.assertSafe();
 
 // Set charset for API responses
 app.use((req, res, next) => {
@@ -79,6 +81,9 @@ app.use('/api/repetition-activities', require('./routes/repetitionActivity.route
 app.use('/api/tooltips', require('./routes/tooltip.routes'));
 
 // Health check
+// Which class/chat modules are on (public: the frontend hides what is off).
+app.get('/api/features', (req, res) => res.json(features.all()));
+
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'SpanishNow API is running' });
 });

@@ -9,6 +9,38 @@ const PERMISSIONS = Object.freeze([
     key: 'test_users.manage',
     label: 'Usuarios de prueba',
     description: 'Crear cuentas de prueba, entrar como una cuenta de prueba y borrar cuentas de prueba con sus datos.'
+  },
+  // Classes, chat and packages (docs/clases-chat-integraciones/CONTRATO.md §12). Teachers act on their own resources
+  // by ownership once enabled; none of these is implied by the teacher role.
+  {
+    key: 'class_teachers.manage',
+    label: 'Docentes de clases',
+    description: 'Habilitar o deshabilitar docentes para recibir consultas por chat y vender paquetes de clases.'
+  },
+  {
+    key: 'class_packages.manage_all',
+    label: 'Catálogo de clases global',
+    description: 'Ver y gestionar paquetes, vínculos con Hotmart y políticas comerciales de cualquier docente.'
+  },
+  {
+    key: 'class_payments.review',
+    label: 'Revisión de pagos de clases',
+    description: 'Ver y resolver pagos de paquetes en revisión y solicitudes de reembolso.'
+  },
+  {
+    key: 'class_credits.adjust',
+    label: 'Ajustes de saldo de clases',
+    description: 'Corregir saldo o vigencia de una compra de clases, siempre con motivo y registro de auditoría.'
+  },
+  {
+    key: 'class_sessions.support',
+    label: 'Soporte de clases',
+    description: 'Ver el estado de Calendar y Zoom de las clases, reintentar sincronizaciones y reenviar invitaciones. No da el enlace de anfitrión.'
+  },
+  {
+    key: 'chat.moderate',
+    label: 'Moderación del chat',
+    description: 'Ver solo los mensajes reportados y ocultarlos con motivo; cada lectura queda registrada. No da acceso general a conversaciones privadas.'
   }
 ]);
 

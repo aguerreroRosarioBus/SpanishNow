@@ -38,7 +38,7 @@ function tables(S) {
   const date = (allowNull = true) => ({ type: S.DATE, allowNull });
   const str = (length, allowNull = true) => ({ type: S.STRING(length), allowNull });
   const int = (defaultValue, allowNull = false) => ({ type: S.INTEGER, allowNull, ...(defaultValue === undefined ? {} : { defaultValue }) });
-  const units = { type: S.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 };
+  const units = () => ({ type: S.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 });
   const money = { amount: int(), currency: { type: S.CHAR(3), allowNull: false } };
   const timestamps = { createdAt: date(false), updatedAt: date(false) };
   const created = { createdAt: date(false) };
@@ -190,7 +190,7 @@ function tables(S) {
         status: { type: S.ENUM('active', 'paused', 'exhausted', 'expired', 'cancelled'), allowNull: false, defaultValue: 'active' },
         paidAt: date(false), expiresAt: date(false), pausedAt: date(), pausedHoursUsed: int(0), pauseCount: int(0), cancelledAt: date(),
         version: int(1),
-        unitsGranted: units, unitsAvailable: units, unitsReserved: units, unitsConsumed: units, unitsExpired: units, unitsRefunded: units,
+        unitsGranted: units(), unitsAvailable: units(), unitsReserved: units(), unitsConsumed: units(), unitsExpired: units(), unitsRefunded: units(),
         ...timestamps
       },
       indexes: [[['orderId'], { unique: true }], [['offerId'], { unique: true }], [['buyerId', 'status']], [['teacherId', 'status']], [['status', 'expiresAt']]],
