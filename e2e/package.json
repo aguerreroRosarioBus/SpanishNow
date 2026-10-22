@@ -6,6 +6,7 @@
   "scripts": {
     "install:browsers": "playwright install chromium",
     "e2e": "playwright test",
+    "e2e:audio": "playwright test --config audio.playwright.config.ts",
     "e2e:ui": "playwright test --ui"
   },
   "devDependencies": {

@@ -147,6 +147,23 @@ describe('LessonAudioService — AUDIO-01–06', () => {
     expect(audio.state()).toBe('idle');
   });
 
+  it('un fallo al buscar no activa repetición y deja un error recuperable', () => {
+    audio.prepare('/slow.mp3'); media().metadata();
+    Object.defineProperty(media(), 'currentTime', { get: () => 0, set: () => { throw new DOMException('sin seek'); } });
+    expect(audio.setRepeat(10, 20)).toBe(false);
+    expect(audio.repeat()).toBeNull(); expect(audio.errorCode()).toBe('audio.seekError');
+    media().emit('loadedmetadata');
+    expect(audio.state()).toBe('error');
+  });
+
+  it('un play pendiente que resuelve después de pausar no cambia el estado', async () => {
+    audio.prepare('/slow.mp3');
+    let resolve!: () => void;
+    media().play.mockImplementationOnce(() => new Promise<void>(r => { resolve = r; }));
+    audio.toggle('/slow.mp3'); audio.pause(); resolve(); await flush();
+    expect(audio.isPlaying()).toBe(false); expect(audio.state()).toBe('paused');
+  });
+
   it('maneja ausencia y URL inválida sin crear medios', () => {
     audio.toggle(null); audio.prepare('http://[');
     expect(FakeAudio.instances).toHaveLength(0); expect(audio.state()).toBe('idle');

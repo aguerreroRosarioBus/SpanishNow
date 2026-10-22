@@ -64,7 +64,7 @@ export class LessonAudioService implements OnDestroy {
     on('stalled', () => { if (this.isPlaying()) this.state.set('buffering'); });
     on('ended', () => {
       this.isPlaying.set(false);
-      if (this.repeat()) { this.seek(this.repeat()!.a); this.play(); }
+      if (this.repeat()) { if (this.seek(this.repeat()!.a)) this.play(); }
       else { this.readMetadata(media); this.state.set('ended'); }
     });
     on('error', () => this.fail('audio.loadError'));
@@ -87,7 +87,7 @@ export class LessonAudioService implements OnDestroy {
       try { media.currentTime = this.repeat()?.a ?? 0; } catch { this.fail('audio.seekError'); return; }
     }
     const loop = this.repeat();
-    if (loop && (media.currentTime < loop.a || media.currentTime >= loop.b)) this.seek(loop.a);
+    if (loop && (media.currentTime < loop.a || media.currentTime >= loop.b) && !this.seek(loop.a)) return;
     const attempt = ++this.playAttempt;
     this.isPlaying.set(true);
     this.state.set('buffering');
@@ -143,8 +143,8 @@ export class LessonAudioService implements OnDestroy {
   setRepeat(a: number, b: number): boolean {
     if (!this.canSeek() || !Number.isFinite(a) || !Number.isFinite(b) || a < 0 || a >= b || b > this.duration()! ||
         !this.seekRanges().some(range => a >= range.start && b <= range.end)) return false;
+    if (!this.seek(a)) { this.clearRepeat(); return false; }
     this.repeat.set({ a, b });
-    this.seek(a);
     return true;
   }
 
