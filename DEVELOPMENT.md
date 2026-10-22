@@ -34,6 +34,20 @@ SpanishNow es una plataforma de aprendizaje de español basada en el método TPR
 - **Git + GitHub**
 - Repositorio: https://github.com/aguerreroRosarioBus/SpanishNow
 
+### Copia fija de main (probar lo último en la red local)
+Las sesiones trabajan en sus worktrees y mergean a `main` por PR. Para probar siempre el último `main` hay un clon aparte que nadie edita ni cambia de rama: `/Users/andresguerrero/Repos/SpanishNow-run`, con su propia base `spanishnow_main` (las sesiones usan `spanishnow_rebuild_test`).
+
+```bash
+cd /Users/andresguerrero/Repos/SpanishNow-run && scripts/run-main.sh
+```
+
+- Levanta el backend (puerto de `backend/.env`, 3001) y el frontend LAN por HTTPS en el 4200: `https://<IP de la Mac>:4200` desde el celular, `https://localhost:4200` en la Mac.
+- Cada 60 s revisa `origin/main`. Si avanzó, hace fast-forward, corre `npm ci` solo si cambió un `package-lock.json`, `db:migrate` solo si hay migraciones nuevas, y reinicia solo lo necesario.
+- Avisa (log y notificación de macOS) cuando `backend/.env.example` trae una variable que falta en `backend/.env`. Nunca toca el `.env`.
+- Pasa `FRONTEND_URL=https://<IP>:4200` al backend, así los links de checkout, mails y certificados abren en el celular.
+- Logs en `.run/`. `scripts/run-main.sh sync` actualiza una vez sin levantar nada.
+- Las sesiones no deben editar, cambiar de rama ni levantar servidores en `SpanishNow-run`, ni migrar `spanishnow_main`.
+
 ---
 
 ## Estructura del Proyecto
