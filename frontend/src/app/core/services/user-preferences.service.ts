@@ -115,8 +115,10 @@ export class UserPreferencesService {
       error: error => {
         if (generation !== this.generation) return;
         this.saving.set(false);
-        this.pending = { ...patch, ...this.pending };
+        // Un campo inválido necesita edición, no reenvío: no debe bloquear cambios independientes.
+        if (error.status !== 400) this.pending = { ...patch, ...this.pending };
         this.failure.set({ error, key: 'preferences.saveError' });
+        if (error.status === 400 && this.pending) this.drain();
       }
     });
   }

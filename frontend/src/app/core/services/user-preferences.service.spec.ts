@@ -156,4 +156,15 @@ describe('W01: persistencia de preferencias y precedencia de idioma', () => {
     expect(service.preferences()?.timeZone).toBe('Asia/Kathmandu');
     expect(i18n.locale()).toBe('es');
   });
+
+  it('una zona rechazada por validación no impide guardar un idioma elegido después', () => {
+    enter(1); http.expectOne(API).flush(preferences('en'));
+    service.saveTimeZone('EST');
+    http.expectOne(API).flush({ code: 'time_zone_invalid', params: {} }, { status: 400, statusText: 'Bad Request' });
+    i18n.setLocale('es');
+    const language = http.expectOne(API);
+    expect(language.request.body).toEqual({ locale: 'es' });
+    language.flush(preferences('es'));
+    expect(service.preferences()?.timeZone).toBe('America/Argentina/Cordoba');
+  });
 });
