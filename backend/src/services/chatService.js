@@ -590,19 +590,23 @@ async function hideMessage(moderator, messageId, reason, { impersonatedById = nu
 /**
  * At most one pending email job per recipient and conversation. It waits CHAT_UNREAD_EMAIL_DELAY_MINUTES (5) and keeps
  * CHAT_UNREAD_EMAIL_INTERVAL_MINUTES (30) since the previous one; a message arriving while one is pending rides on it.
+ * The job's aggregate is the conversation (table name + id, CONTRATO.md §3.11), which is what the test-account cleanup
+ * deletes; the recipient is part of the dedupeKey (`email.chat_unread:<conversationId>:<userId>:<seq>`).
  */
 async function scheduleUnreadEmail(participant, seq, { transaction, now }) {
   if (!emailEnabled()) return;
-  const aggregate = { topic: EMAIL_TOPIC, aggregateType: 'conversation_participant', aggregateId: participant.id };
-  const pending = await OutboxJob.findOne({ where: { ...aggregate, status: 'pending' }, attributes: ['id'], transaction });
+  const aggregate = { topic: EMAIL_TOPIC, aggregateType: 'conversations', aggregateId: participant.conversationId };
+  const recipientKey = `${EMAIL_TOPIC}:${participant.conversationId}:${participant.userId}:`;
+  const mine = { ...aggregate, dedupeKey: { [Op.startsWith]: recipientKey } };
+  const pending = await OutboxJob.findOne({ where: { ...mine, status: 'pending' }, attributes: ['id'], transaction });
   if (pending) return;
   const previous = await OutboxJob.findOne({
-    where: { ...aggregate, status: ['done', 'running'] }, order: [['runAt', 'DESC']], attributes: ['runAt', 'doneAt'], transaction
+    where: { ...mine, status: ['done', 'running'] }, order: [['runAt', 'DESC']], attributes: ['runAt', 'doneAt'], transaction
   });
   const last = previous ? (previous.doneAt || previous.runAt).getTime() : 0;
   const runAt = new Date(Math.max(now.getTime() + emailDelayMs(), last + emailIntervalMs()));
   await outbox.enqueue({
-    ...aggregate, dedupeKey: `${EMAIL_TOPIC}:${participant.id}:${seq}`, runAt, payload: { conversationId: participant.conversationId, userId: participant.userId, seq }
+    ...aggregate, dedupeKey: `${recipientKey}${seq}`, runAt, payload: { conversationId: participant.conversationId, userId: participant.userId, seq }
   }, { transaction });
 }
 

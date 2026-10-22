@@ -431,12 +431,13 @@ describe('CHAT-09: grouped email about unread activity', () => {
     await send(student, conversation.id, 'Texto privado que no va al correo');
     await send(student, conversation.id, 'Otro mensaje');
     const teacherPart = await ConversationParticipant.findOne({ where: { conversationId: conversation.id, userId: teacher.id } });
-    const jobs = await OutboxJob.findAll({ where: { topic: chat.EMAIL_TOPIC, aggregateId: teacherPart.id } });
+    const jobs = await OutboxJob.findAll({ where: { topic: chat.EMAIL_TOPIC, aggregateType: 'conversations', aggregateId: conversation.id, dedupeKey: { [Op.startsWith]: `${chat.EMAIL_TOPIC}:${conversation.id}:${teacher.id}:` } } });
     expect(jobs).toHaveLength(1);
     expect(jobs[0].runAt.getTime()).toBeGreaterThanOrEqual(before + 5 * 60e3 - 1000);
     // The sender gets no job for their own messages.
     const studentPart = await ConversationParticipant.findOne({ where: { conversationId: conversation.id, userId: student.id } });
-    expect(await OutboxJob.count({ where: { topic: chat.EMAIL_TOPIC, aggregateId: studentPart.id } })).toBe(0);
+    expect(await OutboxJob.count({ where: { topic: chat.EMAIL_TOPIC, dedupeKey: { [Op.startsWith]: `${chat.EMAIL_TOPIC}:${conversation.id}:${student.id}:` } } })).toBe(0);
+    expect(studentPart).toBeTruthy();
 
     clearOutbox();
     await chat.sendUnreadEmail(jobs[0]);
@@ -457,7 +458,7 @@ describe('CHAT-09: grouped email about unread activity', () => {
     // The next one waits 30 minutes after the previous email, and is skipped if the teacher read in between.
     await OutboxJob.update({ status: 'done', doneAt: new Date() }, { where: { id: jobs[0].id } });
     await send(student, conversation.id, 'Tercero');
-    const next = await OutboxJob.findOne({ where: { topic: chat.EMAIL_TOPIC, aggregateId: teacherPart.id, status: 'pending' } });
+    const next = await OutboxJob.findOne({ where: { topic: chat.EMAIL_TOPIC, aggregateId: conversation.id, status: 'pending' } });
     expect(next.runAt.getTime()).toBeGreaterThanOrEqual(Date.now() + 29 * 60e3);
     await as(teacher).post(`/api/conversations/${conversation.id}/read`, { seq: 3 });
     clearOutbox();
@@ -467,10 +468,9 @@ describe('CHAT-09: grouped email about unread activity', () => {
 });
 
 describe('CHAT-09: the recipient\'s language and email preference', () => {
-  async function pendingJob(recipient, conversationId) {
-    const part = await ConversationParticipant.findOne({ where: { conversationId, userId: recipient.id } });
-    return OutboxJob.findOne({ where: { topic: chat.EMAIL_TOPIC, aggregateId: part.id, status: 'pending' } });
-  }
+  const pendingJob = (recipient, conversationId) => OutboxJob.findOne({
+    where: { topic: chat.EMAIL_TOPIC, aggregateType: 'conversations', aggregateId: conversationId, status: 'pending', dedupeKey: { [Op.startsWith]: `${chat.EMAIL_TOPIC}:${conversationId}:${recipient.id}:` } }
+  });
 
   test('without a chosen language the email is in English (W01 rule)', async () => {
     const teacher = await availableTeacher();
@@ -498,13 +498,13 @@ describe('CHAT-09: the recipient\'s language and email preference', () => {
   });
 });
 
-describe('CHAT-09: queued emails follow the global switch', () => {
+describe('CHAT-09 / CONTRACT-05: queued emails follow the switch and the test-account cleanup', () => {
   test('turning CHAT_UNREAD_EMAIL off after a job was queued stops that email', async () => {
     const teacher = await availableTeacher();
     const student = await createUser('student', 'chat-email-global');
     const conversation = await open(student, teacher);
     await send(student, conversation.id, 'Hola');
-    const job = await OutboxJob.findOne({ where: { topic: chat.EMAIL_TOPIC, status: 'pending', payload: { conversationId: conversation.id } } });
+    const job = await OutboxJob.findOne({ where: { topic: chat.EMAIL_TOPIC, aggregateType: 'conversations', aggregateId: conversation.id, status: 'pending' } });
     expect(job).toBeTruthy();
     process.env.CHAT_UNREAD_EMAIL = '0';
     try {
@@ -514,5 +514,26 @@ describe('CHAT-09: queued emails follow the global switch', () => {
     } finally {
       delete process.env.CHAT_UNREAD_EMAIL;
     }
+  });
+
+  test('deleting test accounts leaves no chat email job behind', async () => {
+    const { User } = require('../src/models');
+    const { deleteTestUser } = require('../src/services/adminUsers');
+    const tag = Date.now();
+    const teacher = await User.create({ name: 'Docente prueba', email: `chat-t-${tag}@spanishnow.test`, password: 'jest-password-1', role: 'teacher', isTestAccount: true });
+    const student = await User.create({ name: 'Alumna prueba', email: `chat-s-${tag}@spanishnow.test`, password: 'jest-password-1', role: 'student', isTestAccount: true });
+    await TeacherClassSettings.create({ userId: teacher.id, classesEnabledAt: new Date(), acceptsInquiries: true });
+    const { tokenFor } = require('./helpers/fixtures');
+    Object.assign(teacher, { token: tokenFor(teacher) });
+    Object.assign(student, { token: tokenFor(student) });
+    const conversation = await open(student, teacher);
+    await send(student, conversation.id, 'Hola');
+    await send(teacher, conversation.id, 'Hola, te leo');
+    expect(await OutboxJob.count({ where: { topic: chat.EMAIL_TOPIC, aggregateId: conversation.id } })).toBe(2);
+    await deleteTestUser(student.id);
+    await deleteTestUser(teacher.id);
+    expect(await Conversation.count({ where: { id: conversation.id } })).toBe(0);
+    expect(await OutboxJob.count({ where: { topic: chat.EMAIL_TOPIC, aggregateId: conversation.id } })).toBe(0);
+    expect(await OutboxJob.count({ where: { topic: chat.EMAIL_TOPIC, dedupeKey: { [Op.startsWith]: `${chat.EMAIL_TOPIC}:${conversation.id}:` } } })).toBe(0);
   });
 });
