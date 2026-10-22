@@ -53,11 +53,11 @@ El MP3 de 12 s es un tono sintético de 440 Hz generado con:
 ffmpeg -y -f lavfi -i 'sine=frequency=440:duration=12' -ar 22050 -ac 1 -codec:a libmp3lame -b:a 24k e2e/fixtures/audio-controls.mp3
 ```
 
-El WAV PCM se genera en memoria; no hace falta ffmpeg para ejecutar las pruebas. El navegador decodifica y reproduce ambos recursos reales. La instrumentación solo registra instancias del constructor nativo `Audio`, sin simular sus estados, duración, rangos ni eventos. Los casos unitarios sí usan un medio fake para metadata no finita, seek no soportado, buffering, autoplay bloqueado y promesas/eventos tardíos.
+El WAV PCM se genera en memoria; no hace falta ffmpeg para ejecutar las pruebas. El navegador decodifica y reproduce ambos recursos reales. La instrumentación solo registra instancias del constructor nativo `Audio`, sin simular sus estados, duración, rangos ni eventos. Los casos unitarios sí usan un medio fake para metadata no finita, seek no soportado, buffering, autoplay bloqueado y promesas/eventos tardíos. En navegador también se verifica metadata demorada, salida con `play()` pendiente y bloqueo nativo de autoplay seguido de recuperación con teclado. La prueba de autoplay usa navegación CDP sin gesto y desactiva tracing: los snapshots/evaluaciones de Playwright aportan activación y enmascararían el bloqueo; se comprueba explícitamente que el documento no recibió activación antes del intento.
 
 Los tests de integración del reproductor y los E2E comprueban que reproducir, buscar, repetir, terminar y reintentar no llaman a completar narrativa ni escriben progreso. La navegación comprueba liberación del medio anterior. El frontend existente conserva su suite completa. La suite E2E general que reconstruye MySQL no es necesaria para este cambio solo de audio.
 
-Resultado de esta entrega: **304/304 pruebas unitarias** (41 archivos, 21 casos nuevos), **10/10 E2E** (Chromium escritorio y móvil con toque emulado), TypeScript E2E y build de producción aprobados. Se revisó visualmente la captura a 390 px. Persisten avisos previos de Sass y presupuestos de bundle/otros componentes; los controles nuevos no exceden su presupuesto.
+Resultado de esta entrega: **304/304 pruebas unitarias** (41 archivos, 21 casos nuevos), **16/16 E2E** (Chromium escritorio y móvil con toque emulado), TypeScript E2E y build de producción aprobados. Se revisó visualmente la captura a 390 px. Persisten avisos previos de Sass y presupuestos de bundle/otros componentes; los controles nuevos no exceden su presupuesto.
 
 ## Prueba manual con cuenta ficticia
 

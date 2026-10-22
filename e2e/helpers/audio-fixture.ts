@@ -43,7 +43,7 @@ export async function serveAudio(): Promise<{ origin: string; close: () => Promi
   }) };
 }
 
-export async function openAudioLesson(page: Page, origin: string, options: { full?: boolean; unavailable?: boolean } = {}) {
+export async function openAudioLesson(page: Page, origin: string, options: { full?: boolean; unavailable?: boolean; mediaGate?: Promise<void>; withoutActivation?: boolean } = {}) {
   const mutations: string[] = [];
   const unknown: string[] = [];
   const lesson = {
@@ -90,12 +90,23 @@ export async function openAudioLesson(page: Page, origin: string, options: { ful
       else { unknown.push(url.pathname); body = {}; }
       await route.fulfill({ contentType: 'application/json', body: JSON.stringify(body) });
     } else if (url.origin === origin) {
+      await options.mediaGate;
       await route.continue();
     } else if (url.hostname === 'localhost' && url.port === '4303') await route.continue();
     else await route.abort();
   });
-  await page.goto('/student/course/1/play');
-  await page.getByRole('heading', { name: 'Historia de prueba de audio' }).waitFor();
+  if (options.withoutActivation) {
+    // page.goto/locator evalúan utilidades con userGesture=true; CDP conserva un documento sin activación.
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Page.enable');
+    const loaded = new Promise<void>(resolve => { cdp.once('Page.loadEventFired', () => resolve()); });
+    await cdp.send('Page.navigate', { url: 'http://localhost:4303/student/course/1/play' });
+    await loaded;
+    await cdp.detach();
+  } else {
+    await page.goto('/student/course/1/play', { waitUntil: 'domcontentloaded' });
+    await page.getByRole('heading', { name: 'Historia de prueba de audio' }).waitFor();
+  }
   return { mutations, unknown, lesson };
 }
 

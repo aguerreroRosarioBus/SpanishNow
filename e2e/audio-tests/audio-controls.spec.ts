@@ -106,3 +106,44 @@ test('controles táctiles a 390px con foco visible y sin desborde', async ({ pag
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.screenshot({ path: test.info().outputPath('audio-390.png'), fullPage: true });
 });
+
+test('metadata demorada mantiene seek deshabilitado y reproduce al llegar el archivo', async ({ page }) => {
+  let release!: () => void;
+  const mediaGate = new Promise<void>(resolve => { release = resolve; });
+  try {
+    const { mutations } = await openAudioLesson(page, server.origin, { mediaGate });
+    await expect(page.getByRole('slider')).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Avanzar 10 segundos' })).toBeDisabled();
+    await expect(page.getByText(/La duración aún no está disponible/)).toBeVisible();
+    await expect(page.locator('.audio-player')).not.toContainText(/NaN|Infinity/);
+    const play = page.getByRole('button', { name: 'Reproducir audio', exact: true });
+    await play.focus(); await play.press('Space');
+    await expect(page.locator('.audio-player .status')).toHaveText('Esperando audio…');
+    release();
+    await expect(page.getByRole('slider')).toBeEnabled();
+    await expect(page.locator('.audio-player .status')).toHaveText('Reproduciendo');
+    await expect.poll(async () => (await currentMedia(page)).time).toBeGreaterThan(0);
+    expect(mutations).toEqual([]);
+  } finally { release(); }
+});
+
+test('cambiar de bloque durante play pendiente no reactiva el audio anterior', async ({ page }) => {
+  let release!: () => void;
+  const mediaGate = new Promise<void>(resolve => { release = resolve; });
+  try {
+    const { mutations } = await openAudioLesson(page, server.origin, { mediaGate });
+    await page.getByRole('button', { name: 'Reproducir audio', exact: true }).click();
+    await expect(page.locator('.audio-player .status')).toHaveText('Esperando audio…');
+    await page.getByRole('button', { name: 'Continuar', exact: true }).click();
+    await expect.poll(async () => (await currentMedia(page)).src).toContain('other.wav');
+    release();
+    await expect(page.getByRole('slider')).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Reproducir audio', exact: true })).toBeVisible();
+    await expect(page.locator('.audio-error')).toHaveCount(0);
+    expect(await page.evaluate(() => {
+      const media: HTMLAudioElement[] = (window as any).__lessonMedia;
+      return media.every(item => item.paused) && media.slice(0, -1).every(item => !item.getAttribute('src'));
+    })).toBe(true);
+    expect(mutations).toEqual(['/api/lesson-plans/progress/11/current-block']);
+  } finally { release(); }
+});
