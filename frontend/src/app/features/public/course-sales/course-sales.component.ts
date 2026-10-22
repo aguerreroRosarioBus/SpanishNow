@@ -43,6 +43,8 @@ export class CourseSalesComponent implements OnInit {
   isApplying = signal(false);
   couponError = signal('');
 
+  /** Se cobra en el checkout de Hotmart: sin campo de email y sin cupones parciales (solo ?coupon= del 100 %). */
+  isHotmart = computed(() => this.course()?.checkoutProvider === 'hotmart');
   isFree = computed(() => (this.course()?.price ?? 0) === 0);
   /** Un cupón del 100 % no pasa por Stripe: sin sesión hay que pedir el email para crear la cuenta. */
   needsEmail = computed(() => !this.isFree() && !!this.price()?.isFree && !this.currentUser());
@@ -160,6 +162,9 @@ export class CourseSalesComponent implements OnInit {
     this.showCoupon.set(false);
   }
 
+  /** Aparte para poder probar la compra sin navegar. */
+  protected redirect(url: string): void { window.location.href = url; }
+
   buy(): void {
     const course = this.course();
     if (!course || this.isBuying()) return;
@@ -172,7 +177,7 @@ export class CourseSalesComponent implements OnInit {
     this.buyError.set('');
     this.catalog.checkout(course.id, this.quote()?.coupon.code, email, this.affiliateCode()).subscribe({
       next: ({ url }) => {
-        window.location.href = url;
+        this.redirect(url);
       },
       error: error => {
         this.isBuying.set(false);

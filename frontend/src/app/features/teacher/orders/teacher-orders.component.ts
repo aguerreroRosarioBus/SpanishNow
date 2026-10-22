@@ -95,6 +95,9 @@ export class TeacherOrdersComponent implements OnInit {
     });
   }
 
+  providerLabel(provider: string): string {
+    return ({ hotmart: 'Hotmart', stripe: 'Stripe', coupon: 'Cupón', fake: 'Prueba' } as Record<string, string>)[provider] ?? provider;
+  }
   money(cents: number, currency: string): string { return formatPrice(cents, currency, 'es'); }
   badge(o: TeacherOrder): OrderBadge { return orderBadge(o.status, o.refundedAmount); }
   badgeLabel(o: TeacherOrder): string { return orderBadgeLabel(o.status, o.refundedAmount); }

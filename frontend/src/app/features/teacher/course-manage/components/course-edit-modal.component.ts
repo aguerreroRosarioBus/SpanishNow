@@ -1,6 +1,7 @@
 import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CourseService } from '../../../../core/services/course.service';
+import { HotmartService, HotmartSetup } from '../../../../core/services/hotmart.service';
 import { CouponService } from '../../../../core/services/coupon.service';
 import { Course } from '../../../../core/models/course.model';
 import { Coupon } from '../../../../core/models/sales.model';
@@ -21,6 +22,7 @@ export class CourseEditModalComponent implements OnDestroy {
   private store = inject(CourseManageStore);
   private courseService = inject(CourseService);
   private couponService = inject(CouponService);
+  private hotmartService = inject(HotmartService);
   private toast = inject(ToastService);
 
   readonly currencies = [
@@ -39,8 +41,13 @@ export class CourseEditModalComponent implements OnDestroy {
     salesDescription: [''],
     introVideoUrl: [''],
     nextCourseId: [null as number | null],
-    nextCourseCouponId: [null as number | null]
+    nextCourseCouponId: [null as number | null],
+    hotmartProductId: ['', [Validators.maxLength(40), Validators.pattern(/^[A-Za-z0-9]*$/)]],
+    hotmartCheckoutUrl: ['', [Validators.maxLength(500)]]
   });
+  /** URL del webhook y estado del token en el servidor; null si no se pudo consultar. */
+  hotmartSetup = signal<HotmartSetup | null>(null);
+  webhookCopied = signal(false);
   /** Otros cursos del docente (candidatos a «curso siguiente») y sus cupones activos. */
   otherCourses = signal<Course[]>([]);
   private coupons = signal<Coupon[]>([]);
@@ -89,7 +96,9 @@ export class CourseEditModalComponent implements OnDestroy {
         salesDescription: course.salesDescription || '',
         introVideoUrl: course.introVideoUrl || '',
         nextCourseId: course.nextCourseId ?? null,
-        nextCourseCouponId: course.nextCourseCouponId ?? null
+        nextCourseCouponId: course.nextCourseCouponId ?? null,
+        hotmartProductId: course.hotmartProductId || '',
+        hotmartCheckoutUrl: course.hotmartCheckoutUrl || ''
       });
       this.selectedNext.set(course.nextCourseId ?? null);
     }
@@ -103,6 +112,7 @@ export class CourseEditModalComponent implements OnDestroy {
       next: list => this.otherCourses.set(list.filter(c => c.id !== this.store.courseId())),
       error: () => { /* sin lista, el select queda vacío */ }
     });
+    this.hotmartService.setup().subscribe({ next: s => this.hotmartSetup.set(s), error: () => { /* sin datos, solo se oculta la URL */ } });
     this.couponService.list().subscribe({ next: list => this.coupons.set(list), error: () => { /* idem */ } });
   }
 
@@ -114,6 +124,16 @@ export class CourseEditModalComponent implements OnDestroy {
   /** Video de bienvenida ya guardado (URL de embed que normalizó el servidor). */
   savedIntroVideo(): string | null {
     return this.store.course()?.introVideoUrl ?? null;
+  }
+
+  /** Copia la URL del webhook para pegarla en Hotmart. */
+  copyWebhook(): void {
+    const url = this.hotmartSetup()?.webhookUrl;
+    if (!url) return;
+    navigator.clipboard?.writeText(url).then(() => {
+      this.webhookCopied.set(true);
+      setTimeout(() => this.webhookCopied.set(false), 2000);
+    }, () => this.toast.error('No se pudo copiar. Selecciona la URL y cópiala a mano.'));
   }
 
   close(): void { this.store.close(); }
@@ -136,7 +156,10 @@ export class CourseEditModalComponent implements OnDestroy {
       introVideoUrl: (v.introVideoUrl ?? '').trim() || null,
       // Vacío = sin curso siguiente / sin cupón
       nextCourseId: v.nextCourseId != null ? Number(v.nextCourseId) : null,
-      nextCourseCouponId: v.nextCourseId != null && v.nextCourseCouponId != null ? Number(v.nextCourseCouponId) : null
+      nextCourseCouponId: v.nextCourseId != null && v.nextCourseCouponId != null ? Number(v.nextCourseCouponId) : null,
+      // Vacío = quitar (el curso vuelve a cobrarse en el sitio)
+      hotmartProductId: (v.hotmartProductId ?? '').trim(),
+      hotmartCheckoutUrl: (v.hotmartCheckoutUrl ?? '').trim()
     } as Record<string, unknown>;
     const slug = (v.slug ?? '').trim();
     if (slug) payload['slug'] = slug;

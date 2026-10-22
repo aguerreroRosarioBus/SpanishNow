@@ -30,6 +30,9 @@ export interface Course {
   /** Curso siguiente de la serie y cupón para ofrecerlo (solo lo ve el docente). */
   nextCourseId?: number | null;
   nextCourseCouponId?: number | null;
+  /** Cobro en Hotmart (solo lo ve el docente). */
+  hotmartProductId?: string | null;
+  hotmartCheckoutUrl?: string | null;
   /** Materiales generales del curso (sin unidad ni historia). Del alumno: sin fileUrl. */
   materials?: Material[];
 }

@@ -13,8 +13,8 @@ const Order = sequelize.define('Order', {
   amount: { type: DataTypes.INTEGER, allowNull: false },
   currency: { type: DataTypes.STRING(3), allowNull: false },
   status: { type: DataTypes.ENUM('pending', 'paid', 'refunded', 'failed'), allowNull: false, defaultValue: 'pending' },
-  // 'coupon': a 100 % discount, fulfilled without a payment provider.
-  provider: { type: DataTypes.ENUM('stripe', 'fake', 'coupon'), allowNull: false },
+  // 'coupon': a 100 % discount, fulfilled without a payment provider. 'hotmart': paid on Hotmart, created by its webhook.
+  provider: { type: DataTypes.ENUM('stripe', 'fake', 'coupon', 'hotmart'), allowNull: false },
   providerSessionId: { type: DataTypes.STRING(255), allowNull: false, unique: true },
   providerPaymentId: { type: DataTypes.STRING(255), allowNull: true },
   paidAt: { type: DataTypes.DATE, allowNull: true },

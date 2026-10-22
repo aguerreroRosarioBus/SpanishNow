@@ -65,6 +65,11 @@ export const routes: Routes = [
   },
 
   {
+    path: 'checkout/thanks',
+    loadComponent: () => import('./features/public/checkout-thanks/checkout-thanks.component').then(m => m.CheckoutThanksComponent)
+  },
+
+  {
     path: 'live', canActivate: [liveAuthGuard],
     loadComponent: () => import('./features/live-classes/live-classes.component').then(m => m.LiveClassesComponent)
   },

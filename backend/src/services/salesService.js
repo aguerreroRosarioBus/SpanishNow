@@ -159,7 +159,7 @@ const CSV_HEADERS = ['ID', 'Fecha', 'Fecha de pago', 'Curso', 'Comprador', 'Emai
   'Estado', 'Reembolsado', 'Cupón', 'Medio de pago', 'Recibo', 'Afiliado', 'Comisión'];
 
 const STATUS_LABELS = { paid: 'Pagada', refunded: 'Reembolsada', pending: 'Pendiente', failed: 'Fallida' };
-const PROVIDER_LABELS = { stripe: 'Stripe', fake: 'Prueba', coupon: 'Cupón 100%' };
+const PROVIDER_LABELS = { stripe: 'Stripe', fake: 'Prueba', coupon: 'Cupón 100%', hotmart: 'Hotmart' };
 
 /**
  * One CSV cell. Text that a spreadsheet could read as a formula (starts with = + - @, a tab or a carriage return) gets a
