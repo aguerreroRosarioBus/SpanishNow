@@ -28,6 +28,22 @@ const User = sequelize.define('User', {
     type: DataTypes.ENUM('teacher', 'student'),
     allowNull: false,
     defaultValue: 'student'
+  },
+  // Admin capabilities on top of the role: array of keys from config/permissions.js (null = none).
+  permissions: {
+    type: DataTypes.JSON,
+    allowNull: true
+  },
+  // Created from the admin panel to try the app; can be deleted with all its data.
+  isTestAccount: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
+  },
+  // Suspended accounts cannot sign in and their tokens stop working.
+  suspendedAt: {
+    type: DataTypes.DATE,
+    allowNull: true
   }
 }, {
   timestamps: true,

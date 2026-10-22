@@ -90,6 +90,8 @@ export class LoginComponent {
         // Mostrar mensaje de error apropiado
         if (error.status === 401) {
           this.errorMessage = 'Email o contraseña incorrectos';
+        } else if (error.status === 403) {
+          this.errorMessage = 'Esta cuenta está suspendida. Escríbenos si crees que es un error.';
         } else {
           this.errorMessage = 'Error al iniciar sesión. Por favor intenta de nuevo.';
         }

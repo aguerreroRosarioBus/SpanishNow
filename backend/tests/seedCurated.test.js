@@ -157,6 +157,22 @@ describe('full run on an empty database (migrate + seed + verify)', () => {
     expect((await query('SELECT COUNT(*) AS n FROM enrollments WHERE studentId = ?', [student.id]))[0].n).toBe(1);
   }, 60000);
 
+  test('accounts with "permissions" in the file get them on create and again on existing users', async () => {
+    const { accounts } = loadAccounts();
+    const withPermissions = accounts.find(a => a.permissions);
+    expect(withPermissions).toMatchObject({ email: 'admin@gmail.com', permissions: ['users.manage', 'test_users.manage'] });
+    const stored = async () => (await query('SELECT permissions FROM users WHERE email = ?', [withPermissions.email]))[0].permissions;
+    expect(await stored()).toEqual(withPermissions.permissions);
+
+    await scratch.query('UPDATE users SET permissions = NULL WHERE email = ?', { replacements: [withPermissions.email] });
+    const rerun = node('seed.js', '--only', 'accounts');
+    expect(rerun.status).toBe(0);
+    expect(await stored()).toEqual(withPermissions.permissions);
+    // accounts without the field are left alone
+    const other = accounts.find(a => !a.permissions);
+    expect((await query('SELECT permissions FROM users WHERE email = ?', [other.email]))[0].permissions).toBeNull();
+  }, 60000);
+
   test('adds the phase 2 sample content to the demo course once: welcome video, 2 story videos, a PDF and a published quiz in unit 1', async () => {
     const [course] = await query('SELECT introVideoUrl FROM courses WHERE id = 1');
     expect(course.introVideoUrl).toBe('https://www.youtube-nocookie.com/embed/jNQXAC9IVRw');

@@ -71,6 +71,14 @@ export class SidebarNavComponent {
   collapseToggle = output<void>();
 
   groups = computed<NavGroup[]>(() => {
+    const groups = this.baseGroups();
+    if (!(this.currentUser()?.permissions?.length)) return groups;
+    // «Administración» va antes de «Cuenta», que siempre es el último grupo
+    const admin: NavGroup = { title: 'Administración', items: [{ label: 'Usuarios', icon: 'users', link: '/admin/users' }] };
+    return [...groups.slice(0, -1), admin, groups[groups.length - 1]];
+  });
+
+  private baseGroups = computed<NavGroup[]>(() => {
     if (this.currentUser()?.role === 'student') {
       return [
         {

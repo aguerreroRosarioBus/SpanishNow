@@ -4,6 +4,13 @@
     [menuOpen]="sidebarOpen()"
     (sidebarToggle)="toggleSidebar()"></app-navbar-top>
 
+  @if (impersonating() && currentUser(); as user) {
+    <div class="impersonation-banner" role="status">
+      <span>Estás viendo la app como <strong>{{ user.name }}</strong> (cuenta de prueba)</span>
+      <button type="button" class="btn btn-sm btn-light" (click)="stopImpersonating()">Volver a mi cuenta</button>
+    </div>
+  }
+
   <div class="layout-content">
     @if (showSidebar()) {
       <app-sidebar-nav

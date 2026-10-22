@@ -6,7 +6,8 @@
     {
       "email": "admin@gmail.com",
       "name": "Andres",
-      "role": "teacher"
+      "role": "teacher",
+      "permissions": ["users.manage", "test_users.manage"]
     },
     {
       "email": "lucas@gmail.com",

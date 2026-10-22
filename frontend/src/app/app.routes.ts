@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard, teacherGuard, studentGuard } from './core/guards/auth.guard';
+import { authGuard, teacherGuard, studentGuard, adminGuard } from './core/guards/auth.guard';
 import { liveAuthGuard } from './core/guards/live-auth.guard';
 
 /**
@@ -173,6 +173,13 @@ export const routes: Routes = [
   {
     path: 'about',
     loadComponent: () => import('./features/info/about/about.component').then(m => m.AboutComponent)
+  },
+
+  // Administración (usuarios, permisos y cuentas de prueba)
+  {
+    path: 'admin/users',
+    loadComponent: () => import('./features/admin/users/admin-users.component').then(m => m.AdminUsersComponent),
+    canActivate: [adminGuard]
   },
 
   // Ruta de configuración (compartida)

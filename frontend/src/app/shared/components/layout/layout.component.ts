@@ -16,6 +16,8 @@ import { AuthService } from '../../../core/services/auth.service';
 export class LayoutComponent {
   private router = inject(Router);
   private authService = inject(AuthService);
+  currentUser = this.authService.currentUser;
+  impersonating = this.authService.impersonating;
   readonly year = new Date().getFullYear();
 
   private url = toSignal(
@@ -44,6 +46,10 @@ export class LayoutComponent {
   constructor() {
     // Al navegar en móvil se cierra el menú desplegable
     this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe(() => this.sidebarOpen.set(false));
+  }
+
+  stopImpersonating(): void {
+    this.authService.stopImpersonating();
   }
 
   toggleSidebar(): void {
