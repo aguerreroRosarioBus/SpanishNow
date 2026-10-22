@@ -27,6 +27,8 @@ async function parseCourseFields(body, course) {
     if (id) {
       const other = await Course.findOne({ where: { hotmartProductId: id, id: { [Op.ne]: course.id } }, attributes: ['id'] });
       if (other) return { status: 409, error: 'Another course already uses this Hotmart product' };
+      const packageVersion = await require('../models').ClassPackageTemplateVersion.findOne({ where: { hotmartProductId: id }, attributes: ['id'] });
+      if (packageVersion) return { status: 409, error: 'Este producto Hotmart ya pertenece a un paquete de clases' };
     }
     values.hotmartProductId = id || null;
   }

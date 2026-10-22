@@ -79,6 +79,9 @@ export class SidebarNavComponent {
 
   /** Ítem del chat (W04), al final del primer grupo. */
   private withChat(groups: NavGroup[]): NavGroup[] {
+    if (this.features.enabled('class_packages') && this.currentUser()?.role === 'teacher' && groups.length) {
+      groups = [{ ...groups[0], items: [...groups[0].items, { label: 'packages.nav', icon: 'shopping-bag', link: '/teacher/class-packages' }] }, ...groups.slice(1)];
+    }
     if (!this.features.enabled('chat') || !groups.length) return groups;
     const chat: NavItem = { label: 'chat.nav', icon: 'message-square', link: '/messages', badge: 'chat' };
     return [{ ...groups[0], items: [...groups[0].items, chat] }, ...groups.slice(1)];

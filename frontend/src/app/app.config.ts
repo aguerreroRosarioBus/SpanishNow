@@ -11,6 +11,7 @@ import { I18N_CATALOGS, I18nService } from './core/i18n/i18n.service';
 import { AUDIO_MESSAGES, LESSON_AUDIO_LOCALE } from './features/student/story-player/audio-messages';
 import { LEGAL_SALES_MESSAGES } from './features/legal/legal-messages';
 import { CHAT_MESSAGES } from './features/chat/chat.i18n';
+import { PACKAGE_MESSAGES } from './features/packages/packages.i18n';
 
 // Fechas y números en español (21 oct 2026)
 registerLocaleData(localeEs);
@@ -27,6 +28,7 @@ export const appConfig: ApplicationConfig = {
     { provide: LESSON_AUDIO_LOCALE, useFactory: () => inject(I18nService).locale },
     // W04: textos chat.* del chat privado
     { provide: I18N_CATALOGS, multi: true, useValue: CHAT_MESSAGES },
+    { provide: I18N_CATALOGS, multi: true, useValue: PACKAGE_MESSAGES },
     // Service worker solo en el build de producción (en desarrollo no se registra: cachearía el código viejo)
     provideServiceWorker('ngsw-worker.js', {
       enabled: environment.production,

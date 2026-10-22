@@ -85,6 +85,11 @@ export const routes: Routes = [
   },
   // Rutas de profesor
   {
+    path: 'teacher/class-packages',
+    loadComponent: () => import('./features/packages/package-catalog.component').then(m => m.PackageCatalogComponent),
+    canActivate: [teacherGuard]
+  },
+  {
     path: 'teacher/dashboard',
     loadComponent: () => import('./features/teacher/dashboard/teacher-dashboard.component').then(m => m.TeacherDashboardComponent),
     canActivate: [teacherGuard]
