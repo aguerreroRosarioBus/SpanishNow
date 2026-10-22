@@ -3,7 +3,10 @@ const { app, as, createUser } = require('./helpers/fixtures');
 const { ClassPackageTemplate: Template, ClassPackageTemplateVersion: Version, TeacherClassSettings, ClassPolicyVersion: Policy, Course, AuditLog } = require('../src/models');
 const { FIELDS } = require('../src/services/salesExpectations');
 const initial = require('../src/domain/classInitialCatalog');
-const patch = (user, path, body) => request(app).patch(`/api${path}`).set('Authorization', `Bearer ${user.token}`).send(body);
+const patch = async (user, path, body) => {
+  if(path.endsWith('/status') && body.version===undefined){const id=path.split('/')[3];const row=await Template.findByPk(id);body={...body,version:(await Version.findByPk(row.currentVersionId)).version};}
+  return request(app).patch(`/api${path}`).set('Authorization', `Bearer ${user.token}`).send(body);
+};
 const complete = () => Object.fromEntries(['en', 'es'].map(l => [l, Object.fromEntries(FIELDS.map(k => [k, `${l}: ${k}`]))]));
 const fields = v => Object.fromEntries(require('../src/services/classCatalog').FIELDS.filter(k => v[k] !== undefined).map(k => [k, v[k]]));
 const mapping = id => ({ hotmartProductId: `W05-${id}`, hotmartOfferCode: `offer-${id}`, hotmartCheckoutUrl: `https://pay.hotmart.com/W05${id}`, expectations: complete() });
