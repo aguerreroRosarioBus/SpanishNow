@@ -1,0 +1,63 @@
+<div class="audio-player" role="group" [attr.aria-label]="text('audio.controls')">
+  @if (hasVariants()) {
+    <div class="recordings" role="group" [attr.aria-label]="text('audio.speed')" [attr.aria-describedby]="descriptionId + '-recordings'">
+      <button type="button" class="btn btn-secondary" [attr.aria-pressed]="audio.speed() === 'slow'"
+        [disabled]="!slowUrl()" (click)="switchSpeed('slow')">{{ text('audio.slow') }}</button>
+      <button type="button" class="btn btn-secondary" [attr.aria-pressed]="audio.speed() === 'normal'"
+        [disabled]="!normalUrl()" (click)="switchSpeed('normal')">{{ text('audio.normal') }}</button>
+    </div>
+    <p class="hint" [id]="descriptionId + '-recordings'">{{ text('audio.restartNotice') }}</p>
+  }
+  @if (url()) {
+    <div class="transport">
+      <button type="button" class="btn btn-secondary" (click)="audio.toggle(url())" [attr.aria-pressed]="audio.isPlaying()">
+        {{ text(audio.isPlaying() ? 'audio.pause' : 'audio.play') }}
+      </button>
+      <button type="button" class="btn btn-secondary" (click)="audio.skip(-10)" [disabled]="!audio.canSeek()">{{ text('audio.back') }}</button>
+      <button type="button" class="btn btn-secondary" (click)="audio.skip(10)" [disabled]="!audio.canSeek()">{{ text('audio.forward') }}</button>
+    </div>
+    <div class="timeline">
+      <span class="time" aria-hidden="true">{{ time(audio.currentTime()) }} / {{ time(audio.duration()) }}</span>
+      <input type="range" min="0" [max]="audio.duration() || 0" step="0.1" [value]="audio.currentTime()"
+        [disabled]="!audio.canSeek()" [attr.aria-label]="text('audio.seek')"
+        [attr.aria-valuetext]="time(audio.currentTime()) + ' / ' + time(audio.duration())"
+        [attr.aria-describedby]="!audio.canSeek() ? descriptionId + '-seek' : null"
+        (input)="audio.seek($any($event.target).valueAsNumber)" />
+    </div>
+    @if (!audio.canSeek()) {
+      <p class="hint" [id]="descriptionId + '-seek'">{{ text(audio.duration() === null ? 'audio.metadata' : 'audio.noSeek') }}</p>
+    }
+    <details class="repeat">
+      <summary>{{ text('audio.repeat') }}</summary>
+      <div class="bounds">
+        <label>{{ text('audio.start') }}
+          <input type="number" min="0" [max]="audio.duration() || 0" step="0.1" inputmode="decimal"
+            [value]="a()" [disabled]="!audio.canSeek() || !!audio.repeat()" [attr.aria-invalid]="invalidRepeat()"
+            [attr.aria-describedby]="invalidRepeat() ? descriptionId + '-invalid' : null" (input)="setBound('a', $any($event.target).value)" />
+        </label>
+        <button type="button" class="btn btn-secondary" [disabled]="!audio.canSeek() || !!audio.repeat()" (click)="mark('a')">{{ text('audio.markStart') }}</button>
+        <label>{{ text('audio.end') }}
+          <input type="number" min="0" [max]="audio.duration() || 0" step="0.1" inputmode="decimal"
+            [value]="b()" [disabled]="!audio.canSeek() || !!audio.repeat()" [attr.aria-invalid]="invalidRepeat()"
+            [attr.aria-describedby]="invalidRepeat() ? descriptionId + '-invalid' : null" (input)="setBound('b', $any($event.target).value)" />
+        </label>
+        <button type="button" class="btn btn-secondary" [disabled]="!audio.canSeek() || !!audio.repeat()" (click)="mark('b')">{{ text('audio.markEnd') }}</button>
+        <button type="button" class="btn btn-secondary" [disabled]="!audio.canSeek() && !audio.repeat()" [attr.aria-pressed]="!!audio.repeat()"
+          (click)="toggleRepeat()">{{ text(audio.repeat() ? 'audio.disableRepeat' : 'audio.enableRepeat') }}</button>
+      </div>
+      @if (invalidRepeat()) {
+        <p class="hint" role="alert" [id]="descriptionId + '-invalid'">{{ text('audio.invalidRepeat') }}</p>
+      }
+      @if (audio.repeat()) { <p class="hint" role="status">{{ text('audio.repeatActive') }}</p> }
+    </details>
+    <div class="status" role="status" aria-live="polite">
+      @if (status(); as key) { {{ text(key) }} }
+    </div>
+    @if (audio.error()) {
+      <div class="audio-error" role="alert">
+        <p>{{ audio.error() }}</p>
+        <button type="button" class="btn btn-secondary" (click)="audio.retry()">{{ text('audio.retry') }}</button>
+      </div>
+    }
+  } @else { <p class="hint" role="status">{{ text('audio.unavailable') }}</p> }
+</div>

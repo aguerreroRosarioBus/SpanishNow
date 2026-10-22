@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 /** Medio determinista: permite resolver promesas/eventos en orden adverso. No hace red. */
 export class FakeAudio extends EventTarget {
   static instances: FakeAudio[] = [];

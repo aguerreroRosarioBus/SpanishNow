@@ -43,7 +43,7 @@ export class LessonAudioService implements OnDestroy {
       media.addEventListener(type, guarded);
       this.listeners.push(() => media.removeEventListener(type, guarded));
     };
-    on('loadedmetadata', () => { this.readMetadata(media); if (!this.isPlaying()) this.state.set('ready'); });
+    on('loadedmetadata', () => { this.readMetadata(media); if (this.state() === 'loading') this.state.set('ready'); });
     on('durationchange', () => this.readMetadata(media));
     on('progress', () => this.readMetadata(media));
     on('canplay', () => { this.readMetadata(media); if (!this.isPlaying() && this.state() === 'loading') this.state.set('ready'); });

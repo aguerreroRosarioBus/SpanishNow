@@ -4,6 +4,7 @@ import { of } from 'rxjs';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
+import { FakeAudio } from './testing/fake-audio';
 import { StoryPlayerComponent } from './story-player.component';
 import { LessonNavigationStore } from './lesson-navigation.store';
 import { LessonSessionStore } from './lesson-session.store';
@@ -223,6 +224,43 @@ describe('StoryPlayerComponent (flujo TPRS)', () => {
     expect(currentKey()).toBe('k2');
     expect(el.querySelector('.story-text .tooltip-highlight')).toBeNull();
     expect(el.querySelector('.story-text')?.textContent).toContain('dos');
+  });
+
+  describe('audio y progreso — AC18', () => {
+    beforeEach(() => { FakeAudio.instances = []; vi.stubGlobal('Audio', FakeAudio); });
+    afterEach(() => { fixture.destroy(); vi.unstubAllGlobals(); });
+    const media = () => FakeAudio.instances.at(-1)!;
+    const withAudio = (lesson: StudentLesson): StudentLesson => ({
+      ...lesson, story: { ...lesson.story, audioSlowUrl: '/slow.mp3', audioNormalUrl: '/normal.mp3' },
+      blocks: lesson.blocks.map(b => b.type === 'keyframe' ? { ...b, audioUrl: '/frame.mp3' } : b),
+    });
+
+    it('reproducir, seek, repetir, terminar y reintentar nunca escriben progreso', async () => {
+      await create('f1', withAudio);
+      const initial = structuredClone(session.lesson()!.progress);
+      media().metadata(); session.audio.toggle('/slow.mp3'); await Promise.resolve();
+      session.audio.seek(12); session.audio.setRepeat(10, 20); media().currentTime = 21; media().emit('timeupdate');
+      session.audio.clearRepeat(); media().emit('ended'); media().emit('error'); session.audio.retry(); await Promise.resolve();
+      fixture.detectChanges();
+      expect(session.lesson()!.progress).toEqual(initial);
+      expect(lessonApi.completeNarrative).not.toHaveBeenCalled();
+      expect(lessonApi.setCurrentBlock).not.toHaveBeenCalled();
+      expect(lessonApi.getStory).toHaveBeenCalledTimes(1);
+      expect(lessonApi.answer).not.toHaveBeenCalled();
+    });
+
+    it('libera audio al cambiar de bloque, historia o cerrar y conserva texto/tooltips', async () => {
+      await create('k1', withAudio);
+      session.audio.toggle('/frame.mp3'); await Promise.resolve(); const frame = media();
+      session.goToBlock(1); fixture.detectChanges();
+      expect(frame.src).toBe(''); expect(session.audio.state()).toBe('idle');
+      session.goToBlockIndex(3); fixture.detectChanges();
+      expect(media().src).toContain('/slow.mp3');
+      session.audio.toggle('/slow.mp3'); await Promise.resolve(); const full = media();
+      nav.items.update(items => items.map(i => ({ ...i, canAccess: true }))); nav.goToNext(); fixture.detectChanges();
+      expect(full.src).toBe('');
+      const active = media(); fixture.destroy(); expect(active.src).toBe('');
+    });
   });
 
   describe('ilustraciones', () => {
