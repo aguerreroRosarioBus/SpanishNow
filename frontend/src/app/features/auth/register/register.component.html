@@ -6,8 +6,8 @@
       <p class="auth-card__subtitle">{{ 'auth.registerTitle' | t }}</p>
     </header>
 
-    @if (errorMessage) {
-      <div class="alert alert-danger" role="alert">{{ errorMessage }}</div>
+    @if (errorMessage()) {
+      <div class="alert alert-danger" role="alert">{{ errorMessage() }}</div>
     }
 
     <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" novalidate>
@@ -38,11 +38,11 @@
         }
       </div>
 
-      <button type="submit" class="btn btn-primary btn-lg w-100" [disabled]="registerForm.invalid || isLoading">
-        @if (isLoading) {
+      <button type="submit" class="btn btn-primary btn-lg w-100" [disabled]="registerForm.invalid || isLoading()">
+        @if (isLoading()) {
           <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
         }
-        {{ (isLoading ? 'auth.creatingAccount' : 'auth.createAccount') | t }}
+        {{ (isLoading() ? 'auth.creatingAccount' : 'auth.createAccount') | t }}
       </button>
 
       <p class="auth-card__alt">

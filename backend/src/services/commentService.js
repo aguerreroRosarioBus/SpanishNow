@@ -224,13 +224,13 @@ async function notify(comment, parent, author, story) {
     const course = story.unit.course;
     if (author.id === course.teacherId) {
       if (!parent || parent.userId === author.id) return;
-      const student = await User.findByPk(parent.userId, { attributes: ['id', 'name', 'email'] });
+      const student = await User.findByPk(parent.userId, { attributes: ['id', 'name', 'email', 'locale'] });
       if (!student || !student.email) return;
-      await sendMail({ to: student.email, ...templates.teacherReplied({ studentName: student.name, teacherName: author.name, course, story, body: comment.body }) });
+      await sendMail({ to: student.email, ...templates.teacherReplied({ studentName: student.name, teacherName: author.name, course, story, body: comment.body, locale: student.locale }) });
     } else if (!parent) {
-      const teacher = await User.findByPk(course.teacherId, { attributes: ['id', 'name', 'email'] });
+      const teacher = await User.findByPk(course.teacherId, { attributes: ['id', 'name', 'email', 'locale'] });
       if (!teacher || !teacher.email) return;
-      await sendMail({ to: teacher.email, ...templates.newQuestion({ teacherName: teacher.name, authorName: author.name, course, story, body: comment.body }) });
+      await sendMail({ to: teacher.email, ...templates.newQuestion({ teacherName: teacher.name, authorName: author.name, course, story, body: comment.body, locale: teacher.locale }) });
     }
   } catch (error) {
     console.error(`Comment ${comment.id} notification failed:`, error.message);

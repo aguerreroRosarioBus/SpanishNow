@@ -11,6 +11,7 @@ import { ResetPasswordComponent } from '../../features/auth/reset-password/reset
 import { LanguageSelectorComponent } from '../../shared/components/language-selector/language-selector.component';
 import { NavbarTopComponent } from '../../shared/components/navbar-top/navbar-top.component';
 import { SidebarNavComponent } from '../../shared/components/sidebar-nav/sidebar-nav.component';
+import { ChangePasswordModalComponent } from '../../shared/components/change-password-modal/change-password-modal.component';
 import { AuthService } from '../services/auth.service';
 import { I18nService, LOCALE_STORAGE_KEY } from './i18n.service';
 import { LocaleDatePipe, LocaleMoneyPipe, LocaleNumberPipe } from './locale-format.pipe';
@@ -100,6 +101,22 @@ describe('I18N: integración sin destruir formularios ni datos', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Passwords don’t match.');
     expect(component.form.controls.password.value).toBe('prueba123');
+  });
+
+  it('cambio de contraseña traduce errores por código conservando el borrador', () => {
+    const fixture = TestBed.createComponent(ChangePasswordModalComponent);
+    const component = fixture.componentInstance;
+    const values = { currentPassword: 'actual123', newPassword: 'nueva123', confirmPassword: 'nueva123' };
+    component.changePasswordForm.setValue(values);
+    component.onSubmit();
+    TestBed.inject(HttpTestingController).expectOne(`${environment.apiUrl}/auth/change-password`)
+      .flush({ error: 'Current password is incorrect', code: 'current_password_invalid', params: {} }, { status: 401, statusText: 'Unauthorized' });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[role="alert"]').textContent).toContain('La contraseña actual es incorrecta.');
+    TestBed.inject(I18nService).setLocale('en');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[role="alert"]').textContent).toContain('The current password is incorrect.');
+    expect(component.changePasswordForm.value).toEqual(values);
   });
 
   for (const role of ['student', 'teacher'] as const) {

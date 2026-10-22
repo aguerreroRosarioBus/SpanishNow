@@ -1,6 +1,6 @@
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -35,12 +35,13 @@ export class LoginComponent {
 
   // Estado del componente
   loginForm: FormGroup;           // Formulario reactivo
-  private failure: unknown = null;
-  private errorKey = '';
-  get errorMessage(): string {
-    return this.errorKey ? this.i18n.errorMessage(this.failure, this.errorKey) : '';
-  }
-  isLoading: boolean = false;     // Indicador de carga durante petición
+  private failure = signal<unknown>(null);
+  private errorKey = signal('');
+  readonly errorMessage = computed(() => {
+    const key = this.errorKey();
+    return key ? this.i18n.errorMessage(this.failure(), key) : '';
+  });
+  readonly isLoading = signal(false);
 
   constructor() {
     // Entrar a la pantalla de acceso descarta cualquier sesión vieja (el header no debe mostrar a otro usuario)
@@ -60,6 +61,7 @@ export class LoginComponent {
    * Método que se ejecuta al enviar el formulario
    */
   onSubmit(): void {
+    if (this.isLoading()) return;
     // Si el formulario es inválido, marcar todos los campos como touched
     // para mostrar los errores de validación
     if (this.loginForm.invalid) {
@@ -68,9 +70,9 @@ export class LoginComponent {
     }
 
     // Activar indicador de carga
-    this.isLoading = true;
-    this.errorKey = '';
-    this.failure = null;
+    this.isLoading.set(true);
+    this.errorKey.set('');
+    this.failure.set(null);
 
     // Obtener los valores del formulario
     const { email, password } = this.loginForm.value;
@@ -93,22 +95,22 @@ export class LoginComponent {
 
       // Si hay un error
       error: (error) => {
-        this.failure = error;
-        this.isLoading = false;
+        this.failure.set(error);
+        this.isLoading.set(false);
 
         // Mostrar mensaje de error apropiado
         if (error.status === 401) {
-          this.errorKey = 'auth.invalidCredentials';
+          this.errorKey.set('auth.invalidCredentials');
         } else if (error.status === 403) {
-          this.errorKey = 'auth.suspended';
+          this.errorKey.set('auth.suspended');
         } else {
-          this.errorKey = 'auth.loginError';
+          this.errorKey.set('auth.loginError');
         }
       },
 
       // Siempre se ejecuta al final (éxito o error)
       complete: () => {
-        this.isLoading = false;
+        this.isLoading.set(false);
       }
     });
   }

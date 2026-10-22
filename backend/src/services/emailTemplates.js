@@ -1,13 +1,16 @@
-// Email templates (English, simple HTML plus plain text). Each returns { subject, text, html }.
+// Emails propios EN/ES según preferencia del destinatario. HTML escapado y texto plano.
 const { frontendUrl } = require('../config/payments');
+const { emailLocale, emailText } = require('./emailMessages');
 
 const escapeHtml = value => String(value ?? '')
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
-/** 1999 + 'usd' -> "$19.99" (USD) / "19.99 EUR" style via Intl. */
-function formatMoney(cents, currency) {
+/** Cursos existentes expresados en centavos; código de moneda explícito en ambos idiomas. */
+function formatMoney(cents, currency, locale = 'en') {
   try {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: String(currency).toUpperCase() }).format(cents / 100);
+    return new Intl.NumberFormat(emailLocale(locale) === 'es' ? 'es-AR' : 'en-US', {
+      style: 'currency', currency: String(currency).toUpperCase(), currencyDisplay: 'code'
+    }).format(cents / 100);
   } catch (error) {
     return `${(cents / 100).toFixed(2)} ${String(currency).toUpperCase()}`;
   }
@@ -44,26 +47,29 @@ const passwordUrl = (token, { invite = false } = {}) =>
   `${frontendUrl()}/auth/reset-password?token=${encodeURIComponent(token)}${invite ? '&invite=1' : ''}`;
 
 /** Purchase confirmation. With `inviteToken` (new account) the button asks the buyer to set a password. */
-function purchaseConfirmation({ name, course, amount, currency, inviteToken }) {
+function purchaseConfirmation({ name, course, amount, currency, inviteToken, locale }) {
+  const lang = emailLocale(locale);
+  const t = (key, params) => emailText(lang, key, params);
   const paragraphs = [
-    `Hi ${name || 'there'},`,
-    `Thank you for your purchase. You now have full access to "${course.title}".`,
-    `Amount paid: ${formatMoney(amount, currency)}.`
+    t('email.greeting', { name: name || t('email.defaultName') }),
+    t('email.purchaseThanks', { course: course.title }),
+    t('email.amountPaid', { amount: formatMoney(amount, currency, lang) })
   ];
-  if (inviteToken) paragraphs.push('We created a SpanishNow account for you with this email address. Choose your password to sign in.');
+  if (inviteToken) paragraphs.push(t('email.accountCreated'));
   const content = {
-    title: 'Your purchase is confirmed',
+    lang,
+    title: t('email.purchaseTitle'),
     paragraphs,
     button: inviteToken
-      ? { label: 'Set your password', url: passwordUrl(inviteToken, { invite: true }) }
-      : { label: 'Start learning', url: courseUrl(course) },
-    footer: inviteToken ? 'This link is valid for 14 days. After that, use "Forgot your password?" on the sign-in page.' : undefined
+      ? { label: t('email.setPassword'), url: passwordUrl(inviteToken, { invite: true }) }
+      : { label: t('email.startLearning'), url: courseUrl(course) },
+    footer: inviteToken ? t('email.inviteExpiry') : undefined
   };
-  const email = build(`Your purchase: ${course.title}`, content);
+  const email = build(t('email.purchaseSubject', { course: course.title }), content);
   if (inviteToken) {
     // A new buyer needs both: choose a password first, then open the course.
-    email.text += `\n\nOnce you are in, your course is here: ${courseUrl(course)}`;
-    email.html = email.html.replace('</body>', `<p style="font-size:13px;color:#555">Once you are in, your course is here: <a href="${escapeHtml(courseUrl(course))}">${escapeHtml(courseUrl(course))}</a></p></body>`);
+    email.text += `\n\n${t('email.courseLink')} ${courseUrl(course)}`;
+    email.html = email.html.replace('</body>', `<p style="font-size:13px;color:#555">${escapeHtml(t('email.courseLink'))} <a href="${escapeHtml(courseUrl(course))}">${escapeHtml(courseUrl(course))}</a></p></body>`);
   }
   return email;
 }
@@ -72,67 +78,78 @@ function purchaseConfirmation({ name, course, amount, currency, inviteToken }) {
  * Invitation for students moved from Hotmart (import) or added by hand. `hasAccount` is true for people who already
  * chose a password: they get a sign-in link instead of a set-password link.
  */
-function invitation({ name, course, teacherName, inviteToken, hasAccount }) {
-  const teacher = teacherName || 'Your teacher';
+function invitation({ name, course, teacherName, inviteToken, hasAccount, locale }) {
+  const lang = emailLocale(locale);
+  const t = (key, params) => emailText(lang, key, params);
+  const teacher = teacherName || t('email.defaultTeacher');
   const paragraphs = [
-    `Hi ${name || 'there'},`,
-    `${teacher} has moved the course "${course.title}" to SpanishNow. It is now available in your SpanishNow account.`,
-    'Your purchase on Hotmart is still valid: you keep full access to the course, at no extra cost.'
+    t('email.greeting', { name: name || t('email.defaultName') }),
+    t('email.courseMoved', { teacher, course: course.title }),
+    t('email.hotmartValid')
   ];
-  if (hasAccount) paragraphs.push('Sign in with your usual email address and password to start learning.');
-  else paragraphs.push('We created your account with this email address. Choose a password to get started.');
-  return build(`${teacher} has moved your course to SpanishNow`, {
-    title: `${course.title} is now on SpanishNow`,
+  if (hasAccount) paragraphs.push(t('email.usualAccount'));
+  else paragraphs.push(t('email.accountCreated'));
+  return build(t('email.inviteSubject', { teacher }), {
+    lang,
+    title: t('email.inviteTitle', { course: course.title }),
     paragraphs,
     button: hasAccount
-      ? { label: 'Start learning', url: courseUrl(course) }
-      : { label: 'Set your password', url: passwordUrl(inviteToken, { invite: true }) },
-    footer: hasAccount ? undefined : 'This link is valid for 14 days. After that, use "Forgot your password?" on the sign-in page.'
+      ? { label: t('email.startLearning'), url: courseUrl(course) }
+      : { label: t('email.setPassword'), url: passwordUrl(inviteToken, { invite: true }) },
+    footer: hasAccount ? undefined : t('email.inviteExpiry')
   });
 }
 
-function passwordReset({ name, token }) {
-  return build('Reset your SpanishNow password', {
-    title: 'Reset your password',
+function passwordReset({ name, token, locale }) {
+  const lang = emailLocale(locale);
+  const t = (key, params) => emailText(lang, key, params);
+  return build(t('email.resetSubject'), {
+    lang,
+    title: t('email.resetTitle'),
     paragraphs: [
-      `Hi ${name || 'there'},`,
-      'We received a request to reset the password of your SpanishNow account. Use the button below to choose a new one.'
+      t('email.greeting', { name: name || t('email.defaultName') }),
+      t('email.resetRequest')
     ],
-    button: { label: 'Reset password', url: passwordUrl(token) },
-    footer: 'This link expires in 1 hour. If you did not ask for it, you can ignore this email: your password stays the same.'
+    button: { label: t('email.resetButton'), url: passwordUrl(token) },
+    footer: t('email.resetExpiry')
   });
 }
 
 const teacherManageUrl = (course, story) => `${frontendUrl()}/teacher/course/${course.id}/manage?story=${story.id}`;
 const lessonUrl = (course, story) => `${frontendUrl()}/student/course/${course.id}/play?story=${story.id}`;
 
-/** To the teacher (Spanish): a student asked something under a lesson. No gendered wording. */
-function newQuestion({ teacherName, authorName, course, story, body }) {
-  return build(`Nueva pregunta en ${story.title}`, {
-    lang: 'es',
-    title: 'Nueva pregunta en una lección',
+/** Aviso al docente en su idioma, conservando el mensaje original. */
+function newQuestion({ teacherName, authorName, course, story, body, locale }) {
+  const lang = emailLocale(locale);
+  const t = (key, params) => emailText(lang, key, params);
+  return build(t('email.questionSubject', { story: story.title }), {
+    lang,
+    title: t('email.questionTitle'),
     paragraphs: [
-      `Hola ${teacherName || ''}`.trim() + ',',
-      `Hay una nueva pregunta en la lección «${story.title}» del curso «${course.title}».`,
-      `Escrita por: ${authorName || 'una persona inscripta'}`
+      t('email.greeting', { name: teacherName || t('email.defaultName') }),
+      t('email.questionBody', { story: story.title, course: course.title }),
+      t('email.questionAuthor', { author: authorName || t('email.defaultAuthor') })
     ],
     quote: body,
-    button: { label: 'Ver la lección', url: teacherManageUrl(course, story) },
-    footer: 'Puedes responder desde la bandeja de Comentarios.'
+    button: { label: t('email.viewLesson'), url: teacherManageUrl(course, story) },
+    footer: t('email.questionFooter')
   });
 }
 
-/** To the student (English): the teacher replied to their question. The wording avoids gendered pronouns. */
-function teacherReplied({ studentName, teacherName, course, story, body }) {
-  const teacher = teacherName || 'Your teacher';
-  return build(`${teacher} replied to your question in ${story.title}`, {
-    title: 'You have a reply',
+/** Aviso al alumno en su idioma; la respuesta humana nunca se traduce. */
+function teacherReplied({ studentName, teacherName, course, story, body, locale }) {
+  const lang = emailLocale(locale);
+  const t = (key, params) => emailText(lang, key, params);
+  const teacher = teacherName || t('email.defaultTeacher');
+  return build(t('email.replySubject', { teacher, story: story.title }), {
+    lang,
+    title: t('email.replyTitle'),
     paragraphs: [
-      `Hi ${studentName || 'there'},`,
-      `${teacher} replied to your question in the lesson "${story.title}" of "${course.title}".`
+      t('email.greeting', { name: studentName || t('email.defaultName') }),
+      t('email.replyBody', { teacher, story: story.title, course: course.title })
     ],
     quote: body,
-    button: { label: 'Open the lesson', url: lessonUrl(course, story) }
+    button: { label: t('email.openLesson'), url: lessonUrl(course, story) }
   });
 }
 

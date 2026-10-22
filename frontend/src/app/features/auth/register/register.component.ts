@@ -1,6 +1,6 @@
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -27,10 +27,13 @@ export class RegisterComponent {
   readonly returnUrl = liveReturnUrl(inject(ActivatedRoute).snapshot.queryParamMap.get('returnUrl'));
 
   registerForm: FormGroup;
-  private failure: unknown = null;
-  private errorKey = '';
-  get errorMessage(): string { return this.errorKey ? this.i18n.errorMessage(this.failure, this.errorKey) : ''; }
-  isLoading: boolean = false;
+  private failure = signal<unknown>(null);
+  private errorKey = signal('');
+  readonly errorMessage = computed(() => {
+    const key = this.errorKey();
+    return key ? this.i18n.errorMessage(this.failure(), key) : '';
+  });
+  readonly isLoading = signal(false);
 
   constructor() {
     // Formulario con campos adicionales comparado con Login
@@ -50,14 +53,15 @@ export class RegisterComponent {
    * Maneja el envío del formulario de registro
    */
   onSubmit(): void {
+    if (this.isLoading()) return;
     if (this.registerForm.invalid) {
       this.registerForm.markAllAsTouched();
       return;
     }
 
-    this.isLoading = true;
-    this.errorKey = '';
-    this.failure = null;
+    this.isLoading.set(true);
+    this.errorKey.set('');
+    this.failure.set(null);
 
     // Obtener todos los valores del formulario
     const formData = this.registerForm.value;
@@ -79,20 +83,20 @@ export class RegisterComponent {
       },
 
       error: (error) => {
-        this.failure = error;
-        this.isLoading = false;
+        this.failure.set(error);
+        this.isLoading.set(false);
 
         // Manejar diferentes tipos de errores
         if (error.status === 400) {
           // Error de validación (ej: email ya existe)
-          this.errorKey = 'auth.invalidData';
+          this.errorKey.set('auth.invalidData');
         } else {
-          this.errorKey = 'auth.registerError';
+          this.errorKey.set('auth.registerError');
         }
       },
 
       complete: () => {
-        this.isLoading = false;
+        this.isLoading.set(false);
       }
     });
   }
