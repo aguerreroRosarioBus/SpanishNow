@@ -6,7 +6,7 @@ const { Story, Unit, Course, Enrollment, LessonPlan, LessonBlock, LessonProgress
 const cloudinary = require('../config/cloudinary');
 const multer = require('multer');
 const upload = require('../middlewares/upload.middleware');
-const { REINFORCEMENTS, MAX_AUDIO_URL, fail, validId, planWithBlocks, blockData, currentDraft,
+const { REINFORCEMENTS, MAX_AUDIO_URL, fail, validId, planWithBlocks, blockData, draftTransaction, currentDraft,
   replaceDraftBlocks, publishDraft, validateShape } = require('../services/lessonPlanService');
 const { ContentLockedError, assertUnitOpen, sendLocked } = require('../services/unitAvailability');
 
@@ -92,7 +92,7 @@ const draftDto = async (plan, transaction) => withKeyframeTooltips(planDto(plan)
 
 router.get('/story/:storyId/draft', authMiddleware, isTeacher, async (req, res) => {
   try {
-    const result = await sequelize.transaction(async transaction => {
+    const result = await draftTransaction(async transaction => {
       const story = await storyForTeacher(req.params.storyId, req.user.id, transaction);
       return draftDto(await planWithBlocks((await currentDraft(story, transaction)).id, transaction), transaction);
     });
@@ -102,7 +102,7 @@ router.get('/story/:storyId/draft', authMiddleware, isTeacher, async (req, res) 
 
 router.put('/story/:storyId/draft', authMiddleware, isTeacher, async (req, res) => {
   try {
-    const result = await sequelize.transaction(async transaction => {
+    const result = await draftTransaction(async transaction => {
       const story = await storyForTeacher(req.params.storyId, req.user.id, transaction);
       const draft = await currentDraft(story, transaction);
       if (req.body.revision !== draft.revision) fail(409, 'Draft revision changed; reload it');
@@ -115,7 +115,7 @@ router.put('/story/:storyId/draft', authMiddleware, isTeacher, async (req, res) 
 
 router.put('/story/:storyId/draft/reorder', authMiddleware, isTeacher, async (req, res) => {
   try {
-    const result = await sequelize.transaction(async transaction => {
+    const result = await draftTransaction(async transaction => {
       const story = await storyForTeacher(req.params.storyId, req.user.id, transaction);
       const draft = await currentDraft(story, transaction);
       if (req.body.revision !== draft.revision) fail(409, 'Draft revision changed; reload it');
@@ -160,7 +160,7 @@ const audioRoute = '/story/:storyId/draft/blocks/:blockKey/audio';
 router.post(audioRoute, authMiddleware, isTeacher, audioPrecheck, audioUpload, async (req, res) => {
   try {
     const { blockKey } = req.params;
-    await sequelize.transaction(async transaction => {
+    await draftTransaction(async transaction => {
       await draftKeyframeBlock(await storyForTeacher(req.params.storyId, req.user.id, transaction), blockKey, transaction);
     });
     const file = req.file;
@@ -175,7 +175,7 @@ router.post(audioRoute, authMiddleware, isTeacher, audioPrecheck, audioUpload, a
       console.warn('Cloudinary upload failed for keyframe audio:', cloudinaryError.message);
     }
     if (typeof audioUrl !== 'string' || !audioUrl || audioUrl.length > MAX_AUDIO_URL) fail(502, 'Audio upload failed; the keyframe was not modified');
-    await sequelize.transaction(async transaction => {
+    await draftTransaction(async transaction => {
       const block = await draftKeyframeBlock(await storyForTeacher(req.params.storyId, req.user.id, transaction), blockKey, transaction);
       await block.update({ audioUrl }, { transaction });
     });
@@ -185,7 +185,7 @@ router.post(audioRoute, authMiddleware, isTeacher, audioPrecheck, audioUpload, a
 
 router.delete(audioRoute, authMiddleware, isTeacher, async (req, res) => {
   try {
-    await sequelize.transaction(async transaction => {
+    await draftTransaction(async transaction => {
       const block = await draftKeyframeBlock(await storyForTeacher(req.params.storyId, req.user.id, transaction), req.params.blockKey, transaction);
       await block.update({ audioUrl: null }, { transaction });
     });
@@ -214,7 +214,7 @@ const imageRoute = '/story/:storyId/draft/blocks/:blockKey/image';
 router.post(imageRoute, authMiddleware, isTeacher, audioPrecheck, imageUpload, async (req, res) => {
   try {
     const { blockKey } = req.params;
-    await sequelize.transaction(async transaction => {
+    await draftTransaction(async transaction => {
       await draftKeyframeBlock(await storyForTeacher(req.params.storyId, req.user.id, transaction), blockKey, transaction, 'an illustration');
     });
     const file = req.file;
@@ -229,7 +229,7 @@ router.post(imageRoute, authMiddleware, isTeacher, audioPrecheck, imageUpload, a
       console.warn('Cloudinary upload failed for keyframe image:', cloudinaryError.message);
     }
     if (typeof imageUrl !== 'string' || !imageUrl || imageUrl.length > MAX_AUDIO_URL) fail(502, 'Image upload failed; the keyframe was not modified');
-    await sequelize.transaction(async transaction => {
+    await draftTransaction(async transaction => {
       const block = await draftKeyframeBlock(await storyForTeacher(req.params.storyId, req.user.id, transaction), blockKey, transaction, 'an illustration');
       await block.update({ imageUrl }, { transaction });
     });
@@ -239,7 +239,7 @@ router.post(imageRoute, authMiddleware, isTeacher, audioPrecheck, imageUpload, a
 
 router.delete(imageRoute, authMiddleware, isTeacher, async (req, res) => {
   try {
-    await sequelize.transaction(async transaction => {
+    await draftTransaction(async transaction => {
       const block = await draftKeyframeBlock(await storyForTeacher(req.params.storyId, req.user.id, transaction), req.params.blockKey, transaction, 'an illustration');
       await block.update({ imageUrl: null }, { transaction });
     });
@@ -249,7 +249,7 @@ router.delete(imageRoute, authMiddleware, isTeacher, async (req, res) => {
 
 router.post('/story/:storyId/publish', authMiddleware, isTeacher, async (req, res) => {
   try {
-    const result = await sequelize.transaction(async transaction => {
+    const result = await draftTransaction(async transaction => {
       const story = await storyForTeacher(req.params.storyId, req.user.id, transaction);
       const published = await publishDraft(story, req.body.revision, transaction);
       return draftDto(published, transaction);

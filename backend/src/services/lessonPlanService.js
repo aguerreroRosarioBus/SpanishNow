@@ -1,5 +1,5 @@
 const { randomUUID } = require('crypto');
-const { Op } = require('sequelize');
+const { Op, Transaction } = require('sequelize');
 const sequelize = require('../config/database');
 const { Story, Unit, Question, Vocabulary, LessonPlan, LessonBlock, Tooltip } = require('../models');
 
@@ -137,6 +137,16 @@ const savedBlock = (planId, b, position) => ({
   vocabularySnapshot: b.type === 'expression' ? b.vocabularySnapshot || null : null
 });
 
+/**
+ * Transaction for anything that may create or publish a draft (currentDraft, publishDraft). READ COMMITTED because
+ * currentDraft looks for a draft that often does not exist yet: under REPEATABLE READ that locking read takes a gap lock
+ * on lesson_plan_story_revision, and two new stories at the end of the index share the same gap, so both inserts wait for
+ * each other (deadlock). Under READ COMMITTED a locking read with no match takes no gap lock and still sees the latest
+ * committed draft. Drafts of one story stay serialized by the lock on its story row, which every caller takes first.
+ */
+const draftTransaction = fn => sequelize.transaction({ isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED }, fn);
+
+// The caller must hold the story row lock (SELECT ... FOR UPDATE) inside a draftTransaction.
 async function currentDraft(story, transaction) {
   let draft = await LessonPlan.findOne({ where: { storyId: story.id, status: 'draft' }, transaction, lock: transaction.LOCK.UPDATE });
   if (draft) return draft;
@@ -220,5 +230,5 @@ async function publishDraft(story, revision, transaction) {
 module.exports = {
   TYPES, PHASES, REINFORCEMENTS, MAX_AUDIO_URL, MAX_IMAGE_ALT, fail, validId,
   planWithBlocks, blockData, validateLengths, validateShape, validateReferences,
-  savedBlock, currentDraft, stageRevisits, replaceDraftBlocks, publishDraft
+  savedBlock, draftTransaction, currentDraft, stageRevisits, replaceDraftBlocks, publishDraft
 };
