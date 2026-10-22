@@ -147,7 +147,7 @@ Estados (PACK-14): `draft → sent → checkout_pending → paid`; terminales `e
 
 ### 3.7 Órdenes de paquete, intentos y eventos del proveedor (W05)
 
-`class_package_orders` (una fila = un intento de checkout; separada de `orders` de cursos): `offerId`, `buyerId`, `amount`, `currency`, `provider ENUM('hotmart','fake')`, `status`, `checkoutRef CHAR(32)` (**UNIQUE**), `pendingOfferId NULL` (**UNIQUE**; igual a `offerId` mientras `status='pending'`, `NULL` en cualquier otro estado → *un solo checkout pendiente por oferta* en base, PACK-15), `idempotencyKey`, `providerTransactionId VARCHAR(64)` (**UNIQUE**), `providerProductId`, `providerOfferCode`, `reportedAmount`, `reportedCurrency`, `buyerEmailReported`, `refundedAmount`, `paidAt`, `refundedAt`, `failedAt`, `reviewReason VARCHAR(64)`, `reviewResolvedAt`, `reviewResolvedById`.
+`class_package_orders` (una fila = un intento de checkout; separada de `orders` de cursos): `offerId`, `buyerId`, `amount`, `currency`, `provider ENUM('hotmart','fake')`, `status`, `checkoutRef CHAR(32)` (**UNIQUE**), `pendingOfferId` (**columna generada por MySQL** `CASE WHEN status='pending' THEN offerId END`, con índice **UNIQUE** → *un solo checkout pendiente por oferta* impuesto en base, PACK-15; nadie la escribe y no está en el modelo; por eso la FK `offerId` es `ON UPDATE RESTRICT`), `idempotencyKey`, `providerTransactionId VARCHAR(64)` (**UNIQUE**), `providerProductId`, `providerOfferCode`, `reportedAmount`, `reportedCurrency`, `buyerEmailReported`, `refundedAmount`, `paidAt`, `refundedAt`, `failedAt`, `reviewReason VARCHAR(64)`, `reviewResolvedAt`, `reviewResolvedById`.
 
 Estados (PACK-14 + PACK-17): `pending → paid → partially_refunded → refunded`; `pending → failed`; `paid_needs_review` (pago efectivo que no se puede acreditar: oferta vencida/cancelada/reemplazada o datos que no cuadran). `paid_needs_review → paid` (acreditado tras revisión) o `→ refunded`.
 
@@ -207,7 +207,7 @@ Estados de sesión (AGENDA-01): individual `draft → proposed → confirmed →
 | Versión de propuesta | `class_session_proposals(sessionId, version)` |
 | Participante por sesión / beneficiario por compra | `class_session_participants(sessionId, userId)`, `class_package_beneficiaries(purchaseId, userId)` |
 
-MySQL permite varios `NULL` en un único: por eso los mensajes de sistema (`senderId NULL`) no chocan y `pendingOfferId` se vacía al salir de `pending`. Los índices no únicos se limitan a los filtros reales listados en §3.
+MySQL permite varios `NULL` en un único: por eso los mensajes de sistema (`senderId NULL`) no chocan y `pendingOfferId` (generada) vale `NULL` en cuanto la orden sale de `pending`. Los índices no únicos se limitan a los filtros reales listados en §3.
 
 ---
 
@@ -307,7 +307,7 @@ Dentro del lock: validar versión vigente de la propuesta, permisos, compra acti
 `POST /api/class-offers/:id/checkout` con `Idempotency-Key`:
 
 1. Autentica; el usuario debe ser el `buyerId` de la oferta (si no, 404). Feature `class_packages` activo, docente sin `salesPausedAt`, oferta `sent`/`checkout_pending` y no vencida, Hotmart configurado (`HOTMART_HOTTOK`) o modo fake; si no, `503 payments_unavailable`.
-2. Transacción con lock de la oferta: si hay orden `pending` (`pendingOfferId`) se **reutiliza** y devuelve la misma URL (doble clic, dos pestañas). Si no, crea `class_package_orders` (`pending`, `checkoutRef` aleatorio de 32 caracteres `[a-z0-9]`, importe y moneda **de la oferta**) y pasa la oferta a `checkout_pending`.
+2. Transacción con lock de la oferta: si hay orden `pending` de la oferta se **reutiliza** y devuelve la misma URL (doble clic, dos pestañas). Si no, crea `class_package_orders` (`pending`, `checkoutRef` aleatorio de 32 caracteres `[a-z0-9]`, importe y moneda **de la oferta**) y pasa la oferta a `checkout_pending`.
 3. La URL es `hotmartCheckoutUrl` + `off=<hotmartOfferCode>` + `sck=<checkoutRef>` + `email`/`name` del comprador prellenados. No hay llamada al proveedor, así que no existe el caso de timeout al crear; el cuerpo de la petición se ignora salvo la clave de idempotencia.
 4. El redirect de vuelta solo muestra estado (`GET /api/class-offers/:id/checkout`); **no acredita** nada (PACK-16).
 
@@ -321,10 +321,10 @@ Se reutiliza `POST /api/payments/hotmart/webhook` y `verifyHottok`. `handleEvent
 4. **Aprobado** (`PURCHASE_APPROVED`/`PURCHASE_COMPLETE`), en **una** transacción con lock de la orden y de la oferta:
    - orden ya `paid`/`refunded`/`paid_needs_review` → nada (replay);
    - producto y `offer.code` del webhook ≠ snapshot, u oferta `expired`/`cancelled`/`replaced`, u orden `failed` → orden `paid_needs_review` con `reviewReason` (`offer_closed`, `product_mismatch`, `offer_code_mismatch`), outbox para avisar al docente y a `class_payments.review`, mensaje de sistema al comprador «pago recibido en revisión» (PACK-17);
-   - si no → orden `paid` (`providerTransactionId`, importes reportados), `pendingOfferId = NULL`, oferta `paid`, compra creada con `expiresAt = paidAt + validityHours`, beneficiarios desde la oferta, `credits.apply(grant)` con `grant:order:<id>`, mensaje de sistema en el chat y outbox `email.purchase_confirmed`.
+   - si no → orden `paid` (`providerTransactionId`, importes reportados), oferta `paid`, compra creada con `expiresAt = paidAt + validityHours`, beneficiarios desde la oferta, `credits.apply(grant)` con `grant:order:<id>`, mensaje de sistema en el chat y outbox `email.purchase_confirmed`.
    - La identidad del beneficiario sale **de la oferta**, nunca del email de Hotmart; si el email difiere se guarda en `buyerEmailReported` y en `audit_logs`, sin bloquear.
 5. **Reembolso / contracargo** (`PURCHASE_REFUNDED`, `PURCHASE_CHARGEBACK`): orden `refunded` (o `partially_refunded` si el importe es parcial), `refund` del saldo `available` con `refund:order:<id>:<eventKey>`, compra `cancelled`. Las reservas futuras quedan para que el docente las resuelva (outbox `review.refunded_with_reservations`); lo consumido no se toca. Si llega **antes** que la aprobación, la orden queda `refunded` y la aprobación posterior no acredita (igual que cursos).
-6. **Cancelado / expirado** en Hotmart (`PURCHASE_CANCELED`, `PURCHASE_EXPIRED`, `PURCHASE_PROTEST` sin cobro): orden `pending` → `failed`, `pendingOfferId = NULL`, oferta vuelve a `sent` si no venció.
+6. **Cancelado / expirado** en Hotmart (`PURCHASE_CANCELED`, `PURCHASE_EXPIRED`, `PURCHASE_PROTEST` sin cobro): orden `pending` → `failed`, oferta vuelve a `sent` si no venció.
 7. Cualquier evento o producto desconocido responde 200 con `handled: false` (Hotmart desactiva webhooks que fallan), dejando el evento `ignored`.
 
 Garantías: el evento único + `providerTransactionId` único + compra única por orden + `grant:order:<id>` único hacen que webhook repetido, concurrente o desordenado produzca **una** compra y **una** acreditación (AC03). Ningún paso crea `enrollments` ni `orders` de cursos.

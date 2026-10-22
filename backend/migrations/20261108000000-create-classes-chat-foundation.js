@@ -156,17 +156,18 @@ function tables(S) {
     {
       name: 'class_package_orders',
       columns: {
-        id, offerId: ref('class_offers'), buyerId: user(), ...money,
+        // ON UPDATE RESTRICT: offerId is the base of the generated pendingOfferId, and MySQL forbids CASCADE there.
+        id, offerId: { ...ref('class_offers'), onUpdate: 'RESTRICT' }, buyerId: user(), ...money,
         provider: { type: S.ENUM('hotmart', 'fake'), allowNull: false },
         status: { type: S.ENUM('pending', 'paid', 'failed', 'refunded', 'partially_refunded', 'paid_needs_review'), allowNull: false, defaultValue: 'pending' },
-        checkoutRef: { type: S.CHAR(32), allowNull: false }, pendingOfferId: int(undefined, true), idempotencyKey: str(64),
+        checkoutRef: { type: S.CHAR(32), allowNull: false }, idempotencyKey: str(64),
         providerTransactionId: str(64), providerProductId: str(40), providerOfferCode: str(40),
         reportedAmount: int(undefined, true), reportedCurrency: { type: S.CHAR(3) }, buyerEmailReported: str(255),
         refundedAmount: int(0), paidAt: date(), refundedAt: date(), failedAt: date(),
         reviewReason: str(64), reviewResolvedAt: date(), reviewResolvedById: user('SET NULL', true), ...timestamps
       },
       indexes: [
-        [['checkoutRef'], { unique: true }], [['pendingOfferId'], { unique: true }], [['providerTransactionId'], { unique: true }],
+        [['checkoutRef'], { unique: true }], [['providerTransactionId'], { unique: true }],
         [['offerId']], [['buyerId', 'status']], [['status', 'updatedAt']]
       ]
     },
@@ -325,6 +326,29 @@ function tables(S) {
   ];
 }
 
+/**
+ * One pending checkout per offer (CONTRACT-01, PACK-15), derived by MySQL from status and offerId so no writer can get it
+ * wrong: pendingOfferId = offerId while status = 'pending', NULL otherwise (a unique index allows any number of NULLs).
+ * A plain column written by the application (an earlier draft of this migration) is replaced.
+ */
+const PENDING_EXPRESSION = "CASE WHEN `status` = 'pending' THEN `offerId` END";
+
+async function pendingCheckoutUnique(q) {
+  const [[column]] = await q.sequelize.query(
+    "SELECT GENERATION_EXPRESSION AS expression FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'class_package_orders' AND COLUMN_NAME = 'pendingOfferId'"
+  );
+  if (column && !column.expression) {
+    if ((await q.showIndex('class_package_orders')).some(i => i.name === 'class_package_orders_pending_offer_id')) {
+      await q.removeIndex('class_package_orders', 'class_package_orders_pending_offer_id');
+    }
+    await q.removeColumn('class_package_orders', 'pendingOfferId');
+  }
+  if (!column || !column.expression) {
+    await q.sequelize.query(`ALTER TABLE class_package_orders ADD COLUMN pendingOfferId INT GENERATED ALWAYS AS (${PENDING_EXPRESSION}) STORED`);
+  }
+  await index(q, 'class_package_orders', ['pendingOfferId'], { unique: true });
+}
+
 const USER_COLUMNS = S => ({
   locale: { type: S.ENUM('en', 'es'), allowNull: true },
   timeZone: { type: S.STRING(64), allowNull: true },
@@ -351,6 +375,8 @@ module.exports = {
         references: { table: 'class_package_template_versions', field: 'id' }, onDelete: 'SET NULL', onUpdate: 'CASCADE'
       });
     }
+
+    await pendingCheckoutUnique(q);
 
     const users = await q.describeTable('users');
     for (const [name, spec] of Object.entries(USER_COLUMNS(S))) {

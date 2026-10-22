@@ -93,12 +93,22 @@ describe('CONTRACT-01: uniqueness enforced by the database', () => {
     await Message.create({ conversationId: chain.conversation.id, seq: 4, type: 'system_event', eventCode: 'offer_paid' });
   });
 
-  test('a single pending checkout per offer; any number once they are settled', async () => {
-    const order = { offerId: chain.offer.id, buyerId: chain.student.id, amount: 9000, currency: 'USD', provider: 'fake' };
-    await ClassPackageOrder.create({ ...order, checkoutRef: unique(), pendingOfferId: chain.offer.id });
-    expect(await errorName(ClassPackageOrder.create({ ...order, checkoutRef: unique(), pendingOfferId: chain.offer.id }))).toBe('SequelizeUniqueConstraintError');
+  test('a single pending checkout per offer, enforced by MySQL from status and offerId (nothing to fill in)', async () => {
+    const offer = (await packageChain({ units: 0 })).offer;
+    const order = { offerId: offer.id, buyerId: offer.buyerId, amount: 9000, currency: 'USD', provider: 'fake' };
+    const first = await ClassPackageOrder.create({ ...order, checkoutRef: unique() });
+    expect(await errorName(ClassPackageOrder.create({ ...order, checkoutRef: unique() }))).toBe('SequelizeUniqueConstraintError');
+    // Raw SQL cannot sidestep it either: the column is generated.
+    await expect(sequelize.query(
+      "INSERT INTO class_package_orders (offerId, buyerId, amount, currency, provider, status, checkoutRef, pendingOfferId, refundedAmount, createdAt, updatedAt) VALUES (?, ?, 9000, 'USD', 'fake', 'pending', ?, NULL, 0, NOW(), NOW())",
+      { replacements: [offer.id, offer.buyerId, unique()] }
+    )).rejects.toThrow(/generated column/i);
+    // Settling the pending attempt frees the slot; settled attempts never collide.
+    await first.update({ status: 'failed' });
     await ClassPackageOrder.create({ ...order, checkoutRef: unique(), status: 'failed' });
-    await ClassPackageOrder.create({ ...order, checkoutRef: unique(), status: 'failed' });
+    await ClassPackageOrder.create({ ...order, checkoutRef: unique() });
+    const [{ pending }] = await sequelize.query('SELECT COUNT(*) AS pending FROM class_package_orders WHERE pendingOfferId = ?', { replacements: [offer.id], type: QueryTypes.SELECT });
+    expect(Number(pending)).toBe(1);
   });
 
   test('provider transactions and events are processed once', async () => {
