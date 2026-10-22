@@ -20,7 +20,7 @@ Estado de la implementación en W00: el esquema completo (§3) existe como migra
 
 ### 1.2 Tiempo (TZ-01–TZ-06, TZ-16)
 
-- **Persistencia**: columnas `DATETIME` en **UTC**. La conexión Sequelize fija `timezone: '+00:00'` de forma explícita (`src/config/database.js`); el resultado no depende de `TZ` del proceso ni de `time_zone` de MySQL (prueba `tests/w00.time.test.js`).
+- **Persistencia**: columnas `DATETIME` en **UTC**. La conexión Sequelize fija `timezone: '+00:00'` de forma explícita (`src/config/database.js`); el resultado no depende de `TZ` del proceso ni de `time_zone` de MySQL (prueba «UTC persistence» en `backend/tests/w00.foundation.test.js`).
 - **API, salida**: instantes ISO 8601 con `Z` y milisegundos (`2026-10-22T13:00:00.000Z`).
 - **API, entrada**: un instante se acepta solo con `Z` o desplazamiento explícito (`2026-10-22T09:00:00-04:00`). Una cadena sin zona se rechaza con `time_without_zone`. Las horas de pared se envían como *intención local* (§1.3), nunca como instante.
 - **Zonas**: identificador IANA (`America/Argentina/Cordoba`) en `VARCHAR(64)`, validado con `Intl.supportedValuesOf('timeZone')` + alias que acepte `Temporal`. Prohibido `UTC-3`, `EST`, países.
@@ -370,7 +370,7 @@ outbox.start({ intervalMs }) / outbox.stop();            // bucle del proceso (s
 
 ## 9. Rutas de API congeladas (§13.1)
 
-Todas bajo autenticación salvo las marcadas *pública*/*callback*. Todas detrás del flag del módulo (§11): con el flag apagado responden `404 feature_disabled`. «Dueño» = paquete que la implementa. Ninguna existe todavía.
+Todas bajo autenticación salvo las marcadas *pública*/*callback*. Las rutas que crean o cambian algo van detrás del flag del módulo (§11) y con el flag apagado responden `404 feature_disabled`; las lecturas de lo ya adquirido (`GET /api/me/class-packages*`, `GET /api/class-sessions*`, historial de conversaciones existentes) y las acciones para resolver compromisos (cancelar, marcar asistencia, reembolsar) no dependen del flag. «Dueño» = paquete que la implementa. Ninguna existe todavía.
 
 ### 9.1 Preferencias — W01
 
@@ -524,7 +524,7 @@ Todas bajo autenticación salvo las marcadas *pública*/*callback*. Todas detrá
 | `FEATURE_GOOGLE_CALENDAR=1` | Calendar (W07) |
 | `FEATURE_ZOOM=1` | Zoom (W08) |
 
-Apagar un flag oculta la funcionalidad nueva pero **no** borra ni bloquea derechos adquiridos: las compras siguen visibles en `/api/me/class-packages` mientras `FEATURE_CLASS_PACKAGES` esté apagado solo para nuevas ofertas/checkout (regla de cada paquete: lectura propia siempre permitida). `GET /api/features` (*pública*) devuelve el mapa para el frontend.
+Apagar un flag oculta la funcionalidad nueva (nuevas consultas, ofertas, checkouts, propuestas) pero **no** borra ni bloquea derechos adquiridos: las compras, el saldo y las sesiones confirmadas siguen visibles y resolubles (ver §9). `GET /api/features` (*pública*) devuelve el mapa para el frontend.
 
 Modos fake: `PAYMENTS_FAKE=1` (existente) e `INTEGRATIONS_FAKE=1` (Calendar/Zoom por adaptador falso). `features.assertSafe()` hace que el proceso **no arranque** si `INTEGRATIONS_FAKE=1` con `NODE_ENV=production` o `RAILWAY_ENVIRONMENT` (igual que `PAYMENTS_FAKE` y `MEDIA_FAKE_UPLOADS`). Los correos siguen la regla existente de `MAIL_TRANSPORT`.
 
@@ -559,7 +559,7 @@ Ninguna capacidad da lectura general de mensajes privados ni el `start_url` de Z
 
 ## 14. Superficies compartidas tocadas por W00
 
-`backend/src/models/index.js` (registro y asociaciones nuevas), `backend/migrations/20261108000000-create-classes-chat-foundation.js`, `backend/src/config/permissions.js` (6 claves), `backend/src/config/features.js` (nuevo), `backend/src/config/database.js` (`timezone: '+00:00'` explícito), `backend/.env.example` (flags), `backend/src/services/adminUsers.js` (limpieza), `COORDINACION.md` (decisiones pendientes).
+`backend/src/models/index.js` (registro y asociaciones nuevas), `backend/src/models/User.js` (`locale`, `timeZone`, `timeZoneConfirmedAt`), `backend/migrations/20261108000000-create-classes-chat-foundation.js`, `backend/src/config/permissions.js` (6 claves), `backend/src/config/features.js` (nuevo), `backend/src/config/database.js` (`timezone: '+00:00'` explícito), `backend/src/app.js` (`features.assertSafe()` y `GET /api/features`), `backend/src/server.js` (worker con `OUTBOX_WORKER=1`), `backend/.env.example` (flags), `backend/src/services/adminUsers.js` (limpieza), `backend/docs/database.md` (confirmación de rollback), `backend/tests/admin.test.js` y `migrationRunner.test.js` (catálogo de permisos y lista de migraciones), `COORDINACION.md` (decisión pendiente P01).
 
 ---
 
