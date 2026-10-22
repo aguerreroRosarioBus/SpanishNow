@@ -39,8 +39,8 @@ Superficies compartidas (aditivas): `app.routes.ts`, `app.config.ts`, footer del
 
 ## Pruebas
 
-- Backend (`npm test`, `--runInBand`, base aislada `DB_NAME_TEST=spanishnow_w02c_jest_test`): **794/794, 45 suites, tras integrar W04**. `legalSales.test.js` 17 casos (incluye concurrencia de aceptación y limpieza AC20).
-- Frontend: `ng test` **370/370, 49 archivos** (W02: paridad EN/ES del bundle, página legal y cambio de idioma, casilla sin premarcar, registro, compra con instantánea y 409, historial, editor legal y de expectativas). Build de producción OK (solo advertencias de presupuesto preexistentes).
+- Backend (`npm test`, `--runInBand`, base aislada `DB_NAME_TEST=spanishnow_w02c_jest_test`): **796/796, 45 suites, tras integrar W04**. `legalSales.test.js` 17 casos (incluye concurrencia de aceptación y limpieza AC20).
+- Frontend: `ng test` **371/371, 49 archivos** (W02: paridad EN/ES del bundle, página legal y cambio de idioma, casilla sin premarcar, registro, compra con instantánea y 409, historial, editor legal y de expectativas). Build de producción OK (solo advertencias de presupuesto preexistentes).
 - **No ejecutado:** recorrido manual en navegador contra un backend real; ningún E2E nuevo.
 
 ## Prueba manual (cuentas ficticias)
