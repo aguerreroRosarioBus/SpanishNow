@@ -438,6 +438,44 @@ describe('test account cleanup under concurrency (CONTRACT-05)', () => {
   });
 });
 
+describe('HTTP contract of shared errors and headers (CONTRACT-02)', () => {
+  test('a CreditError thrown in a route answers its status with { error, code, params }', async () => {
+    const express = require('express');
+    const request = require('supertest');
+    const { errorHandler } = require('../src/middlewares/error.middleware');
+    const { purchase } = await packageChain({ units: 1 });
+    const app = express();
+    app.post('/reserve', async (req, res, next) => {
+      try {
+        await sequelize.transaction(t => credits.apply({ purchaseId: purchase.id, operation: 'reserve', units: 2, operationKey: `reserve:session:http:purchase:${purchase.id}` }, { transaction: t }));
+        res.json({ ok: true });
+      } catch (error) { next(error); }
+    });
+    app.get('/system', (req, res, next) => next(Object.assign(new Error('boom'), { code: 'ECONNREFUSED' })));
+    app.use(errorHandler);
+    const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const res = await request(app).post('/reserve');
+      expect(res.status).toBe(409);
+      expect(res.body).toEqual({ error: 'Saldo insuficiente', code: 'insufficient_credit', params: { bucket: 'available', available: 1, requested: 2 } });
+      const system = await request(app).get('/system');
+      expect(system.status).toBe(500);
+      expect(system.body).toEqual({ error: 'boom' });
+    } finally { spy.mockRestore(); }
+  });
+
+  test('CORS preflight allows the Idempotency-Key header', async () => {
+    const request = require('supertest');
+    const app = require('../src/app');
+    const res = await request(app).options('/api/features')
+      .set('Origin', 'http://localhost:4200')
+      .set('Access-Control-Request-Method', 'POST')
+      .set('Access-Control-Request-Headers', 'content-type,idempotency-key');
+    expect(res.status).toBe(200);
+    expect(res.headers['access-control-allow-headers'].toLowerCase()).toContain('idempotency-key');
+  });
+});
+
 describe('migration rollback guard', () => {
   test('rolling back with class data refuses without CONFIRM_CLASSES_FOUNDATION_DATA_LOSS and changes nothing', async () => {
     await packageChain({ units: 1 });

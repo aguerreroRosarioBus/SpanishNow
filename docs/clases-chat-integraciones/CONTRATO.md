@@ -52,7 +52,7 @@ Toda propuesta de horario viaja y se guarda así:
 - PK `INT` autoincremental (como el resto del esquema); `BIGINT` en tablas de alto volumen (`messages`, `class_credit_ledger`, `outbox_jobs`, `payment_provider_events`, `audit_logs`).
 - Los IDs no dan acceso: todo recurso se autoriza por pertenencia (CONTRACT-02). Un recurso ajeno responde **404** `not_found`, igual que uno inexistente.
 - Mutaciones sobre algo versionado (sesión, propuesta, plantilla) envían `version` y reciben `409 version_conflict` si no es la vigente.
-- Claves de idempotencia del cliente: header `Idempotency-Key` (≤ 64, `[A-Za-z0-9_-]`) en checkout y en creación de ofertas/sesiones; `clientMessageId` en mensajes. Repetir la misma clave devuelve el mismo resultado con **200**, no un error.
+- Claves de idempotencia del cliente: header `Idempotency-Key` (≤ 64, `[A-Za-z0-9_-]`, permitido en CORS) en checkout y en creación de ofertas/sesiones; `clientMessageId` en mensajes. Repetir la misma clave devuelve el mismo resultado con **200**, no un error.
 - Claves internas de operación (`operationKey`, `dedupeKey`): texto determinista con el formato `<verbo>:<agregado>:<id>[:...]`, únicas en base (§4).
 
 ### 1.5 Errores (I18N-04, CONTRACT-02)
@@ -63,7 +63,7 @@ Cuerpo único, compatible con el `{ error }` existente:
 { "error": "Texto en español para logs y clientes viejos", "code": "insufficient_credit", "params": { "available": 0 } }
 ```
 
-El frontend traduce por `code` + `params`; `error` es solo respaldo. Catálogo en §10.
+El frontend traduce por `code` + `params`; `error` es solo respaldo. Catálogo en §10. Un servicio lanza un error con `statusCode`, `code` (minúsculas, estable) y `params`; el middleware común `backend/src/middlewares/error.middleware.js` responde con ese cuerpo (los `code` de Node/sistema nunca se exponen). `CreditError` ya sigue esta forma.
 
 ---
 
@@ -560,7 +560,7 @@ Ninguna capacidad da lectura general de mensajes privados ni el `start_url` de Z
 
 ## 14. Superficies compartidas tocadas por W00
 
-`backend/src/models/index.js` (registro y asociaciones nuevas), `backend/src/models/User.js` (`locale`, `timeZone`, `timeZoneConfirmedAt`), `backend/migrations/20261108000000-create-classes-chat-foundation.js`, `backend/src/config/permissions.js` (6 claves), `backend/src/config/features.js` (nuevo), `backend/src/config/database.js` (`timezone: '+00:00'` explícito), `backend/src/app.js` (`features.assertSafe()` y `GET /api/features`), `backend/src/server.js` (worker con `OUTBOX_WORKER=1`), `backend/.env.example` (flags), `backend/src/services/adminUsers.js` (limpieza), `backend/docs/database.md` (confirmación de rollback), `backend/tests/admin.test.js` y `migrationRunner.test.js` (catálogo de permisos y lista de migraciones), `COORDINACION.md` (decisión pendiente P01).
+`backend/src/models/index.js` (registro y asociaciones nuevas), `backend/src/models/User.js` (`locale`, `timeZone`, `timeZoneConfirmedAt`), `backend/migrations/20261108000000-create-classes-chat-foundation.js`, `backend/src/config/permissions.js` (6 claves), `backend/src/config/features.js` (nuevo), `backend/src/config/database.js` (`timezone: '+00:00'` explícito), `backend/src/app.js` (`features.assertSafe()`, `GET /api/features`, `Idempotency-Key` en CORS y middleware de errores extraído a `middlewares/error.middleware.js`, que agrega `code`/`params`), `backend/src/server.js` (worker con `OUTBOX_WORKER=1`), `backend/.env.example` (flags), `backend/src/services/adminUsers.js` (limpieza), `backend/docs/database.md` (confirmación de rollback), `backend/tests/admin.test.js` y `migrationRunner.test.js` (catálogo de permisos y lista de migraciones), `COORDINACION.md` (decisión pendiente P01).
 
 ---
 

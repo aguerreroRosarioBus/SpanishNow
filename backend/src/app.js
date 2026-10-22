@@ -23,7 +23,7 @@ const corsOptions = {
   credentials: true,
   optionsSuccessStatus: 200,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Idempotency-Key'] // Idempotency-Key: checkout, offers, sessions (CONTRATO.md §1.4)
 };
 
 // Middlewares
@@ -89,11 +89,6 @@ app.get('/health', (req, res) => {
 });
 
 // Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(err.statusCode || 500).json({
-    error: err.message || 'Internal Server Error'
-  });
-});
+app.use(require('./middlewares/error.middleware').errorHandler);
 
 module.exports = app;

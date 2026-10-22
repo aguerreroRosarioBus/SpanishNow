@@ -4,13 +4,17 @@
 // (also a CHECK constraint in the database). The caller owns the transaction so the movement commits with its own changes.
 const { ClassPackagePurchase, ClassCreditLedger } = require('../models');
 
+// statusCode is what the app's error middleware reads; status is kept as an alias. code/params reach the client.
 class CreditError extends Error {
-  constructor(status, code, message, params = {}) {
+  constructor(statusCode, code, message, params = {}) {
     super(message);
-    this.status = status;
+    this.name = 'CreditError';
+    this.statusCode = statusCode;
     this.code = code;
     this.params = params;
   }
+
+  get status() { return this.statusCode; }
 }
 
 const COLUMN = { available: 'unitsAvailable', reserved: 'unitsReserved', consumed: 'unitsConsumed', expired: 'unitsExpired', refunded: 'unitsRefunded' };
