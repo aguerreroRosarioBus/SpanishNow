@@ -1,0 +1,20 @@
+:host { display: block; }
+
+.new-chat { display: flex; flex-direction: column; gap: var(--spacing-sm); padding: var(--spacing-md); margin-bottom: var(--spacing-md); background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius-lg); }
+.new-chat__title { margin: 0; font-size: 1rem; font-weight: 600; }
+.new-chat__row { display: flex; flex-wrap: wrap; gap: var(--spacing-sm); align-items: center; .form-select { flex: 1 1 240px; max-width: 360px; } }
+
+.inbox { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-bg); overflow: hidden; }
+.inbox li + li { border-top: 1px solid var(--color-border); }
+.row-link { display: flex; align-items: center; gap: var(--spacing-md); padding: var(--spacing-md); color: inherit; text-decoration: none; }
+.row-link:hover, .row-link:focus-visible { background: var(--color-bg-light); }
+.avatar { flex: 0 0 40px; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--color-primary-soft, var(--color-bg-light)); color: var(--color-primary); font-weight: 600; }
+.row-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.row-top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--spacing-sm); }
+.row-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row-time { flex: 0 0 auto; font-size: 0.8125rem; color: var(--color-text-light); }
+.row-context { font-size: 0.8125rem; color: var(--color-text-light); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row-preview { font-size: 0.875rem; color: var(--color-text-light); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.is-unread .row-preview { color: var(--color-text); font-weight: 600; }
+.unread { flex: 0 0 auto; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; display: grid; place-items: center; background: var(--color-primary); color: #fff; font-size: 0.75rem; font-weight: 600; }
+.more { display: flex; justify-content: center; margin-top: var(--spacing-md); }

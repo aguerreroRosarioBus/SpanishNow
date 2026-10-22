@@ -1,0 +1,80 @@
+<div class="page-container">
+  <div class="page-header">
+    <div class="page-header__main">
+      <h1 class="page-title">{{ 'chat.inbox.title' | t }}</h1>
+      <p class="page-summary">{{ (isStudent() ? 'chat.inbox.summaryStudent' : 'chat.inbox.summaryTeacher') | t }}</p>
+    </div>
+  </div>
+
+  @if (isStudent()) {
+    <form class="new-chat" (ngSubmit)="start()" aria-labelledby="newChatTitle">
+      <h2 id="newChatTitle" class="new-chat__title">{{ 'chat.new.title' | t }}</h2>
+      @if (teachersLoaded() && teachers().length === 0) {
+        <p class="text-secondary-ui mb-0">{{ 'chat.new.none' | t }}</p>
+      } @else {
+        <div class="new-chat__row">
+          <label for="newChatTeacher" class="visually-hidden">{{ 'chat.new.teacher' | t }}</label>
+          <select id="newChatTeacher" class="form-select" name="teacher"
+                  [ngModel]="selectedTeacher()" (ngModelChange)="selectedTeacher.set($event ? +$event : null)">
+            <option [ngValue]="null">{{ 'chat.new.choose' | t }}</option>
+            @for (t of teachers(); track t.id) { <option [ngValue]="t.id">{{ t.name }}</option> }
+          </select>
+          <button type="submit" class="btn btn-primary btn-sm" [disabled]="!selectedTeacher() || isStarting()">
+            @if (isStarting()) { <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> }
+            {{ 'chat.new.start' | t }}
+          </button>
+        </div>
+      }
+      @if (startError()) { <div class="alert alert-danger mt-2 mb-0" role="alert">{{ startError() }}</div> }
+    </form>
+  }
+
+  @if (errorMessage()) {
+    <div class="alert alert-danger d-flex align-items-center justify-content-between gap-2" role="alert">
+      <span>{{ errorMessage() }}</span>
+      <button type="button" class="btn btn-secondary btn-sm" (click)="load()">{{ 'chat.conv.retry' | t }}</button>
+    </div>
+  }
+
+  @if (isLoading()) {
+    <div class="text-center py-5" role="status">
+      <div class="spinner-border text-primary" aria-hidden="true"></div>
+      <p class="text-muted mt-2 mb-0">{{ 'chat.inbox.loading' | t }}</p>
+    </div>
+  } @else if (items().length === 0 && !errorMessage()) {
+    <div class="state-box">
+      <strong>{{ (isStudent() ? 'chat.inbox.emptyStudent' : 'chat.inbox.emptyTeacher') | t }}</strong>
+      <span>{{ (isStudent() ? 'chat.inbox.emptyStudentHint' : 'chat.inbox.emptyTeacherHint') | t }}</span>
+    </div>
+  } @else if (items().length > 0) {
+    <ul class="inbox" data-testid="chat-inbox">
+      @for (c of items(); track c.id) {
+        <li>
+          <a class="row-link" [routerLink]="['/messages', c.id]" [class.is-unread]="(c.unreadCount ?? 0) > 0">
+            <span class="avatar" aria-hidden="true">{{ c.counterpart.name.charAt(0).toUpperCase() }}</span>
+            <span class="row-main">
+              <span class="row-top">
+                <strong class="row-name">{{ c.counterpart.name }}</strong>
+                @if (c.lastMessageAt) { <time class="row-time" [attr.datetime]="c.lastMessageAt">{{ fmt.instant(c.lastMessageAt) }}</time> }
+              </span>
+              @if (contextLabel(c); as ctx) { <span class="row-context">{{ ctx }}</span> }
+              <!-- Texto de una persona: interpolación, nunca innerHTML -->
+              <span class="row-preview">{{ preview(c) }}</span>
+            </span>
+            @if (c.blockedByMe || c.blockedByOther) {
+              <span class="badge-status badge-status--draft">{{ 'chat.inbox.blocked' | t }}</span>
+            }
+            @if ((c.unreadCount ?? 0) > 0) {
+              <span class="unread" [attr.aria-label]="'chat.inbox.unread' | t:{ count: c.unreadCount ?? 0 }">{{ (c.unreadCount ?? 0) > 99 ? '99+' : c.unreadCount }}</span>
+            }
+          </a>
+        </li>
+      }
+    </ul>
+    @if (nextCursor()) {
+      <div class="more">
+        <button type="button" class="btn btn-secondary btn-sm" (click)="loadMore()" [disabled]="isLoadingMore()">{{ 'chat.inbox.more' | t }}</button>
+      </div>
+    }
+  }
+</div>

@@ -32,7 +32,15 @@ const EN = {
   'email.replySubject': '{teacher} replied to your question in {story}',
   'email.replyTitle': 'You have a reply',
   'email.replyBody': '{teacher} replied to your question in the lesson "{story}" of "{course}".',
-  'email.openLesson': 'Open the lesson'
+  'email.openLesson': 'Open the lesson',
+  // W04 (CHAT-09): never the message text, only that there is something to read.
+  'email.chatSubjectOne': 'You have a new message from {name}',
+  'email.chatSubjectMany': 'You have {count} new messages from {name}',
+  'email.chatTitle': 'New messages on SpanishNow',
+  'email.chatBody': '{name} wrote to you on SpanishNow.',
+  'email.chatPrivacy': 'For privacy, this email does not include the message text.',
+  'email.chatButton': 'Open the conversation',
+  'email.chatFooter': 'You can turn off these emails in Settings.'
 };
 const ES = {
   'email.greeting': 'Hola {name},',
@@ -67,7 +75,14 @@ const ES = {
   'email.replySubject': '{teacher} respondió a tu pregunta en {story}',
   'email.replyTitle': 'Tienes una respuesta',
   'email.replyBody': '{teacher} respondió a tu pregunta en la lección «{story}» del curso «{course}».',
-  'email.openLesson': 'Abrir la lección'
+  'email.openLesson': 'Abrir la lección',
+  'email.chatSubjectOne': 'Tienes un mensaje nuevo de {name}',
+  'email.chatSubjectMany': 'Tienes {count} mensajes nuevos de {name}',
+  'email.chatTitle': 'Mensajes nuevos en SpanishNow',
+  'email.chatBody': '{name} te escribió en SpanishNow.',
+  'email.chatPrivacy': 'Por privacidad, este correo no incluye el texto del mensaje.',
+  'email.chatButton': 'Abrir la conversación',
+  'email.chatFooter': 'Puedes desactivar estos correos en Configuración.'
 };
 
 const emailLocale = locale => locale === 'es' ? 'es' : 'en';

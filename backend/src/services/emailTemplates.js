@@ -153,4 +153,22 @@ function teacherReplied({ studentName, teacherName, course, story, body, locale 
   });
 }
 
-module.exports = { purchaseConfirmation, invitation, passwordReset, newQuestion, teacherReplied, formatMoney, passwordUrl, courseUrl };
+/** W04 (CHAT-09): unread chat messages, in the recipient's language and without the message text. */
+function chatUnread({ recipientName, senderName, count, conversationId, locale }) {
+  const lang = emailLocale(locale);
+  const t = (key, params) => emailText(lang, key, params);
+  const name = senderName || 'SpanishNow';
+  return build(t(count === 1 ? 'email.chatSubjectOne' : 'email.chatSubjectMany', { name, count }), {
+    lang,
+    title: t('email.chatTitle'),
+    paragraphs: [
+      t('email.greeting', { name: recipientName || t('email.defaultName') }),
+      t('email.chatBody', { name }),
+      t('email.chatPrivacy')
+    ],
+    button: { label: t('email.chatButton'), url: `${frontendUrl()}/messages/${conversationId}` },
+    footer: t('email.chatFooter')
+  });
+}
+
+module.exports = { purchaseConfirmation, invitation, passwordReset, newQuestion, teacherReplied, chatUnread, formatMoney, passwordUrl, courseUrl };

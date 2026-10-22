@@ -51,6 +51,9 @@ export class I18nService {
     if (clearExplicit) this.explicitLocale.set(null);
   }
 
+  /** Si la clave existe en algún catálogo registrado (base o bundles de I18N_CATALOGS). */
+  has(key: string): boolean { return Object.hasOwn(this.catalogs.en, key) || Object.hasOwn(this.catalogs.es, key); }
+
   t(key: string, params: TranslationParams = {}): string {
     const catalog = this.catalogs[this.locale()];
     const fallback = !Object.hasOwn(catalog, key) && this.locale() !== 'en';

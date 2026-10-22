@@ -165,6 +165,18 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
 
+  // Chat privado docente–alumno (W04)
+  {
+    path: 'messages',
+    loadComponent: () => import('./features/chat/inbox/chat-inbox.component').then(m => m.ChatInboxComponent),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'messages/:id',
+    loadComponent: () => import('./features/chat/conversation/chat-conversation.component').then(m => m.ChatConversationComponent),
+    canActivate: [authGuard]
+  },
+
   // Rutas de información pública
   {
     path: 'contact',
