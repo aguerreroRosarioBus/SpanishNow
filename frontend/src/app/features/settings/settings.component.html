@@ -1,39 +1,72 @@
 <div class="settings">
   <div class="page-header">
     <div class="page-header__main">
-      <h1 class="page-title">Configuración</h1>
-      <p class="page-summary">Administra tu cuenta y preferencias</p>
+      <h1 class="page-title">{{ 'nav.settings' | t }}</h1>
+      <p class="page-summary">{{ 'preferences.summary' | t }}</p>
     </div>
   </div>
 
   <section class="settings__section" aria-labelledby="account-title">
-    <h2 id="account-title" class="settings__title">Cuenta</h2>
+    <h2 id="account-title" class="settings__title">{{ 'nav.account' | t }}</h2>
     <dl class="settings__list">
       <div class="settings__row">
-        <dt>Nombre</dt>
+        <dt>{{ 'preferences.name' | t }}</dt>
         <dd>{{ currentUser()?.name }}</dd>
       </div>
       <div class="settings__row">
-        <dt>Email</dt>
+        <dt>{{ 'common.email' | t }}</dt>
         <dd>{{ currentUser()?.email }}</dd>
       </div>
       <div class="settings__row">
-        <dt>Rol</dt>
-        <dd>{{ currentUser()?.role === 'teacher' ? 'Profesor' : 'Estudiante' }}</dd>
+        <dt>{{ 'preferences.role' | t }}</dt>
+        <dd>{{ (currentUser()?.role === 'teacher' ? 'common.teacher' : 'common.student') | t }}</dd>
       </div>
     </dl>
   </section>
 
   <section class="settings__section" aria-labelledby="prefs-title">
-    <h2 id="prefs-title" class="settings__title">Preferencias</h2>
-    <p class="settings__note">Habrá más opciones de configuración próximamente.</p>
+    <h2 id="prefs-title" class="settings__title">{{ 'preferences.title' | t }}</h2>
+    <p class="settings__note">{{ 'preferences.languageHelp' | t }}</p>
+    @if (preferences.loading()) {
+      <p role="status">{{ 'preferences.loading' | t }}</p>
+    } @else {
+      <p class="settings__note" role="status">
+        {{ preferences.preferences()?.timeZoneConfirmedAt
+          ? ('preferences.savedZone' | t : { zone: preferences.preferences()?.timeZone ?? '' })
+          : ('preferences.noZone' | t) }}
+      </p>
+      <form (submit)="saveZone($event)">
+        <label for="time-zone" class="form-label">{{ 'preferences.timeZone' | t }}</label>
+        <input id="time-zone" class="form-control" list="time-zones" [value]="zoneDraft()"
+               (input)="editZone($any($event.target).value)" aria-describedby="time-zone-help"
+               placeholder="America/Argentina/Cordoba" autocomplete="off" required [disabled]="preferences.saving()">
+        <datalist id="time-zones">
+          <option value="UTC"></option>
+          @for (zone of zones; track zone) { <option [value]="zone"></option> }
+        </datalist>
+        <p id="time-zone-help" class="settings__note mt-2">{{ 'preferences.zoneHelp' | t }}</p>
+        @if (deviceZone) {
+          <button type="button" class="btn btn-ghost btn-sm mb-3" (click)="editZone(deviceZone)" [disabled]="preferences.saving()">
+            {{ 'preferences.deviceZone' | t : { zone: deviceZone } }}
+          </button>
+        }
+        <div class="form-check mb-3">
+          <input id="confirm-time-zone" class="form-check-input" type="checkbox" [checked]="zoneConfirmed()"
+                 (change)="zoneConfirmed.set($any($event.target).checked)" [disabled]="preferences.saving()">
+          <label for="confirm-time-zone" class="form-check-label">{{ 'preferences.confirmZone' | t }}</label>
+        </div>
+        <button type="submit" class="btn btn-secondary" [disabled]="!zoneDraft().trim() || !zoneConfirmed() || preferences.saving()">
+          {{ (preferences.saving() ? 'preferences.saving' : 'preferences.saveZone') | t }}
+        </button>
+      </form>
+    }
   </section>
 
   <section class="settings__section" aria-labelledby="security-title">
-    <h2 id="security-title" class="settings__title">Seguridad</h2>
-    <p class="settings__note">Cambia tu contraseña con regularidad para mantener tu cuenta segura.</p>
+    <h2 id="security-title" class="settings__title">{{ 'preferences.security' | t }}</h2>
+    <p class="settings__note">{{ 'preferences.securityHelp' | t }}</p>
     <button type="button" class="btn btn-secondary" (click)="openChangePasswordModal()">
-      <app-icon name="lock" [size]="16" />Cambiar contraseña
+      <app-icon name="lock" [size]="16" />{{ 'preferences.changePassword' | t }}
     </button>
   </section>
 </div>

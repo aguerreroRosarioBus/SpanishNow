@@ -1,6 +1,7 @@
 import { DOCUMENT } from '@angular/common';
 import { computed, effect, inject, Injectable, InjectionToken } from '@angular/core';
 import { signal } from '@angular/core';
+import { Subject } from 'rxjs';
 import { EN } from './catalogs/en';
 import { ES } from './catalogs/es';
 import { isLocale, Locale, resolveLocale, TranslationBundle, TranslationCatalog, TranslationParams } from './i18n.types';
@@ -14,8 +15,13 @@ export class I18nService {
   private readonly document = inject(DOCUMENT);
   private readonly bundles = inject(I18N_CATALOGS, { optional: true }) ?? [];
   private readonly catalogs = this.mergeCatalogs();
-  private readonly selected = signal(this.initialLocale());
-  readonly locale = this.selected.asReadonly();
+  private readonly anonymousLocale = signal(this.initialLocale());
+  private readonly explicitLocale = signal<Locale | null>(null);
+  private readonly accountLocale = signal<Locale | null>(null);
+  private readonly changes = new Subject<Locale>();
+  readonly localeChanges = this.changes.asObservable();
+  readonly explicitChoice = this.explicitLocale.asReadonly();
+  readonly locale = computed(() => this.explicitLocale() ?? this.accountLocale() ?? this.anonymousLocale());
   readonly intlLocale = computed(() => this.locale() === 'es' ? 'es-AR' : 'en-US');
 
   constructor() {
@@ -26,10 +32,23 @@ export class I18nService {
   /** No navega, recarga ni modifica ningún estado de contenido, dinero o zona. */
   setLocale(locale: Locale): void {
     if (!isLocale(locale)) return;
-    this.selected.set(locale);
+    this.explicitLocale.set(locale);
+    this.anonymousLocale.set(locale);
     try { this.document.defaultView?.localStorage.setItem(LOCALE_STORAGE_KEY, locale); } catch {
       // El selector sigue funcionando en memoria si el navegador bloquea storage.
     }
+    this.changes.next(locale);
+  }
+
+  /** El servidor no reemplaza una elección explícita hecha mientras cargaba la cuenta. */
+  setAccountLocale(locale: Locale | null): void {
+    this.accountLocale.set(isLocale(locale) ? locale : null);
+  }
+
+  /** Al salir/cambiar de cuenta se descarta la prioridad explícita de la sesión anterior. */
+  resetAccountLocale(clearExplicit = true): void {
+    this.accountLocale.set(null);
+    if (clearExplicit) this.explicitLocale.set(null);
   }
 
   t(key: string, params: TranslationParams = {}): string {

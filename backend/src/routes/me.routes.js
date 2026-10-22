@@ -4,6 +4,9 @@ const router = express.Router();
 const { authMiddleware } = require('../middlewares/auth.middleware');
 const { Order, Course } = require('../models');
 
+// W01: preferencias propias independientes de compras, sin flag comercial.
+router.use('/preferences', require('./preferences.routes'));
+
 // Paid (or since refunded) orders of the user, newest first.
 router.get('/orders', authMiddleware, async (req, res) => {
   try {
