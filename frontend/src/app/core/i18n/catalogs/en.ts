@@ -1,6 +1,8 @@
+import { PLAYER_EN } from './player';
 import { TranslationCatalog } from '../i18n.types';
 
 export const EN = {
+  ...PLAYER_EN,
   'common.language': 'Language',
   'preferences.loadError': 'Could not load your account preferences. Please try again.',
   'preferences.saveError': 'Could not save your preferences to your account. Please try again.',

@@ -1,7 +1,7 @@
 @if (session.lesson(); as lesson) {
   <section class="block">
-    <span class="eyebrow eyebrow--muted">{{ session.currentBlock()?.phase === 'before' ? 'Antes' : session.currentBlock()?.phase === 'during' ? 'Durante' : 'Después' }}</span>
-    <h2 class="block__title">Historia completa</h2>
+    <span class="eyebrow eyebrow--muted">{{ (session.currentBlock()?.phase === 'before' ? 'player.before' : session.currentBlock()?.phase === 'during' ? 'player.during' : 'player.after') | t }}</span>
+    <h2 class="block__title">{{ 'player.fullStory' | t }}</h2>
     <app-lesson-audio-controls [slowUrl]="lesson.story.audioSlowUrl" [normalUrl]="lesson.story.audioNormalUrl" />
     @if (paragraphs(); as paras) {
       <div class="story-text read-text illustrated">

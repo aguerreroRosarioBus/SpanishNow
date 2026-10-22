@@ -1,8 +1,8 @@
 @if (session.reinforcementBlocks().length > 0) {
   <section class="practice" aria-labelledby="practice-title">
     <div class="practice__head">
-      <h2 id="practice-title" class="practice__title">Practicar vocabulario</h2>
-      <span class="practice__hint">Opcional · de la unidad {{ nav.unitNumber() }}</span>
+      <h2 id="practice-title" class="practice__title">{{ 'player.practiceTitle' | t }}</h2>
+      <span class="practice__hint">{{ 'player.optionalUnit' | t: {number: nav.unitNumber()} }}</span>
     </div>
     <div class="practice__grid">
       @for (extra of session.reinforcementBlocks(); track extra.blockKey) {
@@ -11,13 +11,13 @@
           <div class="practice-card__text">
             <div class="practice-card__name">{{ label(extra) }}@if (extra.vocabulary?.word) {<span class="practice-card__word"> · {{ extra.vocabulary?.word }}</span>}</div>
             @if (session.isReinforcementComplete(extra.blockKey)) {
-              <div class="practice-card__desc practice-card__desc--done"><app-icon name="check" [size]="13" />Completado</div>
+              <div class="practice-card__desc practice-card__desc--done"><app-icon name="check" [size]="13" />{{ 'player.done' | t }}</div>
             } @else {
               <div class="practice-card__desc">{{ description(extra) }}</div>
             }
           </div>
           <button type="button" class="btn btn-secondary btn-sm" (click)="open(extra)">
-            {{ session.isReinforcementComplete(extra.blockKey) ? 'Repetir' : 'Practicar' }}
+            {{ (session.isReinforcementComplete(extra.blockKey) ? 'player.repeat' : 'player.practice') | t }}
           </button>
         </div>
       }

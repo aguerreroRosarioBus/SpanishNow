@@ -1,3 +1,5 @@
+import { I18nService } from '../../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { Component, inject, signal } from '@angular/core';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { StudentLessonBlock } from '../../../../core/services/student-lesson.service';
@@ -13,11 +15,12 @@ import { LessonSessionStore } from '../lesson-session.store';
 @Component({
   selector: 'app-reinforcements',
   standalone: true,
-  imports: [IconComponent, FlashcardModalComponent, MatchingModalComponent, ListenRepeatModalComponent],
+  imports: [TranslatePipe, IconComponent, FlashcardModalComponent, MatchingModalComponent, ListenRepeatModalComponent],
   templateUrl: './reinforcements.component.html',
   styleUrl: './reinforcements.component.scss'
 })
 export class ReinforcementsComponent {
+  i18n = inject(I18nService);
   session = inject(LessonSessionStore);
   nav = inject(LessonNavigationStore);
   private vocabularyService = inject(VocabularyService);
@@ -30,7 +33,7 @@ export class ReinforcementsComponent {
   activeBlock = signal<StudentLessonBlock | null>(null);
 
   label(block: StudentLessonBlock): string {
-    return block.type === 'flashcards' ? 'Flashcards' : block.type === 'matching' ? 'Emparejar vocabulario' : 'Escuchar y repetir';
+    return block.type === 'flashcards' ? this.i18n.t('player.flashcards') : block.type === 'matching' ? this.i18n.t('player.matching') : this.i18n.t('player.listenRepeat');
   }
 
   icon(block: StudentLessonBlock): string {
@@ -38,7 +41,7 @@ export class ReinforcementsComponent {
   }
 
   description(block: StudentLessonBlock): string {
-    return block.type === 'flashcards' ? 'Repasa palabras clave' : block.type === 'matching' ? 'Une palabra y significado' : 'Escucha y repite frases';
+    return block.type === 'flashcards' ? this.i18n.t('player.flashcardHint') : block.type === 'matching' ? this.i18n.t('player.matchingHint') : this.i18n.t('player.listenHint');
   }
 
   open(block: StudentLessonBlock): void {
@@ -46,8 +49,8 @@ export class ReinforcementsComponent {
     const storyId = this.session.lesson()?.storyId;
     if (!unit || !storyId) return;
     this.activeBlock.set(block);
-    if (block.type === 'flashcards') this.showVocabularyModal(unit.id, this.showFlashcardModal, 'No hay flashcards disponibles para esta unidad', 'Error al cargar las flashcards');
-    else if (block.type === 'matching') this.showVocabularyModal(unit.id, this.showMatchingModal, 'No hay actividad de emparejamiento disponible', 'Error al cargar la actividad');
+    if (block.type === 'flashcards') this.showVocabularyModal(unit.id, this.showFlashcardModal, 'player.noFlashcards', 'player.flashcardsError');
+    else if (block.type === 'matching') this.showVocabularyModal(unit.id, this.showMatchingModal, 'player.noMatching', 'player.activityError');
     else if (block.type === 'listen_repeat') this.showListenRepeat(storyId);
   }
 
@@ -67,23 +70,23 @@ export class ReinforcementsComponent {
     this.vocabularyService.getVocabularyByUnit(unitId).subscribe({
       next: vocabulary => {
         if (vocabulary && vocabulary.length > 0) flag.set(true);
-        else this.toastService.info(emptyMessage);
+        else this.toastService.info(this.i18n.t(emptyMessage));
       },
       error: error => {
         console.error(errorMessage, error);
-        this.toastService.error(errorMessage);
+        this.toastService.error(this.i18n.errorMessage(error, errorMessage));
       }
     });
   }
 
   private showListenRepeat(storyId: number): void {
     const story = this.nav.currentUnit()?.stories?.find(s => s.id === storyId);
-    if (!story) { this.toastService.error('Historia no encontrada'); return; }
+    if (!story) { this.toastService.error(this.i18n.t('player.storyMissing')); return; }
     if (story.repetitionActivities && story.repetitionActivities.length > 0) {
       this.listenRepeatStoryId.set(story.id);
       this.showListenRepeatModal.set(true);
     } else {
-      this.toastService.info('No hay actividades de escuchar y repetir disponibles para esta historia');
+      this.toastService.info(this.i18n.t('player.noRepeat'));
     }
   }
 }
