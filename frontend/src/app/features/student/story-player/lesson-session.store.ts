@@ -43,7 +43,6 @@ export class LessonSessionStore {
 
   load(storyId: number): void {
     this.audio.stop();
-    this.audio.error.set('');
     this.loading.set(true);
     this.error.set('');
     this.answerResult.set(null);
