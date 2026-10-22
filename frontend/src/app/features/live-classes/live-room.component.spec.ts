@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { signal } from '@angular/core';
+import { ElementRef, signal } from '@angular/core';
 import { ActivatedRoute, provideRouter } from '@angular/router';
 import { of, Subject, throwError } from 'rxjs';
 import { LiveRoomComponent } from './live-room.component';
@@ -74,5 +74,32 @@ describe('LiveRoomComponent collaboration', () => {
     const { c, api } = await create(); api.change.mockReturnValue(of({ revision: 1, board: board() }));
     c.ask('clear'); expect(api.change).not.toHaveBeenCalled(); await c.confirmAction();
     expect(api.change).toHaveBeenCalledWith(1, [expect.objectContaining({ type: 'page-clear', expectedRevision: 0, pageId: 'page_0001' })]);
+  });
+  it('fits the frame to the measured viewport and bounds local zoom without writing to the board', async () => {
+    const { c, api } = await create();
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
+    const viewport = document.createElement('div');
+    Object.defineProperties(viewport, { clientWidth: { value: 1000 }, clientHeight: { value: 800 } });
+    viewport.scrollTo = vi.fn();
+    const raf = vi.spyOn(globalThis, 'requestAnimationFrame').mockImplementation(callback => { callback(0); return 1; });
+    c.viewport = new ElementRef(viewport); c.fitBoard();
+    expect(c.zoom()).toBe(50); expect(viewport.scrollTo).toHaveBeenCalledWith({ left: 0, top: 0 });
+    c.zoomBy(500); expect(c.zoom()).toBe(200);
+    c.zoomBy(-500); expect(c.zoom()).toBe(10);
+    c.fitBoard(); expect(c.zoom()).toBe(50); expect(api.change).not.toHaveBeenCalled();
+    c.ngOnDestroy(); raf.mockRestore(); vi.unstubAllGlobals();
+  });
+  it('hand panning changes only viewport scroll, including for a read-only student', async () => {
+    const { c, api } = await create(false);
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
+    const viewport = document.createElement('div'); viewport.scrollLeft = 200; viewport.scrollTop = 300;
+    c.viewport = new ElementRef(viewport);
+    const down = { currentTarget: viewport, pointerId: 1, pointerType: 'mouse', button: 0, clientX: 100, clientY: 100, preventDefault() {} } as unknown as PointerEvent;
+    c.startPan(down); expect(c.dragging()).toBe(false);
+    c.hand.set(true); c.startPan(down); c.movePan({ ...down, clientX: 70, clientY: 60 });
+    expect(viewport.scrollLeft).toBe(230); expect(viewport.scrollTop).toBe(340); expect(c.dragging()).toBe(true);
+    c.endPan(); expect(c.dragging()).toBe(false); expect(api.change).not.toHaveBeenCalled();
+    c.selectTool('pen'); expect(c.hand()).toBe(false); expect(c.tool()).toBe('pen');
+    c.ngOnDestroy(); vi.unstubAllGlobals();
   });
 });

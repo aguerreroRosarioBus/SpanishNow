@@ -1,4 +1,4 @@
-<div class="board-surface" [class.read-only]="!editable()" [class.selecting]="tool() === 'select'">
+<div class="board-surface" [class.read-only]="!editable()" [class.selecting]="tool() === 'select'" [class.is-panning]="panning()">
   <svg class="live-canvas" viewBox="0 0 1600 900" tabindex="0" role="img" [attr.aria-label]="page().title + '. Usa Seleccionar para mover elementos y las flechas del teclado para ajustar su posición.'"
        (pointerdown)="pointerDown($event)" (pointermove)="pointerMove($event)" (pointerup)="pointerUp($event)" (pointercancel)="cancel()" (lostpointercapture)="cancel()" (keydown)="keydown($event)">
     <defs>
@@ -46,7 +46,7 @@
 </div>
 @if (selected(); as e) {
   <div class="object-editor">
-    <span class="object-label">{{ e.type === 'note' ? 'Nota' : e.type === 'text' ? 'Texto' : e.type === 'image' ? 'Imagen' : e.type === 'link' ? 'Recurso de Drive' : 'Dibujo' }} seleccionado</span>
+    <span class="object-label">{{ e.type === 'note' ? 'Nota seleccionada' : e.type === 'text' ? 'Texto seleccionado' : e.type === 'image' ? 'Imagen seleccionada' : e.type === 'link' ? 'Recurso de Drive seleccionado' : 'Dibujo seleccionado' }}</span>
     @if (e.type === 'link') { <a [href]="e.url" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">Abrir recurso ↗</a> }
     @if (canChangeSelected()) {
       @if (e.type === 'note' || e.type === 'text' || e.type === 'link') {

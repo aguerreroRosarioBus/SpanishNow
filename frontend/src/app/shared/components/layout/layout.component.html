@@ -13,8 +13,8 @@
         (collapseToggle)="toggleCollapse()"></app-sidebar-nav>
     }
 
-    <main class="main-content" id="contenido">
-      <div class="content-wrapper" [class.is-wide]="isWorkspace()" [class.is-bare]="isAuthPage()">
+    <main class="main-content" id="contenido" [class.is-board]="isLiveRoom()">
+      <div class="content-wrapper" [class.is-wide]="isWorkspace()" [class.is-board]="isLiveRoom()" [class.is-bare]="isAuthPage()">
         <router-outlet></router-outlet>
       </div>
 

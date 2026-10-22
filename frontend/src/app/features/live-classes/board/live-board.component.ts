@@ -13,6 +13,7 @@ interface Gesture { pointer: number; pageId: string; start: BoardPoint; original
 export class LiveBoardComponent {
   page = input.required<BoardPage>();
   editable = input(false);
+  panning = input(false);
   owner = input(false);
   userId = input.required<number>();
   tool = input<BoardTool>('pen');
@@ -23,7 +24,7 @@ export class LiveBoardComponent {
   drawing = signal<BoardElement | null>(null);
   editingText = signal<string | null>(null);
   deleting = signal<BoardElement | null>(null);
-  selected = computed(() => this.page().elements.find(e => e.id === this.selectedId()) || null);
+  selected = computed(() => this.panning() ? null : this.page().elements.find(e => e.id === this.selectedId()) || null);
   visible = computed(() => this.page().elements.map(e => this.drawing()?.id === e.id ? this.drawing()! : e));
   canChangeSelected = computed(() => { const e = this.selected(); return !!e && this.editable() && editableElement(e, this.userId(), this.owner()); });
   newDrawing = computed(() => { const d = this.drawing(); return d && !this.page().elements.some(e => e.id === d.id) ? d : null; });
@@ -50,7 +51,7 @@ export class LiveBoardComponent {
     return point((event.clientX - rect.left) * 1600 / rect.width, (event.clientY - rect.top) * 900 / rect.height);
   }
   pointerDown(event: PointerEvent): void {
-    if (this.gesture || (event.pointerType === 'mouse' && event.button !== 0)) return;
+    if (this.panning() || this.gesture || (event.pointerType === 'mouse' && event.button !== 0)) return;
     const target = (event.target as Element).closest('[data-element]')?.getAttribute('data-element');
     const old = this.page().elements.find(e => e.id === target);
     if (!this.editable()) { this.selectedId.set(old?.id || null); return; }

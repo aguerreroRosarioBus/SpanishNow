@@ -43,4 +43,19 @@ describe('LiveBoardComponent', () => {
     c.pointerUp({ ...ev, clientX: 200, clientY: 200 });
     expect(emit).not.toHaveBeenCalled(); expect(c.drawing()).toBeNull();
   });
+  it('the hand tool cannot accidentally select, move or draw objects', () => {
+    const { c, fixture, emit } = create();
+    fixture.componentRef.setInput('panning', true); fixture.componentRef.setInput('tool', 'note'); fixture.detectChanges();
+    const svg = fixture.nativeElement.querySelector('svg.live-canvas');
+    c.pointerDown({ currentTarget: svg, target: svg, pointerId: 1, pointerType: 'mouse', button: 0 } as PointerEvent);
+    expect(emit).not.toHaveBeenCalled(); expect(c.drawing()).toBeNull(); expect(c.selectedId()).toBeNull();
+  });
+  it.each([400, 800])('drawing at a rendered width of %i px keeps the same board coordinates', width => {
+    const { c, fixture, emit } = create();
+    const svg = fixture.nativeElement.querySelector('svg.live-canvas');
+    svg.getBoundingClientRect = () => ({ left: 0, top: 0, width, height: width * 9 / 16 });
+    const ev = { currentTarget: svg, target: svg, pointerId: 1, pointerType: 'mouse', button: 0, clientX: width / 2, clientY: width * 9 / 32, preventDefault() {} } as unknown as PointerEvent;
+    c.pointerDown(ev); c.pointerUp(ev);
+    expect(emit).toHaveBeenCalledWith(expect.objectContaining({ element: expect.objectContaining({ points: [{ x: 800, y: 450 }] }) }));
+  });
 });

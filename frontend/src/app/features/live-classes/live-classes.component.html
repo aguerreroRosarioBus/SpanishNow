@@ -1,8 +1,7 @@
 <div class="page-container live-list">
   <header class="page-header">
-    <div class="page-header__main"><h1 class="page-title">Clases en vivo</h1><p class="page-summary">Un espacio para explicar, crear y aprender juntos.</p></div>
-    @if (teacher && !showCreate()) { <button type="button" class="btn btn-primary" (click)="showCreate.set(true)"><app-icon name="plus" [size]="16" /> Nueva clase</button> }
-    <button type="button" class="btn btn-secondary" (click)="load()" [disabled]="loading()">Actualizar</button>
+    <div class="page-header__main"><span class="eyebrow">Espacio colaborativo</span><h1 class="page-title">Clases en vivo</h1><p class="page-summary">Tus ideas, tus alumnos y una pizarra para compartir.</p></div>
+    <div class="page-actions"><button type="button" class="btn btn-secondary" (click)="load()" [disabled]="loading()"><app-icon name="rotate" [size]="16" />Actualizar</button>@if (teacher && !showCreate()) { <button type="button" class="btn btn-primary" (click)="showCreate.set(true)"><app-icon name="plus" [size]="16" /> Nueva clase</button> }</div>
   </header>
   @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
   @if (info()) { <div class="alert alert-info" role="status">{{ info() }}</div> }
@@ -17,7 +16,7 @@
   }
   @if (teacher) {
     <section class="live-panel google-panel">
-      <div class="integration-mark"><app-icon name="layers" [size]="24" /></div>
+      <div class="integration-mark"><app-icon name="layers" [size]="20" /></div>
       <div><h2>Google Classroom y Drive</h2>
         <p>{{ google()?.connected ? 'Cuenta conectada: ' + (google()?.email || 'Google') : 'Publica el acceso a tu clase y guarda pizarras editables en tu Drive.' }}</p>
         @if (google() && !google()?.configured) { <small>La conexión estará disponible cuando se configure Google en la plataforma.</small> }
@@ -29,17 +28,17 @@
   } @else {
     <form class="live-panel join-form" (ngSubmit)="join()"><label>Entrar por invitación<input class="form-control" name="code" [(ngModel)]="code" placeholder="Pega el enlace o código de tu docente" required maxlength="500" /></label><button class="btn btn-primary" [disabled]="busy() || !code.trim()">Entrar a clase</button></form>
   }
-  <div class="live-filters" role="group" aria-label="Filtrar clases">
+  <div class="library-heading"><h2>Tus pizarras</h2><div class="live-filters" role="group" aria-label="Filtrar clases">
     @for (f of ['all', 'live', 'draft', 'ended']; track f) {
       @if (teacher || f !== 'draft') { <button type="button" class="btn btn-ghost btn-sm" [class.active]="filter() === f" [attr.aria-pressed]="filter() === f" (click)="filter.set(f)">{{ f === 'all' ? 'Todas' : statusLabel(f) }}</button> }
     }
-  </div>
+  </div></div>
   @if (loading()) { <p role="status" class="text-muted">Cargando clases…</p> }
   @else if (!filtered().length) {
     <div class="empty-live"><app-icon name="rectangle" [size]="48" /><h2>{{ teacher ? 'Tu próxima clase empieza con una idea' : 'Aquí encontrarás tus clases en vivo' }}</h2><p>{{ teacher ? 'Crea una sala, prepara las páginas y comparte el enlace cuando estés listo.' : 'Las clases de tus cursos aparecerán aquí. También puedes entrar con una invitación.' }}</p></div>
   } @else {
     <div class="live-grid">@for (c of filtered(); track c.id) {
-      <a [routerLink]="['/live', c.id]" class="live-card"><div class="board-mini"><span></span><i></i><b></b><app-icon name="pencil" [size]="32" /></div>
+      <a [routerLink]="['/live', c.id]" class="live-card"><div class="board-mini" aria-hidden="true"><div class="mini-sheet"><span class="mini-note"></span><i class="mini-connector"></i><b class="mini-shape"></b><span class="mini-lines"></span></div><span class="board-kind"><app-icon name="rectangle" [size]="12" />Pizarra</span></div>
         <div class="live-card-body"><span class="badge-status" [class.badge-status--published]="c.status === 'live'" [class.badge-status--draft]="c.status !== 'live'">{{ statusLabel(c.status) }}</span><h2>{{ c.title }}</h2>
           <p>{{ c.classroomCourseName || (c.courseId ? 'Vinculada a un curso' : 'Sala independiente') }}</p><small>Actualizada {{ c.updatedAt | date:'d MMM y, HH:mm' }}</small>
           <span class="card-action">{{ c.status === 'live' ? 'Entrar a la clase' : teacher ? 'Abrir pizarra' : 'Ver pizarra' }} <app-icon name="arrow-right" [size]="18" /></span></div>

@@ -15,6 +15,8 @@ Una sala admite 20 páginas, 500 elementos por página y 1,5 MB de contenido est
 
 La interfaz usa el sistema de [REDISENO_UI.md](../rediseno-ui/REDISENO_UI.md): tokens cálidos, Poppins/Nunito Sans, controles compactos, un botón principal, menús para acciones destructivas y confirmaciones.
 
+La sala tiene una distribución de tablero inspirada en Miro: lienzo a todo el ancho disponible, herramientas en una barra vertical flotante, opciones contextuales de dibujo, paneles superpuestos y páginas con miniaturas. Los botones de zoom permiten acercar/alejar entre 10 % y 200 %; **Ajustar a pantalla** centra el marco. La herramienta **Desplazar lienzo** recorre el espacio alrededor de la página sin modificar su contenido. Zoom y desplazamiento son preferencias locales de la vista; no cambian la página ni la escala de los demás participantes.
+
 ## Google Classroom y Drive
 
 La integración es **OAuth por docente de la plataforma**. Las conexiones de Google del asistente de desarrollo no configuran las cuentas de los usuarios de SpanishNow.

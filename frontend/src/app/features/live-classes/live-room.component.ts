@@ -1,4 +1,4 @@
-import { Component, ElementRef, HostListener, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { NgbDropdownModule } from '@ng-bootstrap/ng-bootstrap';
@@ -12,6 +12,7 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/c
 import { copyText } from '../../shared/utils/clipboard';
 import { IMAGE_ACCEPT, validateImageFile } from '../teacher/lesson-composer/image-file';
 import { LiveBoardComponent } from './board/live-board.component';
+import { BoardPreviewComponent } from './board/board-preview.component';
 import { newId, previewBoard } from './board/board.logic';
 import { downloadBlob, exportPagePng } from './board/board.export';
 import { liveErrorMessage, liveStatusLabel } from './live-classes.component';
@@ -19,8 +20,8 @@ import { liveErrorMessage, liveStatusLabel } from './live-classes.component';
 type Confirmation = 'clear' | 'delete-page' | 'restore' | 'end' | 'discard';
 @Component({
   selector: 'app-live-room', standalone: true,
-  imports: [FormsModule, RouterLink, NgbDropdownModule, IconComponent, ImageSearchComponent, ConfirmDialogComponent, LiveBoardComponent],
-  templateUrl: './live-room.component.html', styleUrl: './live-room.component.scss'
+  imports: [FormsModule, RouterLink, NgbDropdownModule, IconComponent, ImageSearchComponent, ConfirmDialogComponent, LiveBoardComponent, BoardPreviewComponent],
+  templateUrl: './live-room.component.html', styleUrls: ['./live-room.component.scss', './live-room-controls.scss']
 })
 export class LiveRoomComponent implements OnInit, OnDestroy {
   private api = inject(LiveClassService);
@@ -38,7 +39,16 @@ export class LiveRoomComponent implements OnInit, OnDestroy {
   busy = signal(false);
   error = signal('');
   info = signal('');
-  tool = signal<BoardTool>('pen');
+  tool = signal<BoardTool>('select');
+  hand = signal(false);
+  zoom = signal(50);
+  viewportWidth = signal(1000);
+  viewportHeight = signal(700);
+  framesOpen = signal(true);
+  dragging = signal(false);
+  toolOptions = computed(() => !this.hand() && this.canEdit() && ['pen', 'line', 'rect', 'ellipse', 'text'].includes(this.tool()));
+  activeToolLabel = computed(() => this.hand() ? 'Desplazar lienzo' : this.tools.find(t => t.id === this.tool())?.label || 'Seleccionar');
+  pageNumber = computed(() => (this.board()?.pages.findIndex(p => p.id === this.currentPage()?.id) ?? 0) + 1);
   color = signal('#2b2b2b');
   size = signal(4);
   follow = signal(true);
@@ -78,6 +88,22 @@ export class LiveRoomComponent implements OnInit, OnDestroy {
   private pollTimer?: ReturnType<typeof setInterval>;
   private presenceTimer?: ReturnType<typeof setInterval>;
   private lastPoll = 0;
+  private viewportElement?: HTMLDivElement;
+  private resizeObserver?: ResizeObserver;
+  private manualZoom = false;
+  private pan: { pointer: number; x: number; y: number; left: number; top: number } | null = null;
+
+  @ViewChild('canvasViewport') set viewport(ref: ElementRef<HTMLDivElement> | undefined) {
+    this.resizeObserver?.disconnect();
+    this.viewportElement = ref?.nativeElement;
+    if (!this.viewportElement) return;
+    this.resizeObserver = new ResizeObserver(() => {
+      this.measureViewport();
+      if (!this.manualZoom) this.fitBoard();
+    });
+    this.resizeObserver.observe(this.viewportElement);
+    queueMicrotask(() => { if (this.alive && !this.manualZoom) this.fitBoard(); });
+  }
 
   ngOnInit(): void {
     void this.refresh();
@@ -87,7 +113,52 @@ export class LiveRoomComponent implements OnInit, OnDestroy {
     }, 900);
     this.presenceTimer = setInterval(() => this.presence(), 12000);
   }
-  ngOnDestroy(): void { this.alive = false; clearInterval(this.pollTimer); clearInterval(this.presenceTimer); }
+  ngOnDestroy(): void { this.alive = false; clearInterval(this.pollTimer); clearInterval(this.presenceTimer); this.resizeObserver?.disconnect(); }
+  selectTool(tool: BoardTool): void { this.hand.set(false); this.tool.set(tool); }
+  private measureViewport(): void {
+    if (!this.viewportElement) return;
+    this.viewportWidth.set(this.viewportElement.clientWidth);
+    this.viewportHeight.set(this.viewportElement.clientHeight);
+  }
+  fitBoard(): void {
+    const viewport = this.viewportElement;
+    if (!viewport) return;
+    this.measureViewport();
+    this.manualZoom = false;
+    const margin = viewport.clientWidth < 640 ? 100 : 200;
+    const fit = Math.min((viewport.clientWidth - margin) / 1600, (viewport.clientHeight - 240) / 900);
+    this.zoom.set(Math.max(10, Math.min(100, Math.floor(fit * 100))));
+    // Leave space around the frame so the hand can pan even when the whole page fits.
+    requestAnimationFrame(() => {
+      if (this.alive) viewport.scrollTo?.({ left: Math.max(0, (viewport.scrollWidth - viewport.clientWidth) / 2), top: Math.max(0, (viewport.scrollHeight - viewport.clientHeight) / 2) });
+    });
+  }
+  zoomBy(delta: number): void {
+    const viewport = this.viewportElement;
+    const previous = this.zoom(), next = Math.max(10, Math.min(200, previous + delta));
+    this.manualZoom = true;
+    const x = viewport ? (viewport.scrollLeft + viewport.clientWidth / 2) / Math.max(1, viewport.scrollWidth) : 0;
+    const y = viewport ? (viewport.scrollTop + viewport.clientHeight / 2) / Math.max(1, viewport.scrollHeight) : 0;
+    this.zoom.set(next);
+    if (viewport) requestAnimationFrame(() => {
+      if (!this.alive) return;
+      viewport.scrollTo?.({ left: x * viewport.scrollWidth - viewport.clientWidth / 2, top: y * viewport.scrollHeight - viewport.clientHeight / 2 });
+    });
+  }
+  startPan(event: PointerEvent): void {
+    if ((!this.hand() && event.button !== 1) || (event.pointerType === 'mouse' && event.button !== 0 && event.button !== 1)) return;
+    if ((event.target as Element | null)?.closest?.('button, input, textarea, select, a')) return;
+    const viewport = event.currentTarget as HTMLDivElement;
+    event.preventDefault(); viewport.setPointerCapture?.(event.pointerId);
+    this.pan = { pointer: event.pointerId, x: event.clientX, y: event.clientY, left: viewport.scrollLeft, top: viewport.scrollTop };
+    this.dragging.set(true);
+  }
+  movePan(event: PointerEvent): void {
+    if (!this.pan || this.pan.pointer !== event.pointerId || !this.viewportElement) return;
+    this.viewportElement.scrollLeft = this.pan.left - event.clientX + this.pan.x;
+    this.viewportElement.scrollTop = this.pan.top - event.clientY + this.pan.y;
+  }
+  endPan(): void { this.pan = null; this.dragging.set(false); }
   @HostListener('window:beforeunload', ['$event']) beforeUnload(event: BeforeUnloadEvent): void {
     if (this.pending().length || this.busy()) { event.preventDefault(); event.returnValue = ''; }
   }
