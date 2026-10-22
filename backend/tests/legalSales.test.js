@@ -129,3 +129,36 @@ describe('W02 expectativas y snapshots', () => {
     expect((await as(user).post('/api/me/legal-acceptances', { documentKey: 'terms', documentVersion: doc.documentVersion, context: 'update', locale: 'en', accepted: true })).status).toBe(409);
   });
 });
+
+describe('W02 limpieza de cuentas de prueba (AC20, CONTRACT-05)', () => {
+  const testAccount = async role => { const u = await createUser(role, 'prueba-w02'); await u.update({ isTestAccount: true }); return u; };
+  test('borra snapshots y aceptaciones de la cuenta de prueba; la evidencia de un comprador real bloquea', async () => {
+    process.env.PAYMENTS_FAKE = '1';
+    const cleaner = await createUser('student', 'w02-cleaner'); await cleaner.update({ permissions: ['test_users.manage'] });
+    const testTeacher = await testAccount('teacher'); const testBuyer = await testAccount('student');
+    const realTeacher = await createUser('teacher', 'w02-real-teacher'); const realBuyer = await createUser('student', 'w02-real-buyer');
+    const testCourse = await newCourse(testTeacher, { isPublished: true, price: 1200 }); const realCourse = await newCourse(realTeacher, { isPublished: true, price: 1300 });
+    await sales.save(realTeacher, realCourse.id, { version: 0, expectations: expectations() });
+    const terms = await publish(); const refunds = await publish('refunds');
+    const buy = async (user, course) => {
+      const view = (await request(app).get(`/api/public/courses/${course.slug}`)).body.commercial;
+      return as(user).post('/api/checkout', { courseId: course.id, locale: 'en', commercialHash: view.hash, legalConsent: consent([terms, refunds]) });
+    };
+    // Checkout abandonado de un comprador real en el curso de prueba: queda evidencia sin orden.
+    const realView = await sales.commercialView(testCourse);
+    const realEvidence = await CourseCheckoutSnapshot.create({ courseId: testCourse.id, userId: realBuyer.id, snapshot: realView, locale: 'en' });
+    expect((await as(cleaner).delete(`/api/admin/test-users/${testTeacher.id}`)).status).toBe(409);
+    expect(await User.count({ where: { id: testTeacher.id } })).toBe(1);
+    await realEvidence.destroy();
+
+    expect((await buy(testBuyer, realCourse)).status).toBe(200); expect((await buy(testBuyer, testCourse)).status).toBe(200);
+    expect(await CourseCheckoutSnapshot.count({ where: { userId: testBuyer.id } })).toBe(2);
+    expect(await LegalAcceptance.count({ where: { userId: testBuyer.id } })).toBe(4);
+    const r = await as(cleaner).delete('/api/admin/test-users'); expect(r.status).toBe(200);
+    expect(await CourseCheckoutSnapshot.count({ where: { [require('sequelize').Op.or]: [{ userId: testBuyer.id }, { courseId: testCourse.id }] } })).toBe(0);
+    expect(await LegalAcceptance.count({ where: { userId: testBuyer.id } })).toBe(0);
+    expect(await User.count({ where: { id: [realTeacher.id, realBuyer.id] } })).toBe(2);
+    expect((await sales.read(realCourse.id)).version).toBe(1);
+    expect(await LegalDocument.count({ where: { id: [terms.id, refunds.id] } })).toBe(2);
+  });
+});
