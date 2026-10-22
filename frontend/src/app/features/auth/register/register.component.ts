@@ -4,6 +4,7 @@ import { Component, computed, effect, inject, signal, untracked } from '@angular
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { liveReturnUrl } from '../../../core/guards/live-auth.guard';
 import { AuthService } from '../../../core/services/auth.service';
 import { LegalConsentComponent } from '../../legal/legal-consent/legal-consent.component';
@@ -65,17 +66,24 @@ export class RegisterComponent {
     // Títulos en el idioma de la interfaz; si cambia la versión vigente, hay que volver a aceptar.
     effect(() => {
       const locale = this.i18n.locale();
-      untracked(() => this.legal.current(locale).subscribe({
-        next: docs => {
-          const before = this.consentDocs().map(d => d.documentKey + d.version).join();
-          this.legalDocs.set(docs);
-          this.legalUnavailable.set(false);
-          if (before && before !== this.consentDocs().map(d => d.documentKey + d.version).join()) this.legalAccepted.set(false);
-        },
-        error: () => this.legalUnavailable.set(true)
-      }));
+      untracked(() => this.loadLegal(locale));
     });
   }
+
+  /** Si falla, el registro no se bloquea: el servidor decide con `legal_acceptance_required`. */
+  loadLegal(locale = this.i18n.locale()): void {
+    this.legalRequest?.unsubscribe();
+    this.legalRequest = this.legal.current(locale).subscribe({
+      next: docs => {
+        const before = this.consentDocs().map(d => d.documentKey + d.version).join();
+        this.legalDocs.set(docs);
+        this.legalUnavailable.set(false);
+        if (before && before !== this.consentDocs().map(d => d.documentKey + d.version).join()) this.legalAccepted.set(false);
+      },
+      error: () => this.legalUnavailable.set(true)
+    });
+  }
+  private legalRequest?: Subscription;
 
   /**
    * Maneja el envío del formulario de registro
@@ -83,7 +91,7 @@ export class RegisterComponent {
   onSubmit(): void {
     if (this.isLoading()) return;
     this.consentSubmitted.set(true);
-    if (this.registerForm.invalid || this.legalUnavailable() || (this.needsConsent() && !this.legalAccepted())) {
+    if (this.registerForm.invalid || (this.needsConsent() && !this.legalAccepted())) {
       this.registerForm.markAllAsTouched();
       return;
     }
@@ -124,7 +132,7 @@ export class RegisterComponent {
         if (['legal_acceptance_required', 'legal_version_changed'].includes(error?.error?.code)) {
           // Otra versión entró en vigencia: se recarga y se pide aceptar de nuevo.
           this.legalAccepted.set(false);
-          this.legal.current(this.i18n.locale()).subscribe({ next: docs => this.legalDocs.set(docs), error: () => this.legalUnavailable.set(true) });
+          this.loadLegal();
           this.errorKey.set('');
           this.legalError.set(this.legal.errorMessage(error));
         } else if (error.status === 400) {

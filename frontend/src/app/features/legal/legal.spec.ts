@@ -165,6 +165,35 @@ describe('W02 registro', () => {
   });
 });
 
+describe('W02 registro sin documentos legales cargados', () => {
+  afterEach(() => { localStorage.removeItem(LOCALE_STORAGE_KEY); localStorage.removeItem('user'); localStorage.removeItem('token'); });
+  it('si falla el GET legal no bloquea: permite reintentar y deja decidir al servidor', () => {
+    const http = configure();
+    const fixture = TestBed.createComponent(RegisterComponent);
+    fixture.detectChanges();
+    http.expectOne(`${api}/public/legal?locale=es`).flush('down', { status: 503, statusText: 'Unavailable' });
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const component = fixture.componentInstance;
+    expect(el.textContent).toContain('No pudimos cargar los documentos legales');
+    component.registerForm.setValue({ name: 'Alumno ficticio', email: 'alumno@test.invalid', password: 'secret123' });
+    component.onSubmit();
+    const req = http.expectOne(`${api}/auth/register`);
+    expect(req.request.body.legalConsent).toBeUndefined();
+    req.flush({ code: 'legal_acceptance_required' }, { status: 400, statusText: 'Bad Request' });
+    http.expectOne(`${api}/public/legal?locale=es`).flush([publicDoc('terms', 'es', '7')]);
+    fixture.detectChanges();
+    expect(el.textContent).toContain('Marca la casilla para aceptar');
+    expect(el.querySelector<HTMLInputElement>('.legal-consent input')!.checked).toBe(false);
+
+    component.legalUnavailable.set(true); fixture.detectChanges();
+    el.querySelector<HTMLButtonElement>('[data-test=legal-retry]')!.click();
+    http.expectOne(`${api}/public/legal?locale=es`).flush([publicDoc('terms', 'es', '7')]);
+    fixture.detectChanges();
+    expect(component.legalUnavailable()).toBe(false);
+  });
+});
+
 describe('W02 editor legal', () => {
   afterEach(() => localStorage.removeItem(LOCALE_STORAGE_KEY));
   const adminDoc = (id: number, version: string, publishedAt: string | null, effectiveAt = '2026-01-01T00:00:00.000Z'): AdminLegalDocument => ({

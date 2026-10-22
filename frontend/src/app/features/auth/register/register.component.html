@@ -39,7 +39,10 @@
       </div>
 
       @if (legalUnavailable()) {
-        <div class="alert alert-warning" role="alert">{{ 'legal.consent.unavailable' | t }}</div>
+        <div class="alert alert-warning d-flex flex-wrap align-items-center gap-2" role="alert">
+          <span>{{ 'legal.consent.unavailable' | t }}</span>
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-test="legal-retry" (click)="loadLegal()">{{ 'legal.consent.retry' | t }}</button>
+        </div>
       } @else if (needsConsent()) {
         <div class="mb-4">
           <app-legal-consent [documents]="consentDocs()" [(accepted)]="legalAccepted" [submitted]="consentSubmitted()" />
