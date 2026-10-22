@@ -20,7 +20,7 @@ const invalid = fields => fail('validation_failed', { fields }, 400);
 const id = value => { const n = Number(value); if (!Number.isSafeInteger(n) || n <= 0) invalid(['id']); return n; };
 const uniqueIds = values => [...new Set(values)].sort((a, b) => a - b);
 const temporalFields = ['localStart', 'timeZone', 'utcOffset', 'disambiguation', 'startsAt', 'endsAt', 'minutes'];
-const scheduleOf = value => Object.fromEntries(temporalFields.map(key => [key, value[key]]));
+const scheduleOf = value => Object.fromEntries(temporalFields.map(key => [key, value[key] instanceof Date ? value[key].toISOString() : value[key]]));
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const asDate = iso => new Date(time.normalizeInstant(iso));
 const nowIso = now => now.toISOString();
@@ -83,12 +83,22 @@ async function detail(user, sessionId, transaction) {
   const person = userId => people.find(p => p.id === userId);
   const proposals = await M.ClassSessionProposal.findAll({ where: { sessionId: session.id }, order: [['version', 'DESC']], transaction });
   const refs = await M.ExternalSyncRef.findAll({ where: { sessionId: session.id }, attributes: ['provider', 'status', 'syncedVersion'], transaction });
+  const purchased = seats.find(s => s.purchaseId);
+  const purchase = purchased && await M.ClassPackagePurchase.findByPk(purchased.purchaseId, { transaction });
+  const policy = purchase && await M.ClassPolicyVersion.findByPk(purchase.policyVersionId, { transaction });
+  const decisions = await M.AuditLog.findAll({ where: { entityType: 'class_sessions', entityId: session.id, action: ['session.cancelled', 'session.group_continue'] }, order: [['id', 'DESC']], transaction });
+  const groupResolutionRequired = session.status === 'confirmed' && seats.length === 3 && seats.some(s => s.status === 'cancelled') && decisions[0]?.action !== 'session.group_continue';
+  const terms = await M.AuditLog.findAll({ where: { entityType: 'class_sessions', entityId: session.id, action: 'session.reschedule_terms' }, order: [['id', 'DESC']], transaction });
+  const replacement = await M.AuditLog.findOne({ where: { entityType: 'class_sessions', entityId: session.id, action: 'session.replaced' }, transaction });
+  const currentProposal = proposals.find(p => p.status === 'pending') || proposals[0];
+  const proposalTerms = terms.find(t => t.data?.version === currentProposal?.version)?.data;
   return {
     ...session.toJSON(), teacher: person(session.teacherId),
     participants: seats.map(p => ({ userId: p.userId, name: person(p.userId)?.name, status: p.status, acceptedVersion: p.acceptedVersion,
       attendance: p.attendance, purchaseId: user?.id === session.teacherId || user?.id === p.userId ? p.purchaseId : undefined })),
-    proposal: proposals.find(p => p.status === 'pending') || proposals[0] || null,
-    proposals, sync: refs, serverNow: new Date().toISOString()
+    proposal: currentProposal ? { ...currentProposal.toJSON(), charge: proposalTerms?.late ? 'consumed_and_new_credit' : 'none' } : null,
+    replacementSessionId: replacement?.data?.replacementSessionId || null,
+    proposals, sync: refs, rules: policy?.rules || null, groupResolutionRequired, serverNow: new Date().toISOString()
   };
 }
 
@@ -165,7 +175,7 @@ async function notify(session, seats, eventCode, proposalVersion, transaction) {
 }
 function normalizeRequest(body) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) invalid(['body']);
-  const extra = Object.keys(body).filter(k => !['intent', 'participants', 'cohortId', 'liveClassId', 'leadTimeException', 'reason', 'version'].includes(k));
+  const extra = Object.keys(body).filter(k => !['intent', 'participants', 'cohortId', 'liveClassId', 'leadTimeException', 'reason', 'version', 'requestedByStudentId', 'chargeWaivedReason'].includes(k));
   if (extra.length) invalid(extra);
   const desired = { ...time.resolveLocalIntent(body.intent), minutes: body.intent.minutes };
   if (body.leadTimeException !== undefined && typeof body.leadTimeException !== 'boolean') invalid(['leadTimeException']);
@@ -242,6 +252,66 @@ async function list(user, query = {}) {
   return { items: await Promise.all(sessions.map(s => detail(user, s.id))), truncated: sessions.length === 200 };
 }
 
+async function options(user, query = {}) {
+  if (user.role !== 'teacher') fail('forbidden', {}, 403);
+  const conversation = query.conversationId && await M.Conversation.findOne({ where: { id: id(query.conversationId), teacherId: user.id } });
+  if (query.conversationId && !conversation) fail('not_found', {}, 404);
+  const conversations = await M.Conversation.findAll({ where: { teacherId: user.id }, attributes: ['studentId'] });
+  const students = await M.User.findAll({ where: { id: conversations.map(c => c.studentId), suspendedAt: null }, attributes: ['id', 'name'] });
+  const purchases = await M.ClassPackagePurchase.findAll({ where: { teacherId: user.id }, order: [['paidAt', 'DESC']], limit: 500 });
+  const beneficiaries = await M.ClassPackageBeneficiary.findAll({ where: { purchaseId: purchases.map(p => p.id) } });
+  const cohorts = await M.ClassCohort.findAll({ where: { teacherId: user.id, status: ['forming', 'ready'] } });
+  const members = await M.ClassCohortMember.findAll({ where: { cohortId: cohorts.map(c => c.id), status: 'accepted' } });
+  return { studentId: conversation?.studentId || null, students, purchases: purchases.map(p => ({ id: p.id, cohortId: p.cohortId,
+    minutesPerSession: p.minutesPerSession, seatsCovered: p.seatsCovered, status: p.status, expiresAt: p.expiresAt,
+    available: p.unitsAvailable, beneficiaryIds: beneficiaries.filter(b => b.purchaseId === p.id).map(b => b.userId) })),
+    cohorts: cohorts.map(c => ({ id: c.id, groupSize: c.groupSize, formingDeadlineAt: c.formingDeadlineAt, memberIds: members.filter(m => m.cohortId === c.id).map(m => m.userId) })) };
+}
+
+async function remindersFeed(user) {
+  const rows = await M.AuditLog.findAll({ where: { actorId: user.id, action: 'session.reminder', entityType: 'class_sessions' }, order: [['id', 'DESC']], limit: 100 });
+  const items = [];
+  for (const row of rows) {
+    const session = await M.ClassSession.findByPk(row.entityId);
+    if (session?.status !== 'confirmed' || session.version !== row.data?.version) continue;
+    const me = user.id === session.teacherId || await M.ClassSessionParticipant.count({ where: { sessionId: session.id, userId: user.id, status: { [Op.ne]: 'cancelled' } } });
+    if (me) items.push({ id: row.id, sessionId: session.id, ...row.data });
+  }
+  return { items };
+}
+
+async function join(user, sessionId) {
+  const { session, seats } = await load(user, sessionId);
+  if (session.status !== 'confirmed' || (session.teacherId !== user.id && !seats.some(s => s.userId === user.id && s.status !== 'cancelled'))) fail('proposal_stale');
+  // El enlace de anfitrión se obtiene al momento en W08; no se usa joinUrl como sustituto.
+  if (session.teacherId === user.id) fail('provider_unavailable', { reason: 'host_integration_pending' }, 503);
+  const ref = await M.ExternalSyncRef.findOne({ where: { sessionId: session.id, provider: 'zoom' } });
+  const link = ref?.manualJoinUrl || (ref?.status === 'ready' ? ref.joinUrl : null);
+  if (!link) fail('integration_not_connected');
+  let url;
+  try { url = new URL(link); } catch { fail('provider_unavailable', {}, 503); }
+  if (url.protocol !== 'https:' || (url.hostname !== 'zoom.us' && !url.hostname.endsWith('.zoom.us'))) fail('provider_unavailable', {}, 503);
+  return { joinUrl: url.href, manual: Boolean(ref.manualJoinUrl) };
+}
+
+async function retrySync(user, sessionId) {
+  const { hasPermission } = require('../config/permissions');
+  const support = hasPermission(user, 'class_sessions.support');
+  return locked(support ? null : user, sessionId, async ({ session, transaction }) => {
+    if (user.id !== session.teacherId && !support) fail('forbidden', {}, 403);
+    const refs = await M.ExternalSyncRef.findAll({ where: { sessionId: session.id }, transaction });
+    if (!refs.length) fail('integration_not_connected');
+    for (const ref of refs) {
+      if (!await M.ExternalConnection.count({ where: { userId: session.teacherId, provider: ref.provider, status: 'connected' }, transaction })) fail('integration_not_connected');
+      const topic = ref.provider === 'zoom' ? 'zoom.sync' : 'calendar.sync';
+      await M.OutboxJob.update({ status: 'pending', attempts: 0, runAt: new Date(), lastError: null }, {
+        where: { aggregateType: 'class_sessions', aggregateId: session.id, aggregateVersion: session.version, topic, status: 'failed' }, transaction });
+    }
+    await audit(session, user.id, 'sync_retry', { version: session.version }, transaction);
+    return user.id === session.teacherId ? detail(user, session.id, transaction) : { id: session.id, sync: refs.map(r => ({ provider: r.provider, status: r.status, syncedVersion: r.syncedVersion })) };
+  });
+}
+
 async function expire(sessionId, proposalVersion, { now = new Date() } = {}) {
   return locked(null, sessionId, async ({ session, seats, transaction }) => {
     const p = await M.ClassSessionProposal.findOne({ where: { sessionId: session.id, version: proposalVersion }, transaction });
@@ -258,5 +328,6 @@ outbox.register('proposal.expire', async job => {
   if (await M.ClassSession.count({ where: { id: job.aggregateId } })) await expire(job.aggregateId, job.aggregateVersion);
 });
 
-module.exports = { create, detail, list, expire, ScheduleError,
-  _internal: { fail, invalid, id, tx, locked, teacherOnly, version, zoneConfirmed, purchasesFor, conflicts, proposal, notify, audit, scheduleOf, active } };
+module.exports = { create, detail, list, options, remindersFeed, join, retrySync, expire, ScheduleError,
+  _internal: { fail, invalid, id, tx, locked, teacherOnly, version, zoneConfirmed, purchasesFor, conflicts, proposal, notify, audit, scheduleOf, normalizeRequest, active } };
+Object.assign(module.exports, require('./classSessionLifecycle')(module.exports));
