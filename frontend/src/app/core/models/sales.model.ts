@@ -13,6 +13,8 @@ export interface PublicCourse {
 }
 
 export interface PublicCourseDetail extends PublicCourse {
+  /** Dónde se cobra: Hotmart (checkout externo) o el propio sitio. */
+  checkoutProvider?: 'hotmart' | 'site';
   salesDescription?: string | null;
   /** Video de bienvenida (URL de embed normalizada). */
   introVideoUrl?: string | null;
@@ -123,7 +125,7 @@ export interface SalesByCourse { courseId: number; title: string; currency: stri
 export interface SalesSummary { totals: SalesTotal[]; byMonth: SalesByMonth[]; byCourse: SalesByCourse[]; }
 
 export type OrderStatus = 'paid' | 'refunded' | 'pending' | 'failed';
-export type OrderProvider = 'stripe' | 'fake' | 'coupon' | string;
+export type OrderProvider = 'stripe' | 'fake' | 'coupon' | 'hotmart' | string;
 
 export interface TeacherOrder {
   id: number;

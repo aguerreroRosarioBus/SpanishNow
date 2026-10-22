@@ -12,6 +12,7 @@ const materialService = require('../services/materialService');
 const quizService = require('../services/quizService');
 const commentService = require('../services/commentService');
 const drip = require('../services/unitAvailability');
+const hotmart = require('../services/hotmartService');
 
 const MAX_PRICE = 99999999; // cents; fits INTEGER and any Stripe amount
 
@@ -255,9 +256,11 @@ router.put('/:id', authMiddleware, isTeacher, upload.single('image'), async (req
     if (intro.error) return res.status(400).json({ error: intro.error });
     const series = await parseSeriesFields(req.body || {}, course);
     if (series.error) return res.status(400).json({ error: series.error });
+    const hotmartFields = await hotmart.parseCourseFields(req.body || {}, course);
+    if (hotmartFields.error) return res.status(hotmartFields.status || 400).json({ error: hotmartFields.error });
 
     try {
-      await course.update({ title, description, level, imageUrl, ...sales.values, ...series.values, ...(intro.skip ? {} : { introVideoUrl: intro.value }) });
+      await course.update({ title, description, level, imageUrl, ...sales.values, ...series.values, ...hotmartFields.values, ...(intro.skip ? {} : { introVideoUrl: intro.value }) });
     } catch (error) {
       if (error instanceof UniqueConstraintError) return res.status(409).json({ error: 'That slug is already used by another course' });
       throw error;

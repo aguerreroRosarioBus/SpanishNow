@@ -6,6 +6,10 @@ const { createCheckout, PaymentError } = require('../services/paymentService');
 const { hasPendingInvite } = require('../services/passwordTokens');
 const { priceFor, quoteShape, CouponError } = require('../services/couponService');
 const { resolveCode } = require('../services/affiliateService');
+const hotmart = require('../services/hotmartService');
+
+// Courses sold on Hotmart only take 100 % coupons here (gifts); other discounts are Hotmart's.
+const hotmartDiscount = () => new CouponError('coupon_not_applicable', 'Discounts for this course are applied at the Hotmart checkout');
 
 const validId = value => /^[1-9]\d{0,9}$/.test(String(value)) && Number(value) <= 2147483647;
 
@@ -23,7 +27,9 @@ router.post('/quote', async (req, res) => {
     if (!course || !course.isPublished) return res.status(404).json({ error: 'Course not found' });
     if (course.price <= 0) return res.status(400).json({ error: 'This course is free: enroll instead of buying it' });
 
-    res.json(quoteShape(await priceFor(course, couponCode)));
+    const pricing = await priceFor(course, couponCode);
+    if (hotmart.isHotmartCourse(course) && pricing.amount > 0) throw hotmartDiscount();
+    res.json(quoteShape(pricing));
   } catch (error) {
     if (error instanceof CouponError) return couponFailure(res, error);
     res.status(500).json({ error: error.message });
@@ -48,6 +54,11 @@ router.post('/', optionalAuth, async (req, res) => {
     }
 
     const pricing = await priceFor(course, couponCode);
+    if (hotmart.isHotmartCourse(course) && pricing.amount > 0) {
+      if (pricing.coupon) throw hotmartDiscount();
+      // Hotmart charges and tells us through its webhook: no order until then.
+      return res.json({ url: hotmart.checkoutUrlFor(course, req.user) });
+    }
     // Attribution (last click, kept by the web app): a code that is invalid, inactive or another teacher's is ignored, never an error.
     const affiliate = await resolveCode(affiliateCode, course);
     const { url } = await createCheckout({ course, user: req.user, fakeEmail: email, pricing, affiliate });

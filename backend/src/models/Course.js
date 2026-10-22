@@ -73,6 +73,16 @@ const Course = sequelize.define('Course', {
     type: DataTypes.INTEGER,
     allowNull: true,
     references: { model: 'coupons', key: 'id' }
+  },
+  // Sold on Hotmart: the Hotmart product id (matched against its purchase webhook) and the checkout link "Buy now" opens.
+  hotmartProductId: {
+    type: DataTypes.STRING(40),
+    allowNull: true,
+    unique: 'courses_hotmart_product'
+  },
+  hotmartCheckoutUrl: {
+    type: DataTypes.STRING(500),
+    allowNull: true
   }
 }, {
   timestamps: true,

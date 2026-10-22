@@ -137,10 +137,13 @@
           <p class="page-summary">One-time payment. Lifetime access.</p>
           @if (quote()) {
             <button type="button" class="btn btn-link btn-sm p-0 align-self-start" (click)="removeCoupon()">Remove coupon</button>
-          } @else if (!showCoupon()) {
+          } @else if (!showCoupon() && !isHotmart()) {
             <button type="button" class="btn btn-link btn-sm p-0 align-self-start" (click)="showCoupon.set(true)" aria-expanded="false" aria-controls="couponBox">Have a coupon?</button>
           }
-          @if (showCoupon() && !quote()) {
+          @if (isHotmart() && !quote() && couponError()) {
+            <div id="couponError" class="coupon-error" role="alert">{{ couponError() }}</div>
+          }
+          @if (showCoupon() && !quote() && !isHotmart()) {
             <form id="couponBox" class="coupon-form" (submit)="$event.preventDefault(); applyCoupon()">
               <label for="couponCode" class="visually-hidden">Coupon code</label>
               <input id="couponCode" type="text" class="form-control text-uppercase" placeholder="Coupon code" maxlength="40" autocomplete="off"
@@ -174,6 +177,8 @@
           </button>
           @if (price()?.isFree) {
             <small class="text-secondary-ui">No payment needed with your coupon.</small>
+          } @else if (isHotmart()) {
+            <small class="text-secondary-ui">Secure checkout by Hotmart</small>
           } @else {
             <small class="text-secondary-ui">Secure payment. You'll be redirected to checkout.</small>
           }

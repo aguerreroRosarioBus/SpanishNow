@@ -71,6 +71,8 @@ const COUPON_ERRORS: Record<CouponErrorCode, string> = {
 /** Mensaje en inglés para el comprador según el `code` del error 400. */
 export function couponErrorMessage(error: { error?: { code?: string; error?: string } } | null | undefined): string {
   const code = error?.error?.code as CouponErrorCode | undefined;
+  // En cursos de Hotmart el servidor explica que el descuento se aplica en su checkout
+  if (code === 'coupon_not_applicable' && error?.error?.error) return error.error.error;
   if (code && COUPON_ERRORS[code]) return COUPON_ERRORS[code];
   return error?.error?.error || 'We could not apply this coupon. Please try again.';
 }

@@ -5,8 +5,9 @@ const { authMiddleware, isTeacher } = require('../middlewares/auth.middleware');
 const { Order, Course, User, Coupon, Affiliate } = require('../models');
 const sales = require('../services/salesService');
 const { registerRefund } = require('../services/orderService');
+const hotmart = require('../services/hotmartService');
 
-for (const prefix of ['/sales', '/orders']) router.use(prefix, authMiddleware, isTeacher);
+for (const prefix of ['/sales', '/orders', '/hotmart']) router.use(prefix, authMiddleware, isTeacher);
 
 router.get('/sales/summary', async (req, res) => {
   try {
@@ -75,6 +76,12 @@ router.post('/orders/:id/refund', async (req, res) => {
 
     if (order.status === 'refunded') return res.status(409).json({ error: 'This order is already refunded' });
     if (order.status !== 'paid') return res.status(409).json({ error: 'Only paid orders can be refunded' });
+    if (order.provider === 'hotmart' && !manual) {
+      return res.status(409).json({
+        error: 'This order was paid with Hotmart: refund it from Hotmart and SpanishNow will remove the access automatically.',
+        code: 'refund_in_hotmart'
+      });
+    }
     if (order.provider === 'stripe' && !manual) {
       return res.status(409).json({
         error: 'This order was paid with Stripe: refund it from the Stripe dashboard and SpanishNow will record it automatically.',
@@ -95,6 +102,11 @@ router.post('/orders/:id/refund', async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+});
+
+// What the teacher pastes in Hotmart, and whether the server has the hottok to verify it.
+router.get('/hotmart', (req, res) => {
+  res.json({ webhookUrl: hotmart.webhookUrl(req), configured: hotmart.configured() });
 });
 
 module.exports = router;

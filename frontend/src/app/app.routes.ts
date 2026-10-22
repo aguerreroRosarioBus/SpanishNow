@@ -63,6 +63,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/public/checkout-success/checkout-success.component').then(m => m.CheckoutSuccessComponent)
   },
 
+  {
+    path: 'checkout/thanks',
+    loadComponent: () => import('./features/public/checkout-thanks/checkout-thanks.component').then(m => m.CheckoutThanksComponent)
+  },
+
   // Rutas de profesor
   {
     path: 'teacher/dashboard',

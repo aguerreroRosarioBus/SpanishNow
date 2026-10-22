@@ -69,14 +69,14 @@ describe('migration runner', () => {
     const before = await schemaOf(EMPTY_DB);
     const reverted = await emptyMigrator.umzug.down({ to: '20261021000000-add-keyframe-tooltips.js' });
     expect(reverted.map(m => m.name)).toEqual([
-      '20261104000300-add-unit-release.js', '20261104000200-create-lesson-comments.js', '20261104000100-add-order-affiliate-fields.js', '20261104000000-create-affiliates.js',
+      '20261105000000-add-hotmart-checkout.js', '20261104000300-add-unit-release.js', '20261104000200-create-lesson-comments.js', '20261104000100-add-order-affiliate-fields.js', '20261104000000-create-affiliates.js',
       '20261103000200-add-course-series.js', '20261103000100-add-order-sales-fields.js', '20261103000000-create-coupons.js',
       '20261102000300-create-certificates.js', '20261102000200-create-unit-quizzes.js', '20261102000100-create-materials.js', '20261102000000-add-video-urls.js',
       '20261101000300-add-enrollment-source.js', '20261101000200-create-password-tokens.js', '20261101000100-create-orders.js',
       '20261101000000-add-course-sales-fields.js', '20261023000000-add-keyframe-images.js', '20261022000000-drop-legacy-progress.js',
       '20261021000000-add-keyframe-tooltips.js'
     ]);
-    expect((await status(emptyMigrator)).pending).toHaveLength(18);
+    expect((await status(emptyMigrator)).pending).toHaveLength(19);
     await emptyMigrator.umzug.up();
     expect(diff(before, await schemaOf(EMPTY_DB))).toEqual([]);
   });

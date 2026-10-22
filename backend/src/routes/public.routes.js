@@ -63,6 +63,7 @@ router.get('/courses/:slug', async (req, res) => {
       series: { previous: link(previous), next: link(next) },
       salesDescription: course.salesDescription,
       introVideoUrl: course.introVideoUrl,
+      checkoutProvider: course.hotmartCheckoutUrl ? 'hotmart' : 'site',
       materialsCount: await Material.count({ where: { courseId: course.id } }),
       units: course.units.map(unit => ({
         id: unit.id, title: unit.title, order: unit.order, releaseAfterDays: unit.releaseAfterDays, hasQuiz: withQuiz.has(unit.id),
