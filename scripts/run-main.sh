@@ -121,11 +121,12 @@ FRONTEND_URL="${RUN_MAIN_FRONTEND_URL:-https://$(lan_ip):$FRONT_PORT}"
 ensure_free "$(back_port)"
 ensure_free "$FRONT_PORT"
 set -m
-trap 'stop_all; log "Detenido"; exit 0' INT TERM HUP
+trap 'stop_all; log "Detenido"; notify "Apagado"; exit 0' INT TERM HUP
 start_backend
 start_frontend
 log "Corriendo main $(git rev-parse --short HEAD). Dispositivos: https://$(lan_ip):$FRONT_PORT  ·  Mac: https://localhost:$FRONT_PORT"
 log "Logs: $RUN/{backend,frontend,run-main}.log. Revisando origin/main cada ${INTERVAL}s; Ctrl+C para frenar."
+notify "Encendido: https://$(lan_ip):$FRONT_PORT"
 
 while true; do
   sleep "$INTERVAL" & wait $!

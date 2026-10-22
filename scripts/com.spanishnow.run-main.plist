@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- SpanishNow: copia fija de main (scripts/run-main.sh). Arranca al iniciar sesión y se reinicia si se cae.
-     Manejo: launchctl kickstart -k gui/$(id -u)/com.spanishnow.run-main   (reiniciar)
-             launchctl bootout gui/$(id -u)/com.spanishnow.run-main        (frenar hasta el próximo inicio de sesión) -->
+<!-- SpanishNow: copia fija de main (scripts/run-main.sh), encendida a demanda con `spanishnow on|off|status|logs`
+     (scripts/spanishnow). No arranca sola al iniciar sesión; si se cae mientras está encendida, launchd la levanta de nuevo. -->
 <plist version="1.0">
 <dict>
   <key>Label</key>
@@ -23,9 +22,12 @@
     <string>/Users/andresguerrero</string>
   </dict>
   <key>RunAtLoad</key>
-  <true/>
+  <false/>
   <key>KeepAlive</key>
-  <true/>
+  <dict>
+    <key>SuccessfulExit</key>
+    <false/>
+  </dict>
   <key>ThrottleInterval</key>
   <integer>30</integer>
   <key>ProcessType</key>

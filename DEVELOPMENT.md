@@ -37,24 +37,21 @@ SpanishNow es una plataforma de aprendizaje de español basada en el método TPR
 ### Copia fija de main (probar lo último en la red local)
 Las sesiones trabajan en sus worktrees y mergean a `main` por PR. Para probar siempre el último `main` hay un clon aparte que nadie edita ni cambia de rama: `/Users/andresguerrero/Repos/SpanishNow-run`, con su propia base `spanishnow_main` (las sesiones usan `spanishnow_rebuild_test`).
 
-`scripts/run-main.sh` corre como servicio de macOS (launchd), no dentro de Claude ni de otro harness ni de una terminal: arranca al iniciar sesión y se reinicia si se cae. El servicio es `scripts/com.spanishnow.run-main.plist` (rutas de esta Mac y Node 24.13.0 de nvm; si cambia la versión de Node, actualizar `PATH` en el plist).
+Se enciende y apaga a demanda con el comando `spanishnow`, desde cualquier terminal (no depende de Claude ni de otro harness):
 
-Instalar o reinstalar (una vez):
-```bash
-cp /Users/andresguerrero/Repos/SpanishNow-run/scripts/com.spanishnow.run-main.plist ~/Library/LaunchAgents/ && launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.spanishnow.run-main.plist
-```
+| Comando | Qué hace |
+|---|---|
+| `spanishnow on` | Levanta todo y se pone al día con `main` (unos segundos). |
+| `spanishnow off` | Apaga todo; no consume nada hasta el próximo `on`. |
+| `spanishnow status` | Encendido o apagado, desde cuándo, qué `main`, URL, RAM y CPU. |
+| `spanishnow logs` | Sigue el log (Ctrl+C para salir). |
 
-Manejo:
+Por dentro, `scripts/run-main.sh` corre como servicio de macOS (launchd) definido en `scripts/com.spanishnow.run-main.plist`: no arranca solo al iniciar sesión y, si se cae mientras está encendido, launchd lo levanta de nuevo. `spanishnow on` instala o actualiza el plist en `~/Library/LaunchAgents` cuando cambia. El plist usa rutas de esta Mac y Node 24.13.0 de nvm; si cambia la versión de Node, actualizar `PATH`. Al encender macOS notifica "Encendido" y al apagar "Apagado". Recién encendido usa ~1,5–2 GB de RAM mientras Angular compila; en reposo la CPU queda en ~0%.
+
+Instalar el comando (una vez):
 ```bash
-launchctl kickstart -k gui/$(id -u)/com.spanishnow.run-main
+ln -sf /Users/andresguerrero/Repos/SpanishNow-run/scripts/spanishnow /opt/homebrew/bin/spanishnow
 ```
-```bash
-launchctl bootout gui/$(id -u)/com.spanishnow.run-main
-```
-```bash
-tail -f /Users/andresguerrero/Repos/SpanishNow-run/.run/run-main.log
-```
-(reiniciar; frenar hasta el próximo inicio de sesión; ver qué está haciendo). Para correrlo a mano sin el servicio: `scripts/run-main.sh` dentro del clon, con el servicio frenado porque usan los mismos puertos.
 
 - Levanta el backend (puerto de `backend/.env`, 3001) y el frontend LAN por HTTPS en el 4200: `https://<IP de la Mac>:4200` desde el celular, `https://localhost:4200` en la Mac.
 - Cada 60 s revisa `origin/main`. Si avanzó, hace fast-forward, corre `npm ci` solo si cambió un `package-lock.json`, `db:migrate` solo si hay migraciones nuevas, y reinicia solo lo necesario.

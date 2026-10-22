@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# Turns the dedicated main copy on and off (scripts/run-main.sh under launchd, see DEVELOPMENT.md).
+#
+#   spanishnow on       start backend + LAN frontend and follow origin/main
+#   spanishnow off      stop everything (frees RAM; nothing runs until the next `on`)
+#   spanishnow status   on/off, since when, which main, URL, RAM and CPU in use
+#   spanishnow logs     follow the log (Ctrl+C to leave)
+#
+# Installed as a symlink: ln -sf /Users/andresguerrero/Repos/SpanishNow-run/scripts/spanishnow /opt/homebrew/bin/spanishnow
+set -uo pipefail
+
+LABEL=com.spanishnow.run-main
+DOMAIN="gui/$(id -u)"
+SERVICE="$DOMAIN/$LABEL"
+ROOT="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
+SRC_PLIST="$ROOT/scripts/$LABEL.plist"
+PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+LOG="$ROOT/.run/run-main.log"
+PORT=4200
+
+pid() { launchctl print "$SERVICE" 2>/dev/null | awk '/^\tpid =/{print $3}'; }
+lan_ip() { ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || echo localhost; }
+tree() { local p; for p in "$@"; do echo "$p"; tree $(pgrep -P "$p"); done; }
+
+# Installs or refreshes the launchd service from the repo copy of the plist (never while it is running).
+ensure_loaded() {
+  if ! cmp -s "$SRC_PLIST" "$PLIST"; then
+    launchctl bootout "$SERVICE" 2>/dev/null
+    cp "$SRC_PLIST" "$PLIST"
+  fi
+  launchctl print "$SERVICE" >/dev/null 2>&1 || launchctl bootstrap "$DOMAIN" "$PLIST"
+}
+
+status() {
+  local p; p="$(pid)"
+  if [ -z "$p" ]; then echo "SpanishNow: APAGADO (no consume nada). Encendelo con: spanishnow on"; return 1; fi
+  local procs; procs="$(tree "$p" | paste -sd, -)"
+  echo "SpanishNow: ENCENDIDO desde hace $(ps -o etime= -p "$p" | tr -d ' ')"
+  echo "  main:        $(git -C "$ROOT" log -1 --format='%h %s')"
+  echo "  dispositivos: https://$(lan_ip):$PORT"
+  echo "  Mac:         https://localhost:$PORT"
+  ps -o rss=,%cpu= -p "$procs" | awk '{r+=$1; c+=$2} END {printf "  consumo:     %.0f MB de RAM, %.1f%% de CPU\n", r/1024, c}'
+}
+
+case "${1:-status}" in
+  on)
+    [ -n "$(pid)" ] && { status; exit 0; }
+    ensure_loaded
+    n=$(wc -l <"$LOG" 2>/dev/null || echo 0)
+    launchctl kickstart "$SERVICE"
+    echo "Encendiendo (se pone al día con main; puede tardar un minuto)..."
+    for _ in $(seq 1 120); do
+      tail -n +$((n + 1)) "$LOG" 2>/dev/null | grep -q "Revisando origin" && curl -sk -o /dev/null "https://localhost:$PORT/" && break
+      [ -z "$(pid)" ] && { echo "No arrancó. Últimas líneas del log:"; tail -5 "$LOG"; exit 1; }
+      sleep 1
+    done
+    status
+    ;;
+  off)
+    p="$(pid)"
+    [ -z "$p" ] && { echo "SpanishNow ya estaba apagado."; exit 0; }
+    # bootout (not kill) so launchd does not bring it back; `on` loads it again.
+    launchctl bootout "$SERVICE" 2>/dev/null
+    for _ in $(seq 1 30); do [ -z "$(pid)" ] && ! kill -0 "$p" 2>/dev/null && break; sleep 1; done
+    if kill -0 "$p" 2>/dev/null; then echo "No se apagó a tiempo; revisá: spanishnow logs"; exit 1; fi
+    echo "SpanishNow apagado."
+    ;;
+  status) status ;;
+  logs) tail -n 20 -f "$LOG" ;;
+  *) echo "Uso: spanishnow on | off | status | logs" >&2; exit 2 ;;
+esac
