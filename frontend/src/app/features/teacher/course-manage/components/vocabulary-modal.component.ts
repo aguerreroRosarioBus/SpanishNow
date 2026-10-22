@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, input, signal, viewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, input, signal, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { VocabularyService } from '../../../../core/services/vocabulary.service';
@@ -8,14 +8,17 @@ import { AudioInputComponent } from '../audio/audio-input.component';
 import { CourseManageStore } from '../course-manage.store';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
 
+import { ImageSearchComponent } from '../../../../shared/components/image-search/image-search.component';
+import { validateImageFile, IMAGE_ACCEPT } from '../../lesson-composer/image-file';
+
 /** Vocabulario de una unidad: alta con audio e imagen opcionales, listado y borrado. */
 @Component({
   selector: 'app-vocabulary-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, AudioInputComponent, IconComponent],
+  imports: [CommonModule, ReactiveFormsModule, AudioInputComponent, IconComponent, ImageSearchComponent],
   templateUrl: './vocabulary-modal.component.html'
 })
-export class VocabularyModalComponent implements OnInit {
+export class VocabularyModalComponent implements OnInit, OnDestroy {
   private store = inject(CourseManageStore);
   private vocabularyService = inject(VocabularyService);
   private toast = inject(ToastService);
@@ -26,6 +29,21 @@ export class VocabularyModalComponent implements OnInit {
   vocabulary = signal<Vocabulary[]>([]);
   isSubmitting = signal(false);
   private imageFile: File | null = null;
+  imagePreview = signal<string | null>(null);
+  readonly imageAccept = IMAGE_ACCEPT;
+
+  ngOnDestroy(): void { this.selectImage(null); }
+
+  selectImage(file: File | null): void {
+    if (file) {
+      const invalid = validateImageFile(file);
+      if (invalid) { this.toast.warning(invalid); return; }
+    }
+    const previous = this.imagePreview();
+    if (previous) URL.revokeObjectURL(previous);
+    this.imageFile = file;
+    this.imagePreview.set(file ? URL.createObjectURL(file) : null);
+  }
 
   form = inject(FormBuilder).group({
     word: ['', [Validators.required, Validators.minLength(1)]],
@@ -45,7 +63,8 @@ export class VocabularyModalComponent implements OnInit {
 
   onImageSelected(event: Event): void {
     const file = (event.target as HTMLInputElement).files?.[0];
-    if (file) this.imageFile = file;
+    (event.target as HTMLInputElement).value = '';
+    if (file) this.selectImage(file);
   }
 
   create(): void {
@@ -67,13 +86,13 @@ export class VocabularyModalComponent implements OnInit {
         this.vocabulary.update(list => [...list, created]);
         this.form.reset();
         this.audio().reset();
-        this.imageFile = null;
+        this.selectImage(null);
         this.isSubmitting.set(false);
         this.toast.success('Vocabulario creado exitosamente');
       },
       error: error => {
         console.error('Error creating vocabulary:', error);
-        this.toast.error('Error al crear vocabulario');
+        this.toast.error(error?.error?.error || 'Error al crear vocabulario');
         this.isSubmitting.set(false);
       }
     });

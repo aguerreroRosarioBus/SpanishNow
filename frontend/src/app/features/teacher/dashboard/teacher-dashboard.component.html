@@ -108,13 +108,14 @@
               type="file"
               class="form-control"
               id="image"
-              accept="image/*"
+              [accept]="imageAccept"
               (change)="onImageSelected($event)"
             >
             <small class="form-text text-muted">
-              Formatos: JPG, PNG. Tamaño máximo: 5MB
+              Formatos: JPG, PNG, WebP y GIF. Tamaño máximo: 5 MB
             </small>
 
+            <app-image-search [initialQuery]="courseForm.get('title')?.value || ''" [disabled]="isCreating()" (imageSelected)="selectSearchImage($event)" />
             <!-- Preview de la imagen -->
             <div *ngIf="imagePreview" class="mt-3">
               <img [src]="imagePreview" alt="Preview" class="img-thumbnail" style="max-height: 200px;">
@@ -221,11 +222,12 @@
               type="file"
               class="form-control"
               id="edit-image"
-              accept="image/*"
+              [accept]="imageAccept"
               (change)="onEditImageSelected($event)"
             >
+            <app-image-search [initialQuery]="editCourseForm.get('title')?.value || ''" [disabled]="isUpdating()" (imageSelected)="selectSearchImage($event, true)" />
             <small class="form-text text-muted">
-              Formatos: JPG, PNG. Tamaño máximo: 5MB. Deja vacío para mantener la imagen actual.
+              Formatos: JPG, PNG, WebP y GIF. Tamaño máximo: 5 MB. Deja vacío para mantener la imagen actual.
             </small>
 
             <!-- Preview de la nueva imagen -->

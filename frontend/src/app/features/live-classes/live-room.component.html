@@ -1,0 +1,114 @@
+<div class="live-room">
+  @if (loading()) { <div class="board-loading state-box" role="status">Abriendo la pizarra…</div> }
+  @if (!room() && error()) { <div class="board-loading state-box" role="alert"><p>{{ error() }}</p><button type="button" class="btn btn-secondary btn-sm" (click)="refresh(true)">Reintentar</button><a routerLink="/live">Volver a mis clases</a></div> }
+  @if (room(); as room) {
+    <header class="board-header">
+      <div class="board-identity">
+        <a routerLink="/live" class="btn-icon board-back" aria-label="Volver a Clases en vivo" title="Clases en vivo"><app-icon name="arrow-left" [size]="18" /></a>
+        <div class="board-title"><div class="board-title-line"><h1 [title]="room.title">{{ room.title }}</h1><span class="badge-status badge-status--dot" [class.badge-status--published]="room.status === 'live'" [class.badge-status--draft]="room.status !== 'live'">{{ statusLabel(room.status) }}</span></div>
+          <span class="save-state" role="status"><app-icon [name]="syncError() || connectionLost() ? 'wifi-off' : 'circle-check'" [size]="12" />{{ syncError() ? 'Cambios pendientes' : sending() || pending().length ? 'Guardando…' : busy() ? 'Procesando…' : 'Todos los cambios guardados' }}</span>
+        </div>
+      </div>
+      <div class="board-actions">
+        <button type="button" class="collaborators" (click)="togglePanel('participants')" [attr.aria-expanded]="panel() === 'participants'" [attr.aria-label]="'Participantes: ' + room.participants.length" title="Participantes">
+          <span class="avatar-stack">@for (p of room.participants.slice(0, 3); track p.id) { <span class="collaborator-avatar" [title]="p.name">{{ p.name.charAt(0).toUpperCase() }}</span> } @empty { <app-icon name="users" [size]="18" /> }</span><span class="participant-count">{{ room.participants.length }}</span>
+        </button>
+        @if (room.isOwner) {
+          <button type="button" class="btn btn-secondary google-action" (click)="togglePanel('google')" [attr.aria-expanded]="panel() === 'google'"><app-icon name="layers" [size]="16" /><span>Google</span></button>
+          @if (room.status !== 'live') { <button type="button" class="btn btn-primary" (click)="setStatus('live')" [disabled]="!canManage()"><app-icon name="play" [size]="16" />{{ room.status === 'ended' ? 'Reabrir clase' : 'Iniciar clase' }}</button> }
+          @else { <button type="button" class="btn btn-primary" (click)="share()"><app-icon name="share" [size]="16" />Invitar alumnos</button> }
+        }
+        <div ngbDropdown placement="bottom-end" container="body"><button type="button" ngbDropdownToggle class="btn-icon" aria-label="Más acciones de la clase"><app-icon name="more" [size]="18" /></button><div ngbDropdownMenu>
+          <button ngbDropdownItem type="button" (click)="download()"><app-icon name="download" [size]="16" />Descargar pizarra editable</button>
+          <button ngbDropdownItem type="button" (click)="exportPng()" [disabled]="busy() || !!pending().length"><app-icon name="image" [size]="16" />Descargar página como PNG</button>
+          @if (room.isOwner && room.status === 'live') { <div class="dropdown-divider"></div><button ngbDropdownItem type="button" (click)="ask('end')" [disabled]="!canManage()"><app-icon name="square" [size]="16" />Finalizar clase</button> }
+        </div></div>
+      </div>
+    </header>
+    <div class="room-messages" aria-live="polite">
+      @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
+      @if (info()) { <div class="room-info" role="status">{{ info() }}<button type="button" class="btn-icon" aria-label="Cerrar aviso" (click)="info.set('')"><app-icon name="close" [size]="16" /></button></div> }
+      @if (connectionLost()) { <div class="alert alert-warning" role="status">Conexión interrumpida. Intentando volver a conectar…</div> }
+      @if (syncError()) { <div class="alert alert-warning" role="alert"><p>{{ syncError() }}</p><p>Tus cambios pendientes siguen visibles aquí.</p><div class="page-actions"><button type="button" class="btn btn-secondary btn-sm" (click)="retry()" [disabled]="sending()">Reintentar guardado</button><button type="button" class="btn btn-secondary btn-sm" (click)="download()">Descargar copia</button><div ngbDropdown><button type="button" class="btn-icon" ngbDropdownToggle aria-label="Más acciones de recuperación"><app-icon name="more" [size]="18" /></button><div ngbDropdownMenu><button ngbDropdownItem type="button" class="text-danger" (click)="ask('discard')">Descartar cambios pendientes</button></div></div></div></div> }
+    </div>
+    <div class="room-workspace" [class.has-panel]="panel() !== 'none'">
+      <div class="board-workspace">
+        <div #canvasViewport class="canvas-viewport" [class.is-panning]="hand()" [class.is-dragging]="dragging()" (pointerdown)="startPan($event)" (pointermove)="movePan($event)" (pointerup)="endPan()" (pointercancel)="endPan()" (lostpointercapture)="endPan()">
+          <div class="board-stage" [style.min-width.px]="1600 * zoom() / 100 + viewportWidth()" [style.min-height.px]="900 * zoom() / 100 + viewportHeight()">
+            <div class="board-sheet" [style.width.px]="1600 * zoom() / 100">
+              <div class="frame-caption"><app-icon name="rectangle" [size]="14" />{{ currentPage()?.title }}</div>
+              @if (currentPage(); as p) { <app-live-board [page]="p" [editable]="canEdit()" [panning]="hand()" [owner]="room.isOwner" [userId]="user()!.id" [tool]="tool()" [color]="color()" [size]="size()" (change)="queue($event)" /> }
+            </div>
+          </div>
+        </div>
+        <div class="board-toolbar" role="toolbar" aria-label="Herramientas de la pizarra" aria-orientation="vertical">
+          @for (t of tools; track t.id; let i = $index) {
+            <button type="button" class="btn-icon tool" [class.active]="!hand() && tool() === t.id" [attr.aria-label]="t.label" [title]="t.label" [attr.aria-pressed]="!hand() && tool() === t.id" [disabled]="!canEdit() && t.id !== 'select'" (click)="selectTool(t.id)"><app-icon [name]="t.icon" [size]="20" /></button>
+            @if (i === 0) { <button type="button" class="btn-icon tool" [class.active]="hand()" [attr.aria-pressed]="hand()" aria-label="Desplazar lienzo" title="Desplazar lienzo" (click)="hand.set(!hand())"><app-icon name="hand" [size]="20" /></button><div class="tool-divider"></div> }
+          }
+          <button type="button" class="btn-icon tool" [class.active]="panel() === 'images'" (click)="togglePanel('images')" [disabled]="!canEdit()" aria-label="Insertar imagen" title="Insertar imagen"><app-icon name="image" [size]="20" /></button>
+          @if (room.isOwner) { <div class="tool-divider"></div><div ngbDropdown placement="right-bottom" container="body"><button type="button" class="btn-icon tool" ngbDropdownToggle aria-label="Más acciones de la página" [disabled]="!canManage()"><app-icon name="more" [size]="20" /></button><div ngbDropdownMenu><span class="dropdown-header">Fondo de página</span>@for (bg of backgrounds; track bg.id) { <button ngbDropdownItem type="button" (click)="background(bg.id)">{{ bg.name }} @if (currentPage()?.background === bg.id) { <app-icon name="check" [size]="16" /> }</button> }<div class="dropdown-divider"></div><button ngbDropdownItem type="button" class="text-danger" (click)="ask('clear')"><app-icon name="trash" [size]="16" />Vaciar página</button><button ngbDropdownItem type="button" class="text-danger" (click)="ask('delete-page')" [disabled]="(board()?.pages?.length || 0) < 2">Eliminar página</button></div></div> }
+        </div>
+        @if (toolOptions()) {
+          <div class="tool-options" role="group" aria-label="Opciones de dibujo">
+            <span class="options-label">{{ activeToolLabel() }}</span>
+            <div class="colors" role="group" aria-label="Color de dibujo">@for (c of palette; track c.color) { <button type="button" class="color-button" [style.--swatch]="c.color" [class.active]="color() === c.color" [attr.aria-label]="c.name" [attr.aria-pressed]="color() === c.color" (click)="color.set(c.color)"></button> }<label class="custom-color" title="Color personalizado"><span class="visually-hidden">Color personalizado</span><input type="color" [value]="color()" (input)="color.set($any($event.target).value)" /></label></div>
+            <select aria-label="Grosor de trazo" [ngModel]="size()" (ngModelChange)="size.set(+$event)"><option [ngValue]="2">Fino</option><option [ngValue]="4">Medio</option><option [ngValue]="8">Grueso</option><option [ngValue]="16">Muy grueso</option></select>
+          </div>
+        }
+        @if (!canEdit() && !syncError()) { <div class="read-only-message"><app-icon name="lock" [size]="14" />{{ room.status !== 'live' ? 'Solo lectura' : 'Edición pausada por el docente' }}</div> }
+        @if (!room.isOwner) { <button type="button" class="btn btn-secondary btn-sm follow-button" [class.is-following]="follow()" [attr.aria-pressed]="follow()" (click)="toggleFollow()"><app-icon name="eye" [size]="16" />{{ follow() ? 'Siguiendo al docente' : 'Seguir al docente' }}</button> }
+        <div class="canvas-footer">
+          <div class="frame-dock" [class.is-expanded]="framesOpen()">
+            <div class="frame-dock-heading"><button type="button" class="btn btn-ghost btn-sm" [attr.aria-expanded]="framesOpen()" (click)="framesOpen.set(!framesOpen())"><app-icon name="layers" [size]="16" /><span>Página {{ pageNumber() }} de {{ board()?.pages?.length }}</span><app-icon [name]="framesOpen() ? 'chevron-down' : 'chevron-up'" [size]="14" /></button>@if (room.isOwner) { <button type="button" class="btn-icon" (click)="addPage()" [disabled]="!canManage() || (board()?.pages?.length || 0) >= 20" aria-label="Agregar página" title="Agregar página"><app-icon name="plus" [size]="18" /></button> }</div>
+            @if (framesOpen()) { <nav class="page-tabs" aria-label="Páginas de la pizarra">@for (p of board()?.pages; track p.id; let i = $index) { <button type="button" class="frame-tab" [class.active]="currentPage()?.id === p.id" [attr.aria-current]="currentPage()?.id === p.id ? 'page' : null" (click)="choosePage(p.id)" [disabled]="room.isOwner && !canManage()" [attr.aria-label]="p.title"><app-board-preview [page]="p" /><span>{{ i + 1 }}</span></button> }</nav> }
+          </div>
+          <div class="zoom-controls" role="group" aria-label="Vista del lienzo"><button type="button" class="btn-icon" (click)="zoomBy(-10)" [disabled]="zoom() <= 10" aria-label="Alejar" title="Alejar"><app-icon name="minus" [size]="18" /></button><button type="button" class="zoom-value" (click)="fitBoard()" aria-label="Ajustar pizarra a la pantalla" title="Ajustar a pantalla">{{ zoom() }}%</button><button type="button" class="btn-icon" (click)="zoomBy(10)" [disabled]="zoom() >= 200" aria-label="Acercar" title="Acercar"><app-icon name="plus" [size]="18" /></button><span class="zoom-divider"></span><button type="button" class="btn-icon" (click)="fitBoard()" aria-label="Centrar pizarra" title="Ajustar a pantalla"><app-icon name="maximize" [size]="18" /></button></div>
+        </div>
+      </div>
+      @if (panel() !== 'none') {
+        <aside class="room-panel" [attr.aria-label]="panel() === 'google' ? 'Integraciones de Google' : panel() === 'images' ? 'Insertar imágenes' : 'Participantes'">
+          <header class="panel-heading"><h2>{{ panel() === 'google' ? 'Classroom y Drive' : panel() === 'images' ? 'Imágenes' : 'Participantes' }}</h2><button type="button" class="btn-icon" (click)="panel.set('none')" aria-label="Cerrar panel"><app-icon name="close" [size]="16" /></button></header>
+          @switch (panel()) {
+            @case ('images') {
+              <p>Agrega imágenes a la página actual y muévelas con Seleccionar.</p><label class="btn btn-secondary btn-sm upload-label"><app-icon name="upload" [size]="16" />Subir imagen<input type="file" [accept]="imageAccept" (change)="fileSelected($event)" [disabled]="!canEdit() || !!pending().length" /></label><small>PNG, JPG, WebP o GIF · hasta 5 MB</small>
+              @if (room.isOwner) { <app-image-search [initialQuery]="room.title" [disabled]="!canEdit() || !!pending().length" (imageSelected)="insertImage($event)" /> }
+            }
+            @case ('participants') {
+              @if (room.isOwner) {
+                <section><h3>Invitar a la clase</h3><p>{{ room.status === 'live' ? 'Comparte este enlace con tus alumnos.' : 'El enlace estará habilitado cuando inicies la clase.' }}</p><input class="form-control invite-url" aria-label="Enlace de invitación" readonly [value]="joinUrl" (focus)="$any($event.target).select()" /><button type="button" class="btn btn-secondary btn-sm" (click)="share()">Copiar enlace</button>
+                  <label class="editing-toggle"><input type="checkbox" [checked]="room.allowStudentEdit" (change)="toggleEditing()" [disabled]="!canManage()" />Permitir que los alumnos editen</label><small>Cada alumno puede modificar sus propios elementos.</small>
+                </section>
+              }
+              <h3>En la sala</h3><ul class="participant-list">@for (p of room.participants; track p.id) { <li><span class="participant-avatar" aria-hidden="true">{{ p.name.charAt(0).toUpperCase() }}</span><span>{{ p.name }}<small>{{ p.isTeacher ? 'Docente' : 'Alumno' }}{{ p.id === user()?.id ? ' · Tú' : '' }}</small></span></li> } @empty { <li>La lista se actualizará en unos segundos.</li> }</ul>
+            }
+            @case ('google') {
+              @if (googleLoading()) { <p role="status">Consultando conexión con Google…</p> }
+              @else if (googleError()) { <p role="alert">{{ googleError() }}</p><button type="button" class="btn btn-secondary btn-sm" (click)="loadGoogleStatus()">Reintentar</button> }
+              @else if (!google()?.connected) { <p>Conecta tu cuenta de Google desde Clases en vivo para usar Classroom y Drive.</p><a routerLink="/live" class="btn btn-secondary btn-sm">Configurar conexión</a> }
+              @else {
+                <p class="account-email">{{ google()?.email }}</p>
+                <section><h3>Google Classroom</h3>@if (room.classroomCourseName) { <p>Grupo: <strong>{{ room.classroomCourseName }}</strong></p> }
+                  <button type="button" class="btn btn-ghost btn-sm" (click)="loadCourses()" [disabled]="!canManage()">Buscar mis clases</button>
+                  @if (classroomCourses().length) { <label>Clase de Classroom<select class="form-select" [(ngModel)]="classroomId"><option value="">Seleccionar clase</option>@for (c of classroomCourses(); track c.id) { <option [value]="c.id">{{ c.name }}{{ c.section ? ' · ' + c.section : '' }}</option> }</select></label><button type="button" class="btn btn-secondary btn-sm" (click)="linkClassroom()" [disabled]="!canManage() || !classroomId">Vincular clase</button> }
+                  @if (nextCoursePage()) { <button type="button" class="btn btn-ghost btn-sm" (click)="loadCourses(true)" [disabled]="!canManage()">Cargar más clases</button> }
+                  <button type="button" class="btn btn-secondary btn-sm" (click)="announce()" [disabled]="!canManage() || !room.classroomCourseId || room.status !== 'live' || !!room.classroomAnnouncementId">{{ room.classroomAnnouncementId ? 'Invitación publicada' : 'Publicar invitación' }}</button>
+                  @if (room.classroomAnnouncementUrl) { <a [href]="room.classroomAnnouncementUrl" target="_blank" rel="noopener noreferrer">Ver en Classroom</a> }
+                </section>
+                <section><h3>Google Drive</h3><p>Guarda todas las páginas en un archivo editable de SpanishNow.</p><button type="button" class="btn btn-secondary btn-sm" (click)="saveDrive()" [disabled]="!canManage()">Guardar pizarra en Drive</button>@if (room.driveFileUrl) { <a [href]="room.driveFileUrl" target="_blank" rel="noopener noreferrer">Ver archivo en Drive</a> }
+                  <button type="button" class="btn btn-ghost btn-sm" (click)="loadDrive()" [disabled]="!canManage()">Buscar pizarras guardadas</button>
+                  @if (driveLoaded() && !driveFiles().length) { <small>Todavía no guardaste pizarras de SpanishNow en esta cuenta.</small> }
+                  <ul class="drive-files">@for (file of driveFiles(); track file.id) { <li><span>{{ file.name }}</span><button type="button" class="btn btn-ghost btn-sm" [disabled]="!canManage() || room.status === 'live'" (click)="selectedDriveFile.set(file); ask('restore')">Restaurar</button></li> }</ul>
+                  @if (nextDrivePage()) { <button type="button" class="btn btn-ghost btn-sm" (click)="loadDrive(true)" [disabled]="!canManage()">Cargar más pizarras</button> }
+                  @if (room.status === 'live') { <small>Finaliza la clase para restaurar una pizarra.</small> }
+                </section>
+              }
+              <section><h3>Recurso de Drive</h3><p>Agrega un enlace a un documento, presentación o archivo. Sus permisos se administran en Google Drive.</p><label>Nombre<input class="form-control" [(ngModel)]="resourceTitle" maxlength="200" placeholder="Actividad de hoy" /></label><label>Enlace<input class="form-control" [(ngModel)]="resourceUrl" maxlength="1500" placeholder="https://drive.google.com/…" /></label><button type="button" class="btn btn-secondary btn-sm" (click)="addResource()" [disabled]="!canEdit() || !resourceTitle.trim() || !resourceUrl.trim()">Agregar a la pizarra</button></section>
+            }
+          }
+        </aside>
+      }
+    </div>
+  }
+</div>
+@if (confirm()) { <app-confirm-dialog [show]="true" [title]="confirmationTitle" [message]="confirmationMessage" [type]="confirm() === 'end' ? 'warning' : 'danger'" [confirmText]="confirm() === 'end' ? 'Finalizar clase' : confirm() === 'restore' ? 'Restaurar' : confirm() === 'discard' ? 'Descartar' : 'Eliminar'" (confirmed)="confirmAction()" (cancelled)="confirm.set(null)" /> }

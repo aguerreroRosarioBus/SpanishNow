@@ -3,6 +3,12 @@ import { DomSanitizer } from '@angular/platform-browser';
 
 /** Iconos de trazo (rejilla 24x24, estilo Lucide). Cada entrada es el contenido SVG interno. */
 const ICONS: Record<string, string> = {
+  hand: '<path d="M18 11V7a2 2 0 0 0-4 0v4M14 10V5a2 2 0 0 0-4 0v6M10 10V7a2 2 0 0 0-4 0v8l-1-1a2 2 0 0 0-3 3l4 4a5 5 0 0 0 4 2h4a7 7 0 0 0 7-7v-3a2 2 0 0 0-3 0"/>',
+  'maximize': '<path d="M8 3H3v5M16 3h5v5M21 16v5h-5M3 16v5h5"/>',
+  minus: '<path d="M5 12h14"/>',
+  move: '<path d="m5 9-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/>',
+  type: '<path d="M4 7V4h16v3M9 20h6M12 4v16"/>',
+  'sticky-note': '<path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10l6-6V5a2 2 0 0 0-2-2z"/><path d="M15 21v-6h6"/>',
   pencil: '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>',
   highlighter: '<path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/>',
   eraser: '<path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/>',

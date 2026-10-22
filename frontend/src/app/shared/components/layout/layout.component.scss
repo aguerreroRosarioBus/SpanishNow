@@ -133,3 +133,13 @@
   background: var(--color-bg-dark);
   border-radius: 4px;
 }
+
+// The live board is a workspace: its canvas, rather than the page, owns scrolling.
+.main-content.is-board { overflow: hidden; }
+.content-wrapper.is-board {
+  flex: 1 1 0;
+  display: flex;
+  min-height: 0;
+  max-width: none;
+  padding: 0;
+}

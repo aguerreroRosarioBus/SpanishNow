@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { LessonBlock, LessonPlanService } from '../../../core/services/lesson-plan.service';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
+import { ImageSearchComponent } from '../../../shared/components/image-search/image-search.component';
 import { IMAGE_ACCEPT, suggestAlt, validateImageFile } from './image-file';
 import { WhiteboardService } from './whiteboard/whiteboard.service';
 
@@ -11,7 +12,7 @@ import { WhiteboardService } from './whiteboard/whiteboard.service';
 @Component({
   selector: 'app-keyframe-illustration',
   standalone: true,
-  imports: [CommonModule, FormsModule, IconComponent],
+  imports: [CommonModule, FormsModule, IconComponent, ImageSearchComponent],
   templateUrl: './keyframe-illustration.component.html',
   styleUrl: './keyframe-illustration.component.scss'
 })
@@ -50,7 +51,8 @@ export class KeyframeIllustrationComponent {
     if (file) await this.upload(file);
   }
 
-  private async upload(file: File): Promise<void> {
+  async upload(file: File): Promise<void> {
+    if (this.locked()) return;
     const invalid = validateImageFile(file);
     if (invalid) { this.error.set(invalid); return; }
     await this.run(async () => {

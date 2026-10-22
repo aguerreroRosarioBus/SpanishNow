@@ -47,7 +47,7 @@
 
       <p class="auth-card__alt">
         ¿Ya tienes cuenta?
-        <a routerLink="/auth/login">Inicia sesión</a>
+        <a routerLink="/auth/login" [queryParams]="returnUrl ? { returnUrl } : null">Inicia sesión</a>
       </p>
     </form>
   </div>

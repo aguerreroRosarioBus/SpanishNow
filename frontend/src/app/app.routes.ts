@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard, teacherGuard, studentGuard } from './core/guards/auth.guard';
+import { liveAuthGuard } from './core/guards/live-auth.guard';
 
 /**
  * Configuración de rutas de la aplicación
@@ -63,6 +64,19 @@ export const routes: Routes = [
     loadComponent: () => import('./features/public/checkout-success/checkout-success.component').then(m => m.CheckoutSuccessComponent)
   },
 
+  {
+    path: 'live', canActivate: [liveAuthGuard],
+    loadComponent: () => import('./features/live-classes/live-classes.component').then(m => m.LiveClassesComponent)
+  },
+  {
+    path: 'live/join/:code', canActivate: [liveAuthGuard],
+    loadComponent: () => import('./features/live-classes/live-join.component').then(m => m.LiveJoinComponent)
+  },
+  {
+    path: 'live/:id', canActivate: [liveAuthGuard],
+    canDeactivate: [(component: { canLeave(): boolean }) => component.canLeave()],
+    loadComponent: () => import('./features/live-classes/live-room.component').then(m => m.LiveRoomComponent)
+  },
   // Rutas de profesor
   {
     path: 'teacher/dashboard',

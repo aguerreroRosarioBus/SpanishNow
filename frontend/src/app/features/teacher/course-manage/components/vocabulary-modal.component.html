@@ -44,8 +44,12 @@
             </div>
             <div class="col-md-6">
               <label class="form-label">Imagen</label>
-              <input type="file" class="form-control" accept="image/*" (change)="onImageSelected($event)">
-              <small class="text-muted">Imagen visual para la palabra</small>
+              <input type="file" class="form-control" [accept]="imageAccept" (change)="onImageSelected($event)">
+              <app-image-search [initialQuery]="form.controls.word.value || ''" [disabled]="isSubmitting()" (imageSelected)="selectImage($event)" />
+              @if (imagePreview(); as preview) {
+                <img [src]="preview" alt="Vista previa de la imagen de la palabra" class="img-thumbnail mt-2" style="max-height: 120px">
+                <button type="button" class="btn btn-sm btn-link" (click)="selectImage(null)" [disabled]="isSubmitting()">Quitar imagen</button>
+              }
             </div>
             <div class="col-12">
               <button

@@ -79,6 +79,7 @@ export class SidebarNavComponent {
             { label: 'Mis cursos', icon: 'book-open', link: '/student/dashboard', exactQuery: true, alsoActiveUnder: '/student/course/' },
             { label: 'Explorar cursos', icon: 'compass', link: '/student/dashboard', query: { view: 'catalog' }, exactQuery: true },
             { label: 'Mi avance', icon: 'bar-chart', link: '/student/progress' },
+            { label: 'Clases en vivo', icon: 'rectangle', link: '/live' },
             { label: 'Maestros', icon: 'users', link: '/teachers' }
           ]
         },
@@ -90,6 +91,7 @@ export class SidebarNavComponent {
         title: 'Enseñanza',
         items: [
           { label: 'Mis cursos', icon: 'book-open', link: '/teacher/dashboard', alsoActiveUnder: '/teacher/course/' },
+          { label: 'Clases en vivo', icon: 'rectangle', link: '/live' },
           { label: 'Comentarios', icon: 'message-square', link: '/teacher/comments', badge: 'comments' }
         ]
       },
