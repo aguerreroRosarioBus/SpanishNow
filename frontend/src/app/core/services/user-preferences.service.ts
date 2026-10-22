@@ -47,6 +47,12 @@ export class UserPreferencesService {
     if (this.accountId != null) this.enqueue({ timeZone, confirmTimeZone: true });
   }
 
+  /** W04 (CHAT-09): prende o apaga el email de mensajes sin leer. */
+  saveChatUnreadEmail(enabled: boolean): void {
+    this.changeAccount(this.auth.currentUser()?.id ?? null);
+    if (this.accountId != null) this.enqueue({ chatUnreadEmail: enabled });
+  }
+
   retry(): void {
     this.changeAccount(this.auth.currentUser()?.id ?? null);
     if (this.accountId == null || this.loading() || this.saving()) return;

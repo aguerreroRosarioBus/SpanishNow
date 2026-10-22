@@ -41,7 +41,9 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
       CORS_EXTRA_ORIGINS: `http://localhost:${FRONTEND_PORT}`,
       // Sin Cloudinary real: las subidas se guardan en backend/uploads-dev (ver backend/docs/database.md)
       MEDIA_FAKE_UPLOADS: '1',
-      MEDIA_FAKE_BASE_URL: `http://localhost:${BACKEND_PORT}`
+      MEDIA_FAKE_BASE_URL: `http://localhost:${BACKEND_PORT}`,
+      // Chat (W04): módulo encendido; el email de no leídos queda en el outbox (sin OUTBOX_WORKER no se envía nada)
+      FEATURE_CHAT: '1'
     },
     stdio: ['ignore', 'ignore', 'inherit']
   });

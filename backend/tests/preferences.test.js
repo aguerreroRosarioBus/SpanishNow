@@ -16,11 +16,11 @@ describe('W01: preferencias propias de idioma y zona', () => {
     expect((await patch(user, { locale: 'es' })).status).toBe(401);
   });
 
-  test.each(['student', 'teacher'])('devuelve solo las tres preferencias de %s y conserva null sin elegir', async role => {
+  test.each(['student', 'teacher'])('devuelve solo las preferencias propias de %s y conserva null sin elegir', async role => {
     const user = await createUser(role, 'pref-null');
     const response = await as(user).get('/api/me/preferences');
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ locale: null, timeZone: null, timeZoneConfirmedAt: null });
+    expect(response.body).toEqual({ locale: null, timeZone: null, timeZoneConfirmedAt: null, chatUnreadEmail: true });
   });
 
   test('idioma y zona se actualizan por separado, sin modificar permisos ni sesiones confirmadas', async () => {
@@ -37,7 +37,7 @@ describe('W01: preferencias propias de idioma y zona', () => {
     const confirmedAt = zone.body.timeZoneConfirmedAt;
     const language = await patch(user, { locale: 'es' });
     expect(language.status).toBe(200);
-    expect(language.body).toEqual({ locale: 'es', timeZone: 'America/Argentina/Cordoba', timeZoneConfirmedAt: confirmedAt });
+    expect(language.body).toEqual({ locale: 'es', timeZone: 'America/Argentina/Cordoba', timeZoneConfirmedAt: confirmedAt, chatUnreadEmail: true });
     expect((await user.reload()).permissions).toEqual(['users.manage']);
     expect((await session.reload()).startsAt.toISOString()).toBe('2026-10-22T13:00:00.000Z');
     expect(session.endsAt.toISOString()).toBe('2026-10-22T13:50:00.000Z');
@@ -103,5 +103,20 @@ describe('W01: preferencias propias de idioma y zona', () => {
     const saved = (await as(user).get('/api/me/preferences')).body;
     expect(saved).toMatchObject({ locale: 'es', timeZone: 'Asia/Kathmandu', timeZoneConfirmedAt: expect.any(String) });
     expect((await User.findByPk(user.id)).role).toBe('student');
+  });
+});
+
+describe('W04: aviso por email de mensajes sin leer (CHAT-09)', () => {
+  test('se apaga y prende por separado; solo acepta booleanos', async () => {
+    const user = await createUser('student', 'pref-chat-email');
+    const off = await patch(user, { chatUnreadEmail: false });
+    expect(off.status).toBe(200);
+    expect(off.body).toMatchObject({ chatUnreadEmail: false, locale: null });
+    expect((await User.findByPk(user.id)).chatUnreadEmail).toBe(false);
+    expect((await patch(user, { locale: 'en' })).body).toMatchObject({ locale: 'en', chatUnreadEmail: false });
+    const bad = await patch(user, { chatUnreadEmail: 'no' });
+    expect(bad.status).toBe(400);
+    expect(bad.body).toMatchObject({ code: 'validation_failed', params: { fields: ['chatUnreadEmail'] } });
+    expect((await patch(user, { chatUnreadEmail: true })).body.chatUnreadEmail).toBe(true);
   });
 });
