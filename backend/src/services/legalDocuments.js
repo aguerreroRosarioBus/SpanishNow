@@ -23,7 +23,10 @@ function validateDraft(body) {
   if (typeof body.effectiveAt !== 'string' || !/^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:\d{2})$/.test(body.effectiveAt) || !Number.isFinite(Date.parse(body.effectiveAt))) throw invalid(['effectiveAt']);
   return { documentKey: body.documentKey, content: body.content, business: body.business, effectiveAt: new Date(body.effectiveAt) };
 }
-const placeholder = value => /\{\{|\[.*(?:pendiente|completar|placeholder|todo|tbd|responsable|address|email).*\]|\b(?:placeholder|TBD|TODO)\b|example\.(?:com|test)|@.*\.test\b/i.test(value);
+// Marcadores explícitos y sensibles a mayúsculas: «todo», «toda» o corchetes de referencias normales no bloquean.
+const MARKER = /\{\{|\}\}|\[\[|\]\]|\b(?:TODO|TBD|FIXME|PLACEHOLDER)\b/;
+const FAKE_DOMAIN = /example\.(?:com|org|net|test)\b|@[^\s@]+\.test\b/i;
+const placeholder = value => MARKER.test(value) || FAKE_DOMAIN.test(value);
 function publicationFields(doc) {
   const fields = [];
   for (const l of LOCALES) for (const k of ['title', 'body']) {

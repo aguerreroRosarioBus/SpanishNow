@@ -44,6 +44,20 @@ describe('W02 legal', () => {
     expect(r.body.params.fields).toEqual(expect.arrayContaining(['business.address', 'business.contactEmail', 'content.en.body', 'content.es.body']));
     expect((await request(app).get(`/api/public/legal/terms?version=${d.documentVersion}`)).status).toBe(404);
   });
+  test('texto ES realista con «todo/toda» y corchetes se publica; los marcadores explícitos bloquean', async () => {
+    const realistic = draftInput();
+    realistic.content.es.body = 'Todo usuario puede solicitar la baja. Toda la información de la cuenta se conserva según [sección 3: datos del responsable] y se responde por email [ver Contacto].';
+    realistic.content.en.body = 'Any user may request to close the account. See [section 3: responsible party] and the contact email [see Contact].';
+    realistic.business.address = 'Calle de todos 123 [piso 2]';
+    const ok = await draft(realistic);
+    expect((await as(admin).post(`/api/admin/legal-documents/${ok.id}/publish`, { documentVersion: ok.documentVersion })).status).toBe(200);
+    for (const marker of ['{{razón social}}', '[[domicilio]]', 'TODO revisar', 'Plazo TBD', 'FIXME']) {
+      const input = draftInput(); input.content.es.body = `Texto con ${marker} pendiente.`;
+      const d = await draft(input);
+      const r = await as(admin).post(`/api/admin/legal-documents/${d.id}/publish`, { documentVersion: d.documentVersion });
+      expect(r.status).toBe(400); expect(r.body.params.fields).toEqual(['content.es.body']);
+    }
+  });
   test('ambas traducciones, versiones antiguas accesibles y reintento sin fecha ni auditoría nuevas', async () => {
     const first = await publish();
     const again = await as(admin).post(`/api/admin/legal-documents/${first.id}/publish`, { documentVersion: first.documentVersion });
