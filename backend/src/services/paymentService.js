@@ -34,7 +34,7 @@ const successUrl = sessionPlaceholder => `${payments.frontendUrl()}/checkout/suc
  * `affiliate` (Affiliate row, optional) is stored on the order; its commission is computed when the order is fulfilled.
  * A final price of 0 (100 % coupon) creates an order with provider 'coupon' and fulfils it on the spot, without Stripe.
  */
-async function createCheckout({ course, user, fakeEmail, pricing, affiliate = null }) {
+async function createCheckout({ course, user, fakeEmail, pricing, affiliate = null, evidenceId = null }) {
   const price = pricing || { originalAmount: course.price, discountAmount: 0, amount: course.price, currency: String(course.currency).toLowerCase(), coupon: null };
   const base = {
     courseId: course.id, amount: price.amount, currency: price.currency,
@@ -54,6 +54,7 @@ async function createCheckout({ course, user, fakeEmail, pricing, affiliate = nu
     }
     const sessionId = `coupon_${randomUUID().replace(/-/g, '')}`;
     const order = await Order.create({ ...base, email, userId: user ? user.id : null, provider: 'coupon', providerSessionId: sessionId });
+    await require('./courseCheckoutEvidence').link(evidenceId, order.id);
     try {
       await fulfillOrder(order, { email }, { strictCoupon: true });
     } catch (error) {
@@ -68,6 +69,7 @@ async function createCheckout({ course, user, fakeEmail, pricing, affiliate = nu
     const email = user ? user.email : (isValidEmail(requested) ? requested : `fake-buyer-${randomUUID().slice(0, 8)}@spanishnow.test`);
     const sessionId = `fake_${randomUUID().replace(/-/g, '')}`;
     const order = await Order.create({ ...base, email, userId: user ? user.id : null, provider: 'fake', providerSessionId: sessionId });
+    await require('./courseCheckoutEvidence').link(evidenceId, order.id);
     // Same function the Stripe webhook calls: the order is paid right away.
     await fulfillOrder(order, { email });
     return { url: successUrl(sessionId), orderId: order.id };
@@ -107,6 +109,7 @@ async function createCheckout({ course, user, fakeEmail, pricing, affiliate = nu
   const order = await Order.create({
     ...base, email: user ? user.email : null, userId: user ? user.id : null, provider: 'stripe', providerSessionId: session.id
   });
+  await require('./courseCheckoutEvidence').link(evidenceId, order.id);
   return { url: session.url, orderId: order.id };
 }
 
