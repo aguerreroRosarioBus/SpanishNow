@@ -90,7 +90,11 @@ function validateConsent(input, docs, locale) {
   const actual = input.documents.map(d => only(d, ['documentKey', 'documentVersion']) && typeof d.documentVersion === 'string' ? `${d.documentKey}:${d.documentVersion}` : 'invalid').sort();
   if (JSON.stringify(expected) !== JSON.stringify(actual)) throw fail(409, 'legal_version_changed');
 }
+// legal_acceptances.acceptedAt (W00) es DATETIME sin fracción: se trunca antes de guardar para que la
+// respuesta de una inserción coincida con la de una lectura posterior (MySQL redondearía los milisegundos).
+const persistedSecond = date => new Date(Math.floor(date.getTime() / 1000) * 1000);
 async function recordAcceptances(userId, docs, { locale, context, contextType = null, contextId = null, acceptedAt = new Date(), transaction }) {
+  acceptedAt = persistedSecond(acceptedAt);
   // Serializa duplicados entre pestañas incluso cuando el contexto tiene columnas NULL.
   await User.findByPk(userId, { transaction, lock: transaction.LOCK.UPDATE });
   const result = [];
@@ -128,4 +132,4 @@ async function acceptOwn(user, body) {
     return rows[0];
   });
 }
-module.exports = { KEYS, LOCALES, fail, invalid, plain, only, validId, current, currentSet, present, createDraft, publish, validateConsent, recordAcceptances, acceptOwn, publicationFields };
+module.exports = { KEYS, LOCALES, fail, invalid, plain, only, validId, current, currentSet, present, createDraft, publish, validateConsent, persistedSecond, recordAcceptances, acceptOwn, publicationFields };

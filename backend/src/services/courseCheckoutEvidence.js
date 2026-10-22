@@ -15,7 +15,7 @@ async function capture(user, courseId, input = {}) {
     const locale = input.locale || 'en';
     const docs = commercial.legalDocuments;
     legal.validateConsent(input.legalConsent, docs.filter(d => d.documentKey !== 'privacy'), locale);
-    const acceptedAt = docs.some(d => d.documentKey !== 'privacy') ? new Date() : null;
+    const acceptedAt = docs.some(d => d.documentKey !== 'privacy') ? legal.persistedSecond(new Date()) : null;
     const evidence = await CourseCheckoutSnapshot.create({ courseId, userId: user?.id || null, snapshot: commercial, locale, acceptedAt }, { transaction });
     if (user) await legal.recordAcceptances(user.id, docs, { locale, context: 'checkout', contextType: 'course_checkout', contextId: evidence.id, acceptedAt, transaction });
     return { course, evidence };
