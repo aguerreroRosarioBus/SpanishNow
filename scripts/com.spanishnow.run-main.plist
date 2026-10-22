@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- SpanishNow: copia fija de main (scripts/run-main.sh). Arranca al iniciar sesión y se reinicia si se cae.
+     Manejo: launchctl kickstart -k gui/$(id -u)/com.spanishnow.run-main   (reiniciar)
+             launchctl bootout gui/$(id -u)/com.spanishnow.run-main        (frenar hasta el próximo inicio de sesión) -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.spanishnow.run-main</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/andresguerrero/Repos/SpanishNow-run/scripts/run-main.sh</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/Users/andresguerrero/Repos/SpanishNow-run</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <!-- Node de nvm: si cambiás de versión de Node, actualizá esta ruta. -->
+    <key>PATH</key>
+    <string>/Users/andresguerrero/.nvm/versions/node/v24.13.0/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>HOME</key>
+    <string>/Users/andresguerrero</string>
+  </dict>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>30</integer>
+  <key>ProcessType</key>
+  <string>Interactive</string>
+  <key>StandardOutPath</key>
+  <string>/Users/andresguerrero/Repos/SpanishNow-run/.run/launchd.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/andresguerrero/Repos/SpanishNow-run/.run/launchd.log</string>
+</dict>
+</plist>
