@@ -87,6 +87,11 @@ export class ChatConversationComponent implements OnInit {
   lastMineSeq = computed(() => { const mine = this.messages().filter(m => m.mine); return mine.length ? mine[mine.length - 1].seq : null; });
   waitingReply = computed(() => { const c = this.conversation(); return !!c && c.role === 'student' && !c.teacherReplied; });
 
+  /**
+   * Último seq recuperado de forma contigua del servidor (carga inicial y polling). Los envíos confirmados no lo
+   * mueven: entre el último poll y un envío propio puede haber mensajes ajenos que todavía no se pidieron.
+   */
+  private pollCursor = 0;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private idlePolls = 0;
   private readSent = 0;
@@ -108,6 +113,7 @@ export class ChatConversationComponent implements OnInit {
     this.messages.set([]);
     this.pending.set([]);
     this.readSent = 0;
+    this.pollCursor = 0;
     this.notFound.set(false);
     this.errorMessage.set('');
     this.isLoading.set(true);
@@ -118,6 +124,7 @@ export class ChatConversationComponent implements OnInit {
         this.api.messages(id).subscribe({
           next: page => {
             this.messages.set(page.items);
+            this.advanceCursor(page.items);
             this.hasOlder.set(page.hasMore);
             this.isLoading.set(false);
             this.scrollToBottom();
@@ -180,12 +187,13 @@ export class ChatConversationComponent implements OnInit {
     if (this.polling) return;
     this.polling = true;
     const id = this.conversationId;
-    this.api.messages(id, { afterSeq: this.lastSeq() }, 100).subscribe({
+    this.api.messages(id, { afterSeq: this.pollCursor }, 100).subscribe({
       next: page => {
         this.polling = false;
         if (id !== this.conversationId) return;
         const nearBottom = this.isNearBottom();
         this.merge(page.items);
+        this.advanceCursor(page.items);
         this.idlePolls = page.items.length ? 0 : this.idlePolls + 1;
         if (page.items.length) {
           if (nearBottom) this.scrollToBottom();
@@ -199,9 +207,16 @@ export class ChatConversationComponent implements OnInit {
     });
   }
 
-  /** Avanza el cursor de lectura al último mensaje visto, solo con la pestaña visible (CHAT-10). */
+  private advanceCursor(items: ChatMessage[]): void {
+    for (const m of items) if (m.seq > this.pollCursor) this.pollCursor = m.seq;
+  }
+
+  /**
+   * Avanza el cursor de lectura hasta lo recuperado sin huecos, solo con la pestaña visible (CHAT-10): un envío propio
+   * confirmado con un seq mayor no marca como leídos mensajes ajenos que todavía no se mostraron.
+   */
   private markRead(): void {
-    const seq = this.lastSeq();
+    const seq = this.pollCursor;
     if (seq <= this.readSent || this.document.visibilityState !== 'visible') return;
     this.readSent = seq;
     this.api.markRead(this.conversationId, seq).subscribe({ next: () => this.badge.refresh(), error: () => { this.readSent = 0; } });
