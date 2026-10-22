@@ -3,6 +3,11 @@ export interface User {
   name: string;
   email: string;
   role: 'teacher' | 'student';
+  /** Permisos de administración efectivos (vacío o ausente = sin permisos). */
+  permissions?: string[];
+  isTestAccount?: boolean;
+  /** Id del administrador cuando la sesión es un «Entrar como». */
+  impersonatedBy?: number;
 }
 
 export interface AuthResponse {

@@ -1,0 +1,190 @@
+<div class="page-container">
+  <div class="page-header">
+    <div class="page-header__main">
+      <h1 class="page-title">Usuarios</h1>
+      <p class="page-summary">
+        @if (canManage()) { Gestiona roles, permisos y el acceso de las cuentas, y crea cuentas de prueba. }
+        @else { Crea cuentas de prueba para revisar la app como si fueras otra persona. }
+      </p>
+    </div>
+  </div>
+
+  @if (canTest()) {
+    <section class="panel" aria-labelledby="testTitle">
+      <h2 class="panel__title" id="testTitle">Crear usuarios de prueba</h2>
+      <p class="panel__hint">Son cuentas ficticias: no reciben emails y puedes entrar a ellas con «Entrar como».</p>
+      <form class="create-form" (submit)="$event.preventDefault(); createTestUsers()">
+        <div class="field">
+          <label for="testRole">Rol</label>
+          <select id="testRole" class="form-select" [value]="testRole()" (change)="setTestRole($any($event.target).value)">
+            <option value="student">Alumno</option>
+            <option value="teacher">Profesor</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="testName">Nombre (opcional)</label>
+          <input id="testName" class="form-control" type="text" maxlength="80" [value]="testName()" (input)="testName.set($any($event.target).value)">
+        </div>
+        @if (testRole() === 'student' && courses().length > 0) {
+          <div class="field">
+            <label for="testCourse">Curso (opcional)</label>
+            <select id="testCourse" class="form-select" [value]="testCourseId() ?? ''" (change)="setTestCourse($any($event.target).value)">
+              <option value="">Sin inscribir</option>
+              @for (c of courses(); track c.id) { <option [value]="c.id">{{ c.title }}</option> }
+            </select>
+          </div>
+        }
+        <div class="field field--count">
+          <label for="testCount">Cantidad (1–10)</label>
+          <input id="testCount" class="form-control" type="number" min="1" max="10" [value]="testCount()" (change)="setTestCount($any($event.target).value)">
+        </div>
+        <div class="field field--submit">
+          <button type="submit" class="btn btn-primary" [disabled]="isCreating()">
+            <app-icon name="plus" [size]="16" />{{ isCreating() ? 'Creando…' : 'Crear' }}
+          </button>
+        </div>
+      </form>
+
+      @if (created().length > 0) {
+        <div class="created" role="status" aria-live="polite">
+          <p class="created__warn"><app-icon name="alert-triangle" [size]="16" />Guarda las contraseñas ahora: no se vuelven a mostrar.</p>
+          <ul class="created__list">
+            @for (c of created(); track c.user.id) {
+              <li class="created__item">
+                <div class="created__creds">
+                  <span class="created__label">{{ roleLabel(c.user.role) }} · {{ c.user.name }}</span>
+                  <div class="cred"><code>{{ c.user.email }}</code>
+                    <button type="button" class="btn btn-ghost btn-sm" (click)="copy(c.user.email, 'Email')" [attr.aria-label]="'Copiar email de ' + c.user.email"><app-icon name="copy" [size]="15" />Copiar</button></div>
+                  <div class="cred"><code>{{ c.password }}</code>
+                    <button type="button" class="btn btn-ghost btn-sm" (click)="copy(c.password, 'Contraseña')" [attr.aria-label]="'Copiar contraseña de ' + c.user.email"><app-icon name="copy" [size]="15" />Copiar</button></div>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" (click)="enter(c.user.id)">Entrar como</button>
+              </li>
+            }
+          </ul>
+        </div>
+      }
+    </section>
+  }
+
+  <section class="filters" aria-label="Filtros">
+    <div class="field field--grow">
+      <label for="fSearch">Buscar</label>
+      <input id="fSearch" class="form-control" type="search" placeholder="Nombre o email" [value]="search()" (input)="onSearch($any($event.target).value)">
+    </div>
+    @if (canManage()) {
+      <div class="field">
+        <label for="fRole">Rol</label>
+        <select id="fRole" class="form-select" [value]="roleFilter()" (change)="setRole($any($event.target).value)">
+          <option value="">Todos</option><option value="teacher">Profesores</option><option value="student">Alumnos</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="fKind">Tipo</label>
+        <select id="fKind" class="form-select" [value]="kindFilter()" (change)="setKind($any($event.target).value)">
+          <option value="">Reales y de prueba</option><option value="real">Reales</option><option value="test">De prueba</option>
+        </select>
+      </div>
+    }
+    <div class="field">
+      <label for="fStatus">Estado</label>
+      <select id="fStatus" class="form-select" [value]="statusFilter()" (change)="setStatus($any($event.target).value)">
+        <option value="">Todos</option><option value="active">Activas</option><option value="suspended">Suspendidas</option>
+      </select>
+    </div>
+    @if (canTest()) {
+      <div class="field field--submit">
+        <button type="button" class="btn btn-ghost btn-danger-text" (click)="askDeleteAll()"><app-icon name="trash" [size]="16" />Borrar todas las cuentas de prueba</button>
+      </div>
+    }
+  </section>
+
+  @if (errorMessage()) {
+    <div class="alert alert-danger" role="alert">{{ errorMessage() }}</div>
+  }
+
+  @if (isLoading()) {
+    <div class="text-center py-5" role="status">
+      <div class="spinner-border text-primary" aria-hidden="true"></div>
+      <p class="text-muted mt-2 mb-0">Cargando usuarios…</p>
+    </div>
+  } @else if (users().length === 0 && !errorMessage()) {
+    <div class="state-box">
+      <strong>No hay usuarios con esos filtros</strong>
+      <span>Cambia la búsqueda o los filtros para ver más resultados.</span>
+    </div>
+  } @else if (users().length > 0) {
+    <p class="result-count" aria-live="polite">{{ total() }} {{ total() === 1 ? 'usuario' : 'usuarios' }}</p>
+    <ul class="user-list">
+      @for (u of users(); track u.id) {
+        <li class="user-card" [class.user-card--suspended]="u.suspendedAt">
+          <div class="user-card__head">
+            <div class="user-card__id">
+              <strong class="user-card__name">{{ u.name }}</strong>
+              <span class="user-card__email">{{ u.email }}</span>
+            </div>
+            <div class="badges">
+              <span class="badge-status badge-status--draft">{{ roleLabel(u.role) }}</span>
+              @if (u.isTestAccount) { <span class="badge-level">Prueba</span> }
+              @if (u.suspendedAt) { <span class="badge-status badge-status--suspended">Suspendida</span> }
+              @if (u.fixedAdmin) { <span class="badge-status badge-status--published" title="Administrador fijo por configuración">Admin fijo</span> }
+            </div>
+          </div>
+          <p class="user-card__meta">
+            Creada el {{ u.createdAt | date:'d MMM y' }} ·
+            @if (u.role === 'teacher') { {{ u.coursesCount }} {{ u.coursesCount === 1 ? 'curso' : 'cursos' }} }
+            @else { {{ u.enrollmentsCount }} {{ u.enrollmentsCount === 1 ? 'inscripción' : 'inscripciones' }} }
+          </p>
+
+          <div class="user-card__controls">
+            @if (canManage()) {
+              <div class="field field--role">
+                <label [for]="'role-' + u.id">Rol</label>
+                <select [id]="'role-' + u.id" class="form-select form-select-sm" [value]="u.role" [disabled]="busy().has(u.id)" (change)="changeRole(u, $any($event.target).value)">
+                  <option value="student">Alumno</option>
+                  <option value="teacher">Profesor</option>
+                </select>
+              </div>
+              <fieldset class="perms" [disabled]="!canEditPermissions(u)">
+                <legend>Permisos@if (u.fixedAdmin) { <small>(fijos por configuración)</small> } @else if (u.isTestAccount) { <small>(las cuentas de prueba no tienen permisos)</small> }</legend>
+                @for (p of permissions(); track p.key) {
+                  <label class="perm" [title]="p.description">
+                    <input type="checkbox" [checked]="hasPermission(u, p.key)" [disabled]="permissionDisabled(u, p.key)"
+                           (change)="togglePermission(u, p.key, $any($event.target).checked)">
+                    <span>{{ p.label }}</span>
+                  </label>
+                }
+              </fieldset>
+            }
+            <div class="user-card__actions">
+              @if (canSuspend(u)) {
+                <button type="button" class="btn btn-ghost btn-sm" [disabled]="busy().has(u.id)" (click)="askSuspend(u)">{{ u.suspendedAt ? 'Reactivar' : 'Suspender' }}</button>
+              }
+              @if (canTest() && u.isTestAccount) {
+                <button type="button" class="btn btn-secondary btn-sm" [disabled]="!!u.suspendedAt" (click)="enter(u.id)" [attr.aria-label]="'Entrar como ' + u.name">Entrar como</button>
+                <button type="button" class="btn btn-ghost btn-sm btn-danger-text" (click)="askDelete(u)" [attr.aria-label]="'Borrar la cuenta de prueba ' + u.email">Borrar</button>
+              }
+            </div>
+          </div>
+        </li>
+      }
+    </ul>
+
+    @if (totalPages() > 1) {
+      <nav class="pager" aria-label="Paginación">
+        <button type="button" class="btn btn-ghost btn-sm" [disabled]="page() <= 1" (click)="goTo(page() - 1)"><app-icon name="chevron-left" [size]="16" />Anterior</button>
+        <span>Página {{ page() }} de {{ totalPages() }}</span>
+        <button type="button" class="btn btn-ghost btn-sm" [disabled]="page() >= totalPages()" (click)="goTo(page() + 1)">Siguiente<app-icon name="chevron-right" [size]="16" /></button>
+      </nav>
+    }
+  }
+</div>
+
+<app-confirm-dialog
+  [show]="!!pending()"
+  [title]="pending()?.title ?? ''"
+  [message]="pending()?.message ?? ''"
+  [confirmText]="pending()?.confirmText ?? 'Confirmar'"
+  [type]="pending()?.type ?? 'danger'"
+  (confirmed)="confirmPending()"
+  (cancelled)="pending.set(null)"></app-confirm-dialog>

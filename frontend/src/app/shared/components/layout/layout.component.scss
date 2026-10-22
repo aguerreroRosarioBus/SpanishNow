@@ -143,3 +143,18 @@
   max-width: none;
   padding: 0;
 }
+
+// Franja fija mientras el administrador está dentro de una cuenta de prueba
+.impersonation-banner {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 16px;
+  padding: 6px 16px;
+  background: var(--color-text);
+  color: #fff;
+  font-size: 0.875rem;
+  text-align: center;
+}

@@ -1,18 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const { User } = require('../models');
 const { authMiddleware } = require('../middlewares/auth.middleware');
 const { createToken, consumeToken, MIN_PASSWORD_LENGTH } = require('../services/passwordTokens');
 const { sendMail } = require('../services/mailService');
 const { passwordReset } = require('../services/emailTemplates');
-
-const signToken = user => jwt.sign(
-  { id: user.id, role: user.role },
-  process.env.JWT_SECRET || 'your-secret-key',
-  { expiresIn: '7d' }
-);
+const { signToken, serializeAuthUser } = require('../services/authUser');
 
 // Register
 router.post('/register',
@@ -39,21 +33,7 @@ router.post('/register',
 
       const user = await User.create({ name, email, password, role: 'student' });
 
-      const token = jwt.sign(
-        { id: user.id, role: user.role },
-        process.env.JWT_SECRET || 'your-secret-key',
-        { expiresIn: '7d' }
-      );
-
-      res.status(201).json({
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role
-        },
-        token
-      });
+      res.status(201).json({ user: serializeAuthUser(user), token: signToken(user) });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
@@ -85,26 +65,22 @@ router.post('/login',
         return res.status(401).json({ error: 'Invalid credentials' });
       }
 
-      const token = jwt.sign(
-        { id: user.id, role: user.role },
-        process.env.JWT_SECRET || 'your-secret-key',
-        { expiresIn: '7d' }
-      );
+      // Only after the password matched, so the answer does not reveal which emails have an account.
+      if (user.suspendedAt) {
+        return res.status(403).json({ error: 'This account is suspended' });
+      }
 
-      res.json({
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role
-        },
-        token
-      });
+      res.json({ user: serializeAuthUser(user), token: signToken(user) });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
   }
 );
+
+// Current user, to refresh permissions and flags without signing in again
+router.get('/me', authMiddleware, (req, res) => {
+  res.json({ user: serializeAuthUser(req.user, { impersonatedBy: req.impersonatedBy }) });
+});
 
 // Change password
 router.post('/change-password',
@@ -187,10 +163,8 @@ router.post('/reset-password',
       }
       const user = await consumeToken(req.body.token, req.body.password);
       if (!user) return res.status(400).json({ error: 'This link is invalid or has expired' });
-      res.json({
-        user: { id: user.id, name: user.name, email: user.email, role: user.role },
-        token: signToken(user)
-      });
+      if (user.suspendedAt) return res.status(403).json({ error: 'This account is suspended' });
+      res.json({ user: serializeAuthUser(user), token: signToken(user) });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }

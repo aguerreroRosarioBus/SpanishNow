@@ -48,7 +48,7 @@ describe('forgot and reset password', () => {
 
     const res = await as(null).post('/api/auth/reset-password', { token, password: 'brand-new-1' });
     expect(res.status).toBe(200);
-    expect(res.body.user).toEqual({ id: user.id, name: user.name, email: user.email, role: 'student' });
+    expect(res.body.user).toEqual({ id: user.id, name: user.name, email: user.email, role: 'student', permissions: [], isTestAccount: false });
     expect((await as({ token: res.body.token }).get('/api/enrollments/my-courses')).status).toBe(200);
     expect((await as(null).post('/api/auth/login', { email: user.email, password: 'brand-new-1' })).status).toBe(200);
     expect((await as(null).post('/api/auth/login', { email: user.email, password: 'jest-password-1' })).status).toBe(401);
