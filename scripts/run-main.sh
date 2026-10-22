@@ -52,6 +52,7 @@ pull() {
 install() { log "npm ci en $1"; (cd "$ROOT/$1" && npm ci --no-audit --no-fund >>"$RUN/$1.log" 2>&1) || warn "Falló npm ci en $1 (ver .run/$1.log)."; }
 
 migrate() {
+  MIGRATED=1
   log "Aplicando migraciones"
   (cd backend && npm run -s db:migrate >>"$RUN/run-main.log" 2>&1) || warn "Falló db:migrate (ver .run/run-main.log)."
 }
@@ -107,12 +108,13 @@ apply() {
 }
 
 guard
+MIGRATED=0
 changed="$(pull)"
+[ -n "$changed" ] && apply "$changed"
 [ -d backend/node_modules ] || install backend
 [ -d frontend/node_modules ] || install frontend
-migrate
+[ "$MIGRATED" = 1 ] || migrate
 check_env
-[ -n "$changed" ] && apply "$changed"
 [ "${1:-}" = "sync" ] && exit 0
 
 FRONTEND_URL="${RUN_MAIN_FRONTEND_URL:-https://$(lan_ip):$FRONT_PORT}"
