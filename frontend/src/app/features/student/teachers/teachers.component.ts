@@ -1,7 +1,8 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { I18nService } from '../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
+import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
-import { PluralPipe } from '../../../shared/pipes/plural.pipe';
 import { environment } from '../../../../environments/environment';
 
 interface Teacher {
@@ -14,16 +15,18 @@ interface Teacher {
 @Component({
   selector: 'app-teachers',
   standalone: true,
-  imports: [IconComponent, PluralPipe],
+  imports: [TranslatePipe, IconComponent],
   templateUrl: './teachers.component.html',
   styleUrl: './teachers.component.scss'
 })
 export class TeachersComponent implements OnInit {
+  readonly i18n = inject(I18nService);
   private http = inject(HttpClient);
 
   teachers = signal<Teacher[]>([]);
   isLoading = signal<boolean>(false);
-  error = signal<string | null>(null);
+  private failure = signal<unknown>(null);
+  error = computed(() => this.failure() ? this.i18n.errorMessage(this.failure(), 'student.teachersError') : null);
 
   ngOnInit(): void {
     this.loadTeachers();
@@ -31,7 +34,7 @@ export class TeachersComponent implements OnInit {
 
   loadTeachers(): void {
     this.isLoading.set(true);
-    this.error.set(null);
+    this.failure.set(null);
 
     this.http.get<Teacher[]>(`${environment.apiUrl}/users/teachers`).subscribe({
       next: (teachers) => {
@@ -40,7 +43,7 @@ export class TeachersComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error loading teachers:', error);
-        this.error.set('Error al cargar los profesores');
+        this.failure.set(error);
         this.isLoading.set(false);
       }
     });

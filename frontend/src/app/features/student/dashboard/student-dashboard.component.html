@@ -7,15 +7,15 @@
   @if (activeView() === 'catalog') {
     <div class="page-header">
       <div class="page-header__main">
-        <h1 class="page-title">Explorar cursos</h1>
+        <h1 class="page-title">{{ 'student.explore' | t }}</h1>
         <p class="page-summary">
-          @if (currentLevelFilter()) { Cursos de nivel {{ currentLevelFilter() }} } @else { Todos los cursos de español disponibles }
+          @if (currentLevelFilter()) { {{ 'student.levelCourses' | t : { level: currentLevelFilter() ?? '' } }} } @else { {{ 'student.allCourses' | t }} }
         </p>
       </div>
     </div>
 
-    <nav class="filter-chips" aria-label="Filtrar por nivel">
-      <a class="filter-chip" [class.is-active]="!currentLevelFilter()" [routerLink]="['/student/dashboard']" [queryParams]="{ view: 'catalog' }">Todos</a>
+    <nav class="filter-chips" [attr.aria-label]="'student.filterLevel' | t">
+      <a class="filter-chip" [class.is-active]="!currentLevelFilter()" [routerLink]="['/student/dashboard']" [queryParams]="{ view: 'catalog' }">{{ 'student.all' | t }}</a>
       @for (level of levels; track level) {
         <a class="filter-chip" [class.is-active]="currentLevelFilter() === level" [routerLink]="['/student/dashboard']" [queryParams]="{ view: 'catalog', level: level }">{{ level }}</a>
       }
@@ -24,30 +24,30 @@
     @if (isLoadingCatalog()) {
       <div class="text-center py-5" role="status">
         <div class="spinner-border text-primary" aria-hidden="true"></div>
-        <p class="text-muted mt-2 mb-0">Cargando catálogo…</p>
+        <p class="text-muted mt-2 mb-0">{{ 'student.loadingCatalog' | t }}</p>
       </div>
     } @else if (allCourses().length === 0) {
       <div class="state-box">
-        <strong>No hay cursos disponibles</strong>
-        <span>Los profesores aún no han creado cursos.</span>
+        <strong>{{ 'student.noCourses' | t }}</strong>
+        <span>{{ 'student.noCoursesHelp' | t }}</span>
       </div>
     } @else if (filteredCourses().length === 0) {
       <div class="state-box">
-        <strong>No hay cursos de nivel {{ currentLevelFilter() }}</strong>
-        <a [routerLink]="['/student/dashboard']" [queryParams]="{ view: 'catalog' }">Ver todos los cursos</a>
+        <strong>{{ 'student.noLevel' | t : { level: currentLevelFilter() ?? '' } }}</strong>
+        <a [routerLink]="['/student/dashboard']" [queryParams]="{ view: 'catalog' }">{{ 'student.viewAll' | t }}</a>
       </div>
     } @else {
       <div class="card-grid">
         @for (course of filteredCourses(); track course.id) {
           <app-course-card [title]="course.title" [level]="course.level" [description]="course.description" [imageUrl]="course.imageUrl">
             @if (isEnrolled(course.id)) {
-              <span class="enrolled"><app-icon name="check" [size]="14" />Ya estás inscrito</span>
-              <button type="button" class="btn btn-secondary btn-sm ms-auto" (click)="switchView('my-courses')">Ver en Mis cursos</button>
+              <span class="enrolled"><app-icon name="check" [size]="14" />{{ 'student.enrolled' | t }}</span>
+              <button type="button" class="btn btn-secondary btn-sm ms-auto" (click)="switchView('my-courses')">{{ 'student.viewMyCourses' | t }}</button>
             } @else if (salesLink(course); as link) {
               <span class="price">{{ priceLabel(course) }}</span>
-              <a [routerLink]="link" class="btn btn-primary ms-auto">Ver curso</a>
+              <a [routerLink]="link" class="btn btn-primary ms-auto">{{ 'student.viewCourse' | t }}</a>
             } @else {
-              <button type="button" class="btn btn-primary w-100" (click)="enrollInCourse(course.id)">Inscribirse</button>
+              <button type="button" class="btn btn-primary w-100" (click)="enrollInCourse(course.id)">{{ 'student.enroll' | t }}</button>
             }
           </app-course-card>
         }
@@ -59,35 +59,35 @@
   @if (activeView() === 'my-courses') {
     <div class="page-header">
       <div class="page-header__main">
-        <h1 class="page-title">Mis cursos</h1>
-        <p class="page-summary">{{ myCourses().length | plural:'curso inscrito':'cursos inscritos':'Sin cursos todavía' }}</p>
+        <h1 class="page-title">{{ 'student.myCourses' | t }}</h1>
+        <p class="page-summary">{{ 'student.enrollmentCount' | t : { count: myCourses().length } }}</p>
       </div>
     </div>
 
     @if (isLoadingMyCourses()) {
       <div class="text-center py-5" role="status">
         <div class="spinner-border text-primary" aria-hidden="true"></div>
-        <p class="text-muted mt-2 mb-0">Cargando tus cursos…</p>
+        <p class="text-muted mt-2 mb-0">{{ 'student.loadingMyCourses' | t }}</p>
       </div>
     } @else if (myCourses().length === 0) {
       <div class="state-box">
-        <strong>No estás inscrito en ningún curso</strong>
-        <span>Explora el catálogo y comienza tu aprendizaje.</span>
-        <button type="button" class="btn btn-primary mt-2" (click)="switchView('catalog')">Explorar cursos</button>
+        <strong>{{ 'student.noEnrollments' | t }}</strong>
+        <span>{{ 'student.noEnrollmentsHelp' | t }}</span>
+        <button type="button" class="btn btn-primary mt-2" (click)="switchView('catalog')">{{ 'student.explore' | t }}</button>
       </div>
     } @else {
       <div class="card-grid">
         @for (enrollment of myCourses(); track enrollment.id) {
-          <app-course-card [title]="enrollment.course?.title ?? 'Curso'" [level]="enrollment.course?.level" [description]="enrollment.course?.description" [imageUrl]="enrollment.course?.imageUrl">
-            <small card-meta class="text-secondary-ui">Inscrito el {{ enrollment.createdAt | date:'d MMM y' }}</small>
-            <a [routerLink]="['/student/course', enrollment.courseId, 'play']" class="btn btn-primary flex-grow-1">Continuar</a>
+          <app-course-card [title]="enrollment.course?.title ?? ('student.course' | t)" [level]="enrollment.course?.level" [description]="enrollment.course?.description" [imageUrl]="enrollment.course?.imageUrl">
+            <small card-meta class="text-secondary-ui">{{ 'student.enrolledOn' | t : { date: (enrollment.createdAt | localeDate : timeZone() : { dateStyle: 'medium' }) } }}</small>
+            <a [routerLink]="['/student/course', enrollment.courseId, 'play']" class="btn btn-primary flex-grow-1">{{ 'student.continue' | t }}</a>
             <div ngbDropdown container="body" placement="bottom-end">
-              <button type="button" ngbDropdownToggle class="btn-icon" aria-label="Más acciones del curso">
+              <button type="button" ngbDropdownToggle class="btn-icon" [attr.aria-label]="'student.moreActions' | t">
                 <app-icon name="more" [size]="18" />
               </button>
               <div ngbDropdownMenu role="menu">
                 <button type="button" ngbDropdownItem role="menuitem" (click)="resetCourseProgress(enrollment)">
-                  <app-icon name="rotate-ccw" [size]="15" />Reiniciar progreso
+                  <app-icon name="rotate-ccw" [size]="15" />{{ 'student.reset.title' | t }}
                 </button>
               </div>
             </div>
@@ -102,9 +102,9 @@
 @if (confirmDialogData(); as dialog) {
   <app-confirm-dialog
     [show]="showConfirmDialog()"
-    [title]="dialog.title"
-    [message]="dialog.message"
-    [confirmText]="dialog.confirmText"
+    [title]="dialog.title | t"
+    [message]="dialog.message | t : dialog.params"
+    [confirmText]="dialog.confirmText | t"
     [type]="dialog.type"
     (confirmed)="onConfirmDialogConfirmed()"
     (cancelled)="closeConfirmDialog()"
