@@ -57,6 +57,8 @@ export class LiveRoomComponent implements OnInit, OnDestroy {
   confirm = signal<Confirmation | null>(null);
   private confirmationPage: BoardPage | null = null;
   google = signal<GoogleStatus | null>(null);
+  googleLoading = signal(false);
+  googleError = signal('');
   classroomCourses = signal<ClassroomCourse[]>([]);
   nextCoursePage = signal<string | null>(null);
   driveFiles = signal<DriveBoardFile[]>([]);
@@ -177,7 +179,7 @@ export class LiveRoomComponent implements OnInit, OnDestroy {
       this.connectionLost.set(false);
       if (first) {
         this.presence();
-        if (result.isOwner) this.api.googleStatus().subscribe({ next: status => this.google.set(status), error: () => this.error.set('No se pudo consultar la conexión con Google.') });
+        if (result.isOwner) void this.loadGoogleStatus();
       }
     } catch (e: any) {
       if (!this.alive) return;
@@ -267,7 +269,20 @@ export class LiveRoomComponent implements OnInit, OnDestroy {
     this.info.set(copied ? 'Enlace de invitación copiado.' : 'No se pudo copiar automáticamente. Selecciona el enlace y cópialo.');
     this.panel.set('participants');
   }
-  togglePanel(panel: 'images' | 'google' | 'participants'): void { this.panel.update(current => current === panel ? 'none' : panel); }
+  togglePanel(panel: 'images' | 'google' | 'participants'): void {
+    this.panel.update(current => current === panel ? 'none' : panel);
+    if (this.panel() === 'google') void this.loadGoogleStatus();
+  }
+  async loadGoogleStatus(): Promise<void> {
+    if (!this.alive || !this.room()?.isOwner || this.googleLoading()) return;
+    this.googleLoading.set(true); this.googleError.set('');
+    try {
+      const status = await firstValueFrom(this.api.googleStatus());
+      if (this.alive) this.google.set(status);
+    } catch (e) {
+      if (this.alive) this.googleError.set(liveErrorMessage(e, 'No se pudo consultar la conexión con Google.'));
+    } finally { if (this.alive) this.googleLoading.set(false); }
+  }
   async insertImage(file: File): Promise<void> {
     if (!this.canEdit() || this.pending().length) return;
     const invalid = validateImageFile(file);

@@ -5,7 +5,7 @@ import { of, Subject, throwError } from 'rxjs';
 import { LiveRoomComponent } from './live-room.component';
 import { LiveClassService } from '../../core/services/live-class.service';
 import { AuthService } from '../../core/services/auth.service';
-import { BoardOperation, LiveBoard, LiveSnapshot } from '../../core/models/live-class.model';
+import { BoardOperation, GoogleStatus, LiveBoard, LiveSnapshot } from '../../core/models/live-class.model';
 import { previewBoard } from './board/board.logic';
 
 const board = (): LiveBoard => ({ pages: [{ id: 'page_0001', title: 'Página 1', elements: [], background: 'plain' }], activePageId: 'page_0001' });
@@ -16,7 +16,7 @@ const operation = (): BoardOperation => ({ id: 'operation_01', type: 'put', page
 describe('LiveRoomComponent collaboration', () => {
   async function create(owner = true) {
     const data = snapshot(owner);
-    const api = { snapshot: vi.fn(() => of(data)), presence: vi.fn(() => of(undefined)), googleStatus: vi.fn(() => of({ configured: false, connected: false, email: null })), change: vi.fn(), settings: vi.fn(), restore: vi.fn() };
+    const api = { snapshot: vi.fn(() => of(data)), presence: vi.fn(() => of(undefined)), googleStatus: vi.fn(() => of<GoogleStatus>({ configured: false, connected: false, email: null })), change: vi.fn(), settings: vi.fn(), restore: vi.fn() };
     TestBed.configureTestingModule({ imports: [LiveRoomComponent], providers: [provideRouter([]),
       { provide: ActivatedRoute, useValue: { snapshot: { paramMap: new Map([['id', '1']]) } } },
       { provide: AuthService, useValue: { currentUser: signal({ id: owner ? 7 : 8, role: owner ? 'teacher' : 'student' }) } },
@@ -25,6 +25,41 @@ describe('LiveRoomComponent collaboration', () => {
     await c.refresh();
     return { fixture, c, api, data };
   }
+  it('refreshes Google connection when reopening the panel after OAuth', async () => {
+    const { c, api } = await create();
+    expect(c.google()?.connected).toBe(false);
+    c.togglePanel('google'); await Promise.resolve();
+    c.togglePanel('google');
+    api.googleStatus.mockReturnValue(of({ configured: true, connected: true, email: 'teacher@example.com' }));
+    c.togglePanel('google'); await Promise.resolve();
+    expect(api.googleStatus).toHaveBeenCalledTimes(3);
+    expect(c.google()).toEqual({ configured: true, connected: true, email: 'teacher@example.com' });
+    expect(c.googleLoading()).toBe(false);
+  });
+  it('coalesces Google status requests and ignores responses after leaving the room', async () => {
+    const { c, api } = await create(); const response = new Subject<GoogleStatus>();
+    api.googleStatus.mockReturnValue(response as any);
+    c.togglePanel('google'); c.togglePanel('google'); c.togglePanel('google');
+    expect(c.googleLoading()).toBe(true); expect(api.googleStatus).toHaveBeenCalledTimes(2);
+    c.ngOnDestroy();
+    response.next({ configured: true, connected: true, email: 'teacher@example.com' }); response.complete();
+    await Promise.resolve();
+    expect(c.google()?.connected).toBe(false);
+  });
+  it('allows retry after a Google status failure without changing board errors', async () => {
+    const { c, api } = await create();
+    api.googleStatus.mockReturnValue(throwError(() => ({ status: 0 })));
+    c.togglePanel('google'); await Promise.resolve();
+    expect(c.googleError()).not.toBe(''); expect(c.error()).toBe(''); expect(c.googleLoading()).toBe(false);
+    api.googleStatus.mockReturnValue(of({ configured: true, connected: true, email: 'teacher@example.com' }));
+    await c.loadGoogleStatus();
+    expect(c.googleError()).toBe(''); expect(c.google()?.connected).toBe(true);
+  });
+  it('does not request a student’s Google connection', async () => {
+    const { c, api } = await create(false);
+    c.togglePanel('google'); await c.loadGoogleStatus();
+    expect(api.googleStatus).not.toHaveBeenCalled();
+  });
   it('previews a pending contribution, then reconciles it with the saved server state', async () => {
     const { c, api } = await create();
     const response = new Subject<{ revision: number; board: LiveBoard }>(); api.change.mockReturnValue(response);

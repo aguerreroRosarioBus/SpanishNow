@@ -48,6 +48,10 @@ Generar `GOOGLE_TOKEN_ENCRYPTION_KEY` una sola vez con `openssl rand -base64 32`
 5. Ejecutar `cd backend && npm run db:migrate`. La migración aditiva `20261105000000-create-live-classes.js` crea `live_classes`, `live_class_members` y `google_connections`. No reconstruir la base. Un rollback con datos exige `CONFIRM_LIVE_CLASS_DATA_LOSS=yes`.
 6. En **Clases en vivo**, elegir **Conectar Google** y aceptar todos los permisos. La conexión usa una navegación al backend y luego a Google, sin depender de cookies de terceros.
 
+Para pruebas con una cuenta personal de Gmail, elegir **Usuarios externos**, conservar el estado **Prueba** y agregar explícitamente la cuenta en **Público → Usuarios de prueba**. Google puede mostrar el aviso de aplicación no verificada para este registro de desarrollo. El cliente debe ser **Aplicación web**; este flujo de servidor solo necesita la URI de redireccionamiento, sin orígenes JavaScript ni la opción de cliente para agentes de IA.
+
+En modo **Prueba**, Google hace vencer el refresh token a los siete días para estos permisos; habrá que volver a conectar la cuenta. Antes de habilitar docentes reales, completar los datos públicos, los dominios y las URLs HTTPS de producción, y tramitar la publicación/verificación que Google solicite. Referencia: [caducidad de refresh tokens](https://developers.google.com/identity/protocols/oauth2#expiration).
+
 Scopes solicitados:
 
 - `userinfo.email`: identificar la cuenta conectada.

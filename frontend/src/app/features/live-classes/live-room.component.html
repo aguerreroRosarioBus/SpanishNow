@@ -83,7 +83,9 @@
               <h3>En la sala</h3><ul class="participant-list">@for (p of room.participants; track p.id) { <li><span class="participant-avatar" aria-hidden="true">{{ p.name.charAt(0).toUpperCase() }}</span><span>{{ p.name }}<small>{{ p.isTeacher ? 'Docente' : 'Alumno' }}{{ p.id === user()?.id ? ' · Tú' : '' }}</small></span></li> } @empty { <li>La lista se actualizará en unos segundos.</li> }</ul>
             }
             @case ('google') {
-              @if (!google()?.connected) { <p>Conecta tu cuenta de Google desde Clases en vivo para usar Classroom y Drive.</p><a routerLink="/live" class="btn btn-secondary btn-sm">Configurar conexión</a> }
+              @if (googleLoading()) { <p role="status">Consultando conexión con Google…</p> }
+              @else if (googleError()) { <p role="alert">{{ googleError() }}</p><button type="button" class="btn btn-secondary btn-sm" (click)="loadGoogleStatus()">Reintentar</button> }
+              @else if (!google()?.connected) { <p>Conecta tu cuenta de Google desde Clases en vivo para usar Classroom y Drive.</p><a routerLink="/live" class="btn btn-secondary btn-sm">Configurar conexión</a> }
               @else {
                 <p class="account-email">{{ google()?.email }}</p>
                 <section><h3>Google Classroom</h3>@if (room.classroomCourseName) { <p>Grupo: <strong>{{ room.classroomCourseName }}</strong></p> }
