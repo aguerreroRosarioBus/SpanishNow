@@ -3,18 +3,18 @@
     <header class="auth-card__head">
       <img src="logo-mark.svg" alt="" width="48" height="45">
       <h1 class="auth-card__title">SpanishNow</h1>
-      <p class="auth-card__subtitle">Inicia sesión en tu cuenta</p>
+      <p class="auth-card__subtitle">{{ 'auth.loginTitle' | t }}</p>
     </header>
 
-    @if (errorMessage) {
-      <div class="alert alert-danger" role="alert">{{ errorMessage }}</div>
+    @if (errorMessage()) {
+      <div class="alert alert-danger" role="alert">{{ errorMessage() }}</div>
     }
 
     <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" novalidate>
       <div class="mb-3">
-        <label for="email" class="form-label">Email</label>
+        <label for="email" class="form-label">{{ 'common.email' | t }}</label>
         <input type="email" class="form-control" id="email" formControlName="email"
-               [class.is-invalid]="hasError('email')" placeholder="tu@email.com" autocomplete="email">
+               [class.is-invalid]="hasError('email')" [placeholder]="'common.emailPlaceholder' | t" autocomplete="email">
         @if (hasError('email')) {
           <div class="invalid-feedback">{{ getErrorMessage('email') }}</div>
         }
@@ -22,8 +22,8 @@
 
       <div class="mb-4">
         <div class="d-flex justify-content-between align-items-baseline">
-          <label for="password" class="form-label">Contraseña</label>
-          <a routerLink="/auth/forgot-password" class="small">Forgot your password?</a>
+          <label for="password" class="form-label">{{ 'auth.password' | t }}</label>
+          <a routerLink="/auth/forgot-password" class="small">{{ 'auth.forgotPassword' | t }}</a>
         </div>
         <input type="password" class="form-control" id="password" formControlName="password"
                [class.is-invalid]="hasError('password')" autocomplete="current-password">
@@ -32,16 +32,16 @@
         }
       </div>
 
-      <button type="submit" class="btn btn-primary btn-lg w-100" [disabled]="loginForm.invalid || isLoading">
-        @if (isLoading) {
+      <button type="submit" class="btn btn-primary btn-lg w-100" [disabled]="loginForm.invalid || isLoading()">
+        @if (isLoading()) {
           <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
         }
-        {{ isLoading ? 'Iniciando sesión…' : 'Iniciar sesión' }}
+        {{ (isLoading() ? 'auth.signingIn' : 'auth.signIn') | t }}
       </button>
 
       <p class="auth-card__alt">
-        ¿No tienes cuenta?
-        <a routerLink="/auth/register" [queryParams]="returnUrl ? { returnUrl } : null">Regístrate</a>
+        {{ 'auth.noAccount' | t }}
+        <a routerLink="/auth/register" [queryParams]="returnUrl ? { returnUrl } : null">{{ 'auth.registerLink' | t }}</a>
       </p>
     </form>
   </div>

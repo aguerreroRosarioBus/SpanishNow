@@ -195,7 +195,7 @@ describe('coupons', () => {
       const order = await Order.findOne({ where: { providerSessionId: sessionIdOf(res.body.url) } });
       expect(order).toMatchObject({ amount: 7500, originalAmount: 10000, discountAmount: 2500, couponId: coupon.id, status: 'paid', provider: 'fake', refundedAmount: 0 });
       expect((await Coupon.findByPk(coupon.id)).redemptions).toBe(1);
-      expect(mailsTo(email)[0].text).toContain('$75.00');
+      expect(mailsTo(email)[0].text).toMatch(/USD\s+75\.00/);
     });
 
     test('an order without a coupon records the full price and no discount', async () => {

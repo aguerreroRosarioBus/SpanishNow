@@ -1,41 +1,41 @@
 <div class="page-container">
-  <nav class="public-nav" aria-label="Account">
+  <nav class="public-nav" [attr.aria-label]="'nav.account' | t">
     <span></span>
     @if (currentUser()) {
-      <a [routerLink]="dashboardLink()">Go to my dashboard</a>
+      <a [routerLink]="dashboardLink()">{{ 'catalog.dashboard' | t }}</a>
     } @else {
-      <a routerLink="/auth/login">Sign in</a>
+      <a routerLink="/auth/login">{{ 'auth.signIn' | t }}</a>
     }
   </nav>
 
   <div class="page-header">
     <div class="page-header__main">
-      <h1 class="page-title">Spanish courses</h1>
-      <p class="page-summary">Learn Spanish with stories you can understand from day one.</p>
+      <h1 class="page-title">{{ 'catalog.title' | t }}</h1>
+      <p class="page-summary">{{ 'catalog.summary' | t }}</p>
     </div>
   </div>
 
   @if (isLoading()) {
     <div class="text-center py-5" role="status">
       <div class="spinner-border text-primary" aria-hidden="true"></div>
-      <p class="text-muted mt-2 mb-0">Loading courses…</p>
+      <p class="text-muted mt-2 mb-0">{{ 'catalog.loading' | t }}</p>
     </div>
   } @else if (errorMessage()) {
     <div class="alert alert-danger" role="alert">{{ errorMessage() }}</div>
   } @else if (courses().length === 0) {
     <div class="state-box">
-      <strong>No courses available yet</strong>
-      <span>Please check back soon.</span>
+      <strong>{{ 'catalog.empty' | t }}</strong>
+      <span>{{ 'catalog.checkBack' | t }}</span>
     </div>
   } @else {
     <div class="card-grid">
       @for (course of courses(); track course.id) {
         <app-course-card [title]="course.title" [level]="course.level" [description]="course.description" [imageUrl]="course.imageUrl">
           @if (course.teacher) {
-            <small card-meta class="text-secondary-ui">By {{ course.teacher.name }}</small>
+            <small card-meta class="text-secondary-ui">{{ 'catalog.byTeacher' | t : { name: course.teacher.name } }}</small>
           }
           <span class="price-tag" [class.price-tag--free]="course.price === 0">{{ price(course) }}</span>
-          <a [routerLink]="['/courses', course.slug]" class="btn btn-primary ms-auto">View course</a>
+          <a [routerLink]="['/courses', course.slug]" class="btn btn-primary ms-auto">{{ 'catalog.viewCourse' | t }}</a>
         </app-course-card>
       }
     </div>

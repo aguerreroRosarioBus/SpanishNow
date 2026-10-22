@@ -1,4 +1,6 @@
-import { Component, inject } from '@angular/core';
+import { I18nService } from '../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -15,6 +17,7 @@ import { AuthService } from '../../../core/services/auth.service';
   selector: 'app-login',
   standalone: true, // Componente standalone (no necesita NgModule)
   imports: [
+    TranslatePipe,
     CommonModule,        // Directivas comunes (ngIf, ngFor, etc.)
     ReactiveFormsModule, // Para formularios reactivos
     RouterLink           // Para enlace a registro
@@ -25,14 +28,20 @@ import { AuthService } from '../../../core/services/auth.service';
 export class LoginComponent {
   // Inyección de dependencias usando inject() (nueva forma de Angular)
   private fb = inject(FormBuilder);      // Para construir formularios
+  readonly i18n = inject(I18nService);
   private authService = inject(AuthService); // Servicio de autenticación
   private router = inject(Router);       // Para navegación
   readonly returnUrl = liveReturnUrl(inject(ActivatedRoute).snapshot.queryParamMap.get('returnUrl'));
 
   // Estado del componente
   loginForm: FormGroup;           // Formulario reactivo
-  errorMessage: string = '';      // Mensaje de error si falla login
-  isLoading: boolean = false;     // Indicador de carga durante petición
+  private failure = signal<unknown>(null);
+  private errorKey = signal('');
+  readonly errorMessage = computed(() => {
+    const key = this.errorKey();
+    return key ? this.i18n.errorMessage(this.failure(), key) : '';
+  });
+  readonly isLoading = signal(false);
 
   constructor() {
     // Entrar a la pantalla de acceso descarta cualquier sesión vieja (el header no debe mostrar a otro usuario)
@@ -52,6 +61,7 @@ export class LoginComponent {
    * Método que se ejecuta al enviar el formulario
    */
   onSubmit(): void {
+    if (this.isLoading()) return;
     // Si el formulario es inválido, marcar todos los campos como touched
     // para mostrar los errores de validación
     if (this.loginForm.invalid) {
@@ -60,8 +70,9 @@ export class LoginComponent {
     }
 
     // Activar indicador de carga
-    this.isLoading = true;
-    this.errorMessage = '';
+    this.isLoading.set(true);
+    this.errorKey.set('');
+    this.failure.set(null);
 
     // Obtener los valores del formulario
     const { email, password } = this.loginForm.value;
@@ -84,22 +95,22 @@ export class LoginComponent {
 
       // Si hay un error
       error: (error) => {
-        console.error('Error en login:', error);
-        this.isLoading = false;
+        this.failure.set(error);
+        this.isLoading.set(false);
 
         // Mostrar mensaje de error apropiado
         if (error.status === 401) {
-          this.errorMessage = 'Email o contraseña incorrectos';
+          this.errorKey.set('auth.invalidCredentials');
         } else if (error.status === 403) {
-          this.errorMessage = 'Esta cuenta está suspendida. Escríbenos si crees que es un error.';
+          this.errorKey.set('auth.suspended');
         } else {
-          this.errorMessage = 'Error al iniciar sesión. Por favor intenta de nuevo.';
+          this.errorKey.set('auth.loginError');
         }
       },
 
       // Siempre se ejecuta al final (éxito o error)
       complete: () => {
-        this.isLoading = false;
+        this.isLoading.set(false);
       }
     });
   }
@@ -120,15 +131,15 @@ export class LoginComponent {
     const control = this.loginForm.get(field);
 
     if (control?.hasError('required')) {
-      return `${field === 'email' ? 'El email' : 'La contraseña'} es requerida`;
+      return this.i18n.t(field === 'email' ? 'auth.emailRequired' : 'auth.passwordRequired');
     }
 
     if (control?.hasError('email')) {
-      return 'Ingresa un email válido';
+      return this.i18n.t('auth.emailInvalid');
     }
 
     if (control?.hasError('minlength')) {
-      return 'La contraseña debe tener al menos 6 caracteres';
+      return this.i18n.t('auth.minLength', { min: 6 });
     }
 
     return '';

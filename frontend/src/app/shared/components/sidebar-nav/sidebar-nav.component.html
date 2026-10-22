@@ -1,11 +1,11 @@
 <aside class="sidebar-nav" [class.collapsed]="collapsed()">
-  <nav class="sidebar-menu" aria-label="Navegación principal">
+  <nav class="sidebar-menu" [attr.aria-label]="'nav.main' | t">
     @for (group of groups(); track group.title; let first = $first) {
       @if (!first) {
         <div class="sidebar-divider"></div>
       }
       @if (!collapsed()) {
-        <div class="sidebar-header">{{ group.title }}</div>
+        <div class="sidebar-header">{{ group.title | t }}</div>
       }
       @for (item of group.items; track item.label) {
         <a class="sidebar-item"
@@ -15,13 +15,13 @@
            #rla="routerLinkActive"
            [class.active]="rla.isActive || isUnder(item)"
            [routerLinkActiveOptions]="item.exactQuery ? { paths: 'exact', queryParams: 'exact', fragment: 'ignored', matrixParams: 'ignored' } : { paths: 'subset', queryParams: 'ignored', fragment: 'ignored', matrixParams: 'ignored' }"
-           [attr.aria-label]="collapsed() ? item.label + (badgeCount(item) ? ', ' + badgeCount(item) + badgeSuffix(item) : '') : null"
-           [attr.title]="collapsed() ? item.label : null">
+           [attr.aria-label]="collapsed() ? (badgeCount(item) ? ('nav.itemWithUnread' | t : { label: (item.label | t), unread: (badgeKey(item) | t : { count: badgeCount(item) }) }) : (item.label | t)) : null"
+           [attr.title]="collapsed() ? (item.label | t) : null">
           <app-icon [name]="item.icon" [size]="collapsed() ? 20 : 18" />
           @if (!collapsed()) {
-            <span class="sidebar-label">{{ item.label }}</span>
+            <span class="sidebar-label">{{ item.label | t }}</span>
             @if (badgeCount(item) > 0) {
-              <span class="sidebar-badge" [attr.aria-label]="badgeCount(item) + badgeSuffix(item)">{{ badgeCount(item) > 99 ? '99+' : badgeCount(item) }}</span>
+              <span class="sidebar-badge" [attr.aria-label]="badgeKey(item) | t : { count: badgeCount(item) }">{{ badgeCount(item) > 99 ? '99+' : badgeCount(item) }}</span>
             }
           } @else if (badgeCount(item) > 0) {
             <span class="sidebar-badge sidebar-badge--dot" aria-hidden="true"></span>
@@ -33,11 +33,11 @@
 
   @if (!forced()) {
     <button class="sidebar-item sidebar-collapse" type="button" (click)="collapseToggle.emit()"
-            [attr.aria-label]="collapsed() ? 'Expandir menú' : 'Plegar menú'"
-            [attr.title]="collapsed() ? 'Expandir menú' : null">
+            [attr.aria-label]="(collapsed() ? 'nav.expandMenu' : 'nav.collapseMenu') | t"
+            [attr.title]="collapsed() ? ('nav.expandMenu' | t) : null">
       <app-icon name="panel-left" [size]="collapsed() ? 20 : 18" />
       @if (!collapsed()) {
-        <span class="sidebar-label">Plegar menú</span>
+        <span class="sidebar-label">{{ 'nav.collapseMenu' | t }}</span>
       }
     </button>
   }

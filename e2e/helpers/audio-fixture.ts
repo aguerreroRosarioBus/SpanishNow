@@ -46,6 +46,7 @@ export async function serveAudio(): Promise<{ origin: string; close: () => Promi
 export async function openAudioLesson(page: Page, origin: string, options: { full?: boolean; unavailable?: boolean; mediaGate?: Promise<void>; withoutActivation?: boolean } = {}) {
   const mutations: string[] = [];
   const unknown: string[] = [];
+  let preferences = { locale: null as 'en' | 'es' | null, timeZone: null, timeZoneConfirmedAt: null };
   const lesson = {
     id: 1, storyId: 100, revision: 1, status: 'published',
     story: { id: 100, title: 'Historia de prueba de audio', fullStoryText: 'María llega a la fiesta.',
@@ -77,6 +78,10 @@ export async function openAudioLesson(page: Page, origin: string, options: { ful
       if (route.request().method() !== 'GET') mutations.push(url.pathname);
       let body: unknown;
       if (url.pathname === '/api/auth/me') body = { user: { id: 1, name: 'Alumno ficticio', role: 'student' } };
+      else if (url.pathname === '/api/me/preferences') {
+        if (route.request().method() === 'PATCH') preferences = { ...preferences, ...route.request().postDataJSON() };
+        body = preferences;
+      }
       else if (url.pathname === '/api/enrollments/my-courses') body = [{ id: 1, courseId: 1, studentId: 1, lessonProgress: [] }];
       else if (url.pathname === '/api/enrollments/1/progress') body = { stories: [], quizzes: [], certificate: null };
       else if (url.pathname === '/api/courses/1') body = { id: 1, title: 'Curso ficticio', units: [{ id: 1, title: 'Unidad', order: 1,

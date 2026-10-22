@@ -271,11 +271,11 @@ describe('admin API', () => {
 
       const denied = await login(user.email);
       expect(denied.status).toBe(403);
-      expect(denied.body).toEqual({ error: 'This account is suspended' });
+      expect(denied.body).toEqual({ error: 'This account is suspended', code: 'account_suspended', params: {} });
       expect((await login(user.email, 'wrong-password')).status).toBe(401); // does not reveal the suspension
       const blocked = await as(user).get('/api/auth/me');
       expect(blocked.status).toBe(401);
-      expect(blocked.body).toEqual({ error: 'Account suspended' });
+      expect(blocked.body).toEqual({ error: 'Account suspended', code: 'account_suspended', params: {} });
       expect((await as(user).get('/api/users/teachers')).status).toBe(401);
 
       const again = await patch(user.id, { suspended: false });

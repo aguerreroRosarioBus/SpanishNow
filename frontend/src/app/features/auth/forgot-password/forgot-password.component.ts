@@ -1,4 +1,6 @@
-import { Component, inject, signal } from '@angular/core';
+import { I18nService } from '../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
@@ -7,11 +9,12 @@ import { AuthService } from '../../../core/services/auth.service';
 @Component({
   selector: 'app-forgot-password',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [TranslatePipe, ReactiveFormsModule, RouterLink],
   templateUrl: './forgot-password.component.html',
   styleUrl: './forgot-password.component.scss'
 })
 export class ForgotPasswordComponent {
+  readonly i18n = inject(I18nService);
   private authService = inject(AuthService);
 
   form = inject(FormBuilder).group({
@@ -19,7 +22,8 @@ export class ForgotPasswordComponent {
   });
   isLoading = signal(false);
   sent = signal(false);
-  errorMessage = signal('');
+  private failure = signal<unknown>(null);
+  errorMessage = computed(() => this.failure() ? this.i18n.errorMessage(this.failure()) : '');
 
   submit(): void {
     if (this.form.invalid) {
@@ -27,14 +31,14 @@ export class ForgotPasswordComponent {
       return;
     }
     this.isLoading.set(true);
-    this.errorMessage.set('');
+    this.failure.set(null);
     this.authService.forgotPassword(this.form.value.email!.trim()).subscribe({
       next: () => {
         this.sent.set(true);
         this.isLoading.set(false);
       },
-      error: () => {
-        this.errorMessage.set('Something went wrong. Please try again.');
+      error: error => {
+        this.failure.set(error);
         this.isLoading.set(false);
       }
     });

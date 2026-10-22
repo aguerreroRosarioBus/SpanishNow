@@ -342,6 +342,7 @@ describe('lesson comments', () => {
   describe('e-mails', () => {
     const pendingMails = to => mailsTo(to);
     test('a student\'s first-level comment e-mails the teacher in Spanish, after the response, with the text escaped and a link to the lesson', async () => {
+      await world.teacher.update({ locale: 'es' });
       const res = await post(world.student, 'Duda sobre "ser" & "estar"');
       expect(res.status).toBe(201);
       const mail = await waitFor(() => pendingMails(world.teacher.email)[0]);

@@ -55,7 +55,7 @@ describe('forgot and reset password', () => {
 
     const reused = await as(null).post('/api/auth/reset-password', { token, password: 'another-pass-2' });
     expect(reused.status).toBe(400);
-    expect(reused.body).toEqual({ error: expect.any(String) });
+    expect(reused.body).toEqual({ error: expect.any(String), code: 'password_link_invalid', params: {} });
     expect((await as(null).post('/api/auth/login', { email: user.email, password: 'brand-new-1' })).status).toBe(200);
     expect((await PasswordToken.findOne({ where: { tokenHash: hashToken(token) } })).usedAt).toBeInstanceOf(Date);
   });

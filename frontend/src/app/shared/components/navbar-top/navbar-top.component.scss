@@ -83,3 +83,9 @@
     display: none;
   }
 }
+
+// Deja espacio al selector y al menú de cuenta en pantallas estrechas.
+@media (max-width: 479.98px) {
+  .navbar-top { gap: 6px; }
+  .has-user .brand-word, .role-chip { display: none; }
+}

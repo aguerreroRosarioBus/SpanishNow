@@ -1,3 +1,4 @@
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
@@ -12,7 +13,7 @@ const POLL_MAX_MS = 30000;
 @Component({
   selector: 'app-checkout-success',
   standalone: true,
-  imports: [RouterLink],
+  imports: [TranslatePipe, RouterLink],
   templateUrl: './checkout-success.component.html',
   styleUrl: './checkout-success.component.scss'
 })
