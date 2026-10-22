@@ -1,4 +1,4 @@
-<section class="block" aria-live="polite">
+<section class="block">
   <span class="eyebrow eyebrow--muted">{{ block().phase === 'before' ? 'Antes' : block().phase === 'during' ? 'Durante' : 'Después' }}</span>
   @switch (block().type) {
     @case ('expression') {
@@ -34,9 +34,7 @@
               <app-tooltip-display [tooltipData]="tooltips()" [text]="block().text || ''" />
             </div>
             @if (block().audioUrl) {
-              <button type="button" class="btn btn-secondary btn-sm mt-3" (click)="session.audio.toggle(block().audioUrl)">
-                <app-icon [name]="session.audio.isPlaying() ? 'square' : 'volume'" [size]="16" />{{ session.audio.isPlaying() ? 'Pausar fragmento' : 'Escuchar fragmento' }}
-              </button>
+              <app-lesson-audio-controls [singleUrl]="block().audioUrl" />
             }
           </div>
         </div>
