@@ -1,0 +1,247 @@
+from pathlib import Path
+import re,json
+r=Path('frontend/src/app')
+rows='''coupons|Cupones|Coupons
+couponSummary|Descuentos para tus cursos. Un cupón del 100 % da acceso sin pasar por el pago.|Discounts for your courses. A 100% coupon grants access without payment.
+newCoupon|Nuevo cupón|New coupon
+loadingCoupons|Cargando cupones…|Loading coupons…
+emptyCoupons|No tienes cupones todavía|You have no coupons yet
+emptyCouponHint|Creá uno con «Nuevo cupón» para dar descuentos o regalar un curso.|Use “New coupon” to offer discounts or give a course away.
+code|Código|Code
+discount|Descuento|Discount
+course|Curso|Course
+uses|Usos|Uses
+expires|Vence|Expires
+status|Estado|Status
+actions|Acciones|Actions
+expired|Vencido|Expired
+noExpiry|Sin vencimiento|No expiration
+active|Activo|Active
+inactive|Inactivo|Inactive
+linkCourse|Curso del link…|Link course…
+copyLink|Copiar link|Copy link
+edit|Editar|Edit
+disable|Desactivar|Deactivate
+enable|Activar|Activate
+delete|Eliminar|Delete
+editCoupon|Editar cupón|Edit coupon
+close|Cerrar|Close
+codeRequired|Código *|Code *
+codePlaceholder|EJ: PRIMAVERA25|E.g. SPRING25
+codeHint|Letras, números y guiones. Se guarda en mayúsculas.|Letters, numbers and hyphens. Saved in uppercase.
+discountRequired|Descuento *|Discount *
+discountKind|Tipo de descuento|Discount type
+percentage|Porcentaje|Percentage
+fixedAmount|Monto fijo|Fixed amount
+percentLabel|Porcentaje de descuento|Discount percentage
+freeHint|100 % regala el curso.|100% gives the course away.
+discountAmount|Monto de descuento|Discount amount
+currency|Moneda|Currency
+currencyHint|Solo se aplica a cursos de esa moneda. El precio nunca baja de 0.|Only applies to courses in this currency. The price never goes below 0.
+allMyCourses|Todos mis cursos|All my courses
+maxUses|Máximo de usos|Maximum uses
+unlimited|Sin límite|Unlimited
+cancel|Cancelar|Cancel
+saveChanges|Guardar cambios|Save changes
+createCoupon|Crear cupón|Create coupon
+deleteCoupon|Eliminar cupón|Delete coupon
+affiliates|Afiliados|Affiliates
+affiliateSummary|Personas que venden tus cursos a comisión. No necesitan cuenta: les pasás un link de venta y un panel privado. Los pagos los hacés por fuera y los registrás acá.|People who sell your courses for commission. They do not need an account: give them a sales link and a private dashboard. You pay them separately and record payments here.
+newAffiliate|Nuevo afiliado|New affiliate
+loadingAffiliates|Cargando afiliados…|Loading affiliates…
+emptyAffiliates|No tienes afiliados todavía|You have no affiliates yet
+emptyAffiliateHint|Creá uno con «Nuevo afiliado» para darle un link con tu comisión.|Use “New affiliate” to give someone a link with your commission rate.
+affiliate|Afiliado|Affiliate
+commission|Comisión|Commission
+sales|Ventas|Sales
+earned|Comisión generada|Commission earned
+paid|Pagado|Paid
+owed|Adeudado|Owed
+noSales|Sin ventas todavía|No sales yet
+detail|Detalle|Details
+links|Links|Links
+regeneratePanel|Regenerar link del panel|Regenerate dashboard link
+statsHint|Las cifras se muestran por moneda y nunca se suman entre monedas. «Adeudado» es la comisión pendiente menos lo que ya pagaste.|Figures are shown separately by currency and never added across currencies. “Owed” is pending commission minus what you have already paid.
+editAffiliate|Editar afiliado|Edit affiliate
+nameRequired|Nombre *|Name *
+emailRequired|Email *|Email *
+selfPurchaseHint|Si compra con este email, la venta no genera comisión.|Purchases with this email do not generate commission.
+commissionRequired|Comisión (%) *|Commission (%) *
+commissionHint|Entre 1 y 90. Se calcula sobre lo que efectivamente paga el comprador (después del cupón). Si la cambiás, solo afecta ventas futuras.|Between 1 and 90. Calculated on what the buyer actually pays (after the coupon). Changes only affect future sales.
+notes|Notas|Notes
+privateNotes|Solo las ves vos|Only you can see them
+createAffiliate|Crear afiliado|Create affiliate
+saleLink|Link de venta|Sales link
+noPublishedCourses|No tienes cursos publicados con página de venta.|You have no published courses with a sales page.
+saleLinkCourse|Curso del link de venta|Course for the sales link
+saleLinkAria|Link de venta con el código del afiliado|Sales link with affiliate code
+copy|Copiar|Copy
+affiliatePanel|Panel del afiliado|Affiliate dashboard
+panelHint|Link privado donde ve sus links, ventas y comisiones (sin datos de compradores). Quien lo tenga puede verlo: si se filtra, regeneralo.|Private link to view links, sales and commissions (without buyer details). Anyone with the link can view it: regenerate it if it is exposed.
+panelLinkAria|Link del panel del afiliado|Affiliate dashboard link
+panelSecretHint|Por seguridad el link del panel solo se muestra cuando lo generás. Generá uno nuevo para copiarlo (el anterior dejará de funcionar).|For security, the dashboard link is only shown when you generate it. Generate a new one to copy it (the previous one will stop working).
+generatePanel|Generar link del panel|Generate dashboard link
+manualCopy|Tu navegador no dejó copiar. Selecciona y copia este link:|Your browser blocked copying. Select and copy this link:
+loadingDetail|Cargando detalle…|Loading details…
+payments|Pagos|Payments
+amount|Monto|Amount
+date|Fecha|Date
+note|Nota|Note
+notePlaceholder|Ej: PayPal, transferencia|E.g. PayPal, bank transfer
+recordPayment|Registrar pago|Record payment
+noPayments|Todavía no registraste pagos.|No payments recorded yet.
+attributedOrders|Órdenes atribuidas|Attributed orders
+noAttributedOrders|Todavía no hay ventas atribuidas a este afiliado.|No sales have been attributed to this affiliate yet.
+buyer|Comprador|Buyer
+regenerate|Regenerar|Regenerate
+deleteAffiliate|Eliminar afiliado|Delete affiliate
+deletePayment|Eliminar pago|Delete payment
+couponsError|No se pudieron cargar los cupones.|Could not load coupons.
+allCourses|Todos los cursos|All courses
+currencyMismatch|La moneda del cupón no coincide con la del curso: no se aplicaría.|The coupon currency does not match the course currency: it would not apply.
+codeError|El código debe tener entre 1 y 40 caracteres: letras, números y guiones.|The code must have 1–40 characters: letters, numbers and hyphens.
+percentError|El porcentaje debe ser un número entero entre 1 y 100.|The percentage must be an integer between 1 and 100.
+amountError|El monto de descuento debe ser mayor que 0.|The discount amount must be greater than 0.
+selectCurrency|Elige la moneda del descuento.|Choose the discount currency.
+maxError|El máximo de usos debe ser un entero mayor que 0 (o dejalo vacío).|Maximum uses must be an integer greater than 0 (or leave it empty).
+couponUpdated|Cupón actualizado|Coupon updated
+couponCreated|Cupón creado|Coupon created
+couponSaveError|No se pudo guardar el cupón.|Could not save the coupon.
+couponDeactivated|Cupón desactivado|Coupon deactivated
+couponActivated|Cupón activado|Coupon activated
+couponStatusError|No se pudo cambiar el estado del cupón|Could not change coupon status
+couponDeleted|Cupón eliminado|Coupon deleted
+couponUsed|El cupón ya tiene usos: se desactivó en lugar de eliminarse.|This coupon has already been used: it was deactivated instead of deleted.
+couponDeleteError|No se pudo eliminar el cupón|Could not delete the coupon
+chooseLinkCourse|Elige un curso con página de venta para armar el link.|Choose a course with a sales page to create the link.
+linkCopied|Link copiado|Link copied
+copyPrompt|Copia este link:|Copy this link:
+affiliatesError|No se pudieron cargar los afiliados.|Could not load affiliates.
+void|Anulada|Voided
+pending|Pendiente|Pending
+noCommission|Sin comisión|No commission
+nameError|Ingresá el nombre del afiliado.|Enter the affiliate name.
+emailError|Ingresá un email válido.|Enter a valid email address.
+commissionError|La comisión debe ser un número entero entre 1 y 90.|Commission must be an integer between 1 and 90.
+affiliateUpdated|Afiliado actualizado|Affiliate updated
+affiliateCreated|Afiliado creado|Affiliate created
+affiliateSaveError|No se pudo guardar el afiliado.|Could not save the affiliate.
+affiliateDeactivated|Afiliado desactivado|Affiliate deactivated
+affiliateActivated|Afiliado activado|Affiliate activated
+affiliateStatusError|No se pudo cambiar el estado del afiliado|Could not change affiliate status
+panelRegenerated|Link del panel regenerado. El anterior ya no funciona.|Dashboard link regenerated. The previous link no longer works.
+regenerateError|No se pudo regenerar el link del panel|Could not regenerate the dashboard link
+affiliateDeleted|Afiliado eliminado|Affiliate deleted
+affiliateUsed|El afiliado tiene ventas: se desactivó en lugar de eliminarse.|This affiliate has sales: it was deactivated instead of deleted.
+affiliateDeleteError|No se pudo eliminar el afiliado|Could not delete the affiliate
+detailError|No se pudo cargar todo el detalle del afiliado.|Could not load all affiliate details.
+paymentAmountError|Ingresá un monto mayor que 0.|Enter an amount greater than 0.
+paymentDateError|Elige la fecha del pago.|Choose the payment date.
+paymentSaved|Pago registrado|Payment recorded
+paymentSaveError|No se pudo registrar el pago.|Could not record the payment.
+paymentDeleted|Pago eliminado|Payment deleted
+paymentDeleteError|No se pudo eliminar el pago|Could not delete the payment
+courseNumber|Curso {id}|Course {id}
+example|Ejemplo: «{title}» pasa de {original} a {final}.|Example: “{title}” goes from {original} to {final}.
+couponLinkCourse|Curso para el link del cupón {code}|Course for coupon {code}’s link
+couponCopy|Copiar link de venta con el cupón {code}|Copy sales link with coupon {code}
+couponEdit|Editar el cupón {code}|Edit coupon {code}
+couponDisable|Desactivar el cupón {code}|Deactivate coupon {code}
+couponEnable|Activar el cupón {code}|Activate coupon {code}
+couponDelete|Eliminar el cupón {code}|Delete coupon {code}
+couponDeleteMessage|¿Eliminar el cupón {code}? Si ya tiene usos no se borra: se desactiva.|Delete coupon {code}? If it has been used, it will be deactivated instead of deleted.
+affiliateDetail|Ver detalle de {name}|View details for {name}
+affiliateLinks|Links de {name}|Links for {name}
+affiliateMore|Más acciones de {name}|More actions for {name}
+saleLinkHint|Elige el curso. El link lleva el código {code}: la venta se atribuye durante 30 días desde el último click.|Choose the course. The link includes code {code}: sales are attributed for 30 days from the last click.
+salesValue|Ventas {count} · {amount}|Sales {count} · {amount}
+commissionValue|Comisión {amount}|Commission {amount}
+paidValue|Pagado {amount}|Paid {amount}
+owedValue|Adeudado {amount}|Owed {amount}
+returned|Devuelto {amount}|Refunded {amount}
+deletePaymentAria|Eliminar el pago de {amount}|Delete payment of {amount}
+regenerateMessage|El link del panel que tiene {name} dejará de funcionar y vas a tener que pasarle el nuevo. ¿Regenerarlo?|The dashboard link held by {name} will stop working and you will need to share the new one. Regenerate it?
+affiliateDeleteMessage|¿Eliminar a {name}? Si ya tiene ventas no se borra: se desactiva.|Delete {name}? If they have sales, they will be deactivated instead of deleted.
+paymentDeleteMessage|¿Eliminar el pago de {amount}? El adeudado del afiliado vuelve a subir.|Delete payment of {amount}? The amount owed to the affiliate will increase again.'''
+data={}
+for line in rows.splitlines():k,es,en=line.split('|');data['teacherPromotions.'+k]=(en,es)
+data['teacherPromotions.locked']=({'one':'This coupon has been used {count} time: you can only change its status, expiration and maximum uses.','other':'This coupon has been used {count} times: you can only change its status, expiration and maximum uses.'},{'one':'Este cupón ya se usó {count} vez: solo puedes cambiar el estado, el vencimiento y el máximo de usos.','other':'Este cupón ya se usó {count} veces: solo puedes cambiar el estado, el vencimiento y el máximo de usos.'})
+p=r/'core/i18n/catalogs/teacher-promotions.ts';p.write_text("import { TranslationCatalog } from '../i18n.types';\n\n"+'\n\n'.join('export const TEACHER_PROMOTIONS_'+lang+' = {\n'+'\n'.join('  '+json.dumps(k)+': '+json.dumps(v[i],ensure_ascii=False)+',' for k,v in data.items())+'\n} as const satisfies TranslationCatalog;' for i,lang in enumerate(['EN','ES']))+'\n')
+for lang in ['EN','ES']:
+ p=r/f'core/i18n/catalogs/{lang.lower()}.ts';s=p.read_text();s=f"import {{ TEACHER_PROMOTIONS_{lang} }} from './teacher-promotions';\n"+s;s=s.replace(f'export const {lang} = {{',f'export const {lang} = {{\n  ...TEACHER_PROMOTIONS_{lang},');p.write_text(s)
+for a in ['coupons','affiliates']:
+ p=r/f'features/teacher/{a}/teacher-{a}.component.html';s=p.read_text()
+ for k,(en,es) in sorted(data.items(),key=lambda x:-len(str(x[1][1]))):
+  if not isinstance(es,str) or '{' in es:continue
+  pattern=r'\s+'.join(map(re.escape,es.split()));s=re.sub(r'(?<=>)(\s*)'+pattern+r'(\s*)(?=<)',lambda m:m[1]+"{{ '"+k+"' | t }}"+m[2],s)
+  for attr in ['aria-label','title','placeholder','confirmText']:s=s.replace(attr+'="'+es+'"',('[attr.aria-label]' if attr=='aria-label' else '['+attr+']')+'="\''+k+"' | t\"")
+ repl={
+  "{{ c.active ? 'Activo' : 'Inactivo' }}":"{{ (c.active ? 'teacherPromotions.active' : 'teacherPromotions.inactive') | t }}",
+  "{{ a.active ? 'Activo' : 'Inactivo' }}":"{{ (a.active ? 'teacherPromotions.active' : 'teacherPromotions.inactive') | t }}",
+  "{{ c.active ? 'Desactivar' : 'Activar' }}":"{{ (c.active ? 'teacherPromotions.disable' : 'teacherPromotions.enable') | t }}",
+  "{{ a.active ? 'Desactivar' : 'Activar' }}":"{{ (a.active ? 'teacherPromotions.disable' : 'teacherPromotions.enable') | t }}",
+  "{{ editing() ? 'Editar cupón' : 'Nuevo cupón' }}":"{{ (editing() ? 'teacherPromotions.editCoupon' : 'teacherPromotions.newCoupon') | t }}",
+  "{{ editing() ? 'Guardar cambios' : 'Crear cupón' }}":"{{ (editing() ? 'teacherPromotions.saveChanges' : 'teacherPromotions.createCoupon') | t }}",
+  "{{ editing() ? 'Editar afiliado' : 'Nuevo afiliado' }}":"{{ (editing() ? 'teacherPromotions.editAffiliate' : 'teacherPromotions.newAffiliate') | t }}",
+  "{{ editing() ? 'Guardar cambios' : 'Crear afiliado' }}":"{{ (editing() ? 'teacherPromotions.saveChanges' : 'teacherPromotions.createAffiliate') | t }}",
+  "{{ panelLink() ? 'Regenerar link del panel' : 'Generar link del panel' }}":"{{ (panelLink() ? 'teacherPromotions.regeneratePanel' : 'teacherPromotions.generatePanel') | t }}",
+  'Este cupón ya se usó {{ editing()!.redemptions }} {{ editing()!.redemptions === 1 ? \'vez\' : \'veces\' }}: solo puedes cambiar el estado, el vencimiento y el máximo de usos.':"{{ 'teacherPromotions.locked' | t: {count: editing()!.redemptions} }}",
+  "c.expiresAt | date:'d MMM y'":'date(c.expiresAt)',"p.paidAt | date:'d MMM y'":'date(p.paidAt)',"(o.paidAt ?? o.createdAt) | date:'d MMM y'":'date(o.paidAt ?? o.createdAt)',
+  "'Curso para el link del cupón ' + c.code":"'teacherPromotions.couponLinkCourse' | t: {code: c.code}",
+  "'Copiar link de venta con el cupón ' + c.code":"'teacherPromotions.couponCopy' | t: {code: c.code}",
+  "'Editar el cupón ' + c.code":"'teacherPromotions.couponEdit' | t: {code: c.code}",
+  "(c.active ? 'Desactivar' : 'Activar') + ' el cupón ' + c.code":"(c.active ? 'teacherPromotions.couponDisable' : 'teacherPromotions.couponEnable') | t: {code: c.code}",
+  "'Eliminar el cupón ' + c.code":"'teacherPromotions.couponDelete' | t: {code: c.code}",
+  "'¿Eliminar el cupón ' + target.code + '? Si ya tiene usos no se borra: se desactiva.'":"'teacherPromotions.couponDeleteMessage' | t: {code: target.code}",
+  "'Ver detalle de ' + a.name":"'teacherPromotions.affiliateDetail' | t: {name: a.name}",
+  "'Links de ' + a.name":"'teacherPromotions.affiliateLinks' | t: {name: a.name}",
+  "'Más acciones de ' + a.name":"'teacherPromotions.affiliateMore' | t: {name: a.name}",
+  'Links de {{ a.name }}':"{{ 'teacherPromotions.affiliateLinks' | t: {name: a.name} }}",
+  'Elige el curso. El link lleva el código <code>{{ a.code }}</code>: la venta se atribuye durante 30 días desde el último click.':"{{ 'teacherPromotions.saleLinkHint' | t: {code: a.code} }}",
+  'Tu navegador no dejó copiar. Selecciona y copia este link:':"{{ 'teacherPromotions.manualCopy' | t }}",
+  "Ventas {{ s.orders }} · {{ statValue(s, 'sales') }}":"{{ 'teacherPromotions.salesValue' | t: {count: s.orders, amount: statValue(s, 'sales')} }}",
+  "Comisión {{ statValue(s, 'commission') }}":"{{ 'teacherPromotions.commissionValue' | t: {amount: statValue(s, 'commission')} }}",
+  "Pagado {{ statValue(s, 'paid') }}":"{{ 'teacherPromotions.paidValue' | t: {amount: statValue(s, 'paid')} }}",
+  "Adeudado {{ statValue(s, 'owed') }}":"{{ 'teacherPromotions.owedValue' | t: {amount: statValue(s, 'owed')} }}",
+  'Devuelto {{ money(o.refundedAmount, o.currency) }}':"{{ 'teacherPromotions.returned' | t: {amount: money(o.refundedAmount, o.currency)} }}",
+  "'Eliminar el pago de ' + money(p.amount, p.currency)":"'teacherPromotions.deletePaymentAria' | t: {amount: money(p.amount, p.currency)}",
+  "'El link del panel que tiene ' + t.name + ' dejará de funcionar y vas a tener que pasarle el nuevo. ¿Regenerarlo?'":"'teacherPromotions.regenerateMessage' | t: {name: t.name}",
+  "'¿Eliminar a ' + t.name + '? Si ya tiene ventas no se borra: se desactiva.'":"'teacherPromotions.affiliateDeleteMessage' | t: {name: t.name}",
+  "'¿Eliminar el pago de ' + money(p.amount, p.currency) + '? El adeudado del afiliado vuelve a subir.'":"'teacherPromotions.paymentDeleteMessage' | t: {amount: money(p.amount, p.currency)}",
+  '                Registrar pago':"                {{ 'teacherPromotions.recordPayment' | t }}",
+ }
+ for x,y in repl.items():s=s.replace(x,y)
+ s=s.replace('{{ a.commissionPercent }}','{{ number(a.commissionPercent) }}').replace('{{ s.orders }}','{{ number(s.orders) }}');p.write_text(s)
+ p=r/f'features/teacher/{a}/teacher-{a}.component.ts';s=p.read_text();s="import { I18nService } from '../../../core/i18n/i18n.service';\nimport { TranslatePipe } from '../../../core/i18n/translate.pipe';\nimport { UserPreferencesService } from '../../../core/services/user-preferences.service';\nimport { formatAvailableDate } from '../../../shared/utils/release-date';\n"+s
+ s=s.replace("import { DatePipe } from '@angular/common';\n",'').replace("import { formatPrice } from '../../../shared/utils/money';\n",'').replace('imports: [DatePipe,','imports: [').replace('imports: [','imports: [TranslatePipe, ',1)
+ s=re.sub(r'(export class \w+[^\{]*\{)',r'''\1
+  i18n = inject(I18nService);
+  private preferences = inject(UserPreferencesService);
+  number(value: number): string { return this.i18n.formatNumber(value); }
+  date(value: string): string {
+    return /^\d{4}-\d{2}-\d{2}$/.test(value) ? formatAvailableDate(value, this.i18n.intlLocale(), 'short') : this.i18n.formatInstant(value, this.preferences.preferences()?.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', {dateStyle: 'medium'});
+  }''',s,count=1)
+ s=s.replace("formatPrice(cents, currency, 'es')",'this.i18n.formatMoney(cents, currency)').replace("formatPrice(c.amountOff, c.currency, 'es')","this.i18n.formatMoney(c.amountOff ?? 0, c.currency || 'usd')").replace('`${c.percentOff} %`',"`${this.number(c.percentOff)} %`")
+ s=s.replace('`${c.redemptions}/${c.maxRedemptions}`', '`${this.number(c.redemptions)}/${this.number(c.maxRedemptions)}`').replace('`${c.redemptions}`','this.number(c.redemptions)')
+ s=s.replace('`Curso ${c.courseId}`',"this.i18n.t('teacherPromotions.courseNumber', {id: c.courseId})")
+ s=s.replace("`Ejemplo: «${course.title}» pasa de ${formatPrice(result.originalAmount, course.currency, 'es')} a ${formatPrice(result.amount, course.currency, 'es')}.`", "this.i18n.t('teacherPromotions.example', {title: course.title, original: this.i18n.formatMoney(result.originalAmount, course.currency || 'usd'), final: this.i18n.formatMoney(result.amount, course.currency || 'usd')})")
+ names=['errorMessage','formError']+(['detailError','payoutError'] if a=='affiliates' else [])
+ for name in names:
+  s=s.replace(name+" = signal('');",f"private {name}Failure = signal<{{key: string; error?: unknown}} | null>(null);\n  {name} = computed(() => {{ const f = this.{name}Failure(); return f ? (f.error ? this.i18n.errorMessage(f.error, f.key) : this.i18n.t(f.key)) : ''; }});")
+  s=s.replace('this.'+name+".set('')",'this.'+name+'Failure.set(null)')
+ # Sustituir valores conocidos en setters, errores de servidor y toasts sin traducir texto arbitrario.
+ for k,(en,es) in data.items():
+  if not isinstance(es,str) or '{' in es:continue
+  for name in names:
+   s=s.replace('this.'+name+".set('"+es+"')",'this.'+name+"Failure.set({key: '"+k+"'})")
+   s=s.replace('this.'+name+".set(err?.error?.error || '"+es+"')",'this.'+name+"Failure.set({key: '"+k+"', error: err})")
+  s=s.replace("err?.error?.error || '"+es+"'", "this.i18n.errorMessage(err, '"+k+"')")
+  # validate() retorna keys; otras funciones de presentación y toasts retornan traducción.
+  s=s.replace("'"+es+"'", "this.i18n.t('"+k+"')")
+ if a=='coupons':
+  # validate ahora devuelve keys y save las conserva, en lugar de congelar el idioma de validación.
+  start=s.index('  private validate()');end=s.index('  save():',start);part=s[start:end];part=re.sub(r"this.i18n.t\('([^']+)'\)",r"'\1'",part);s=s[:start]+part+s[end:]
+  s=s.replace('this.formError.set(error)', 'this.formErrorFailure.set({key: error})')
+ # Error de carga conserva objeto original para códigos/red.
+ s=s.replace("error: () => { this.errorMessageFailure.set({key:","error: error => { this.errorMessageFailure.set({error, key:")
+ p.write_text(s)
