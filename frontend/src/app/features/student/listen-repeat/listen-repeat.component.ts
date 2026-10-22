@@ -1,4 +1,6 @@
-import { Component, inject, OnInit, Input, Output, EventEmitter, signal, OnDestroy } from '@angular/core';
+import { I18nService } from '../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
+import { Component, computed, inject, OnInit, Input, Output, EventEmitter, signal, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { RepetitionActivityService } from '../../../core/services/repetition-activity.service';
@@ -9,11 +11,12 @@ import { IconComponent } from '../../../shared/components/icon/icon.component';
 @Component({
   selector: 'app-listen-repeat',
   standalone: true,
-  imports: [CommonModule, IconComponent],
+  imports: [TranslatePipe, CommonModule, IconComponent],
   templateUrl: './listen-repeat.component.html',
   styleUrl: './listen-repeat.component.scss'
 })
 export class ListenRepeatComponent implements OnInit, OnDestroy {
+  i18n = inject(I18nService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private repetitionService = inject(RepetitionActivityService);
@@ -25,7 +28,8 @@ export class ListenRepeatComponent implements OnInit, OnDestroy {
   activities = signal<RepetitionActivity[]>([]);
   currentIndex = signal<number>(0);
   isLoading = signal<boolean>(false);
-  errorMessage = signal<string>('');
+  private errorKey = signal('');
+  errorMessage = computed(() => this.errorKey() ? this.i18n.t(this.errorKey()) : '');
 
   // Audio playback
   modelAudio: HTMLAudioElement | null = null;
@@ -80,24 +84,24 @@ export class ListenRepeatComponent implements OnInit, OnDestroy {
 
   loadActivities(): void {
     if (!this.storyId) {
-      this.errorMessage.set('No se proporcionó ID de historia');
+      this.errorKey.set('activities.storyMissing');
       return;
     }
 
     this.isLoading.set(true);
-    this.errorMessage.set('');
+    this.errorKey.set('');
 
     this.repetitionService.getActivitiesByStory(this.storyId).subscribe({
       next: (activities) => {
         if (activities.length === 0) {
-          this.errorMessage.set('No hay actividades de repetición para esta historia');
+          this.errorKey.set('activities.noActivities');
         }
         this.activities.set(activities);
         this.isLoading.set(false);
       },
       error: (error) => {
         console.error('Error loading activities:', error);
-        this.errorMessage.set('Error al cargar las actividades');
+        this.errorKey.set('activities.activitiesError');
         this.isLoading.set(false);
       }
     });
@@ -125,7 +129,7 @@ export class ListenRepeatComponent implements OnInit, OnDestroy {
   playModel(): void {
     const activity = this.currentActivity;
     if (!activity || !activity.audioUrl) {
-      this.toastService.warning('Audio no disponible para esta frase');
+      this.toastService.warning(this.i18n.t('activities.noAudio'));
       return;
     }
 
@@ -140,7 +144,7 @@ export class ListenRepeatComponent implements OnInit, OnDestroy {
     });
 
     this.modelAudio.addEventListener('error', () => {
-      this.toastService.error('Error al cargar el audio');
+      this.toastService.error(this.i18n.t('activities.loadAudioError'));
       this.isPlayingModel.set(false);
     });
 
@@ -172,7 +176,7 @@ export class ListenRepeatComponent implements OnInit, OnDestroy {
       this.isRecording.set(true);
     } catch (error) {
       console.error('Error accessing microphone:', error);
-      this.toastService.error('No se pudo acceder al micrófono. Por favor, verifica los permisos.');
+      this.toastService.error(this.i18n.t('activities.microphoneError'));
     }
   }
 

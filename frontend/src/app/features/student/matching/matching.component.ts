@@ -1,4 +1,6 @@
-import { Component, inject, OnInit, Input, Output, EventEmitter, signal, effect } from '@angular/core';
+import { I18nService } from '../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
+import { Component, computed, inject, OnInit, Input, Output, EventEmitter, signal, effect, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { VocabularyService } from '../../../core/services/vocabulary.service';
@@ -16,11 +18,12 @@ interface MatchItem {
 @Component({
   selector: 'app-matching',
   standalone: true,
-  imports: [CommonModule, IconComponent],
+  imports: [TranslatePipe, CommonModule, IconComponent],
   templateUrl: './matching.component.html',
   styleUrl: './matching.component.scss'
 })
 export class MatchingComponent implements OnInit {
+  i18n = inject(I18nService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private vocabularyService = inject(VocabularyService);
@@ -36,7 +39,8 @@ export class MatchingComponent implements OnInit {
   matches = signal<number>(0);
   attempts = signal<number>(0);
   isLoading = signal<boolean>(false);
-  errorMessage = signal<string>('');
+  private errorKey = signal('');
+  errorMessage = computed(() => this.errorKey() ? this.i18n.t(this.errorKey()) : '');
   isComplete = signal<boolean>(false);
   showCelebration = signal<boolean>(false);
 
@@ -45,7 +49,7 @@ export class MatchingComponent implements OnInit {
     effect(() => {
       if (this.isComplete()) {
         const accuracy = this.getAccuracy();
-        this.completed.emit(accuracy);
+        untracked(() => this.completed.emit(accuracy));
       }
     });
   }
@@ -69,17 +73,17 @@ export class MatchingComponent implements OnInit {
 
   loadVocabulary(): void {
     if (!this.unitId) {
-      this.errorMessage.set('No se proporcionó ID de unidad');
+      this.errorKey.set('activities.unitMissing');
       return;
     }
 
     this.isLoading.set(true);
-    this.errorMessage.set('');
+    this.errorKey.set('');
 
     this.vocabularyService.getVocabularyByUnit(this.unitId).subscribe({
       next: (vocab) => {
         if (vocab.length === 0) {
-          this.errorMessage.set('No hay vocabulario disponible para esta unidad');
+          this.errorKey.set('activities.noVocabulary');
           this.isLoading.set(false);
           return;
         }
@@ -92,7 +96,7 @@ export class MatchingComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error loading vocabulary:', error);
-        this.errorMessage.set('Error al cargar el vocabulario');
+        this.errorKey.set('activities.vocabularyError');
         this.isLoading.set(false);
       }
     });
