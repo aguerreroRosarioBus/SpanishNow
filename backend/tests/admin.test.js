@@ -8,6 +8,7 @@ const {
 const { clearOutbox, getOutbox } = require('../src/services/mailService');
 const { app, as, createUser, tokenFor } = require('./helpers/fixtures');
 const { newCourse } = require('./helpers/sales');
+const { PERMISSION_KEYS } = require('../src/config/permissions');
 
 const PASSWORD = 'jest-password-1';
 const tag = () => randomUUID().slice(0, 8);
@@ -94,12 +95,10 @@ describe('admin API', () => {
       expect(await exists(User, target.id)).toBe(true);
     });
 
-    test('the catalog lists both permissions', async () => {
+    test('the catalog lists every permission, admin ones first', async () => {
       const res = await as(usersAdmin).get('/api/admin/permissions');
-      expect(res.body).toEqual([
-        { key: 'users.manage', label: expect.any(String), description: expect.any(String) },
-        { key: 'test_users.manage', label: expect.any(String), description: expect.any(String) }
-      ]);
+      expect(res.body).toEqual(PERMISSION_KEYS.map(key => ({ key, label: expect.any(String), description: expect.any(String) })));
+      expect(PERMISSION_KEYS.slice(0, 2)).toEqual(['users.manage', 'test_users.manage']);
     });
 
     test('a student can hold permissions too: permissions sit on top of the role', async () => {
@@ -234,16 +233,16 @@ describe('admin API', () => {
       process.env.ADMIN_EMAILS = ` other@jest.test, ${boss.email.toUpperCase()} `;
 
       const me = await as(boss).get('/api/auth/me');
-      expect(me.body.user.permissions).toEqual(['users.manage', 'test_users.manage']);
+      expect(me.body.user.permissions).toEqual(PERMISSION_KEYS);
       expect((await as(boss).get('/api/admin/users')).status).toBe(200);
 
       const row = (await as(usersAdmin).get(`/api/admin/users?search=${encodeURIComponent(boss.email)}`)).body.users[0];
-      expect(row).toMatchObject({ id: boss.id, fixedAdmin: true, permissions: ['users.manage', 'test_users.manage'] });
+      expect(row).toMatchObject({ id: boss.id, fixedAdmin: true, permissions: PERMISSION_KEYS });
 
       expect((await patch(usersAdmin, boss.id, { suspended: true })).status).toBe(409);
       expect((await patch(usersAdmin, boss.id, { permissions: [] })).status).toBe(409);
       expect((await patch(usersAdmin, boss.id, { permissions: ['users.manage'] })).status).toBe(409);
-      expect((await patch(usersAdmin, boss.id, { permissions: ['users.manage', 'test_users.manage'] })).status).toBe(200);
+      expect((await patch(usersAdmin, boss.id, { permissions: PERMISSION_KEYS })).status).toBe(200);
       expect((await boss.reload()).suspendedAt).toBeNull();
     });
 

@@ -44,6 +44,19 @@ const User = sequelize.define('User', {
   suspendedAt: {
     type: DataTypes.DATE,
     allowNull: true
+  },
+  // Interface language and IANA time zone (null = not chosen yet). Independent of each other (I18N-02).
+  locale: {
+    type: DataTypes.ENUM('en', 'es'),
+    allowNull: true
+  },
+  timeZone: {
+    type: DataTypes.STRING(64),
+    allowNull: true
+  },
+  timeZoneConfirmedAt: {
+    type: DataTypes.DATE,
+    allowNull: true
   }
 }, {
   timestamps: true,

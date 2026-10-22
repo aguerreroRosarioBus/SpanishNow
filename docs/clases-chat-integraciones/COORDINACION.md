@@ -72,5 +72,6 @@ PR contra `main` con el formato de SPEC §14.3, `Refs #<issue>` (o `Closes` en e
 | ID | Decisión | Afecta | Estado |
 | --- | --- | --- | --- |
 | D10 | Los paquetes se cobran por **Hotmart**; Stripe descartado (no viable desde Argentina). W00 define cómo una oferta se vincula a un producto de Hotmart y cómo se concilia el webhook. | PACK-13, W00, W05 | Confirmado el 22/10/2026 |
+| P01 | **Reembolso parcial con Hotmart.** SPEC §4 propone devolver la parte no usada, prorrateada, dentro de 14 días; Hotmart solo reembolsa la transacción completa y el comprador puede pedir reembolso total dentro de la garantía del producto (mínimo 7 días). Falta decidir cómo se devuelve una parte (fuera de Hotmart, registrada a mano, o solo reembolso total si no se usó ninguna clase) y qué pasa si piden el reembolso total en Hotmart después de usar clases. Ver [CONTRATO.md §7.7](CONTRATO.md#77-reembolsos-iniciados-por-la-escuela-pack-08). | PACK-08, §4, W05 | **Pendiente**: pregunta a Andrés (22/10/2026). No bloquea W00. |
 
 Una decisión nueva se agrega aquí y en el registro de SPEC §17 con fecha, responsable y requisitos afectados.
