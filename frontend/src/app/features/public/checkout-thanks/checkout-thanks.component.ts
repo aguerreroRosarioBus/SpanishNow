@@ -1,3 +1,4 @@
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
@@ -5,7 +6,7 @@ import { RouterLink } from '@angular/router';
 @Component({
   selector: 'app-checkout-thanks',
   standalone: true,
-  imports: [RouterLink],
+  imports: [TranslatePipe, RouterLink],
   templateUrl: './checkout-thanks.component.html',
   styleUrl: './checkout-thanks.component.scss'
 })

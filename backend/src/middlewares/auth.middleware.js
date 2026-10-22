@@ -8,25 +8,25 @@ const authMiddleware = async (req, res, next) => {
     const token = req.header('Authorization')?.replace('Bearer ', '');
 
     if (!token) {
-      return res.status(401).json({ error: 'Authentication required' });
+      return res.status(401).json({ error: 'Authentication required', code: 'unauthenticated', params: {} });
     }
 
     const decoded = jwt.verify(token, secret());
     const user = await User.findByPk(decoded.id);
 
     if (!user) {
-      return res.status(401).json({ error: 'User not found' });
+      return res.status(401).json({ error: 'User not found', code: 'unauthenticated', params: {} });
     }
     // A suspended account stops working at once, even with a token that has not expired.
     if (user.suspendedAt) {
-      return res.status(401).json({ error: 'Account suspended' });
+      return res.status(401).json({ error: 'Account suspended', code: 'account_suspended', params: {} });
     }
 
     req.user = user;
     if (decoded.impersonatedBy) req.impersonatedBy = decoded.impersonatedBy;
     next();
   } catch (error) {
-    res.status(401).json({ error: 'Invalid token' });
+    res.status(401).json({ error: 'Invalid token', code: 'unauthenticated', params: {} });
   }
 };
 
@@ -50,14 +50,14 @@ const optionalAuth = async (req, res, next) => {
 
 const isTeacher = (req, res, next) => {
   if (req.user.role !== 'teacher') {
-    return res.status(403).json({ error: 'Access denied. Teachers only.' });
+    return res.status(403).json({ error: 'Access denied. Teachers only.', code: 'forbidden', params: {} });
   }
   next();
 };
 
 const isStudent = (req, res, next) => {
   if (req.user.role !== 'student') {
-    return res.status(403).json({ error: 'Access denied. Students only.' });
+    return res.status(403).json({ error: 'Access denied. Students only.', code: 'forbidden', params: {} });
   }
   next();
 };
@@ -65,7 +65,7 @@ const isStudent = (req, res, next) => {
 // After authMiddleware. Allows users with any of the permissions; "sign in as" sessions never reach admin endpoints.
 const requirePermission = (...keys) => (req, res, next) => {
   if (req.impersonatedBy || !keys.some(key => hasPermission(req.user, key))) {
-    return res.status(403).json({ error: 'Access denied. Missing permission.' });
+    return res.status(403).json({ error: 'Access denied. Missing permission.', code: 'forbidden', params: {} });
   }
   next();
 };

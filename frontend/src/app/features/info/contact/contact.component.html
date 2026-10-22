@@ -1,29 +1,29 @@
 <div class="info-page">
   <div class="page-header">
     <div class="page-header__main">
-      <h1 class="page-title">Contacto</h1>
-      <p class="page-summary">¿Tienes preguntas? Estamos aquí para ayudarte</p>
+      <h1 class="page-title">{{ 'nav.contact' | t }}</h1>
+      <p class="page-summary">{{ 'info.contactSummary' | t }}</p>
     </div>
   </div>
 
   <div class="contact-grid">
     <section class="info-section">
       <span class="icon-tile" aria-hidden="true"><app-icon name="mail" [size]="18" /></span>
-      <h2>Email</h2>
+      <h2>{{ 'common.email' | t }}</h2>
       <a href="mailto:contacto@spanishnow.com">contacto@spanishnow.com</a>
     </section>
 
     <section class="info-section">
       <span class="icon-tile" aria-hidden="true"><app-icon name="headphones" [size]="18" /></span>
-      <h2>Soporte</h2>
+      <h2>{{ 'info.support' | t }}</h2>
       <a href="mailto:soporte@spanishnow.com">soporte@spanishnow.com</a>
     </section>
   </div>
 
   <section class="info-section">
-    <h2>Envíanos un mensaje</h2>
+    <h2>{{ 'info.messageTitle' | t }}</h2>
     <p class="mb-0">
-      El formulario de contacto estará disponible próximamente. Por ahora, puedes escribirnos directamente a los correos indicados arriba.
+      {{ 'info.message' | t }}
     </p>
   </section>
 </div>

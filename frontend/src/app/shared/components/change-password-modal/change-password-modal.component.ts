@@ -1,14 +1,16 @@
-import { Component, inject, signal, output } from '@angular/core';
+import { Component, computed, inject, signal, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { ToastService } from '../../../core/services/toast.service';
+import { I18nService } from '../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 
 @Component({
   selector: 'app-change-password-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [TranslatePipe, CommonModule, ReactiveFormsModule],
   templateUrl: './change-password-modal.component.html',
   styleUrl: './change-password-modal.component.scss'
 })
@@ -16,6 +18,9 @@ export class ChangePasswordModalComponent {
   private fb = inject(FormBuilder);
   private http = inject(HttpClient);
   private toastService = inject(ToastService);
+  private i18n = inject(I18nService);
+  private failure = signal<unknown>(null);
+  readonly errorMessage = computed(() => this.failure() ? this.i18n.errorMessage(this.failure(), 'auth.changePasswordError') : '');
 
   close = output<void>();
 
@@ -59,18 +64,18 @@ export class ChangePasswordModalComponent {
     const { currentPassword, newPassword } = this.changePasswordForm.value;
 
     this.isSubmitting.set(true);
+    this.failure.set(null);
 
     this.http.post(`${environment.apiUrl}/auth/change-password`, {
       currentPassword,
       newPassword
     }).subscribe({
       next: () => {
-        this.toastService.show('success', 'Contraseña cambiada exitosamente');
+        this.toastService.show('success', this.i18n.t('auth.passwordChanged'));
         this.close.emit();
       },
       error: (error) => {
-        const errorMessage = error.error?.error || 'Error al cambiar la contraseña';
-        this.toastService.show('error', errorMessage);
+        this.failure.set(error);
         this.isSubmitting.set(false);
       }
     });

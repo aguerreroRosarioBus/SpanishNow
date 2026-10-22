@@ -43,7 +43,7 @@ describe('selling courses', () => {
       const [mail] = mailsTo(email);
       expect(mailsTo(email)).toHaveLength(1);
       expect(mail.subject).toContain(course.title);
-      expect(mail.text).toContain('$19.99');
+      expect(mail.text).toMatch(/USD\s+19\.99/);
       expect(mail.text).toContain('Set your password');
       expect(mail.text).toContain('/auth/reset-password?token=');
       expect(mail.text).toContain('invite=1');

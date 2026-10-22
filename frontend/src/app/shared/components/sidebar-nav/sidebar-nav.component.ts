@@ -1,3 +1,4 @@
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { Component, computed, effect, inject, input, output, untracked } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -27,7 +28,7 @@ interface NavGroup {
 @Component({
   selector: 'app-sidebar-nav',
   standalone: true,
-  imports: [RouterLink, RouterLinkActive, IconComponent],
+  imports: [TranslatePipe, RouterLink, RouterLinkActive, IconComponent],
   templateUrl: './sidebar-nav.component.html',
   styleUrl: './sidebar-nav.component.scss'
 })
@@ -74,7 +75,7 @@ export class SidebarNavComponent {
     const groups = this.baseGroups();
     if (!(this.currentUser()?.permissions?.length)) return groups;
     // «Administración» va antes de «Cuenta», que siempre es el último grupo
-    const admin: NavGroup = { title: 'Administración', items: [{ label: 'Usuarios', icon: 'users', link: '/admin/users' }] };
+    const admin: NavGroup = { title: 'nav.admin', items: [{ label: 'nav.users', icon: 'users', link: '/admin/users' }] };
     return [...groups.slice(0, -1), admin, groups[groups.length - 1]];
   });
 
@@ -82,37 +83,37 @@ export class SidebarNavComponent {
     if (this.currentUser()?.role === 'student') {
       return [
         {
-          title: 'Aprendizaje',
+          title: 'nav.learning',
           items: [
-            { label: 'Mis cursos', icon: 'book-open', link: '/student/dashboard', exactQuery: true, alsoActiveUnder: '/student/course/' },
-            { label: 'Explorar cursos', icon: 'compass', link: '/student/dashboard', query: { view: 'catalog' }, exactQuery: true },
-            { label: 'Mi avance', icon: 'bar-chart', link: '/student/progress' },
-            { label: 'Clases en vivo', icon: 'rectangle', link: '/live' },
-            { label: 'Maestros', icon: 'users', link: '/teachers' }
+            { label: 'nav.myCourses', icon: 'book-open', link: '/student/dashboard', exactQuery: true, alsoActiveUnder: '/student/course/' },
+            { label: 'nav.exploreCourses', icon: 'compass', link: '/student/dashboard', query: { view: 'catalog' }, exactQuery: true },
+            { label: 'nav.progress', icon: 'bar-chart', link: '/student/progress' },
+            { label: 'nav.liveClasses', icon: 'rectangle', link: '/live' },
+            { label: 'nav.teachers', icon: 'users', link: '/teachers' }
           ]
         },
-        { title: 'Cuenta', items: [{ label: 'Mis compras', icon: 'receipt', link: '/student/purchases' }, { label: 'Configuración', icon: 'settings', link: '/settings' }] }
+        { title: 'nav.account', items: [{ label: 'nav.purchases', icon: 'receipt', link: '/student/purchases' }, { label: 'nav.settings', icon: 'settings', link: '/settings' }] }
       ];
     }
     return [
       {
-        title: 'Enseñanza',
+        title: 'nav.teaching',
         items: [
-          { label: 'Mis cursos', icon: 'book-open', link: '/teacher/dashboard', alsoActiveUnder: '/teacher/course/' },
-          { label: 'Clases en vivo', icon: 'rectangle', link: '/live' },
-          { label: 'Comentarios', icon: 'message-square', link: '/teacher/comments', badge: 'comments' }
+          { label: 'nav.myCourses', icon: 'book-open', link: '/teacher/dashboard', alsoActiveUnder: '/teacher/course/' },
+          { label: 'nav.liveClasses', icon: 'rectangle', link: '/live' },
+          { label: 'nav.comments', icon: 'message-square', link: '/teacher/comments', badge: 'comments' }
         ]
       },
       {
-        title: 'Negocio',
+        title: 'nav.business',
         items: [
-          { label: 'Ventas', icon: 'shopping-bag', link: '/teacher/sales' },
-          { label: 'Órdenes', icon: 'receipt', link: '/teacher/orders' },
-          { label: 'Cupones', icon: 'tag', link: '/teacher/coupons' },
-          { label: 'Afiliados', icon: 'share', link: '/teacher/affiliates' }
+          { label: 'nav.sales', icon: 'shopping-bag', link: '/teacher/sales' },
+          { label: 'nav.orders', icon: 'receipt', link: '/teacher/orders' },
+          { label: 'nav.coupons', icon: 'tag', link: '/teacher/coupons' },
+          { label: 'nav.affiliates', icon: 'share', link: '/teacher/affiliates' }
         ]
       },
-      { title: 'Cuenta', items: [{ label: 'Configuración', icon: 'settings', link: '/settings' }] }
+      { title: 'nav.account', items: [{ label: 'nav.settings', icon: 'settings', link: '/settings' }] }
     ];
   });
 }

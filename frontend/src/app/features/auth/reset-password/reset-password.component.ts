@@ -1,4 +1,6 @@
-import { Component, inject, signal } from '@angular/core';
+import { I18nService } from '../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
+import { Component, computed, inject, signal } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
@@ -11,11 +13,12 @@ function passwordsMatch(group: AbstractControl): ValidationErrors | null {
 @Component({
   selector: 'app-reset-password',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [TranslatePipe, ReactiveFormsModule, RouterLink],
   templateUrl: './reset-password.component.html',
   styleUrl: './reset-password.component.scss'
 })
 export class ResetPasswordComponent {
+  readonly i18n = inject(I18nService);
   private authService = inject(AuthService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
@@ -28,7 +31,12 @@ export class ResetPasswordComponent {
     confirm: ['', [Validators.required]]
   }, { validators: passwordsMatch });
   isLoading = signal(false);
-  errorMessage = signal('');
+  private failure = signal<{ status?: number } | null>(null);
+  errorMessage = computed(() => {
+    const failure = this.failure();
+    return failure ? this.i18n.errorMessage(failure, failure.status === 400 || failure.status === 404
+      ? 'auth.invalidLink' : 'errors.unexpected') : '';
+  });
 
   submit(): void {
     if (this.form.invalid) {
@@ -36,7 +44,7 @@ export class ResetPasswordComponent {
       return;
     }
     this.isLoading.set(true);
-    this.errorMessage.set('');
+    this.failure.set(null);
     this.authService.resetPassword({ token: this.token, password: this.form.value.password! }).subscribe({
       next: response => {
         // La sesión ya quedó guardada por AuthService, igual que en el login
@@ -44,9 +52,7 @@ export class ResetPasswordComponent {
       },
       error: error => {
         this.isLoading.set(false);
-        this.errorMessage.set(error?.status === 400 || error?.status === 404
-          ? 'This link is invalid or has expired. Please request a new one.'
-          : 'Something went wrong. Please try again.');
+        this.failure.set(error);
       }
     });
   }

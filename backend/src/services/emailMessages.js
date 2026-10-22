@@ -1,0 +1,80 @@
+// Claves estables de emails propios. Nombres, títulos y mensajes humanos son parámetros literales.
+const EN = {
+  'email.greeting': 'Hi {name},',
+  'email.defaultName': 'there',
+  'email.defaultTeacher': 'Your teacher',
+  'email.defaultAuthor': 'an enrolled learner',
+  'email.purchaseThanks': 'Thank you for your purchase. You now have full access to "{course}".',
+  'email.amountPaid': 'Amount paid: {amount}.',
+  'email.accountCreated': 'We created a SpanishNow account for you with this email address. Choose your password to sign in.',
+  'email.purchaseTitle': 'Your purchase is confirmed',
+  'email.purchaseSubject': 'Your purchase: {course}',
+  'email.setPassword': 'Set your password',
+  'email.startLearning': 'Start learning',
+  'email.inviteExpiry': 'This link is valid for 14 days. After that, use "Forgot your password?" on the sign-in page.',
+  'email.courseLink': 'Once you are in, your course is here:',
+  'email.courseMoved': '{teacher} has moved the course "{course}" to SpanishNow. It is now available in your SpanishNow account.',
+  'email.hotmartValid': 'Your purchase on Hotmart is still valid: you keep full access to the course, at no extra cost.',
+  'email.usualAccount': 'Sign in with your usual email address and password to start learning.',
+  'email.inviteSubject': '{teacher} has moved your course to SpanishNow',
+  'email.inviteTitle': '{course} is now on SpanishNow',
+  'email.resetSubject': 'Reset your SpanishNow password',
+  'email.resetTitle': 'Reset your password',
+  'email.resetRequest': 'We received a request to reset the password of your SpanishNow account. Use the button below to choose a new one.',
+  'email.resetButton': 'Reset password',
+  'email.resetExpiry': 'This link expires in 1 hour. If you did not ask for it, you can ignore this email: your password stays the same.',
+  'email.questionSubject': 'New question in {story}',
+  'email.questionTitle': 'New question in a lesson',
+  'email.questionBody': 'There is a new question in the lesson "{story}" of "{course}".',
+  'email.questionAuthor': 'Written by: {author}',
+  'email.viewLesson': 'View lesson',
+  'email.questionFooter': 'You can reply from the Comments inbox.',
+  'email.replySubject': '{teacher} replied to your question in {story}',
+  'email.replyTitle': 'You have a reply',
+  'email.replyBody': '{teacher} replied to your question in the lesson "{story}" of "{course}".',
+  'email.openLesson': 'Open the lesson'
+};
+const ES = {
+  'email.greeting': 'Hola {name},',
+  'email.defaultName': '',
+  'email.defaultTeacher': 'Tu docente',
+  'email.defaultAuthor': 'una persona inscripta',
+  'email.purchaseThanks': 'Gracias por tu compra. Ya tienes acceso completo a «{course}».',
+  'email.amountPaid': 'Importe pagado: {amount}.',
+  'email.accountCreated': 'Creamos una cuenta de SpanishNow para ti con este email. Elige tu contraseña para iniciar sesión.',
+  'email.purchaseTitle': 'Tu compra está confirmada',
+  'email.purchaseSubject': 'Tu compra: {course}',
+  'email.setPassword': 'Elegir contraseña',
+  'email.startLearning': 'Empezar a aprender',
+  'email.inviteExpiry': 'Este enlace es válido por 14 días. Después, usa «¿Olvidaste tu contraseña?» en la página de acceso.',
+  'email.courseLink': 'Una vez que ingreses, tu curso está aquí:',
+  'email.courseMoved': '{teacher} trasladó el curso «{course}» a SpanishNow. Ya está disponible en tu cuenta de SpanishNow.',
+  'email.hotmartValid': 'Tu compra en Hotmart sigue siendo válida: conservas el acceso completo al curso sin costo adicional.',
+  'email.usualAccount': 'Inicia sesión con tu email y contraseña habituales para empezar a aprender.',
+  'email.inviteSubject': '{teacher} trasladó tu curso a SpanishNow',
+  'email.inviteTitle': '{course} ya está en SpanishNow',
+  'email.resetSubject': 'Restablece tu contraseña de SpanishNow',
+  'email.resetTitle': 'Restablece tu contraseña',
+  'email.resetRequest': 'Recibimos una solicitud para restablecer la contraseña de tu cuenta de SpanishNow. Usa el botón para elegir una nueva.',
+  'email.resetButton': 'Restablecer contraseña',
+  'email.resetExpiry': 'Este enlace vence en 1 hora. Si no lo solicitaste, puedes ignorar este correo: tu contraseña no cambia.',
+  'email.questionSubject': 'Nueva pregunta en {story}',
+  'email.questionTitle': 'Nueva pregunta en una lección',
+  'email.questionBody': 'Hay una nueva pregunta en la lección «{story}» del curso «{course}».',
+  'email.questionAuthor': 'Escrita por: {author}',
+  'email.viewLesson': 'Ver la lección',
+  'email.questionFooter': 'Puedes responder desde la bandeja de Comentarios.',
+  'email.replySubject': '{teacher} respondió a tu pregunta en {story}',
+  'email.replyTitle': 'Tienes una respuesta',
+  'email.replyBody': '{teacher} respondió a tu pregunta en la lección «{story}» del curso «{course}».',
+  'email.openLesson': 'Abrir la lección'
+};
+
+const emailLocale = locale => locale === 'es' ? 'es' : 'en';
+const emailText = (locale, key, params = {}) => {
+  const catalog = emailLocale(locale) === 'es' ? ES : EN;
+  const template = Object.hasOwn(catalog, key) ? catalog[key] : `[${key}]`;
+  return template.replace(/\{(\w+)\}/g, (token, name) => Object.hasOwn(params, name) ? String(params[name]) : token);
+};
+
+module.exports = { EN, ES, emailLocale, emailText };

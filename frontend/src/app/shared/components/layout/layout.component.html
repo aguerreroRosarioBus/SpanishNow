@@ -6,8 +6,8 @@
 
   @if (impersonating() && currentUser(); as user) {
     <div class="impersonation-banner" role="status">
-      <span>Estás viendo la app como <strong>{{ user.name }}</strong> (cuenta de prueba)</span>
-      <button type="button" class="btn btn-sm btn-light" (click)="stopImpersonating()">Volver a mi cuenta</button>
+      <span>{{ 'nav.impersonating' | t : { name: user.name } }}</span>
+      <button type="button" class="btn btn-sm btn-light" (click)="stopImpersonating()">{{ 'nav.returnToAccount' | t }}</button>
     </div>
   }
 
@@ -32,9 +32,9 @@
               <img src="logo-mark.svg" alt="" width="24" height="23">
               <span>SpanishNow</span>
             </a>
-            <nav class="footer-links" aria-label="Enlaces del sitio">
-              <a routerLink="/about">Acerca de</a>
-              <a routerLink="/contact">Contacto</a>
+            <nav class="footer-links" [attr.aria-label]="'nav.siteLinks' | t">
+              <a routerLink="/about">{{ 'nav.about' | t }}</a>
+              <a routerLink="/contact">{{ 'nav.contact' | t }}</a>
             </nav>
             <small class="footer-copy">© {{ year }} SpanishNow</small>
           </div>

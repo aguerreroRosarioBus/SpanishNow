@@ -21,14 +21,14 @@ router.post('/register',
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
+        return res.status(400).json({ error: 'Datos inválidos', errors: errors.array(), code: 'validation_failed', params: { fields: errors.array().map(e => e.path) } });
       }
 
       const { name, email, password } = req.body;
 
       const existingUser = await User.findOne({ where: { email } });
       if (existingUser) {
-        return res.status(400).json({ error: 'Email already registered' });
+        return res.status(400).json({ error: 'Email already registered', code: 'email_already_registered', params: {} });
       }
 
       const user = await User.create({ name, email, password, role: 'student' });
@@ -50,24 +50,24 @@ router.post('/login',
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
+        return res.status(400).json({ error: 'Datos inválidos', errors: errors.array(), code: 'validation_failed', params: { fields: errors.array().map(e => e.path) } });
       }
 
       const { email, password } = req.body;
 
       const user = await User.findOne({ where: { email } });
       if (!user) {
-        return res.status(401).json({ error: 'Invalid credentials' });
+        return res.status(401).json({ error: 'Invalid credentials', code: 'invalid_credentials', params: {} });
       }
 
       const isMatch = await user.comparePassword(password);
       if (!isMatch) {
-        return res.status(401).json({ error: 'Invalid credentials' });
+        return res.status(401).json({ error: 'Invalid credentials', code: 'invalid_credentials', params: {} });
       }
 
       // Only after the password matched, so the answer does not reveal which emails have an account.
       if (user.suspendedAt) {
-        return res.status(403).json({ error: 'This account is suspended' });
+        return res.status(403).json({ error: 'This account is suspended', code: 'account_suspended', params: {} });
       }
 
       res.json({ user: serializeAuthUser(user), token: signToken(user) });
@@ -93,7 +93,7 @@ router.post('/change-password',
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
+        return res.status(400).json({ error: 'Datos inválidos', errors: errors.array(), code: 'validation_failed', params: { fields: errors.array().map(e => e.path) } });
       }
 
       const { currentPassword, newPassword } = req.body;
@@ -101,19 +101,19 @@ router.post('/change-password',
       // Get user from database
       const user = await User.findByPk(req.user.id);
       if (!user) {
-        return res.status(404).json({ error: 'User not found' });
+        return res.status(404).json({ error: 'User not found', code: 'not_found', params: {} });
       }
 
       // Verify current password
       const isMatch = await user.comparePassword(currentPassword);
       if (!isMatch) {
-        return res.status(401).json({ error: 'Current password is incorrect' });
+        return res.status(401).json({ error: 'Current password is incorrect', code: 'current_password_invalid', params: {} });
       }
 
       // Check if new password is different from current
       const isSameAsOld = await user.comparePassword(newPassword);
       if (isSameAsOld) {
-        return res.status(400).json({ error: 'New password must be different from current password' });
+        return res.status(400).json({ error: 'New password must be different from current password', code: 'password_unchanged', params: {} });
       }
 
       // Update password (will be hashed by User model hook)
@@ -134,7 +134,7 @@ router.post('/forgot-password',
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ error: errors.array()[0].msg });
+      return res.status(400).json({ error: errors.array()[0].msg, code: 'validation_failed', params: { fields: errors.array().map(e => e.path) } });
     }
     const email = String(req.body.email).trim().toLowerCase();
     res.json({ message: 'If that email has an account, we sent a link to reset the password' });
@@ -142,7 +142,7 @@ router.post('/forgot-password',
       const user = await User.findOne({ where: { email } });
       if (!user) return;
       const token = await createToken(user, 'reset');
-      await sendMail({ to: user.email, ...passwordReset({ name: user.name, token }) });
+      await sendMail({ to: user.email, ...passwordReset({ name: user.name, token, locale: user.locale }) });
     } catch (error) {
       console.error('Forgot password failed:', error.message);
     }
@@ -159,11 +159,11 @@ router.post('/reset-password',
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        return res.status(400).json({ error: errors.array()[0].msg });
+        return res.status(400).json({ error: errors.array()[0].msg, code: 'validation_failed', params: { fields: errors.array().map(e => e.path) } });
       }
       const user = await consumeToken(req.body.token, req.body.password);
-      if (!user) return res.status(400).json({ error: 'This link is invalid or has expired' });
-      if (user.suspendedAt) return res.status(403).json({ error: 'This account is suspended' });
+      if (!user) return res.status(400).json({ error: 'This link is invalid or has expired', code: 'password_link_invalid', params: {} });
+      if (user.suspendedAt) return res.status(403).json({ error: 'This account is suspended', code: 'account_suspended', params: {} });
       res.json({ user: serializeAuthUser(user), token: signToken(user) });
     } catch (error) {
       res.status(500).json({ error: error.message });

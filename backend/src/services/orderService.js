@@ -82,7 +82,7 @@ async function fulfillOrder(orderOrId, payment = {}, { strictCoupon = false } = 
     await sendMail({
       to: outcome.user.email,
       ...templates.purchaseConfirmation({
-        name: outcome.user.name, course, amount: outcome.order.amount, currency: outcome.order.currency, inviteToken: outcome.inviteToken
+        name: outcome.user.name, course, amount: outcome.order.amount, currency: outcome.order.currency, inviteToken: outcome.inviteToken, locale: outcome.user.locale
       })
     });
   } catch (error) {

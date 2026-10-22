@@ -1,4 +1,6 @@
-import { Component, inject } from '@angular/core';
+import { I18nService } from '../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -13,19 +15,25 @@ import { AuthService } from '../../../core/services/auth.service';
 @Component({
   selector: 'app-register',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [TranslatePipe, CommonModule, ReactiveFormsModule, RouterLink],
   templateUrl: './register.component.html',
   styleUrl: './register.component.scss'
 })
 export class RegisterComponent {
   private fb = inject(FormBuilder);
+  readonly i18n = inject(I18nService);
   private authService = inject(AuthService);
   private router = inject(Router);
   readonly returnUrl = liveReturnUrl(inject(ActivatedRoute).snapshot.queryParamMap.get('returnUrl'));
 
   registerForm: FormGroup;
-  errorMessage: string = '';
-  isLoading: boolean = false;
+  private failure = signal<unknown>(null);
+  private errorKey = signal('');
+  readonly errorMessage = computed(() => {
+    const key = this.errorKey();
+    return key ? this.i18n.errorMessage(this.failure(), key) : '';
+  });
+  readonly isLoading = signal(false);
 
   constructor() {
     // Formulario con campos adicionales comparado con Login
@@ -45,13 +53,15 @@ export class RegisterComponent {
    * Maneja el envío del formulario de registro
    */
   onSubmit(): void {
+    if (this.isLoading()) return;
     if (this.registerForm.invalid) {
       this.registerForm.markAllAsTouched();
       return;
     }
 
-    this.isLoading = true;
-    this.errorMessage = '';
+    this.isLoading.set(true);
+    this.errorKey.set('');
+    this.failure.set(null);
 
     // Obtener todos los valores del formulario
     const formData = this.registerForm.value;
@@ -73,20 +83,20 @@ export class RegisterComponent {
       },
 
       error: (error) => {
-        console.error('Error en registro:', error);
-        this.isLoading = false;
+        this.failure.set(error);
+        this.isLoading.set(false);
 
         // Manejar diferentes tipos de errores
         if (error.status === 400) {
           // Error de validación (ej: email ya existe)
-          this.errorMessage = error.error.error || 'Datos inválidos';
+          this.errorKey.set('auth.invalidData');
         } else {
-          this.errorMessage = 'Error al registrarse. Por favor intenta de nuevo.';
+          this.errorKey.set('auth.registerError');
         }
       },
 
       complete: () => {
-        this.isLoading = false;
+        this.isLoading.set(false);
       }
     });
   }
@@ -107,20 +117,20 @@ export class RegisterComponent {
 
     if (control?.hasError('required')) {
       const fieldNames: { [key: string]: string } = {
-        name: 'El nombre',
-        email: 'El email',
-        password: 'La contraseña'
+        name: 'auth.nameRequired',
+        email: 'auth.emailRequired',
+        password: 'auth.passwordRequired'
       };
-      return `${fieldNames[field]} es requerido`;
+      return this.i18n.t(fieldNames[field]);
     }
 
     if (control?.hasError('email')) {
-      return 'Ingresa un email válido';
+      return this.i18n.t('auth.emailInvalid');
     }
 
     if (control?.hasError('minlength')) {
       const minLength = control.errors?.['minlength'].requiredLength;
-      return `Debe tener al menos ${minLength} caracteres`;
+      return this.i18n.t('auth.minLength', { min: minLength });
     }
 
     return '';

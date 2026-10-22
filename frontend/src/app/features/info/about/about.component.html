@@ -1,28 +1,27 @@
 <div class="info-page">
   <div class="page-header">
     <div class="page-header__main">
-      <h1 class="page-title">Acerca de SpanishNow</h1>
-      <p class="page-summary">Aprende español de forma natural y efectiva</p>
+      <h1 class="page-title">{{ 'info.aboutTitle' | t }}</h1>
+      <p class="page-summary">{{ 'info.aboutSummary' | t }}</p>
     </div>
   </div>
 
   <section class="info-section">
-    <h2>Nuestra misión</h2>
+    <h2>{{ 'info.missionTitle' | t }}</h2>
     <p>
-      SpanishNow es una plataforma de aprendizaje de español basada en el método TPRS (Teaching Proficiency through Reading and Storytelling).
-      Creemos que aprender un idioma debe ser natural, entretenido y efectivo.
+      {{ 'info.mission' | t }}
     </p>
   </section>
 
   <section class="info-section">
-    <h2>¿Qué ofrecemos?</h2>
+    <h2>{{ 'info.offerTitle' | t }}</h2>
     <ul class="feature-list">
       @for (feature of features; track feature.title) {
         <li>
           <span class="icon-tile" aria-hidden="true"><app-icon [name]="feature.icon" [size]="18" /></span>
           <div>
-            <h3>{{ feature.title }}</h3>
-            <p>{{ feature.text }}</p>
+            <h3>{{ feature.title | t }}</h3>
+            <p>{{ feature.text | t }}</p>
           </div>
         </li>
       }
@@ -30,11 +29,10 @@
   </section>
 
   <section class="info-section">
-    <h2>Método TPRS</h2>
+    <h2>{{ 'info.methodTitle' | t }}</h2>
     <p>
-      El método TPRS se basa en la adquisición natural del lenguaje a través de la comprensión auditiva y lectora.
-      En lugar de memorizar reglas gramaticales, los estudiantes adquieren el idioma de forma natural, similar a cómo aprendieron su lengua materna.
+      {{ 'info.method' | t }}
     </p>
-    <p class="mb-0">Este enfoque hace que el aprendizaje sea más efectivo, menos estresante y mucho más divertido.</p>
+    <p class="mb-0">{{ 'info.methodBenefit' | t }}</p>
   </section>
 </div>

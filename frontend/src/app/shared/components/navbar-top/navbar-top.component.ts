@@ -1,3 +1,5 @@
+import { LanguageSelectorComponent } from '../language-selector/language-selector.component';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { Component, inject, input, output, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { PwaService } from '../../../core/services/pwa.service';
@@ -8,7 +10,7 @@ import { IconComponent } from '../icon/icon.component';
 @Component({
   selector: 'app-navbar-top',
   standalone: true,
-  imports: [RouterLink, NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem, IconComponent],
+  imports: [LanguageSelectorComponent, TranslatePipe, RouterLink, NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem, IconComponent],
   templateUrl: './navbar-top.component.html',
   styleUrl: './navbar-top.component.scss'
 })

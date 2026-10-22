@@ -1,3 +1,4 @@
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterOutlet, RouterLink, Router, NavigationEnd } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -9,7 +10,7 @@ import { AuthService } from '../../../core/services/auth.service';
 @Component({
   selector: 'app-layout',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, NavbarTopComponent, SidebarNavComponent],
+  imports: [TranslatePipe, RouterOutlet, RouterLink, NavbarTopComponent, SidebarNavComponent],
   templateUrl: './layout.component.html',
   styleUrl: './layout.component.scss'
 })

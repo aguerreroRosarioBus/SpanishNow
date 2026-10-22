@@ -151,7 +151,7 @@ async function sendInvitation({ course, teacherName, user, userCreated = false }
   const inviteToken = needsPassword ? await createToken(user, 'invite') : null;
   await sendMail({
     to: user.email,
-    ...templates.invitation({ name: user.name, course, teacherName, inviteToken, hasAccount: !needsPassword })
+    ...templates.invitation({ name: user.name, course, teacherName, inviteToken, hasAccount: !needsPassword, locale: user.locale })
   });
 }
 

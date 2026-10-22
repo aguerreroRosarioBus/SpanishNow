@@ -3,51 +3,51 @@
     <header class="auth-card__head">
       <img src="logo-mark.svg" alt="" width="48" height="45">
       <h1 class="auth-card__title">SpanishNow</h1>
-      <p class="auth-card__subtitle">Crea tu cuenta</p>
+      <p class="auth-card__subtitle">{{ 'auth.registerTitle' | t }}</p>
     </header>
 
-    @if (errorMessage) {
-      <div class="alert alert-danger" role="alert">{{ errorMessage }}</div>
+    @if (errorMessage()) {
+      <div class="alert alert-danger" role="alert">{{ errorMessage() }}</div>
     }
 
     <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" novalidate>
       <div class="mb-3">
-        <label for="name" class="form-label">Nombre completo</label>
+        <label for="name" class="form-label">{{ 'auth.fullName' | t }}</label>
         <input type="text" class="form-control" id="name" formControlName="name"
-               [class.is-invalid]="hasError('name')" placeholder="Juan Pérez" autocomplete="name">
+               [class.is-invalid]="hasError('name')" [placeholder]="'auth.namePlaceholder' | t" autocomplete="name">
         @if (hasError('name')) {
           <div class="invalid-feedback">{{ getErrorMessage('name') }}</div>
         }
       </div>
 
       <div class="mb-3">
-        <label for="email" class="form-label">Email</label>
+        <label for="email" class="form-label">{{ 'common.email' | t }}</label>
         <input type="email" class="form-control" id="email" formControlName="email"
-               [class.is-invalid]="hasError('email')" placeholder="tu@email.com" autocomplete="email">
+               [class.is-invalid]="hasError('email')" [placeholder]="'common.emailPlaceholder' | t" autocomplete="email">
         @if (hasError('email')) {
           <div class="invalid-feedback">{{ getErrorMessage('email') }}</div>
         }
       </div>
 
       <div class="mb-4">
-        <label for="password" class="form-label">Contraseña</label>
+        <label for="password" class="form-label">{{ 'auth.password' | t }}</label>
         <input type="password" class="form-control" id="password" formControlName="password"
-               [class.is-invalid]="hasError('password')" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
+               [class.is-invalid]="hasError('password')" [placeholder]="'auth.passwordPlaceholder' | t" autocomplete="new-password">
         @if (hasError('password')) {
           <div class="invalid-feedback">{{ getErrorMessage('password') }}</div>
         }
       </div>
 
-      <button type="submit" class="btn btn-primary btn-lg w-100" [disabled]="registerForm.invalid || isLoading">
-        @if (isLoading) {
+      <button type="submit" class="btn btn-primary btn-lg w-100" [disabled]="registerForm.invalid || isLoading()">
+        @if (isLoading()) {
           <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
         }
-        {{ isLoading ? 'Creando cuenta…' : 'Crear cuenta' }}
+        {{ (isLoading() ? 'auth.creatingAccount' : 'auth.createAccount') | t }}
       </button>
 
       <p class="auth-card__alt">
-        ¿Ya tienes cuenta?
-        <a routerLink="/auth/login" [queryParams]="returnUrl ? { returnUrl } : null">Inicia sesión</a>
+        {{ 'auth.haveAccount' | t }}
+        <a routerLink="/auth/login" [queryParams]="returnUrl ? { returnUrl } : null">{{ 'auth.signIn' | t }}</a>
       </p>
     </form>
   </div>
