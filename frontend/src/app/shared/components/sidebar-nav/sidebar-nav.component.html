@@ -15,13 +15,13 @@
            #rla="routerLinkActive"
            [class.active]="rla.isActive || isUnder(item)"
            [routerLinkActiveOptions]="item.exactQuery ? { paths: 'exact', queryParams: 'exact', fragment: 'ignored', matrixParams: 'ignored' } : { paths: 'subset', queryParams: 'ignored', fragment: 'ignored', matrixParams: 'ignored' }"
-           [attr.aria-label]="collapsed() ? item.label + (badgeCount(item) ? ', ' + badgeCount(item) + ' sin responder' : '') : null"
+           [attr.aria-label]="collapsed() ? item.label + (badgeCount(item) ? ', ' + badgeCount(item) + badgeSuffix(item) : '') : null"
            [attr.title]="collapsed() ? item.label : null">
           <app-icon [name]="item.icon" [size]="collapsed() ? 20 : 18" />
           @if (!collapsed()) {
             <span class="sidebar-label">{{ item.label }}</span>
             @if (badgeCount(item) > 0) {
-              <span class="sidebar-badge" [attr.aria-label]="badgeCount(item) + ' sin responder'">{{ badgeCount(item) > 99 ? '99+' : badgeCount(item) }}</span>
+              <span class="sidebar-badge" [attr.aria-label]="badgeCount(item) + badgeSuffix(item)">{{ badgeCount(item) > 99 ? '99+' : badgeCount(item) }}</span>
             }
           } @else if (badgeCount(item) > 0) {
             <span class="sidebar-badge sidebar-badge--dot" aria-hidden="true"></span>
