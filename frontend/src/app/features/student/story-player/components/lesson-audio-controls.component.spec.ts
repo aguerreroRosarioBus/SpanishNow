@@ -74,6 +74,24 @@ describe('Controles de audio compartidos', () => {
     expect(audio.repeat()).toBeNull(); expect(numbers[0].disabled).toBe(false);
   });
 
+  it('anuncia la salida de A/B por seek fuera del fragmento y conserva la posición', () => {
+    fixture.componentRef.setInput('singleUrl', '/frame.mp3'); fixture.detectChanges(); media().metadata();
+    audio.setRepeat(10, 20); fixture.detectChanges();
+    const notice = el().querySelector('.repeat-notice')!;
+    expect(notice.getAttribute('role')).toBe('status');
+    expect(notice.getAttribute('aria-live')).toBe('polite');
+    expect(notice.textContent?.trim()).toBe('');
+    change(input('range'), '35'); media().emit('timeupdate'); fixture.detectChanges();
+    expect(audio.repeat()).toBeNull(); expect(audio.currentTime()).toBe(35);
+    expect(notice.textContent).toContain('Repetición desactivada: buscaste fuera');
+    expect(button('Activar repetición')).toBeTruthy();
+    expect(input('number').disabled).toBe(false);
+    locale.set('en'); fixture.detectChanges();
+    expect(notice.textContent).toContain('Repeat disabled: you moved outside');
+    audio.setRepeat(10, 20); fixture.detectChanges();
+    expect(notice.textContent?.trim()).toBe('');
+  });
+
   it('cambia ES/EN durante la reproducción sin perder posición, repetición ni elemento', async () => {
     fixture.componentRef.setInput('slowUrl', '/slow.mp3'); fixture.componentRef.setInput('normalUrl', '/normal.mp3');
     fixture.detectChanges(); media().metadata(); button('Reproducir audio').click();

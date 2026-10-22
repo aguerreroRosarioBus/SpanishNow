@@ -46,6 +46,12 @@ test('A/B con campos y repetición real; cambiar lento/normal reinicia y conserv
   await page.getByRole('button', { name: 'Reproducir audio', exact: true }).click();
   await expect.poll(async () => (await currentMedia(page)).time).toBeGreaterThan(1.7);
   await expect.poll(async () => (await currentMedia(page)).time).toBeLessThan(1.4);
+  await page.getByRole('button', { name: 'Avanzar 10 segundos' }).click();
+  await expect(page.getByText('Repetición A–B activa', { exact: true })).toHaveCount(0);
+  await expect(page.locator('.repeat-notice')).toHaveText('Repetición desactivada: buscaste fuera del fragmento A–B.');
+  expect((await currentMedia(page)).time).toBeGreaterThan(10);
+  await page.getByRole('button', { name: 'Activar repetición', exact: true }).click();
+  await expect(page.locator('.repeat-notice')).toHaveText('');
   await page.getByRole('button', { name: 'Salir de repetición', exact: true }).click();
   await page.getByRole('button', { name: 'Normal', exact: true }).click();
   await expect.poll(async () => (await currentMedia(page)).src).toContain('normal.wav');
@@ -61,7 +67,12 @@ test('al navegar entre bloques y cerrar libera los medios anteriores', async ({ 
   const { mutations } = await openAudioLesson(page, server.origin);
   await expect(page.getByRole('slider')).toBeEnabled();
   await page.getByRole('button', { name: 'Reproducir audio', exact: true }).click();
+  const announcement = page.locator('.steps__current[role="status"]');
+  await expect(announcement).toHaveText('Paso 1 de 3 · Historia');
   await page.getByRole('button', { name: 'Continuar', exact: true }).click();
+  await expect(announcement).toHaveText('Paso 2 de 3 · Historia');
+  await expect(announcement).toHaveAttribute('aria-live', 'polite');
+  await expect(announcement).toHaveAttribute('aria-atomic', 'true');
   await expect.poll(async () => (await currentMedia(page)).src).toContain('other.wav');
   expect(await page.evaluate(() => {
     const first = (window as any).__lessonMedia[0] as HTMLAudioElement;

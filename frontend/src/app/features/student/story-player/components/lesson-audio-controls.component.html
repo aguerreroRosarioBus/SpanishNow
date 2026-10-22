@@ -50,6 +50,9 @@
       }
       @if (audio.repeat()) { <p class="hint" role="status">{{ text('audio.repeatActive') }}</p> }
     </details>
+    <div class="hint repeat-notice" role="status" aria-live="polite" aria-atomic="true">
+      @if (audio.repeatStoppedBySeek()) { {{ text('audio.repeatStoppedBySeek') }} }
+    </div>
     <div class="status" role="status" aria-live="polite">
       @if (status(); as key) { {{ text(key) }} }
     </div>

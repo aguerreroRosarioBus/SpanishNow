@@ -94,6 +94,32 @@ describe('StoryPlayerComponent (flujo TPRS)', () => {
     expect(currentKey()).toBe('q1');
   });
 
+  it('anuncia cada paso al navegar en una región viva separada del audio', async () => {
+    await create('k1');
+    const el = fixture.nativeElement as HTMLElement;
+    const announcement = el.querySelector('.steps__current')!;
+    const text = () => announcement.textContent?.replace(/\s+/g, ' ').trim();
+    expect(announcement.getAttribute('role')).toBe('status');
+    expect(announcement.getAttribute('aria-live')).toBe('polite');
+    expect(announcement.getAttribute('aria-atomic')).toBe('true');
+    expect(text()).toBe('Paso 1 de 4 · Historia');
+    const next = el.querySelector('.lesson-foot .btn-primary') as HTMLButtonElement;
+    next.click(); fixture.detectChanges();
+    expect(text()).toBe('Paso 2 de 4 · Pregunta');
+    next.click(); fixture.detectChanges();
+    expect(text()).toBe('Paso 3 de 4 · Historia');
+    next.click(); fixture.detectChanges();
+    expect(text()).toBe('Paso 4 de 4 · Lectura completa');
+    // La región solo contiene el nombre/número del paso, nunca la línea de tiempo ni el texto de lectura.
+    expect(announcement.querySelector('app-lesson-audio-controls, .story-text')).toBeNull();
+    session.audio.currentTime.set(12); fixture.detectChanges();
+    expect(text()).toBe('Paso 4 de 4 · Lectura completa');
+    expect(el.querySelector('.step')?.contains(announcement)).toBe(false);
+    (el.querySelector('.lesson-foot .btn-ghost') as HTMLButtonElement).click(); fixture.detectChanges();
+    expect(text()).toBe('Paso 3 de 4 · Historia');
+    expect(lessonApi.completeNarrative).not.toHaveBeenCalled();
+  });
+
   it('una respuesta incorrecta muestra el contexto, permite reintentar y no bloquea el avance', async () => {
     await create('q1');
     lessonApi.answer.mockReturnValue(of({ blockKey: 'q1', questionId: 9, isCorrect: false, attempt: 1, context: { blockKey: 'k1', text: 'María llega a la fiesta' }, canRetry: true, canContinue: true }));

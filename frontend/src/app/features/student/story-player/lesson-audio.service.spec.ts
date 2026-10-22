@@ -77,12 +77,45 @@ describe('LessonAudioService — AUDIO-01–06', () => {
     expect(media().currentTime).toBe(10);
     media().currentTime = 20.5; media().emit('timeupdate');
     expect(media().currentTime).toBe(10);
+    expect(audio.repeat()).toEqual({ a: 10, b: 20 });
+    expect(audio.repeatStoppedBySeek()).toBe(false);
     expect(audio.isPlaying()).toBe(true);
     audio.clearRepeat();
     media().currentTime = 25; media().emit('timeupdate');
     expect(audio.currentTime()).toBe(25);
     media().metadata(60, [[0, 15], [20, 60]]);
     expect(audio.setRepeat(10, 25)).toBe(false);
+  });
+
+  it('buscar fuera de A/B sale de repetición sin que timeupdate deshaga la posición', () => {
+    audio.prepare('/slow.mp3'); media().metadata();
+    audio.setRepeat(10, 20); audio.seek(15);
+    expect(audio.repeat()).toEqual({ a: 10, b: 20 });
+    expect(audio.repeatStoppedBySeek()).toBe(false);
+    for (const target of [5, 20, 35]) {
+      audio.setRepeat(10, 20);
+      expect(audio.repeatStoppedBySeek()).toBe(false);
+      expect(audio.seek(target)).toBe(true);
+      media().emit('timeupdate');
+      expect(audio.currentTime()).toBe(target);
+      expect(audio.repeat()).toBeNull();
+      expect(audio.repeatStoppedBySeek()).toBe(true);
+    }
+    audio.stop(); expect(audio.repeatStoppedBySeek()).toBe(false);
+  });
+
+  it('los saltos manuales salen de A/B y las búsquedas inválidas conservan la repetición', () => {
+    audio.prepare('/slow.mp3'); media().metadata();
+    audio.setRepeat(10, 20); audio.seek(15);
+    expect(audio.seek(NaN)).toBe(false);
+    expect(audio.repeat()).toEqual({ a: 10, b: 20 });
+    expect(audio.repeatStoppedBySeek()).toBe(false);
+    audio.skip(10); media().emit('timeupdate');
+    expect(audio.currentTime()).toBe(25); expect(audio.repeat()).toBeNull();
+    expect(audio.repeatStoppedBySeek()).toBe(true);
+    audio.setRepeat(10, 20); audio.seek(15); audio.skip(-10); media().emit('timeupdate');
+    expect(audio.currentTime()).toBe(5); expect(audio.repeat()).toBeNull();
+    audio.clearRepeat(); expect(audio.repeatStoppedBySeek()).toBe(false);
   });
 
   it('al fin reinicia con un gesto nuevo; B=duración también repite', async () => {

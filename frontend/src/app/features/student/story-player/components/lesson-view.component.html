@@ -22,7 +22,7 @@
 
     <div class="steps">
       <div class="steps__label">
-        <span class="steps__current">Paso {{ session.currentBlockIndex() + 1 }} de {{ session.activeBlocks().length }} ·
+        <span class="steps__current" role="status" aria-live="polite" aria-atomic="true">Paso {{ session.currentBlockIndex() + 1 }} de {{ session.activeBlocks().length }} ·
           <span class="steps__type">{{ blockLabel(session.currentBlock()?.type ?? '') }}</span></span>
         <span class="steps__percent">{{ percent() }}% completado</span>
       </div>

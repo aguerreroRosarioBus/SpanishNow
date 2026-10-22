@@ -17,6 +17,7 @@ export class LessonAudioService implements OnDestroy {
   readonly seekRanges = signal<SeekRange[]>([]);
   readonly canSeek = computed(() => this.duration() !== null && this.seekRanges().length > 0 && this.state() !== 'error');
   readonly repeat = signal<{ a: number; b: number } | null>(null);
+  readonly repeatStoppedBySeek = signal(false);
   readonly errorCode = signal<AudioMessageKey | null>(null);
   readonly error = computed(() => {
     const code = this.errorCode();
@@ -50,7 +51,7 @@ export class LessonAudioService implements OnDestroy {
     on('timeupdate', () => {
       this.readMetadata(media);
       const loop = this.repeat();
-      if (loop && (media.currentTime >= loop.b || media.currentTime < loop.a)) this.seek(loop.a);
+      if (loop && (media.currentTime >= loop.b || media.currentTime < loop.a)) this.seekTo(loop.a, false);
     });
     on('playing', () => {
       this.errorCode.set(null); this.isPlaying.set(true); this.state.set('playing');
@@ -64,7 +65,7 @@ export class LessonAudioService implements OnDestroy {
     on('stalled', () => { if (this.isPlaying()) this.state.set('buffering'); });
     on('ended', () => {
       this.isPlaying.set(false);
-      if (this.repeat()) { if (this.seek(this.repeat()!.a)) this.play(); }
+      if (this.repeat()) { if (this.seekTo(this.repeat()!.a, false)) this.play(); }
       else { this.readMetadata(media); this.state.set('ended'); }
     });
     on('error', () => this.fail('audio.loadError'));
@@ -87,7 +88,7 @@ export class LessonAudioService implements OnDestroy {
       try { media.currentTime = this.repeat()?.a ?? 0; } catch { this.fail('audio.seekError'); return; }
     }
     const loop = this.repeat();
-    if (loop && (media.currentTime < loop.a || media.currentTime >= loop.b) && !this.seek(loop.a)) return;
+    if (loop && (media.currentTime < loop.a || media.currentTime >= loop.b) && !this.seekTo(loop.a, false)) return;
     const attempt = ++this.playAttempt;
     this.isPlaying.set(true);
     this.state.set('buffering');
@@ -125,7 +126,10 @@ export class LessonAudioService implements OnDestroy {
     if (wasPlaying) this.play();
   }
 
-  seek(time: number): boolean {
+  /** Una búsqueda manual fuera de [A, B) sale de repetición y conserva la posición elegida. */
+  seek(time: number): boolean { return this.seekTo(time, true); }
+
+  private seekTo(time: number, manual: boolean): boolean {
     if (!this.element || !this.canSeek() || !Number.isFinite(time)) return false;
     const target = Math.max(0, Math.min(this.duration()!, time));
     // No afirmar que se puede buscar en huecos de TimeRanges.
@@ -133,6 +137,11 @@ export class LessonAudioService implements OnDestroy {
     try {
       this.element.currentTime = target;
       this.currentTime.set(target);
+      const loop = this.repeat();
+      if (manual && loop && (target < loop.a || target >= loop.b)) {
+        this.repeat.set(null);
+        this.repeatStoppedBySeek.set(true);
+      }
       if (this.state() === 'ended') this.state.set('paused');
       return true;
     } catch { this.fail('audio.seekError'); return false; }
@@ -143,12 +152,13 @@ export class LessonAudioService implements OnDestroy {
   setRepeat(a: number, b: number): boolean {
     if (!this.canSeek() || !Number.isFinite(a) || !Number.isFinite(b) || a < 0 || a >= b || b > this.duration()! ||
         !this.seekRanges().some(range => a >= range.start && b <= range.end)) return false;
-    if (!this.seek(a)) { this.clearRepeat(); return false; }
+    if (!this.seekTo(a, false)) { this.clearRepeat(); return false; }
     this.repeat.set({ a, b });
+    this.repeatStoppedBySeek.set(false);
     return true;
   }
 
-  clearRepeat(): void { this.repeat.set(null); }
+  clearRepeat(): void { this.repeat.set(null); this.repeatStoppedBySeek.set(false); }
 
   stop(): void {
     this.playAttempt++;
@@ -167,6 +177,7 @@ export class LessonAudioService implements OnDestroy {
     this.duration.set(null);
     this.seekRanges.set([]);
     this.repeat.set(null);
+    this.repeatStoppedBySeek.set(false);
     this.errorCode.set(null);
   }
 

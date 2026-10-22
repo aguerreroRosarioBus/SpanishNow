@@ -1,14 +1,14 @@
 # W03 · Controles de audio
 
-Entrega de Codex sobre `main` 8f7cff5, rama `w03-audio`. Issue #16, orquestación #23.
+Entrega de Codex iniciada sobre `main` 8f7cff5 e integrada con `main` 10ea267 al resolver la revisión, rama `w03-audio`. Issue #16, orquestación #23.
 
 ## Alcance y compatibilidad
 
 - **AUDIO-01 / AC18:** un `LessonAudioService` por reproductor; controles compartidos en fragmentos y lectura completa. Reproducir/pausar, posición/duración, seek nativo accesible y ±10 segundos.
 - **AUDIO-02:** estados `idle`, `loading`, `ready`, `playing`, `paused`, `ended`, `buffering`, `error`. Duración desconocida como `—`; ningún seek con duración no finita o sin `seekable`. Los destinos se limitan a la duración y se rechazan huecos de `TimeRanges`.
-- **AUDIO-03:** A/B por campos de segundos o «Marcar aquí», validación finita `0 ≤ A < B ≤ duración` dentro de un mismo rango; activar y salir explícitamente. Si cambia duración/rango y deja de ser válido, se desactiva. Repetición basada en los eventos de tiempo del navegador, sin alineación de palabras ni precisión de edición de audio.
+- **AUDIO-03:** A/B por campos de segundos o «Marcar aquí», validación finita `0 ≤ A < B ≤ duración` dentro de un mismo rango; activar y salir explícitamente. Si cambia duración/rango y deja de ser válido, se desactiva. Una búsqueda manual o salto fuera de `[A, B)` sale de repetición, conserva la posición elegida y lo anuncia en ES/EN; B es el límite final del fragmento. Los retornos automáticos a A mantienen la repetición. Repetición basada en los eventos de tiempo del navegador, sin alineación de palabras ni precisión de edición de audio.
 - **AUDIO-04:** lento/normal eligen las grabaciones existentes de historia, sin modificar `playbackRate`. Se anuncia que cambiar reinicia el audio actual y descarta A/B; continúa reproduciendo si estaba activo. Un keyframe conserva su única grabación `audioUrl`, sin simular una variante lenta que no existe.
-- **AUDIO-05:** botones y campos nativos, nombres accesibles, `aria-pressed`, estados anunciados, foco visible y objetivos de al menos 44 px. Seek por teclado o toque; no exige arrastrar. Se conservan texto, ilustraciones y tooltips. Se retiró `aria-live` del contenedor de texto para no anunciar cada actualización de tiempo; los estados del audio tienen su propia región viva.
+- **AUDIO-05:** botones y campos nativos, nombres accesibles, `aria-pressed`, estados anunciados, foco visible y objetivos de al menos 44 px. Seek por teclado o toque; no exige arrastrar. Se conservan texto, ilustraciones y tooltips. Se retiró `aria-live` del contenedor de texto para no anunciar cada actualización de tiempo; los estados del audio tienen su propia región viva. El indicador «Paso n de m · tipo» anuncia la navegación en una región separada, con `role="status"`, `aria-live="polite"` y `aria-atomic="true"`; su texto no cambia con el tiempo del audio.
 - **AUDIO-06:** pruebas con MP3 y WAV reales servidos localmente por HTTP, CORS y Range/206. Recuperación de error con recarga del medio, y de rechazo de `play()` con un nuevo gesto. El navegador puede interrumpir/pausar el audio; el botón permite retomarlo.
 
 No hay escrituras de progreso desde el servicio ni desde los controles. Solo la navegación explícita conserva el endpoint de bloque actual; completar narrativa sigue siendo una acción independiente. Al cambiar de bloque/historia o destruir el reproductor se pausa el medio, se retiran listeners y `src`, se ejecuta `load()` para liberar el recurso y se invalidan promesas anteriores. No quedan timers que puedan reactivar un audio viejo.
@@ -57,12 +57,12 @@ El WAV PCM se genera en memoria; no hace falta ffmpeg para ejecutar las pruebas.
 
 Los tests de integración del reproductor y los E2E comprueban que reproducir, buscar, repetir, terminar y reintentar no llaman a completar narrativa ni escriben progreso. La navegación comprueba liberación del medio anterior. El frontend existente conserva su suite completa. La suite E2E general que reconstruye MySQL no es necesaria para este cambio solo de audio.
 
-Resultado de esta entrega: **304/304 pruebas unitarias** (41 archivos, 21 casos nuevos), **16/16 E2E** (Chromium escritorio y móvil con toque emulado), TypeScript E2E y build de producción aprobados. Se revisó visualmente la captura a 390 px. Persisten avisos previos de Sass y presupuestos de bundle/otros componentes; los controles nuevos no exceden su presupuesto.
+Resultado de esta entrega: **308/308 pruebas unitarias** (41 archivos, 25 casos nuevos), **16/16 E2E** (Chromium escritorio y móvil con toque emulado), TypeScript E2E y build de producción aprobados. Se revisó visualmente la captura a 390 px. Persisten avisos previos de Sass y presupuestos de bundle/otros componentes; los controles nuevos no exceden su presupuesto.
 
 ## Prueba manual con cuenta ficticia
 
 1. Abrir un curso de prueba con un keyframe con audio y una historia con ambas grabaciones. Iniciar audio, pausar, usar ±10 s y mover la barra con flechas/Home/End. Verificar posición/duración y que no aparece lectura completada.
-2. Abrir «Repetir fragmento A–B». Ingresar A/B válidos o marcarlos en la posición actual, activar y dejar cruzar B. Salir explícitamente. Probar valores vacíos, invertidos o fuera de duración.
+2. Abrir «Repetir fragmento A–B». Ingresar A/B válidos o marcarlos en la posición actual, activar y dejar cruzar B. Salir explícitamente; reactivar y buscar fuera del fragmento con barra o ±10 s: debe conservar la posición y anunciar la salida de repetición. Probar valores vacíos, invertidos o fuera de duración.
 3. En lectura completa, cambiar lento/normal durante reproducción y en pausa. Confirmar reinicio desde cero, eliminación de A/B y conservación del estado de reproducción/pausa.
 4. Simular red caída o archivo inválido: ver error, restaurar conexión y «Reintentar audio». No debe recargar la lección ni completar narrativa. Simular bloqueo de autoplay y volver a iniciar con un gesto.
 5. Cambiar de fragmento, historia y salir del reproductor mientras suena. Confirmar silencio del medio anterior, incluso si finaliza una carga pendiente.

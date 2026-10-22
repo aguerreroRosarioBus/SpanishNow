@@ -29,6 +29,7 @@ export const AUDIO_MESSAGES = {
     'audio.enableRepeat': 'Activar repetición', 'audio.disableRepeat': 'Salir de repetición',
     'audio.invalidRepeat': 'Elige límites válidos: 0 ≤ A < B ≤ duración, dentro del tramo disponible.',
     'audio.repeatActive': 'Repetición A–B activa',
+    'audio.repeatStoppedBySeek': 'Repetición desactivada: buscaste fuera del fragmento A–B.',
   },
   en: {
     'audio.controls': 'Audio controls',
@@ -53,6 +54,7 @@ export const AUDIO_MESSAGES = {
     'audio.enableRepeat': 'Enable repeat', 'audio.disableRepeat': 'Exit repeat',
     'audio.invalidRepeat': 'Choose valid bounds: 0 ≤ A < B ≤ duration, within the available range.',
     'audio.repeatActive': 'A–B repeat enabled',
+    'audio.repeatStoppedBySeek': 'Repeat disabled: you moved outside the A–B segment.',
   },
 } as const;
 export type AudioMessageKey = keyof typeof AUDIO_MESSAGES.es;
