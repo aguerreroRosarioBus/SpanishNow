@@ -44,7 +44,7 @@ router.post('/', optionalAuth, async (req, res) => {
     if (!validId(courseId)) return res.status(400).json({ error: 'courseId is required' });
     if (couponCode !== undefined && couponCode !== null && typeof couponCode !== 'string') return res.status(400).json({ error: 'couponCode must be text', code: 'coupon_invalid' });
 
-    let course = await Course.findByPk(courseId);
+    const course = await Course.findByPk(courseId);
     if (!course || !course.isPublished) return res.status(404).json({ error: 'Course not found' });
     if (course.price <= 0) return res.status(400).json({ error: 'This course is free: enroll instead of buying it' });
 
@@ -55,17 +55,18 @@ router.post('/', optionalAuth, async (req, res) => {
     }
 
     if (req.impersonatedBy) return res.status(403).json({ error: 'forbidden', code: 'forbidden', params: {} });
-    const captured = await evidence.capture(req.user, course.id, req.body);
-    course = captured.course;
+    // W02: validate what the buyer saw and accepted first; it is stored only once the checkout can no longer fail.
+    const prepared = await evidence.prepare(course.id, req.body);
     const pricing = await priceFor(course, couponCode);
     if (hotmart.isHotmartCourse(course) && pricing.amount > 0) {
       if (pricing.coupon) throw hotmartDiscount();
-      // Hotmart charges and tells us through its webhook: no order until then.
+      // Hotmart charges and tells us through its webhook: no order until then (reconciliation with the evidence is pending, AC19).
+      await evidence.record(req.user, prepared);
       return res.json({ url: hotmart.checkoutUrlFor(course, req.user) });
     }
     // Attribution (last click, kept by the web app): a code that is invalid, inactive or another teacher's is ignored, never an error.
     const affiliate = await resolveCode(affiliateCode, course);
-    const { url } = await createCheckout({ course, user: req.user, fakeEmail: email, pricing, affiliate, evidenceId: captured.evidence.id });
+    const { url } = await createCheckout({ course, user: req.user, fakeEmail: email, pricing, affiliate, recordEvidence: orderId => evidence.record(req.user, prepared, { orderId }) });
     res.json({ url });
   } catch (error) {
     if (error instanceof CouponError) return couponFailure(res, error);

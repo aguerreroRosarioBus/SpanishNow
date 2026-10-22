@@ -2,7 +2,7 @@ const { randomUUID } = require('crypto');
 const request = require('supertest');
 const { app, as, createUser } = require('./helpers/fixtures');
 const { newCourse } = require('./helpers/sales');
-const { LegalDocument, LegalAcceptance, CourseCheckoutSnapshot, Order, AuditLog, User } = require('../src/models');
+const { LegalDocument, LegalAcceptance, CourseCheckoutSnapshot, Order, AuditLog, User, Coupon } = require('../src/models');
 const sales = require('../src/services/salesExpectations');
 const ids = [];
 const draftInput = (documentKey = 'terms') => ({ documentKey, effectiveAt: '2026-01-01T00:00:00Z',
@@ -137,6 +137,21 @@ describe('W02 expectativas y snapshots', () => {
     process.env.PAYMENTS_FAKE = '1'; const teacher = await createUser('teacher', 'snapshot-stale'); const buyer = await createUser('student', 'stale-buyer'); const c = await newCourse(teacher, { isPublished: true, price: 1500 });
     const view = await sales.commercialView(c); await c.update({ price: 2500 }); const r = await as(buyer).post('/api/checkout', { courseId: c.id, commercialHash: view.hash });
     expect(r.status).toBe(409); expect(r.body.code).toBe('sales_snapshot_changed'); expect(await Order.count({ where: { courseId: c.id } })).toBe(0);
+  });
+  test('un checkout que falla (cupón inválido o email faltante) no deja instantánea ni aceptaciones', async () => {
+    process.env.PAYMENTS_FAKE = '1'; const teacher = await createUser('teacher', 'failed-checkout'); const buyer = await createUser('student', 'failed-buyer');
+    const c = await newCourse(teacher, { isPublished: true, price: 3000 }); const terms = await publish(); const refunds = await publish('refunds');
+    const view = await sales.commercialView(c); const base = { courseId: c.id, locale: 'es', commercialHash: view.hash, legalConsent: consent([terms, refunds]) };
+    const bad = await as(buyer).post('/api/checkout', { ...base, couponCode: 'NO-EXISTE' }); expect(bad.status).toBe(400);
+    const free = await Coupon.create({ teacherId: teacher.id, code: `W02F-${randomUUID().slice(0, 6).toUpperCase()}`, percentOff: 100 });
+    const anon = await as(null).post('/api/checkout', { ...base, couponCode: free.code, email: 'no-es-un-email' }); expect(anon.status).toBe(400);
+    expect(await CourseCheckoutSnapshot.count({ where: { courseId: c.id } })).toBe(0);
+    expect(await LegalAcceptance.count({ where: { userId: buyer.id } })).toBe(0);
+    const ok = await as(buyer).post('/api/checkout', base); expect(ok.status).toBe(200);
+    const order = await Order.findOne({ where: { userId: buyer.id, courseId: c.id } });
+    expect(await CourseCheckoutSnapshot.count({ where: { courseId: c.id } })).toBe(1);
+    expect((await CourseCheckoutSnapshot.findOne({ where: { courseId: c.id } })).orderId).toBe(order.id);
+    expect(await LegalAcceptance.count({ where: { userId: buyer.id } })).toBe(2);
   });
   test('aceptación de actualización no elige una versión reemplazada', async () => {
     const doc = await publish(); const user = await createUser('student', 'stale-acceptance'); await publish();
