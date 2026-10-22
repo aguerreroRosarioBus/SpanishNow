@@ -33,6 +33,7 @@ function setup(provider: 'hotmart' | 'site', query: Record<string, string> = {},
       { provide: I18N_CATALOGS, multi: true, useValue: LEGAL_SALES_MESSAGES }
     ]
   });
+  TestBed.inject(I18nService).setLocale('en');
   const fixture = TestBed.createComponent(CourseSalesComponent);
   fixture.detectChanges();
   return { fixture, catalog, el: fixture.nativeElement as HTMLElement };
@@ -64,6 +65,10 @@ describe('CourseSalesComponent', () => {
     fixture.detectChanges();
     expect(catalog.quote).toHaveBeenCalledWith(7, 'HALF', null);
     expect(el.textContent).toContain('applied at the Hotmart checkout');
+    TestBed.inject(I18nService).setLocale('es');
+    fixture.detectChanges();
+    expect(el.textContent).toContain('se aplican en el checkout de Hotmart');
+    expect(catalog.quote).toHaveBeenCalledTimes(1);
     expect(el.querySelector('#couponCode')).toBeNull();
   });
 
@@ -108,6 +113,11 @@ describe('CourseSalesComponent · W02 instantánea y aceptación', () => {
     expect(catalog.checkout).not.toHaveBeenCalled();
     expect(el.textContent).toContain('Check the box');
     fixture.componentInstance.legalAccepted.set(true);
+    TestBed.inject(I18nService).setLocale('es');
+    fixture.detectChanges();
+    expect(fixture.componentInstance.legalAccepted()).toBe(true);
+    expect(fixture.componentInstance.commercial()?.hash).toBe('h1');
+    TestBed.inject(I18nService).setLocale('en');
     fixture.componentInstance.buy();
     expect(catalog.checkout).toHaveBeenCalledWith(7, undefined, null, null, {
       locale: 'en', commercialHash: 'h1',
@@ -127,5 +137,32 @@ describe('CourseSalesComponent · W02 instantánea y aceptación', () => {
     expect(el.textContent).toContain('The conditions of this course changed');
     expect(fixture.componentInstance.legalAccepted()).toBe(false);
     expect(fixture.componentInstance.commercial()?.hash).toBe('h2');
+  });
+});
+
+
+describe('CourseSalesComponent · W01 conserva borradores y errores', () => {
+  it('cambia precio, plural y error sin perder cupón ni correo y sin comprar', () => {
+    const { fixture, catalog, el } = setup('site');
+    const c = fixture.componentInstance;
+    c.buyerEmail.set('persona@example.test');
+    c.couponInput.set('BORRADOR');
+    c.showCoupon.set(true);
+    catalog.quote.mockReturnValue(throwError(() => ({status: 400, error: {code: 'coupon_expired', error: 'INTERNAL_SECRET'}})));
+    c.applyCoupon();
+    expect(c.couponError()).toBe('This coupon has expired.');
+    const original = c.course();
+    TestBed.inject(I18nService).setLocale('es');
+    fixture.detectChanges();
+    expect(c.couponError()).toBe('Este cupón venció.');
+    expect(el.textContent).toContain('0 unidades');
+    expect(el.textContent).not.toContain('INTERNAL_SECRET');
+    expect(c.priceLabel()).toContain('50,00');
+    expect(c.priceLabel()).toContain('USD');
+    expect(c.course()).toBe(original);
+    expect(c.buyerEmail()).toBe('persona@example.test');
+    expect(c.couponInput()).toBe('BORRADOR');
+    expect(catalog.quote).toHaveBeenCalledTimes(1);
+    expect(catalog.checkout).not.toHaveBeenCalled();
   });
 });

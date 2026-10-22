@@ -1,29 +1,29 @@
 <div class="page-container">
-  <nav class="public-nav" aria-label="Navigation">
-    <a routerLink="/courses">&larr; All courses</a>
+  <nav class="public-nav" [attr.aria-label]="'publicCourse.nav' | t">
+    <a routerLink="/courses">&larr; {{ 'publicCourse.allCourses' | t }}</a>
     @if (!currentUser()) {
-      <a routerLink="/auth/login">Sign in</a>
+      <a routerLink="/auth/login">{{ 'publicCourse.signIn' | t }}</a>
     }
   </nav>
 
   @if (isLoading()) {
     <div class="text-center py-5" role="status">
       <div class="spinner-border text-primary" aria-hidden="true"></div>
-      <p class="text-muted mt-2 mb-0">Loading course…</p>
+      <p class="text-muted mt-2 mb-0">{{ 'publicCourse.loading' | t }}</p>
     </div>
   } @else if (notFound()) {
     <div class="state-box">
-      <strong>Course not found</strong>
-      <span>This course doesn't exist or is not available.</span>
-      <a routerLink="/courses" class="btn btn-primary mt-2">Browse courses</a>
+      <strong>{{ 'publicCourse.notFound' | t }}</strong>
+      <span>{{ 'publicCourse.unavailable' | t }}</span>
+      <a routerLink="/courses" class="btn btn-primary mt-2">{{ 'publicCourse.browse' | t }}</a>
     </div>
   } @else if (loadError()) {
-    <div class="alert alert-danger" role="alert">We could not load this course. Please try again.</div>
+    <div class="alert alert-danger" role="alert">{{ 'publicCourse.loadError' | t }}</div>
   } @else if (course(); as c) {
     <div class="sales-layout">
       <div class="sales-main">
         @if (c.introVideoUrl) {
-          <app-video-embed [url]="c.introVideoUrl" [title]="'Welcome video: ' + c.title" />
+          <app-video-embed [url]="c.introVideoUrl" [title]="'publicCourse.welcome' | t: {title: c.title}" />
         } @else {
           <div class="sales-cover">
             @if (c.imageUrl) {
@@ -37,7 +37,7 @@
           <span class="badge-level">{{ c.level }}</span>
         </div>
         @if (c.teacher) {
-          <p class="page-summary mt-1">By {{ c.teacher.name }}</p>
+          <p class="page-summary mt-1">{{ 'publicCourse.by' | t: {name: c.teacher.name} }}</p>
         }
         @if (c.description) {
           <p class="sales-lead">{{ c.description }}</p>
@@ -45,20 +45,20 @@
 
         @if (c.salesDescription) {
           <section class="sales-section" aria-labelledby="about-heading">
-            <h2 id="about-heading" class="sales-heading">About this course</h2>
+            <h2 id="about-heading" class="sales-heading">{{ 'publicCourse.about' | t }}</h2>
             <p class="sales-text">{{ c.salesDescription }}</p>
           </section>
         }
 
         @if (c.series && (c.series.previous || c.series.next)) {
           <section class="sales-section series" aria-labelledby="series-heading">
-            <h2 id="series-heading" class="sales-heading">Part of a series</h2>
+            <h2 id="series-heading" class="sales-heading">{{ 'publicCourse.series' | t }}</h2>
             <ul class="series__list">
               @if (c.series.previous; as prev) {
-                <li><span class="eyebrow">Previous</span><a [routerLink]="['/courses', prev.slug]">{{ prev.title }}</a></li>
+                <li><span class="eyebrow">{{ 'publicCourse.previous' | t }}</span><a [routerLink]="['/courses', prev.slug]">{{ prev.title }}</a></li>
               }
               @if (c.series.next; as nxt) {
-                <li><span class="eyebrow">Next</span><a [routerLink]="['/courses', nxt.slug]">{{ nxt.title }}</a></li>
+                <li><span class="eyebrow">{{ 'publicCourse.next' | t }}</span><a [routerLink]="['/courses', nxt.slug]">{{ nxt.title }}</a></li>
               }
             </ul>
           </section>
@@ -72,24 +72,24 @@
         }
 
         <section class="sales-section" aria-labelledby="curriculum-heading">
-          <h2 id="curriculum-heading" class="sales-heading">What's inside</h2>
+          <h2 id="curriculum-heading" class="sales-heading">{{ 'publicCourse.inside' | t }}</h2>
           <p class="page-summary mb-2">
-            {{ sortedUnits().length }} {{ sortedUnits().length === 1 ? 'unit' : 'units' }} ·
-            {{ lessonCount() }} {{ lessonCount() === 1 ? 'lesson' : 'lessons' }}
-            @if (quizCount() > 0) { · {{ quizCount() }} {{ quizCount() === 1 ? 'quiz' : 'quizzes' }} }
-            @if (materialsCount() > 0) { · {{ materialsCount() }} downloadable {{ materialsCount() === 1 ? 'PDF' : 'PDFs' }} }
+            {{ 'publicCourse.units' | t: {count: sortedUnits().length} }} ·
+            {{ 'publicCourse.lessons' | t: {count: lessonCount()} }}
+            @if (quizCount() > 0) { · {{ 'publicCourse.quizzes' | t: {count: quizCount()} }} }
+            @if (materialsCount() > 0) { · {{ 'publicCourse.materials' | t: {count: materialsCount()} }} }
           </p>
           @if (sortedUnits().length === 0) {
-            <div class="state-box"><span>The curriculum will be available soon.</span></div>
+            <div class="state-box"><span>{{ 'publicCourse.curriculumSoon' | t }}</span></div>
           } @else {
             <ol class="curriculum">
               @for (unit of sortedUnits(); track unit.id; let i = $index) {
                 <li class="curriculum__unit">
                   <div class="curriculum__unit-head">
-                    <span class="eyebrow">Unit {{ i + 1 }}</span>
+                    <span class="eyebrow">{{ 'publicCourse.unit' | t: {number: i + 1} }}</span>
                     <strong>{{ unit.title }}</strong>
                     @if (unit.releaseAfterDays) {
-                      <span class="curriculum__drip"><app-icon name="clock" [size]="13" />Unlocks on day {{ unit.releaseAfterDays }}</span>
+                      <span class="curriculum__drip"><app-icon name="clock" [size]="13" />{{ 'publicCourse.unlocks' | t: {day: unit.releaseAfterDays} }}</span>
                     }
                   </div>
                   @if (unit.stories.length > 0) {
@@ -99,19 +99,19 @@
                           <span>{{ story.title }}</span>
                           @if (story.hasVideo) {
                             <app-icon name="video" [size]="15" class="curriculum__icon" />
-                            <span class="visually-hidden">Includes video</span>
+                            <span class="visually-hidden">{{ 'publicCourse.video' | t }}</span>
                           }
                         </li>
                       }
                       @if (unit.hasQuiz) {
                         <li class="curriculum__story curriculum__story--quiz">
-                          <span>Unit quiz</span>
+                          <span>{{ 'publicCourse.quiz' | t }}</span>
                           <app-icon name="help-circle" [size]="15" class="curriculum__icon" />
                         </li>
                       }
                     </ul>
                   } @else if (unit.hasQuiz) {
-                    <ul class="curriculum__stories"><li class="curriculum__story curriculum__story--quiz"><span>Unit quiz</span><app-icon name="help-circle" [size]="15" class="curriculum__icon" /></li></ul>
+                    <ul class="curriculum__stories"><li class="curriculum__story curriculum__story--quiz"><span>{{ 'publicCourse.quiz' | t }}</span><app-icon name="help-circle" [size]="15" class="curriculum__icon" /></li></ul>
                   }
                 </li>
               }
@@ -120,45 +120,45 @@
         </section>
       </div>
 
-      <aside class="sales-panel sales-buy" aria-label="Purchase">
+      <aside class="sales-panel sales-buy" [attr.aria-label]="'publicCourse.purchase' | t">
         <div class="price-row">
           @if (originalLabel()) {
-            <s class="price-original"><span class="visually-hidden">Original price </span>{{ originalLabel() }}</s>
+            <s class="price-original"><span class="visually-hidden">{{ 'publicCourse.original' | t }} </span>{{ originalLabel() }}</s>
           }
-          <span class="price-tag" [class.price-tag--free]="isFree() || priceLabel() === 'Free'">
-            @if (originalLabel()) { <span class="visually-hidden">Price with coupon </span> }{{ priceLabel() }}
+          <span class="price-tag" [class.price-tag--free]="isFree() || price()?.isFree">
+            @if (originalLabel()) { <span class="visually-hidden">{{ 'publicCourse.couponPrice' | t }} </span> }{{ priceLabel() }}
           </span>
         </div>
         @if (savingsLabel()) {
-          <p class="coupon-applied" role="status">Coupon <strong>{{ quote()?.coupon?.code }}</strong> applied: you save {{ savingsLabel() }}.</p>
+          <p class="coupon-applied" role="status">{{ 'publicCourse.couponApplied' | t: {code: quote()?.coupon?.code ?? '', amount: savingsLabel()} }}</p>
         }
         @if (isFree()) {
-          <p class="page-summary">This course is free.</p>
+          <p class="page-summary">{{ 'publicCourse.freeCourse' | t }}</p>
           <a [routerLink]="currentUser() ? '/student/dashboard' : '/auth/register'" class="btn btn-primary btn-lg w-100">
-            {{ currentUser() ? 'Go to my dashboard' : 'Sign up to start' }}
+            {{ (currentUser() ? 'publicCourse.dashboard' : 'publicCourse.register') | t }}
           </a>
         } @else if (alreadyEnrolled()) {
-          <p class="page-summary">You already have access to this course.</p>
-          <a [routerLink]="['/student/course', enrolledCourseId() ?? c.id, 'play']" class="btn btn-primary btn-lg w-100">Go to course</a>
+          <p class="page-summary">{{ 'publicCourse.owned' | t }}</p>
+          <a [routerLink]="['/student/course', enrolledCourseId() ?? c.id, 'play']" class="btn btn-primary btn-lg w-100">{{ 'publicCourse.open' | t }}</a>
         } @else {
-          <p class="page-summary">One-time payment. Lifetime access.</p>
+          <p class="page-summary">{{ 'publicCourse.lifetime' | t }}</p>
           @if (quote()) {
-            <button type="button" class="btn btn-link btn-sm p-0 align-self-start" (click)="removeCoupon()">Remove coupon</button>
+            <button type="button" class="btn btn-link btn-sm p-0 align-self-start" (click)="removeCoupon()">{{ 'publicCourse.removeCoupon' | t }}</button>
           } @else if (!showCoupon() && !isHotmart()) {
-            <button type="button" class="btn btn-link btn-sm p-0 align-self-start" (click)="showCoupon.set(true)" aria-expanded="false" aria-controls="couponBox">Have a coupon?</button>
+            <button type="button" class="btn btn-link btn-sm p-0 align-self-start" (click)="showCoupon.set(true)" aria-expanded="false" aria-controls="couponBox">{{ 'publicCourse.haveCoupon' | t }}</button>
           }
           @if (isHotmart() && !quote() && couponError()) {
             <div id="couponError" class="coupon-error" role="alert">{{ couponError() }}</div>
           }
           @if (showCoupon() && !quote() && !isHotmart()) {
             <form id="couponBox" class="coupon-form" (submit)="$event.preventDefault(); applyCoupon()">
-              <label for="couponCode" class="visually-hidden">Coupon code</label>
-              <input id="couponCode" type="text" class="form-control text-uppercase" placeholder="Coupon code" maxlength="40" autocomplete="off"
+              <label for="couponCode" class="visually-hidden">{{ 'publicCourse.couponCode' | t }}</label>
+              <input id="couponCode" type="text" class="form-control text-uppercase" [placeholder]="'publicCourse.couponCode' | t" maxlength="40" autocomplete="off"
                      [value]="couponInput()" (input)="couponInput.set($any($event.target).value)"
                      [class.is-invalid]="!!couponError()" [attr.aria-describedby]="couponError() ? 'couponError' : null">
               <button type="submit" class="btn btn-secondary" [disabled]="isApplying() || !couponInput().trim()">
                 @if (isApplying()) { <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> }
-                Apply
+                {{ 'publicCourse.apply' | t }}
               </button>
             </form>
             @if (couponError()) {
@@ -167,10 +167,10 @@
           }
           @if (needsEmail()) {
             <div>
-              <label for="buyerEmail" class="form-label">Your email</label>
+              <label for="buyerEmail" class="form-label">{{ 'publicCourse.email' | t }}</label>
               <input id="buyerEmail" type="email" class="form-control" autocomplete="email" placeholder="you@email.com"
                 [value]="buyerEmail()" (input)="buyerEmail.set($any($event.target).value)" (keydown.enter)="buy()">
-              <div class="form-text">We'll create your account and email you a link to set your password.</div>
+              <div class="form-text">{{ 'publicCourse.accountHelp' | t }}</div>
             </div>
           }
           @if (needsConsent()) {
@@ -183,14 +183,14 @@
             @if (isBuying()) {
               <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
             }
-            {{ price()?.isFree ? 'Get it for free' : 'Buy now' }}
+            {{ (price()?.isFree ? 'publicCourse.getFree' : 'publicCourse.buy') | t }}
           </button>
           @if (price()?.isFree) {
-            <small class="text-secondary-ui">No payment needed with your coupon.</small>
+            <small class="text-secondary-ui">{{ 'publicCourse.noPayment' | t }}</small>
           } @else if (isHotmart()) {
-            <small class="text-secondary-ui">Secure checkout by Hotmart</small>
+            <small class="text-secondary-ui">{{ 'publicCourse.hotmart' | t }}</small>
           } @else {
-            <small class="text-secondary-ui">Secure payment. You'll be redirected to checkout.</small>
+            <small class="text-secondary-ui">{{ 'publicCourse.checkoutHelp' | t }}</small>
           }
         }
       </aside>

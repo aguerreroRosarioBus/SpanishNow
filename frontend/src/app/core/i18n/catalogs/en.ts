@@ -1,6 +1,8 @@
+import { PUBLIC_EN } from './public';
 import { TranslationCatalog } from '../i18n.types';
 
 export const EN = {
+  ...PUBLIC_EN,
   'common.language': 'Language',
   'preferences.loadError': 'Could not load your account preferences. Please try again.',
   'preferences.saveError': 'Could not save your preferences to your account. Please try again.',
