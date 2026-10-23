@@ -41,9 +41,9 @@ describe('seed content files', () => {
     expect(plan.later).toEqual([{ expression: pilot.later.word, role: pilot.later.role, story: pilot.later.story }]);
   });
 
-  test('test accounts: a teacher and a student', () => {
-    const { accounts } = loadAccounts();
-    expect(accounts.map(a => a.role).sort()).toEqual(['student', 'teacher']);
+  test('test accounts: at least a teacher and a student', () => {
+    const roles = new Set(loadAccounts().accounts.map(a => a.role));
+    expect([...roles].sort()).toEqual(['student', 'teacher']);
   });
 });
 

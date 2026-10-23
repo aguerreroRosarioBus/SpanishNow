@@ -13,6 +13,11 @@
       "email": "lucas@gmail.com",
       "name": "lucas",
       "role": "student"
+    },
+    {
+      "email": "jane.smith@example.test",
+      "name": "Jane Smith",
+      "role": "student"
     }
   ]
 }
