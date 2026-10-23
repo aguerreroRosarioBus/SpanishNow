@@ -28,9 +28,10 @@ export class ZoomCardComponent {
       });
     } else {
       this.refresh();
-      if (route.snapshot.queryParamMap.get('zoom') === 'zoom_oauth_denied') {
+      const callbackError = route.snapshot.queryParamMap.get('zoom');
+      if (callbackError === 'zoom_oauth_denied' || callbackError === 'zoom_oauth_invalid') {
         void router.navigate([], { relativeTo: route, queryParams: {}, replaceUrl: true });
-        this.failure.set({ error: { code: 'zoom_oauth_denied' } });
+        this.failure.set({ error: { code: callbackError } });
       }
     }
   }

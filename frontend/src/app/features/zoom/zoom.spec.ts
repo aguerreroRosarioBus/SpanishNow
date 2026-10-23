@@ -57,6 +57,10 @@ describe('W08 UI propia', () => {
     const complete = vi.fn(); const f = setupCard({ complete }, { zoom: 'zoom_oauth_denied' });
     expect(complete).not.toHaveBeenCalled(); expect(f.componentInstance.failure()).toEqual({ error: { code: 'zoom_oauth_denied' } });
   });
+  it('callback OAuth inválido muestra código traducible sin completar ningún grant', () => {
+    const complete = vi.fn(); const f = setupCard({ complete }, { zoom: 'zoom_oauth_invalid' });
+    expect(complete).not.toHaveBeenCalled(); expect(f.componentInstance.failure()).toEqual({ error: { code: 'zoom_oauth_invalid' } });
+  });
   it('clase separa reunión/pizarra y conserva el borrador manual al cambiar EN/ES', () => {
     const manual = vi.fn(() => of({ manual: true })); const f = setupSession({ manual, join: () => of({ hostUrl: 'https://zoom.us/s/123456789?zak=fake', manual: false }) });
     const c = f.componentInstance; c.manualLink = 'https://zoom.us/j/123456789?pwd=manual';
