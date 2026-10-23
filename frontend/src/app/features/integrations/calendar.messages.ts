@@ -31,6 +31,8 @@ const pairs: Record<string, [string, string]> = {
   'outcome.connected': ['Google Calendar connected.', 'Google Calendar conectado.'],
   'outcome.denied': ['You did not grant the permissions. Nothing was connected.', 'No otorgaste los permisos. No se conectó nada.'],
   'outcome.scopes': ['Some required permissions were missing. Connect again and accept all of them.', 'Faltaron permisos necesarios. Conecta de nuevo y acéptalos todos.'],
+  'outcome.confirming': ['Confirming your connection…', 'Confirmando tu conexión…'],
+  'outcome.mismatch': ['This authorization was started by another account, so it was discarded. Start the connection from your own account.', 'Esta autorización la inició otra cuenta, por eso se descartó. Inicia la conexión desde tu propia cuenta.'],
   'outcome.error': ['The connection could not be completed. Try again.', 'No se pudo completar la conexión. Intenta de nuevo.'],
   'syncError.external_changed': ['The event was changed in Google. The class time in SpanishNow is unchanged; retry to restore it.', 'El evento se cambió en Google. El horario en SpanishNow no cambió; reintenta para restaurarlo.'],
   'syncError.external_deleted': ['The event was deleted in Google. Retry to create it again.', 'El evento se borró en Google. Reintenta para crearlo otra vez.'],

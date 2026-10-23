@@ -17,6 +17,8 @@ export class GoogleCalendarService {
   private api = `${environment.apiUrl}/integrations/google-calendar`;
   status() { return this.http.get<GoogleCalendarStatus>(this.api); }
   connect() { return this.http.post<{ url: string }>(`${this.api}/connect`, {}); }
+  /** Confirma la conexión pendiente que dejó el callback; solo vale para quien la inició (token de un solo uso). */
+  complete(token: string) { return this.http.post<GoogleCalendarStatus>(`${this.api}/complete`, { token }); }
   update(body: { targetCalendarId?: string; busyCalendarIds?: string[]; version?: number }) { return this.http.patch<GoogleCalendarStatus>(this.api, body); }
   disconnect() { return this.http.delete<{ status: string }>(this.api); }
 }

@@ -24,7 +24,7 @@ Entrega de Claude (Sonnet) para [#20](https://github.com/aguerreroRosarioBus/Spa
 - **Un job ordinario no recrea un evento borrado desde Google**; solo el reintento explícito (`sync/retry`, `force`) lo hace.
 - **Cadena de sondeo durable** (`calendar.reconcile` se reprograma a sí misma por ventana de 5 min, o 30 con push) en vez de un cron aparte; se siembra al conectar y tras cada sync.
 - Cambiar el calendario destino no mueve eventos ya creados (la ref conserva su `calendarId`); los canales push se detienen al cambiar o quitar `GOOGLE_CALENDAR_NOTIFICATIONS_URL` y cuando un calendario deja de usarse (`external_calendar_channels.address`).
-- El callback OAuth exige la cookie de `/start` (httpOnly, SameSite=Lax); `redirect` y `FRONTEND_URL` se validan como en Classroom/Drive.
+- El callback OAuth no conecta: deja el resultado pendiente con un token de un solo uso y `POST /complete` (autenticado) lo confirma solo para quien inició la conexión (anti-CSRF de vinculación; una cookie en `/start` no lo evita). `redirect` y `FRONTEND_URL` se validan como en Classroom/Drive.
 - Free/busy no suma el buffer del docente; solo el intervalo exacto de la clase.
 
 ## Superficies compartidas (cambios aditivos)

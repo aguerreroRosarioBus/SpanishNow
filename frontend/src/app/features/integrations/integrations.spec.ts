@@ -15,7 +15,7 @@ const connected = (): GoogleCalendarStatus => ({ provider: 'google_calendar', en
 const disconnected = (): GoogleCalendarStatus => ({ provider: 'google_calendar', enabled: true, fake: true, status: 'disconnected', connected: false, calendars: [] });
 
 describe('W07: tarjeta de Google Calendar', () => {
-  let api: Record<'status' | 'connect' | 'update' | 'disconnect', ReturnType<typeof vi.fn>>;
+  let api: Record<'status' | 'connect' | 'update' | 'disconnect' | 'complete', ReturnType<typeof vi.fn>>;
   let assign: (url: string) => void;
   const create = (query: Record<string, string> = {}, enabled = true) => {
     TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: I18N_CATALOGS, multi: true, useValue: CALENDAR_MESSAGES },
@@ -29,7 +29,7 @@ describe('W07: tarjeta de Google Calendar', () => {
   beforeEach(() => {
     localStorage.clear(); localStorage.setItem('spanishnow.locale', 'es');
     assign = vi.fn() as unknown as (url: string) => void;
-    api = { status: vi.fn(() => of(disconnected())), connect: vi.fn(() => of({ url: 'https://accounts.example/auth' })), update: vi.fn(() => of(connected())), disconnect: vi.fn(() => of({ status: 'disconnected' })) };
+    api = { status: vi.fn(() => of(disconnected())), connect: vi.fn(() => of({ url: 'https://accounts.example/auth' })), update: vi.fn(() => of(connected())), complete: vi.fn(() => of(connected())), disconnect: vi.fn(() => of({ status: 'disconnected' })) };
   });
 
   it('sin conexión explica permisos y privacidad y conecta navegando a la URL que da el servidor', () => {
@@ -71,6 +71,25 @@ describe('W07: tarjeta de Google Calendar', () => {
     const confirm = [...fixture.nativeElement.querySelectorAll('button')].find((b: HTMLButtonElement) => b.textContent!.includes('Sí, desconectar')) as HTMLButtonElement;
     confirm.click();
     expect(api.disconnect).toHaveBeenCalledTimes(1);
+  });
+
+  it('callback → confirm: la sesión autenticada confirma con el token, que sale de la URL antes de usarse', () => {
+    api.complete = vi.fn(() => of(connected()));
+    const fixture = create({ calendar: 'confirm', token: 'tok'.repeat(15) });
+    expect(api.complete).toHaveBeenCalledWith('tok'.repeat(15));
+    expect(fixture.nativeElement.textContent).toContain('Google Calendar conectado.');
+    expect(fixture.nativeElement.textContent).toContain('docente@example.test');
+  });
+
+  it('si la autorización la inició otra cuenta (403) se informa y no se muestra como conectado; un token vencido sale traducido', () => {
+    api.complete = vi.fn(() => throwError(() => ({ status: 403, error: { error: 'x', code: 'forbidden', params: { reason: 'oauth_user_mismatch' } } })));
+    let fixture = create({ calendar: 'confirm', token: 'a'.repeat(43) });
+    expect(fixture.nativeElement.textContent).toContain('la inició otra cuenta');
+    expect(fixture.nativeElement.textContent).not.toContain('Google Calendar conectado.');
+    TestBed.resetTestingModule();
+    api.complete = vi.fn(() => throwError(() => ({ status: 400, error: { error: 'x', code: 'oauth_state_invalid', params: {} } })));
+    fixture = create({ calendar: 'confirm', token: 'a'.repeat(43) });
+    expect(fixture.nativeElement.textContent).toContain('El enlace de conexión venció');
   });
 
   it('el resultado del callback se muestra una vez y errores del servidor salen traducidos, sin texto libre', () => {

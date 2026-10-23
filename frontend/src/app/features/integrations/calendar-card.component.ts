@@ -8,7 +8,7 @@ import { FeaturesService } from '../../core/services/features.service';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 
-const OUTCOMES = ['connected', 'denied', 'scopes', 'error'];
+const OUTCOMES = ['connected', 'denied', 'scopes', 'error', 'mismatch'];
 /** Tarjeta de Google Calendar de la pantalla común de integraciones (W07). W08 agrega la suya aparte. */
 @Component({
   selector: 'app-calendar-card', standalone: true, imports: [FormsModule, TranslatePipe],
@@ -19,7 +19,7 @@ const OUTCOMES = ['connected', 'denied', 'scopes', 'error'];
   @if (!features.enabled('google_calendar')) { <p class="notice">{{ 'calendar.unavailable' | t }}</p> }
   @else if (loading()) { <p>{{ 'calendar.loading' | t }}</p> }
   @else {
-    @if (outcome(); as o) { <p class="alert" [class.alert-success]="o === 'connected'" [class.alert-warning]="o !== 'connected'" role="status">{{ ('calendar.outcome.' + o) | t }}</p> }
+    @if (outcome(); as o) { <p class="alert" [class.alert-success]="o === 'connected'" [class.alert-warning]="o !== 'connected' && o !== 'confirming'" [class.alert-info]="o === 'confirming'" role="status">{{ ('calendar.outcome.' + o) | t }}</p> }
     @if (error()) { <p class="alert alert-danger" role="alert">{{ error() }}</p> }
     @if (saved()) { <p class="alert alert-success" role="status">{{ 'calendar.saved' | t }}</p> }
     @if (state(); as s) {
@@ -77,12 +77,28 @@ export class CalendarCardComponent implements OnInit {
   writable = computed(() => (this.state()?.calendars ?? []).filter(c => c.accessRole === 'owner'));
 
   ngOnInit(): void {
-    const result = this.route.snapshot.queryParamMap.get('calendar');
-    if (result && OUTCOMES.includes(result)) {
-      this.outcome.set(result);
-      void this.router.navigate([], { queryParams: { calendar: null }, queryParamsHandling: 'merge', replaceUrl: true });
+    const params = this.route.snapshot.queryParamMap;
+    const result = params.get('calendar'), token = params.get('token');
+    if (result) {
+      // El token es de un solo uso: sale de la URL antes de usarlo.
+      void this.router.navigate([], { queryParams: { calendar: null, token: null }, queryParamsHandling: 'merge', replaceUrl: true });
     }
+    if (result === 'confirm' && token) { this.complete(token); return; }
+    if (result && OUTCOMES.includes(result)) this.outcome.set(result);
     this.load();
+  }
+
+  /** El callback solo deja la conexión pendiente: la confirma esta sesión autenticada, y solo si la inició esta cuenta. */
+  private complete(token: string): void {
+    this.outcome.set('confirming');
+    this.api.complete(token).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: s => { this.apply(s); this.outcome.set('connected'); this.loading.set(false); },
+      error: e => {
+        this.loading.set(false);
+        if (e?.status === 403) this.outcome.set('mismatch'); else { this.outcome.set(null); this.failure.set(e); }
+        this.load();
+      }
+    });
   }
 
   private load(): void {

@@ -76,3 +76,24 @@ test('Calendar: conectar, confirmar, reprogramar, cancelar y desconectar con el 
   expect((await after.json()).status).toBe('cancelled');
   await page.screenshot({ path: info.outputPath('calendar-disconnected.png'), fullPage: true });
 });
+
+test('Calendar: el enlace de conexión de otra docente no vincula su Calendar a tu cuenta (P1)', async ({ page, request }) => {
+  const a = calendarFixture(), b = calendarFixture();
+  await page.addInitScript(() => { if (!localStorage.getItem('spanishnow.locale')) localStorage.setItem('spanishnow.locale', 'es'); });
+  // A inicia la conexión y le manda el enlace de autorización a B, que tiene sesión iniciada.
+  const aToken = await token(request, a.teacher);
+  const started = await request.post(`${API}/integrations/google-calendar/connect`, { headers: auth(aToken), data: {} });
+  expect(started.status()).toBe(200);
+  const { url } = await started.json();
+  await login(page, b.teacher, /teacher\/dashboard/);
+  await page.goto(url);
+  await expect(page).toHaveURL(/\/teacher\/integrations$/);
+  await expect(page.getByText(/la inició otra cuenta/)).toBeVisible();
+  await expect(page.getByText('Google Calendar conectado.')).toHaveCount(0);
+  await expect(page.getByText('Sin conectar', { exact: true })).toBeVisible();
+  // La conexión de A no cambió y la de B tampoco existe.
+  const aState = await (await request.get(`${API}/integrations/google-calendar`, { headers: auth(aToken) })).json();
+  expect(aState).toMatchObject({ connected: false, accountEmail: null });
+  const bState = await (await request.get(`${API}/integrations/google-calendar`, { headers: auth(await token(request, b.teacher)) })).json();
+  expect(bState).toMatchObject({ connected: false });
+});
