@@ -172,7 +172,6 @@ async function saveSettings(user, body) {
   });
 }
 async function enableTeacher(actor, id, body) {
-  if (body.enabled === true) require('./classPackageProvider').assertSelling();
   if (!validId(id) || !only(body, ['enabled']) || typeof body.enabled !== 'boolean') throw invalid(['enabled']);
   return sequelize.transaction(async transaction => {
     await teacherLock(id, transaction);

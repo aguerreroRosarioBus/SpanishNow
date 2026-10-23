@@ -63,3 +63,8 @@ test('rechaza datos de cliente, clave inválida, grupo incompleto y catálogo vi
   const group=await packageWorld({key:'group2-1x50-total'});expect((await send(group)).body.code).toBe('group_incomplete');
   expect((await send(w,randomUUID(),{templateVersionId:w.version.id-1})).body.code).toBe('version_conflict');
 });
+
+test('sin proveedor de pagos verificado no se puede crear una oferta aunque el docente esté habilitado',async()=>{
+  const w=await packageWorld();process.env.PAYMENTS_FAKE='0';
+  const r=await send(w);expect(r.status).toBe(503);expect(r.body.code).toBe('package_provider_verification_required');
+});
