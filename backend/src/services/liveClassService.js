@@ -13,8 +13,8 @@ async function access(user, live, ownerOnly = false) {
   if (owner) return true;
   if (ownerOnly || user.role !== 'student' || live.status === 'draft') fail('No tienes acceso a esta clase.', 403);
   if (live.courseId) {
-    if (!await Enrollment.findOne({ where: { courseId: live.courseId, studentId: user.id } })) fail('Necesitas estar inscrito en el curso para entrar.', 403);
-  } else if (!await LiveClassMember.findOne({ where: { liveClassId: live.id, userId: user.id } })) fail('Ingresa con el enlace o código de invitación.', 403);
+    if (!await Enrollment.findOne({ where: { courseId: live.courseId, studentId: user.id } })) fail('Necesitas estar inscrito en el curso para entrar.', 403, 'live_enrollment_required');
+  } else if (!await LiveClassMember.findOne({ where: { liveClassId: live.id, userId: user.id } })) fail('Ingresa con el enlace o código de invitación.', 403, 'live_invite_required');
   return false;
 }
 async function load(user, id, ownerOnly = false) {
@@ -71,12 +71,12 @@ async function create(user, body) {
 }
 async function join(user, code) {
   if (user.role !== 'student') fail('El enlace de invitación es para alumnos.', 403);
-  if (typeof code !== 'string' || !/^[\w-]{16}$/.test(code)) fail('Código de invitación inválido.', 404);
+  if (typeof code !== 'string' || !/^[\w-]{16}$/.test(code)) fail('Código de invitación inválido.', 404, 'live_invite_invalid');
   const live = await LiveClass.findOne({ where: { joinCode: code } });
-  if (!live || live.status === 'draft') fail('La clase no está en vivo. Pide al docente que la inicie.', 409);
-  if (live.courseId && !await Enrollment.findOne({ where: { courseId: live.courseId, studentId: user.id } })) fail('Necesitas estar inscrito en el curso para entrar.', 403);
+  if (!live || live.status === 'draft') fail('La clase no está en vivo. Pide al docente que la inicie.', 409, 'live_not_live');
+  if (live.courseId && !await Enrollment.findOne({ where: { courseId: live.courseId, studentId: user.id } })) fail('Necesitas estar inscrito en el curso para entrar.', 403, 'live_enrollment_required');
   if (live.status === 'ended') {
-    if (!live.courseId && !await LiveClassMember.findOne({ where: { liveClassId: live.id, userId: user.id } })) fail('La clase ya finalizó. Solo pueden consultarla quienes participaron.', 409);
+    if (!live.courseId && !await LiveClassMember.findOne({ where: { liveClassId: live.id, userId: user.id } })) fail('La clase ya finalizó. Solo pueden consultarla quienes participaron.', 409, 'live_ended');
     return { id: live.id };
   }
   await LiveClassMember.upsert({ liveClassId: live.id, userId: user.id, lastSeenAt: new Date() });
@@ -91,7 +91,7 @@ async function snapshot(user, live, since) {
 async function heartbeat(user, live) {
   await LiveClassMember.upsert({ liveClassId: live.id, userId: user.id, lastSeenAt: new Date() });
 }
-const editable = (live, owner) => { if (!owner && (live.status !== 'live' || !live.allowStudentEdit)) fail('El docente pausó la edición de los alumnos.', 403); };
+const editable = (live, owner) => { if (!owner && (live.status !== 'live' || !live.allowStudentEdit)) fail('El docente pausó la edición de los alumnos.', 403, 'live_editing_paused'); };
 async function change(user, id, operations) {
   return locked(user, id, false, async (live, owner, transaction) => {
     editable(live, owner);
@@ -121,14 +121,14 @@ async function linkClassroom(user, id, courseId) {
   await load(user, id, true);
   const course = await google.course(user.id, courseId);
   return locked(user, id, true, async (live, owner, transaction) => {
-    if (live.classroomAnnouncementId && live.classroomCourseId !== course.id) fail('Esta clase ya se publicó en Classroom. Crea otra sala para otro grupo.', 409);
+    if (live.classroomAnnouncementId && live.classroomCourseId !== course.id) fail('Esta clase ya se publicó en Classroom. Crea otra sala para otro grupo.', 409, 'live_already_published');
     await live.update({ classroomCourseId: course.id, classroomCourseName: course.name.slice(0, 200), revision: live.revision + 1 }, { transaction });
     return present(live, user);
   });
 }
 async function announce(user, id) {
   return locked(user, id, true, async (live, owner, transaction) => {
-    if (live.status !== 'live') fail('Inicia la clase antes de publicarla en Classroom.', 409);
+    if (live.status !== 'live') fail('Inicia la clase antes de publicarla en Classroom.', 409, 'live_start_first');
     if (!live.classroomAnnouncementId) {
       const result = await google.announce(user.id, live);
       await live.update({ classroomAnnouncementId: result.id, classroomAnnouncementUrl: result.alternateLink || null, revision: live.revision + 1 }, { transaction });
@@ -147,8 +147,8 @@ async function restore(user, id, fileId, expectedRevision) {
   await load(user, id, true);
   const board = await google.loadDrive(user.id, fileId);
   return locked(user, id, true, async (live, owner, transaction) => {
-    if (live.status === 'live') fail('Finaliza la clase antes de restaurar una pizarra.', 409);
-    if (expectedRevision !== live.revision) fail('La pizarra cambió. Actualiza antes de restaurar.', 409);
+    if (live.status === 'live') fail('Finaliza la clase antes de restaurar una pizarra.', 409, 'live_finish_first');
+    if (expectedRevision !== live.revision) fail('La pizarra cambió. Actualiza antes de restaurar.', 409, 'live_board_changed');
     await live.update({ board, recentOperations: [], revision: live.revision + 1 }, { transaction });
     return { ...present(live, user), board: live.board };
   });

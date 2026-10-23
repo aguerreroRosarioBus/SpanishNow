@@ -73,7 +73,7 @@ router.post('/:id/materials', async (req, res, next) => {
     const material = await Material.create({ courseId: course.id, unitId, storyId, title, order: last === null || last === undefined ? 0 : last + 1, ...stored });
     res.status(201).json(materials.present(material));
   } catch (error) {
-    if (error instanceof materials.MaterialError) return res.status(error.status).json(errorBody(MATERIAL, error.message, error.status));
+    if (error instanceof materials.MaterialError) return res.status(error.status).json(errorBody(MATERIAL, error.message, error.status, error.code));
     res.status(500).json({ error: error.message });
   }
 });

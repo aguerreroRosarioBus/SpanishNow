@@ -9,7 +9,7 @@ const { Story, Unit, Question, Vocabulary, LessonPlan, LessonBlock, Tooltip } = 
 const TYPES = new Set(['expression', 'keyframe', 'question', 'full_story', 'flashcards', 'matching', 'listen_repeat']);
 const PHASES = { before: 0, during: 1, after: 2, later: 3 };
 const REINFORCEMENTS = new Set(['flashcards', 'matching', 'listen_repeat']);
-const fail = (status, message) => { const error = new Error(message); error.status = status; throw error; };
+const fail = (status, message, code) => { const error = new Error(message); error.status = status; error.code = code; throw error; };
 const validId = value => Number.isSafeInteger(Number(value)) && Number(value) > 0;
 const MAX_KEYFRAME_TEXT = 20000; // characters (<= 60000 UTF-8 bytes, fits the TEXT column)
 const MAX_AUDIO_URL = 500; // lesson_blocks.audioUrl is VARCHAR(500)
@@ -73,14 +73,14 @@ function validateShape(blocks, publishing) {
       ((b.type === 'full_story' || REINFORCEMENTS.has(b.type)) && b.phase !== 'after')) fail(400, `Invalid phase for ${b.type}`);
     if (b.type === 'keyframe' && b.active !== false) {
       activeKeyframes++;
-      if (publishing && (typeof b.text !== 'string' || !b.text.trim())) fail(422, 'Active keyframes need text');
+      if (publishing && (typeof b.text !== 'string' || !b.text.trim())) fail(422, 'Active keyframes need text', 'lesson_plan_incomplete');
     }
     if (b.type === 'full_story' && b.active !== false) fullStoryCount++;
-    if (b.type === 'question' && b.active !== false && publishing && !b.contextBlockKey) fail(422, 'Active questions need a keyframe context');
-    if (b.type === 'expression' && b.active !== false && publishing && !validId(b.vocabularyId)) fail(422, 'Active expressions need vocabulary');
+    if (b.type === 'question' && b.active !== false && publishing && !b.contextBlockKey) fail(422, 'Active questions need a keyframe context', 'lesson_plan_incomplete');
+    if (b.type === 'expression' && b.active !== false && publishing && !validId(b.vocabularyId)) fail(422, 'Active expressions need vocabulary', 'lesson_plan_incomplete');
   }
-  if (publishing && activeKeyframes < 1) fail(422, 'At least one active keyframe is required');
-  if (publishing && fullStoryCount !== 1) fail(422, 'Exactly one active full_story block is required');
+  if (publishing && activeKeyframes < 1) fail(422, 'At least one active keyframe is required', 'lesson_plan_incomplete');
+  if (publishing && fullStoryCount !== 1) fail(422, 'Exactly one active full_story block is required', 'lesson_plan_incomplete');
   const byKey = new Map(blocks.map((b, index) => [b.blockKey, { ...b, index }]));
   for (const b of blocks) {
     if (b.type !== 'question' || !b.contextBlockKey) continue;
@@ -104,7 +104,7 @@ async function validateReferences(story, blocks, publishing, transaction) {
   const questionMap = new Map(questions.map(q => [q.id, q]));
   const vocabularyMap = new Map(vocabulary.map(v => [v.id, v]));
   for (const b of blocks) {
-    if (b.type === 'question' && b.active !== false && publishing && !validId(b.questionId)) fail(422, 'Active questions need a questionId');
+    if (b.type === 'question' && b.active !== false && publishing && !validId(b.questionId)) fail(422, 'Active questions need a questionId', 'lesson_plan_incomplete');
     if (b.type === 'expression') {
       if (b.vocabularyRole && !['target', 'support', 'revisit'].includes(b.vocabularyRole)) fail(400, 'Invalid vocabularyRole');
       if (b.phase === 'later' && b.active !== false && publishing && (!validId(b.revisitStoryId) || b.vocabularyRole !== 'revisit')) fail(422, 'Later expressions need a revisit story and revisit role');
@@ -196,8 +196,8 @@ async function replaceDraftBlocks(story, draft, blocks, transaction) {
  */
 async function publishDraft(story, revision, transaction) {
   const draft = await LessonPlan.findOne({ where: { storyId: story.id, status: 'draft' }, transaction, lock: transaction.LOCK.UPDATE });
-  if (!draft) fail(404, 'No draft to publish');
-  if (revision !== draft.revision) fail(409, 'Draft revision changed; reload it');
+  if (!draft) fail(404, 'No draft to publish', 'lesson_plan_no_draft');
+  if (revision !== draft.revision) fail(409, 'Draft revision changed; reload it', 'lesson_plan_revision_conflict');
   const plan = await planWithBlocks(draft.id, transaction);
   const blocks = plan.blocks.map(blockData);
   validateShape(blocks, true);

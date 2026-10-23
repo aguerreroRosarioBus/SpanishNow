@@ -18,7 +18,12 @@ describe('errorCodes', () => {
     expect(errorCode(IMPORT, 'The file has more than 500 rows', 400)).toBe('import_too_many_rows');
     expect(errorCode([], 'x', 418)).toBeUndefined();
     expect(errorBody([], 'x', 418)).toEqual({ error: 'x' });
-    expect(errorBody(LIVE, 'Clase no encontrada.', 404)).toEqual({ error: 'Clase no encontrada.', code: 'not_found' });
+    expect(errorBody(LIVE, 'Clase no encontrada.', 404)).toEqual({ error: 'Clase no encontrada.', code: 'not_found' });  });
+
+  test('el code emitido en el origen gana al texto y a la tabla (#46)', () => {
+    expect(errorBody(LIVE, 'La clase no está en vivo. Pide al docente que la inicie.', 409, 'live_editing_paused')).toEqual({ error: 'La clase no está en vivo. Pide al docente que la inicie.', code: 'live_editing_paused' });
+    expect(errorBody(IMPORT, 'Texto nuevo sin tabla', 400, 'import_email_column_missing').code).toBe('import_email_column_missing');
+    expect(errorBody(IMPORT, 'Texto nuevo sin tabla', 400).code).toBe(STATUS_CODES[400]);
   });
 });
 

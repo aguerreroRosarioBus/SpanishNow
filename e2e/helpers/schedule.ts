@@ -20,3 +20,19 @@ export function balances(purchaseIds: number[]): { id: number; unitsAvailable: n
   if (run.status !== 0) throw new Error(run.stderr);
   return JSON.parse(run.stdout.trim().split('\n').at(-1)!);
 }
+
+// La fixture deja a todos los alumnos en Córdoba; esta prueba necesita una alumna en Londres. Se cambia solo en la base E2E aislada.
+export function setStudentTimeZone(email: string, timeZone: string): void {
+  const script = `
+    const { User } = require('./src/models');
+    (async () => {
+      const [count] = await User.update({ timeZone: process.env.TZ_VALUE }, { where: { email: process.env.STUDENT_EMAIL } });
+      if (count !== 1) throw new Error('No existe la alumna de la fixture');
+      process.exit(0);
+    })().catch(e => { console.error(e); process.exit(1); });`;
+  const run = spawnSync(process.execPath, ['-e', script], {
+    cwd: path.resolve(__dirname, '../../backend'), encoding: 'utf8',
+    env: { ...process.env, NODE_ENV: 'test', DB_HOST: '127.0.0.1', DB_NAME: 'spanishnow_w06_e2e_test', JWT_SECRET: 'w06-e2e-local-secret', MAIL_TRANSPORT: 'log', DOTENV_CONFIG_QUIET: 'true', STUDENT_EMAIL: email, TZ_VALUE: timeZone }
+  });
+  if (run.status !== 0) throw new Error(`No se pudo cambiar la zona de la alumna:\n${run.stdout}\n${run.stderr}`);
+}

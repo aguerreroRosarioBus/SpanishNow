@@ -1,9 +1,9 @@
 // Small, versioned object operations: unrelated contributions merge; stale edits never replace an entire board.
 const { randomUUID } = require('node:crypto');
 class LiveError extends Error {
-  constructor(status, message) { super(message); this.status = status; }
+  constructor(status, message, code) { super(message); this.status = status; this.code = code; }
 }
-const fail = (message, status = 400) => { throw new LiveError(status, message); };
+const fail = (message, status = 400, code) => { throw new LiveError(status, message, code); };
 const validId = id => typeof id === 'string' && /^[a-zA-Z0-9_-]{8,64}$/.test(id);
 const text = (value, max, label = 'Texto') => {
   if (typeof value !== 'string' || !value.trim() || value.length > max) fail(`${label}: entre 1 y ${max} caracteres.`);
@@ -54,35 +54,35 @@ function applyOperations(current, recent, ops, user, owner, revision) {
     if (seen.includes(key)) continue;
     if (op.type === 'put' || op.type === 'delete') {
       const page = board.pages.find(p => p.id === op.pageId);
-      if (!page) fail('La página ya no existe. Actualiza la pizarra.', 409);
+      if (!page) fail('La página ya no existe. Actualiza la pizarra.', 409, 'live_item_gone');
       const id = op.type === 'put' ? op.element?.id : op.elementId;
       const index = page.elements.findIndex(e => e.id === id);
       const old = page.elements[index];
-      if (old && !owner && old.authorId !== user.id) fail('Solo puedes modificar tus propios elementos.', 403);
-      if ((old?.version || 0) !== op.expectedVersion) fail('Otro participante cambió este elemento. Actualiza e intenta otra vez.', 409);
+      if (old && !owner && old.authorId !== user.id) fail('Solo puedes modificar tus propios elementos.', 403, 'live_own_elements_only');
+      if ((old?.version || 0) !== op.expectedVersion) fail('Otro participante cambió este elemento. Actualiza e intenta otra vez.', 409, 'live_element_conflict');
       if (op.type === 'delete') {
-        if (!old) fail('El elemento ya no existe.', 409);
+        if (!old) fail('El elemento ya no existe.', 409, 'live_item_gone');
         page.elements.splice(index, 1);
       } else {
         const next = element(op.element, old?.authorId || user.id, (old?.version || 0) + 1);
         if (old) page.elements[index] = next;
         else {
           if (board.pages.some(p => p.elements.some(e => e.id === next.id))) fail('Identificador de elemento repetido.', 409);
-          if (page.elements.length >= 500) fail('Esta página alcanzó los 500 elementos. Crea otra página.');
+          if (page.elements.length >= 500) fail('Esta página alcanzó los 500 elementos. Crea otra página.', 400, 'live_page_full');
           page.elements.push(next);
         }
       }
     } else {
-      if (!owner) fail('Solo el docente puede administrar páginas.', 403);
+      if (!owner) fail('Solo el docente puede administrar páginas.', 403, 'live_teacher_only_pages');
       const page = board.pages.find(p => p.id === op.pageId);
       switch (op.type) {
         case 'page-add':
-          if (!validId(op.pageId) || page || board.pages.length >= 20) fail('Puedes tener hasta 20 páginas con identificadores únicos.');
+          if (!validId(op.pageId) || page || board.pages.length >= 20) fail('Puedes tener hasta 20 páginas con identificadores únicos.', 400, 'live_page_limit');
           board.pages.push({ id: op.pageId, title: text(op.title, 80, 'Título'), background: 'plain', elements: [] });
           board.activePageId = op.pageId;
           break;
         case 'page-active':
-          if (!page) fail('La página ya no existe.', 409);
+          if (!page) fail('La página ya no existe.', 409, 'live_item_gone');
           board.activePageId = page.id;
           break;
         case 'page-clear':
@@ -104,7 +104,7 @@ function applyOperations(current, recent, ops, user, owner, revision) {
     }
     changed = true; seen.push(key);
   }
-  if (Buffer.byteLength(JSON.stringify(board)) > 1500000) fail('La pizarra alcanzó su tamaño máximo (1,5 MB).');
+  if (Buffer.byteLength(JSON.stringify(board)) > 1500000) fail('La pizarra alcanzó su tamaño máximo (1,5 MB).', 400, 'live_board_too_large');
   return { board, recentOperations: seen.slice(-1000), revision: revision + (changed ? 1 : 0) };
 }
 function restoreBoard(raw, userId) {
@@ -120,7 +120,7 @@ function restoreBoard(raw, userId) {
     }) };
   });
   const board = { pages, activePageId: pages.some(p => p.id === raw.board.activePageId) ? raw.board.activePageId : pages[0].id };
-  if (Buffer.byteLength(JSON.stringify(board)) > 1500000) fail('Archivo demasiado grande.');
+  if (Buffer.byteLength(JSON.stringify(board)) > 1500000) fail('Archivo demasiado grande.', 400, 'live_board_too_large');
   return board;
 }
 module.exports = { LiveError, fail, text, validId, blankBoard, safeUrl, element, applyOperations, restoreBoard };

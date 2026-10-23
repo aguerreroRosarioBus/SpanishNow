@@ -52,9 +52,9 @@ function errorCode(table, message, status) {
   return STATUS_CODES[status];
 }
 
-/** JSON body `{ error, code }` (no `code` when none applies). */
-function errorBody(table, message, status) {
-  const code = errorCode(table, message, status);
+/** JSON body `{ error, code }`. The code set at the origin wins; the text table and HTTP status are only a fallback. */
+function errorBody(table, message, status, origin) {
+  const code = origin || errorCode(table, message, status);
   return code ? { error: message, code } : { error: message };
 }
 

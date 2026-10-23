@@ -12,7 +12,7 @@ const DOWNLOAD_TTL_SECONDS = 300;
 const FOLDER = 'spanishnow/materials';
 
 class MaterialError extends Error {
-  constructor(status, message) { super(message); this.status = status; }
+  constructor(status, message, code) { super(message); this.status = status; this.code = code; }
 }
 
 const isPdf = buffer => Buffer.isBuffer(buffer) && buffer.length > 5 && buffer.subarray(0, 5).toString('latin1') === '%PDF-';
@@ -30,9 +30,9 @@ const present = material => ({
 
 /** Validates the buffer and stores it. Returns { fileUrl, providerPublicId, sizeBytes }. */
 async function storePdf(buffer) {
-  if (!isPdf(buffer)) throw new MaterialError(400, 'The file is not a PDF');
-  if (buffer.length > MAX_PDF_BYTES) throw new MaterialError(413, 'The file is larger than 20 MB');
-  if (!cloudinary.canUpload()) throw new MaterialError(503, 'File storage is not configured');
+  if (!isPdf(buffer)) throw new MaterialError(400, 'The file is not a PDF', 'not_a_pdf');
+  if (buffer.length > MAX_PDF_BYTES) throw new MaterialError(413, 'The file is larger than 20 MB', 'file_too_large');
+  if (!cloudinary.canUpload()) throw new MaterialError(503, 'File storage is not configured', 'provider_unavailable');
   if (fakeUploads.enabled()) {
     const result = await fakeUploads.saveFake(buffer);
     return { fileUrl: result.secure_url, providerPublicId: null, sizeBytes: buffer.length };

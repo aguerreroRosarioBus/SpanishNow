@@ -43,7 +43,7 @@ function decrypt(value) {
     const cipher = crypto.createDecipheriv('aes-256-gcm', encryptionKey(), data.subarray(0, 12));
     cipher.setAuthTag(data.subarray(12, 28));
     return JSON.parse(Buffer.concat([cipher.update(data.subarray(28)), cipher.final()]).toString());
-  } catch { fail('No se pudo leer la conexión de Google. Vuelve a conectar la cuenta.', 401); }
+  } catch { fail('No se pudo leer la conexión de Google. Vuelve a conectar la cuenta.', 401, 'integration_not_connected'); }
 }
 async function remote(url, options = {}) {
   let response;
@@ -51,8 +51,8 @@ async function remote(url, options = {}) {
   catch { fail('Google no respondió. Intenta nuevamente.', 502); }
   if (!response.ok) {
     if (response.status === 400 && url === 'https://oauth2.googleapis.com/revoke') return response; // already revoked
-    if (response.status === 400 && url === 'https://oauth2.googleapis.com/token') fail('La autorización de Google venció. Vuelve a conectar tu cuenta.', 401);
-    if (response.status === 401) fail('La autorización de Google venció. Vuelve a conectar tu cuenta.', 401);
+    if (response.status === 400 && url === 'https://oauth2.googleapis.com/token') fail('La autorización de Google venció. Vuelve a conectar tu cuenta.', 401, 'integration_not_connected');
+    if (response.status === 401) fail('La autorización de Google venció. Vuelve a conectar tu cuenta.', 401, 'integration_not_connected');
     if (response.status === 403) fail('Google rechazó el acceso. Revisa los permisos de tu cuenta y las APIs habilitadas.', 403);
     if (response.status === 404) fail('Google no encontró el archivo o la clase.', 404);
     if (response.status === 429) fail('Google alcanzó su límite de solicitudes. Intenta más tarde.', 429);
@@ -78,7 +78,7 @@ async function start(state, res) {
   const c = config();
   if (typeof state !== 'string' || !/^[\w-]{43}$/.test(state)) fail('Autorización inválida.');
   const row = await GoogleConnection.findOne({ where: { oauthStateHash: hash(state) } });
-  if (!row?.oauthVerifier || new Date(row.oauthExpiresAt).getTime() < Date.now()) fail('La autorización venció. Vuelve a conectar Google.', 400);
+  if (!row?.oauthVerifier || new Date(row.oauthExpiresAt).getTime() < Date.now()) fail('La autorización venció. Vuelve a conectar Google.', 400, 'integration_not_connected');
   const verifier = decrypt(row.oauthVerifier);
   res.cookie(cookieName, state, { httpOnly: true, secure: c.secure, sameSite: 'lax', path: '/api/live-classes/google/callback', maxAge: 600000 });
   const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
@@ -95,7 +95,7 @@ async function callback(req) {
   if (typeof state !== 'string' || state.length > 100 || !cookie || hash(cookie) !== hash(state)) fail('La autorización de Google no coincide con este navegador.', 400);
   const pending = await sequelize.transaction(async transaction => {
     const row = await GoogleConnection.findOne({ where: { oauthStateHash: hash(state) }, transaction, lock: transaction.LOCK.UPDATE });
-    if (!row || !row.oauthVerifier || !row.oauthExpiresAt || new Date(row.oauthExpiresAt).getTime() < Date.now()) fail('La autorización venció. Vuelve a conectar Google.', 400);
+    if (!row || !row.oauthVerifier || !row.oauthExpiresAt || new Date(row.oauthExpiresAt).getTime() < Date.now()) fail('La autorización venció. Vuelve a conectar Google.', 400, 'integration_not_connected');
     const result = { userId: row.userId, verifier: decrypt(row.oauthVerifier) };
     await row.update({ oauthStateHash: null, oauthVerifier: null, oauthExpiresAt: null }, { transaction });
     return result;
@@ -118,13 +118,13 @@ async function accessToken(userId) {
   // Serialize refreshes (also between replicas); credentials never leave the server.
   return sequelize.transaction(async transaction => {
     const row = await GoogleConnection.findByPk(userId, { transaction, lock: transaction.LOCK.UPDATE });
-    if (!row?.credentials) fail('Conecta tu cuenta de Google primero.', 409);
+    if (!row?.credentials) fail('Conecta tu cuenta de Google primero.', 409, 'integration_not_connected');
     const credentials = decrypt(row.credentials);
     if (credentials.expiresAt > Date.now() + 60000) return credentials.accessToken;
     const result = await (await remote('https://oauth2.googleapis.com/token', { method: 'POST', body: new URLSearchParams({
       client_id: c.clientId, client_secret: c.clientSecret, grant_type: 'refresh_token', refresh_token: credentials.refreshToken
     }) })).json();
-    if (!result.access_token) fail('Vuelve a conectar tu cuenta de Google.', 401);
+    if (!result.access_token) fail('Vuelve a conectar tu cuenta de Google.', 401, 'integration_not_connected');
     credentials.accessToken = result.access_token; credentials.expiresAt = Date.now() + (result.expires_in || 3600) * 1000;
     if (result.refresh_token) credentials.refreshToken = result.refresh_token;
     await row.update({ credentials: encrypt(credentials) }, { transaction });
@@ -195,7 +195,7 @@ async function loadDrive(userId, fileId) {
   const chunks = []; let size = 0;
   for await (const chunk of res.body) {
     size += chunk.length;
-    if (size > 1600000) { await res.body.cancel?.().catch(() => {}); fail('Archivo demasiado grande.'); }
+    if (size > 1600000) { await res.body.cancel?.().catch(() => {}); fail('Archivo demasiado grande.', 400, 'live_board_too_large'); }
     chunks.push(Buffer.from(chunk));
   }
   let raw;
