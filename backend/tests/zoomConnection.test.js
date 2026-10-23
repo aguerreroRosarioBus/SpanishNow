@@ -48,3 +48,20 @@ test('flag y modo fake fallan cerrados, OAuth caducado y código manipulado se r
   await expect(c.connect(teacher)).rejects.toMatchObject({ code: 'zoom_fake_required' });
   process.env.INTEGRATIONS_FAKE = '1';
 });
+
+test('PKCE fake rechaza canje con verificador ajeno y la impersonación no inicia OAuth', async () => {
+  const { teacher } = await chain(); const start = await c.connect(teacher); const agent = request.agent(app);
+  const navigation = await agent.get(new URL(start.url).pathname + new URL(start.url).search);
+  const url = new URL(navigation.headers.location); const row = await c.rowFor(teacher.id); const pending = cipher.decrypt(row.oauthVerifier);
+  await expect(adapter.authorize({ code: pending.code, expectedCode: pending.code, accountId: pending.accountId, verifier: 'interceptado' })).rejects.toMatchObject({ code: 'zoom_oauth_invalid' });
+  expect((await agent.get(url.pathname + url.search)).status).toBe(302);
+  const jwt = require('jsonwebtoken').sign({ id: teacher.id, role: 'teacher', impersonatedBy: 999 }, process.env.JWT_SECRET);
+  expect((await request(app).post('/api/integrations/zoom/connect').set('Authorization', `Bearer ${jwt}`)).status).toBe(403);
+});
+test('revocación de refresh no expone ni conserva credenciales vencidas', async () => {
+  const { teacher } = await chain(); await connected(teacher); const row = await c.rowFor(teacher.id);
+  const tokens = cipher.decrypt(row.credentials); tokens.refreshToken = 'revocado';
+  await row.update({ credentials: cipher.encrypt(tokens), tokenExpiresAt: new Date(0) });
+  expect(await c.status(teacher)).toMatchObject({ status: 'revoked', capabilities: null, lastError: 'zoom_revoked' });
+  expect((await c.rowFor(teacher.id)).credentials).toBeNull();
+});

@@ -25,7 +25,7 @@ function redirect() {
 async function connect(user) {
   await teacher(user); adapter.assertFake();
   const state = crypto.randomBytes(32).toString('base64url');
-  const pending = { verifier: crypto.randomBytes(48).toString('base64url'), code: crypto.randomBytes(32).toString('base64url') };
+  const pending = { accountId: hash(`${process.env.DB_NAME}:${user.id}:${user.email}`), verifier: crypto.randomBytes(48).toString('base64url'), code: crypto.randomBytes(32).toString('base64url') };
   const encrypted = cipher.encrypt(pending);
   await db.transaction(async transaction => {
     await M.User.findByPk(user.id, { transaction, lock: transaction.LOCK.UPDATE });
@@ -44,6 +44,8 @@ async function pending(state) {
 async function start(state, res) {
   adapter.assertFake(); const row = await pending(state);
   const c = cipher.decrypt(row.oauthVerifier);
+  const user = await M.User.findByPk(row.userId); await teacher(user);
+  await adapter.issueAuthorization({ code: c.code, challenge: crypto.createHash('sha256').update(c.verifier).digest('base64url'), accountId: c.accountId });
   res.cookie(cookieName, state, { httpOnly: true, secure: redirect().protocol === 'https:', sameSite: 'lax',
     path: '/api/integrations/zoom/callback', maxAge: 600000 });
   const url = redirect(); url.search = new URLSearchParams({ state, code: c.code }).toString();

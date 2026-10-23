@@ -1,0 +1,11 @@
+:host { display: block; }
+.zoom-page { max-width: 54rem; margin: 0 auto; padding: clamp(1rem, 3vw, 2rem); overflow-wrap: anywhere; }
+h1 { font-size: clamp(1.5rem, 4vw, 2rem); margin-bottom: .75rem; }
+h2 { font-size: 1.15rem; margin: 1.5rem 0 .75rem; }
+.zoom-panel { padding: 1.25rem; margin: 1rem 0; border: 1px solid var(--color-border, #ddd); border-radius: var(--radius-md, 12px); background: var(--color-surface, #fff); }
+.zoom-actions { display: flex; flex-wrap: wrap; gap: .65rem; }
+.test-notice { padding: .75rem; border-radius: 8px; background: var(--color-bg-secondary, #f3f0e9); }
+fieldset { margin-top: 1rem; padding: .75rem; border: 1px solid var(--color-border, #ddd); }
+legend { font-size: 1rem; }
+label { display: block; margin-bottom: .5rem; }
+.btn { min-height: 44px; white-space: normal; }

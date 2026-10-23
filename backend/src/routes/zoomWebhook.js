@@ -7,12 +7,13 @@ const cipher = require('../services/liveGoogleService');
 const { fail, hash } = require('../services/zoomAdapter');
 router.post('/', require('express').raw({ type: 'application/json', limit: '256kb' }), async (req, res, next) => {
   try {
+    require('../services/zoomAdapter').assertFake();
     const secret = process.env.ZOOM_WEBHOOK_SECRET_TOKEN;
     const timestamp = req.get('x-zm-request-timestamp');
     const signature = req.get('x-zm-signature');
     if (!secret || !Buffer.isBuffer(req.body) || !/^\d{10}$/.test(timestamp || '') || Math.abs(Date.now() / 1000 - Number(timestamp)) > 300) fail('zoom_webhook_invalid', 401);
     const expected = `v0=${crypto.createHmac('sha256', secret).update(`v0:${timestamp}:`).update(req.body).digest('hex')}`;
-    if (!signature || signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) fail('zoom_webhook_invalid', 401);
+    if (!/^v0=[a-f0-9]{64}$/.test(signature || '') || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) fail('zoom_webhook_invalid', 401);
     let body; try { body = JSON.parse(req.body.toString()); } catch { fail('validation_failed', 400); }
     if (body.event === 'endpoint.url_validation') {
       const plainToken = body.payload?.plainToken;

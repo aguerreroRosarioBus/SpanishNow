@@ -9,11 +9,11 @@ const features = require('../config/features');
 const { fail } = adapter;
 const terminal = ['cancelled', 'declined', 'expired'];
 const id = value => { const n = Number(value); if (!Number.isSafeInteger(n) || n < 1) fail('not_found', 404); return n; };
-function participantUrl(value) {
+function participantUrl(value, legacy = false) {
   let url;
   try { url = new URL(value); } catch { fail('zoom_invalid_link', 400); }
   if (url.protocol !== 'https:' || (url.hostname !== 'zoom.us' && !url.hostname.endsWith('.zoom.us'))
-    || url.username || url.password || url.port || url.hash || !/^\/j\/\d{8,12}$/.test(url.pathname)
+    || url.username || url.password || url.port || url.hash || !(legacy ? /^\/j\/\d{1,12}$/ : /^\/j\/\d{8,12}$/).test(url.pathname)
     || [...url.searchParams.keys()].some(k => k !== 'pwd') || url.searchParams.getAll('pwd').length > 1 || url.href.length > 1000) fail('zoom_invalid_link', 400);
   return url.href;
 }
@@ -43,7 +43,6 @@ async function exclusive(sessionId, fn) {
   }
 }
 async function assertCapacity(teacherId, minutes, participants = 1) {
-  if (!features.isEnabled('zoom')) return;
   const { tokens } = await connection.credentials(teacherId);
   const capability = await adapter.capabilities(tokens);
   if (!capability || !Number.isFinite(capability.maxMinutes) || !Number.isFinite(capability.maxParticipants)
@@ -119,11 +118,16 @@ async function join(user, sessionId) {
   if (session.status !== 'confirmed' || (!isOwner && seat.status === 'cancelled')) fail('proposal_stale');
   const ref = await M.ExternalSyncRef.findOne({ where: { sessionId: session.id, provider: 'zoom' } });
   if (ref?.manualJoinUrl) return { joinUrl: participantUrl(ref.manualJoinUrl), manual: true };
-  if (!ref?.externalId) return require('./classSessionService').join(user, sessionId);
-  if (ref.status !== 'ready') fail('integration_not_connected');
-  if (!isOwner) return { joinUrl: participantUrl(ref.joinUrl), manual: false };
+  if (!ref?.externalId && isOwner) fail('provider_unavailable', 503);
+  if (ref?.status !== 'ready') fail('integration_not_connected');
+  if (!isOwner) return { joinUrl: participantUrl(ref.joinUrl, !ref.externalId), manual: false };
   const { tokens } = await connection.credentials(session.teacherId);
-  const hostUrl = await adapter.host(tokens, ref.externalId);
+  let hostUrl;
+  try { hostUrl = await adapter.host(tokens, ref.externalId); }
+  catch (error) { fail(safeError(error), error.statusCode || 503); }
+  const current = await M.ClassSession.findByPk(session.id);
+  const grant = await connection.rowFor(session.teacherId);
+  if (current?.status !== 'confirmed' || current.version !== session.version || grant?.status !== 'connected') fail('proposal_stale');
   // Jamás persistir start_url; el adaptador solo lo obtiene en esta acción autorizada.
   return { hostUrl, manual: false };
 }
@@ -137,8 +141,9 @@ async function retry(user, sessionId) {
   });
   return { queued: true };
 }
-async function manual(user, sessionId, body) {
+async function manual(user, sessionId, body = {}) {
   const { session } = await visible(user, sessionId, { owner: true });
+  if (!body || typeof body !== 'object' || Array.isArray(body)) fail('validation_failed', 400);
   if (Object.keys(body).some(k => !['version', 'joinUrl'].includes(k))) fail('validation_failed', 400);
   const link = body.joinUrl === null ? null : participantUrl(body.joinUrl);
   await db.transaction(async transaction => {
@@ -148,6 +153,10 @@ async function manual(user, sessionId, body) {
     const [ref] = await M.ExternalSyncRef.findOrCreate({ where: { sessionId: session.id, provider: 'zoom' },
       defaults: { correlationKey: `zoom:session:${session.id}` }, transaction });
     await ref.update({ manualJoinUrl: link, manualJoinUrlById: link ? user.id : null }, { transaction });
+    if (features.isEnabled('google_calendar') && await M.ExternalConnection.count({ where: { userId: session.teacherId, provider: 'google_calendar', status: 'connected' }, transaction })) {
+      await outbox.enqueue({ topic: 'calendar.sync', aggregateType: 'class_sessions', aggregateId: current.id,
+        aggregateVersion: current.version, dedupeKey: `calendar:zoom-manual:${current.id}:v${current.version}:${crypto.randomUUID()}` }, { transaction });
+    }
     await M.AuditLog.create({ actorId: user.id, action: 'zoom.manual_link', entityType: 'class_sessions', entityId: session.id,
       data: { version: current.version, enabled: Boolean(link) } }, { transaction });
   });
@@ -164,5 +173,10 @@ async function sessions(user) {
         && !ref?.manualJoinUrl && ref?.status !== 'ready' };
   }) };
 }
+async function sessionStatus(user, sessionId) {
+  const { session } = await visible(user, sessionId);
+  const ref = await M.ExternalSyncRef.findOne({ where: { sessionId: session.id, provider: 'zoom' } });
+  return { fake: process.env.INTEGRATIONS_FAKE === '1', status: ref?.status || 'needs_attention', manual: Boolean(ref?.manualJoinUrl), lastError: ref?.lastError || null };
+}
 outbox.register('zoom.sync', sync);
-module.exports = { participantUrl, visible, exclusive, assertCapacity, sync, join, retry, manual, sessions };
+module.exports = { participantUrl, visible, exclusive, assertCapacity, sync, join, retry, manual, sessions, sessionStatus };

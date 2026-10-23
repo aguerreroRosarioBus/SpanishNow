@@ -16,12 +16,19 @@ beforeAll(() => {
   process.env.GOOGLE_TOKEN_ENCRYPTION_KEY = Buffer.alloc(32, 8).toString('base64'); process.env.ZOOM_WEBHOOK_SECRET_TOKEN = 'webhook-test-only';
 });
 afterAll(() => { for (const key of ['FEATURE_ZOOM', 'FEATURE_CLASS_SCHEDULING', 'FEATURE_CLASS_PACKAGES', 'INTEGRATIONS_FAKE', 'ZOOM_WEBHOOK_SECRET_TOKEN']) delete process.env[key]; });
-afterEach(() => jest.restoreAllMocks());
+const createdSessions = new Set();
+afterEach(async () => {
+  jest.restoreAllMocks();
+  // Estas fixtures no deben dejar jobs que agoten el lote de las pruebas compartidas W06.
+  await M.OutboxJob.destroy({ where: { aggregateType: 'class_sessions', aggregateId: [...createdSessions] } });
+  createdSessions.clear();
+});
 const refFor = sessionId => M.ExternalSyncRef.findOne({ where: { sessionId, provider: 'zoom' } });
 const sync = sessionId => zoom.sync({ aggregateId: sessionId });
 async function fixture() {
   const c = await chain(); await connected(c.teacher);
   const { session } = await sessions.create(c.teacher, c.body, uuid());
+  createdSessions.add(session.id);
   const confirmed = await sessions.accept(c.students[0], session.id, 1);
   return { ...c, session: confirmed };
 }
@@ -72,6 +79,9 @@ test('AC16: host efímero solo dueño; alumno/Calendar/soporte no reciben el sec
   const persisted = JSON.stringify(await refFor(c.session.id)); expect(persisted).not.toMatch(/zak|hostUrl|start_url|\/s\//);
   expect(JSON.stringify((await as(c.students[0]).get(`/api/class-sessions/${c.session.id}`)).body)).not.toMatch(/zak|hostUrl|start_url/);
   process.env.FEATURE_ZOOM = '0'; expect((await zoom.join(c.teacher, c.session.id)).hostUrl).toContain('/s/'); process.env.FEATURE_ZOOM = '1';
+  // También una ref heredada sin ID externo debe validar que el enlace sea de participante.
+  await (await refFor(c.session.id)).update({ externalId: null, joinUrl: 'https://zoom.us/s/123456789?zak=no_exponer' });
+  await expect(zoom.join(c.students[0], c.session.id)).rejects.toMatchObject({ code: 'zoom_invalid_link' });
 });
 test('capacidad antes de proponer, ofrecer o comprar; no modifica agenda ni saldo', async () => {
   const c = await chain(); await connected(c.teacher);
@@ -115,6 +125,7 @@ test('webhooks: firma, antigüedad, challenge y dedupe durable sin completar ni 
   const { tokens } = await connection.credentials(c.teacher.id);
   const body = { event: 'meeting.ended', event_ts: Date.now(), payload: { account_id: tokens.accountId, object: { id: ref.externalId } } };
   expect((await webhook(body, { signature: 'v0=bad' })).status).toBe(401);
+  expect((await webhook(body, { signature: 'v0=' + 'ñ'.repeat(64) })).status).toBe(401);
   expect((await webhook(body, { timestamp: String(Math.floor(Date.now() / 1000) - 400) })).status).toBe(401);
   const challenge = await webhook({ event: 'endpoint.url_validation', payload: { plainToken: 'challenge' } });
   expect(challenge.body.encryptedToken).toBe(crypto.createHmac('sha256', process.env.ZOOM_WEBHOOK_SECRET_TOKEN).update('challenge').digest('hex'));
@@ -124,6 +135,10 @@ test('webhooks: firma, antigüedad, challenge y dedupe durable sin completar ni 
   await webhook({ ...body, event: 'meeting.deleted', payload: { ...body.payload, account_id: 'foreign' } });
   expect((await refFor(c.session.id)).status).toBe('ready');
   await webhook({ ...body, event: 'meeting.deleted' }); expect((await refFor(c.session.id)).lastError).toBe('zoom_meeting_missing');
+  await webhook({ ...body, event: 'app_deauthorized' });
+  expect((await connection.rowFor(c.teacher.id)).status).toBe('revoked');
+  expect((await M.ClassSession.findByPk(c.session.id)).status).toBe('confirmed');
+  expect((await c.purchases[0].reload()).unitsReserved).toBe(1);
 });
 test('outbox backoff y reintento después de límite de proveedor', async () => {
   const c = await fixture();
@@ -139,4 +154,36 @@ test('concurrencia entre jobs de la misma sesión excluye duplicados', async () 
   const c = await fixture(); const spy = jest.spyOn(adapter, 'create');
   const results = await Promise.allSettled([sync(c.session.id), sync(c.session.id)]);
   expect(results.some(r => r.status === 'fulfilled')).toBe(true); expect(spy).toHaveBeenCalledTimes(1);
+});
+
+test('Calendar recibe solo participante: sync listo y cambios manuales encolan recuperación', async () => {
+  const c = await fixture();
+  await M.ExternalConnection.create({ userId: c.teacher.id, provider: 'google_calendar', status: 'connected' });
+  process.env.FEATURE_GOOGLE_CALENDAR = '1';
+  try {
+    await sync(c.session.id);
+    let jobs = await M.OutboxJob.findAll({ where: { aggregateId: c.session.id, topic: 'calendar.sync' } });
+    expect(jobs).toHaveLength(1); expect(JSON.stringify(jobs)).not.toMatch(/zak|hostUrl|start_url/);
+    await zoom.manual(c.teacher, c.session.id, { version: c.session.version, joinUrl: 'https://zoom.us/j/123456789?pwd=manual' });
+    jobs = await M.OutboxJob.findAll({ where: { aggregateId: c.session.id, topic: 'calendar.sync' } });
+    expect(jobs).toHaveLength(2); expect((await refFor(c.session.id)).manualJoinUrl).toContain('/j/');
+  } finally { delete process.env.FEATURE_GOOGLE_CALENDAR; }
+});
+test('cambio interno durante create converge a cancelación sin otra reserva ni reunión', async () => {
+  const c = await fixture(); const create = adapter.create;
+  jest.spyOn(adapter, 'create').mockImplementationOnce(async (...args) => {
+    const result = await create(...args);
+    await sessions.cancel(c.teacher, c.session.id, { version: c.session.version, reason: 'Cancelada durante efecto de proveedor' });
+    return result;
+  });
+  await sync(c.session.id); expect((await refFor(c.session.id)).status).toBe('pending');
+  await sync(c.session.id); expect((await refFor(c.session.id)).status).toBe('cancelled');
+  expect((await c.purchases[0].reload()).unitsReserved).toBe(0);
+});
+test('clase próxima sin reunión genera aviso seguro al dueño', async () => {
+  const c = await fixture();
+  await M.ClassSession.update({ startsAt: new Date(Date.now() + 7200000) }, { where: { id: c.session.id } });
+  expect((await zoom.sessions(c.teacher)).items[0].upcomingWithoutMeeting).toBe(true);
+  const read = await as(c.students[0]).get(`/api/integrations/zoom/sessions/${c.session.id}`);
+  expect(read.status).toBe(200); expect(JSON.stringify(read.body)).not.toMatch(/credentials|joinUrl|hostUrl/);
 });

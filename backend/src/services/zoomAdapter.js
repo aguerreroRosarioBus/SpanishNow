@@ -24,7 +24,20 @@ async function store(account, fn) {
   const lock = path.join(dir, 'lock');
   let handle;
   try { handle = await fs.open(lock, 'wx', 0o600); }
-  catch (e) { if (e.code === 'EEXIST') fail('zoom_busy', 503); throw e; }
+  catch (e) {
+    if (e.code !== 'EEXIST') throw e;
+    // Un worker terminado puede dejar el lock del proveedor fake en disco. Recuperar solo si murió su PID.
+    let dead = false;
+    try {
+      const owner = Number(await fs.readFile(lock, 'utf8'));
+      if (owner > 0) { try { process.kill(owner, 0); } catch (error) { if (error.code === 'ESRCH') dead = true; } }
+      else dead = Date.now() - (await fs.stat(lock)).mtimeMs > 30000;
+    } catch (error) { if (error.code !== 'ENOENT') throw error; }
+    if (!dead) fail('zoom_busy', 503);
+    try { await fs.unlink(lock); handle = await fs.open(lock, 'wx', 0o600); }
+    catch { fail('zoom_busy', 503); }
+  }
+  await handle.writeFile(String(process.pid));
   try {
     let data;
     try { data = JSON.parse(await fs.readFile(path.join(dir, 'meetings.json'), 'utf8')); }
@@ -42,10 +55,19 @@ function tokens(accountId, rotation = 0) {
 }
 module.exports = {
   ZoomError, fail, assertFake, hash,
+  async issueAuthorization({ code, challenge, accountId }) {
+    return store(accountId, data => { data[`oauth:${hash(code)}`] = { challenge, expiresAt: Date.now() + 600000 }; });
+  },
   async authorize({ code, expectedCode, verifier, accountId }) {
     assertFake();
     if (!verifier || code !== expectedCode) fail('zoom_oauth_invalid', 400);
     if (!accountId) fail('zoom_oauth_invalid', 400);
+    await store(accountId, data => {
+      const key = `oauth:${hash(code)}`; const grant = data[key];
+      const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
+      if (!grant || grant.expiresAt <= Date.now() || grant.challenge !== challenge) fail('zoom_oauth_invalid', 400);
+      delete data[key];
+    });
     return { ...tokens(accountId), email: `docente-${accountId.slice(0, 8)}@zoom.invalid`,
       // Capacidades explícitas de la cuenta simulada, nunca una afirmación sobre licencias reales.
       capabilities: { maxMinutes: 120, maxParticipants: 100, concurrentMeetings: 1, waitingRoom: true, passcodeRequired: true } };

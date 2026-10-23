@@ -14,12 +14,12 @@ const check = fn => async (req, res, next) => {
 };
 router.post('/class-sessions', authMiddleware, check(async req => {
   if (req.user.role !== 'teacher') fail('forbidden', 403);
-  await zoom.assertCapacity(req.user.id, req.body.intent?.minutes, req.body.participants?.length || 1);
+  await zoom.assertCapacity(req.user.id, req.body?.intent?.minutes, req.body?.participants?.length || 1);
 }));
 router.post('/class-sessions/:id/proposals', authMiddleware, check(async req => {
   const { session } = await zoom.visible(req.user, req.params.id, { owner: true });
   const seats = await M.ClassSessionParticipant.count({ where: { sessionId: session.id, status: { [require('sequelize').Op.ne]: 'cancelled' } } });
-  await zoom.assertCapacity(session.teacherId, req.body.intent?.minutes, seats);
+  await zoom.assertCapacity(session.teacherId, req.body?.intent?.minutes, seats);
 }));
 router.post('/class-sessions/:id/proposals/:version/accept', authMiddleware, check(async req => {
   const { session } = await zoom.visible(req.user, req.params.id);
@@ -29,7 +29,7 @@ router.post('/class-sessions/:id/proposals/:version/accept', authMiddleware, che
 }));
 const offerCapacity = async req => {
   if (req.user.role !== 'teacher') fail('forbidden', 403);
-  const version = await M.ClassPackageTemplateVersion.findByPk(Number(req.body.templateVersionId) || 0);
+  const version = await M.ClassPackageTemplateVersion.findByPk(Number(req.body?.templateVersionId) || 0);
   const template = version && await M.ClassPackageTemplate.findByPk(version.templateId);
   if (template?.teacherId !== req.user.id) fail('not_found', 404);
   await zoom.assertCapacity(req.user.id, version.minutesPerSession, version.groupSize);
