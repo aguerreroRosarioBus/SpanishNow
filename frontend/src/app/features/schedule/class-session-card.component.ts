@@ -33,6 +33,7 @@ export class ClassSessionCardComponent {
   decision = signal<'accept' | 'decline' | 'cancel' | null>(null);
   reason = ''; waiver = ''; requestedBy = 0; acknowledge = false;
   attendanceUser = 0; attendanceStatus = 'attended'; attendanceReason = '';
+  adjustmentPurchase = 0; adjustmentKind = 'waive_charge'; adjustmentReason = ''; unavailableMinutes = 50;
   meeting = signal<string | null>(null);
   private generation = 0;
   private clockOffset = 0;
@@ -40,6 +41,7 @@ export class ClassSessionCardComponent {
   private actionRequest?: Subscription;
   error = computed(() => this.failure() ? this.i18n.errorMessage(this.failure()) : '');
   teacher = computed(() => this.session()?.teacherId === this.auth.currentUser()?.id);
+  canAdjust = computed(() => this.teacher() && this.auth.hasPermission('class_credits.adjust'));
   zone = computed(() => this.preferences.preferences()?.timeZone || this.session()?.timeZone || 'UTC');
   zoneReady = computed(() => Boolean(this.preferences.preferences()?.timeZoneConfirmedAt));
   selectedProposal = computed(() => {
@@ -105,6 +107,16 @@ export class ClassSessionCardComponent {
     const s = this.session(); if (!s || !this.attendanceUser || this.attendanceReason.trim().length < 3) return;
     this.act(this.api.attendance(s.id, { version: s.version, userId: Number(this.attendanceUser), attendance: this.attendanceStatus, reason: this.attendanceReason }));
   }
+  adjust(): void {
+    const s = this.session(); if (!s || !this.canAdjust() || !this.adjustmentPurchase || this.adjustmentReason.trim().length < 3) return;
+    this.act(this.api.adjustment(s.id, { version: s.version, purchaseId: Number(this.adjustmentPurchase), kind: this.adjustmentKind,
+      reason: this.adjustmentReason, ...(this.adjustmentKind === 'extend_validity' ? { unavailableMinutes: Number(this.unavailableMinutes) } : {}) }));
+  }
+  requestExtension(purchaseId: number): void {
+    const s = this.session(); if (!s || this.adjustmentReason.trim().length < 3) return;
+    this.act(this.api.requestExtension(s.id, { version: s.version, purchaseId, reason: this.adjustmentReason, unavailableMinutes: Number(this.unavailableMinutes) }));
+  }
+  participantName(userId: number): string { return this.session()?.participants.find(p => p.userId === userId)?.name || ''; }
   retrySync(): void { const s = this.session(); if (s) this.act(this.api.retrySync(s.id)); }
   join(): void {
     const generation = this.generation; const s = this.session(); if (!s) return;

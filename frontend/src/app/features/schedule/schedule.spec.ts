@@ -26,7 +26,7 @@ describe('W06: interfaz conectada por contratos de agenda', () => {
     const s = session(); s.proposals = [s.proposal!];
     api = { get: vi.fn(() => of(s)), list: vi.fn(() => of({ items: [], truncated: false })), reminders: vi.fn(() => of({ items: [] })),
       options: vi.fn(() => of({ studentId: null, students: [], purchases: [], cohorts: [] })), respond: vi.fn(() => of({ ...s, status: 'confirmed' })), create: vi.fn(() => of(s)) };
-    auth = { currentUser: signal<{ id: number; role: string } | null>({ id: 1, role: 'student' }) };
+    auth = { currentUser: signal<{ id: number; role: string } | null>({ id: 1, role: 'student' }), hasPermission: () => false } as typeof auth;
     TestBed.configureTestingModule({ providers: [provideRouter([]),
       { provide: AuthService, useValue: auth }, { provide: ClassSessionsService, useValue: api },
       { provide: UserPreferencesService, useValue: { preferences: signal({ timeZone: 'America/Argentina/Cordoba', timeZoneConfirmedAt: '2026-10-22T13:00:00Z' }), saving: signal(false), errorMessage: signal('') } },
@@ -97,6 +97,6 @@ describe('W06: interfaz conectada por contratos de agenda', () => {
 
   it('catálogo de agenda conserva paridad EN/ES y claves propias', () => {
     expect(Object.keys(SCHEDULE_MESSAGES.en).sort()).toEqual(Object.keys(SCHEDULE_MESSAGES.es).sort());
-    expect(Object.keys(SCHEDULE_MESSAGES.en).every(key => key.startsWith('schedule.'))).toBe(true);
+    expect(Object.keys(SCHEDULE_MESSAGES.en).every(key => key.startsWith('schedule.') || key.startsWith('errors.'))).toBe(true);
   });
 });

@@ -32,7 +32,7 @@ export class ScheduleComponent {
   zoneInput = signal(''); private suggested = Intl.DateTimeFormat().resolvedOptions().timeZone;
   readonly deviceZone = this.suggested;
   studentId = signal(0); purchaseId = signal(0); cohortId = signal(0);
-  exception = false; reason = ''; requestedBy = 0; waiver = '';
+  exception = false; reason = ''; requestedBy = 0; waiver = ''; whiteboardId = 0;
   fromDate = ''; toDate = ''; conversationId = 0;
   private selectedId = 0; private editingId = 0;
   draft = signal<Draft>({ localStart: '', timeZone: '', offset: '', disambiguation: 'none', minutes: 50 });
@@ -68,6 +68,7 @@ export class ScheduleComponent {
       this.generation++; this.reads.unsubscribe(); this.reads = new Subscription(); this.write?.unsubscribe();
       this.sessions.set([]); this.selected.set(null); this.editing.set(null); this.options.set(null); this.busy.set(false);
       this.studentId.set(0); this.purchaseId.set(0); this.cohortId.set(0); this.reason = ''; this.waiver = ''; this.exception = false;
+      this.whiteboardId = 0;
       this.draft.set({ localStart: '', timeZone: '', offset: '', disambiguation: 'none', minutes: 50 });
       if (account) { this.reload(); this.loadSelection(); }
     }); });
@@ -125,6 +126,7 @@ export class ScheduleComponent {
     const choice = this.choices(); if (!choice.value || !choice.intent) return;
     const edited = this.editing();
     const body: SessionRequest = { intent: choice.intent, ...(this.exception ? { leadTimeException: true, reason: this.reason } : {}) };
+    if (!edited && this.whiteboardId) body.liveClassId = Number(this.whiteboardId);
     if (edited) {
       body.version = edited.version;
       if (this.requestedBy) body.requestedByStudentId = Number(this.requestedBy);

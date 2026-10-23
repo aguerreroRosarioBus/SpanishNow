@@ -48,14 +48,35 @@
       }
       <button type="button" class="btn btn-ghost btn-sm ms-2" (click)="decision.set(null)" [disabled]="busy()">{{ 'schedule.back' | t }}</button></fieldset>
     }
-    @if (teacher() && s.status === 'confirmed') {
+    @if (teacher() && (s.status === 'confirmed' || (canAdjust() && ['completed','teacher_no_show'].includes(s.status)))) {
       <details class="mt-3"><summary>{{ 'schedule.attendance' | t }}</summary>
-        <label>{{ 'schedule.participant' | t }}<select class="form-select" [(ngModel)]="attendanceUser"><option [ngValue]="0">{{ 'schedule.choose' | t }}</option>@for (p of s.participants; track p.userId) { @if (p.status !== 'cancelled' && p.attendance === 'pending') { <option [ngValue]="p.userId">{{ p.name }}</option> } }</select></label>
+        <p class="notice">{{ 'schedule.correctionHint' | t }}</p>
+        <label>{{ 'schedule.participant' | t }}<select class="form-select" [(ngModel)]="attendanceUser"><option [ngValue]="0">{{ 'schedule.choose' | t }}</option>@for (p of s.participants; track p.userId) { @if (p.status !== 'cancelled' && (p.attendance === 'pending' || canAdjust())) { <option [ngValue]="p.userId">{{ p.name }}</option> } }</select></label>
         <label>{{ 'schedule.attendance' | t }}<select class="form-select" [(ngModel)]="attendanceStatus">@for (v of ['attended','student_no_show','teacher_no_show','excused']; track v) { <option [value]="v">{{ ('schedule.status.' + v) | t }}</option> }</select></label>
         <label>{{ 'schedule.reason' | t }}<input class="form-control" [(ngModel)]="attendanceReason" maxlength="500" /></label>
         <button type="button" class="btn btn-secondary btn-sm" (click)="markAttendance()" [disabled]="busy() || !attendanceUser || attendanceReason.trim().length < 3">{{ 'schedule.attendance' | t }}</button>
       </details>
     }
+    @if (s.purchases?.length) { <details class="mt-3"><summary>{{ 'schedule.purchase' | t }}</summary>
+      @for (p of s.purchases; track p.id) { <p>#{{ p.id }} · {{ 'schedule.available' | t:{ count: p.unitsAvailable } }} · {{ 'schedule.validUntil' | t }} {{ i18n.formatInstant(p.expiresAt, zone()) }}</p>
+        @if (!teacher() && p.extensionEligible) {
+          <p class="notice">{{ 'schedule.extensionChoice' | t }}</p>
+          <label>{{ 'schedule.unavailableMinutes' | t }}<input type="number" class="form-control" [(ngModel)]="unavailableMinutes" min="1" max="525600" /></label>
+          <label>{{ 'schedule.reason' | t }}<input class="form-control" [(ngModel)]="adjustmentReason" maxlength="500" /></label>
+          <button class="btn btn-secondary btn-sm" (click)="requestExtension(p.id)" [disabled]="busy() || adjustmentReason.trim().length < 3">{{ 'schedule.requestExtension' | t }}</button>
+        }
+      }
+      @for (r of s.extensionRequests; track $index) { <p>{{ participantName(r.userId) }} · #{{ r.purchaseId }} · {{ 'schedule.extensionRequested' | t:{ minutes: r.unavailableMinutes } }}</p> }
+    </details> }
+    @if (canAdjust()) { <details class="mt-3"><summary>{{ 'schedule.adjustment' | t }}</summary>
+      <p class="notice">{{ 'schedule.compensationHint' | t }}</p>
+      <label>{{ 'schedule.purchase' | t }}<select class="form-select" [(ngModel)]="adjustmentPurchase"><option [ngValue]="0">{{ 'schedule.choose' | t }}</option>@for (p of s.purchases; track p.id) { <option [ngValue]="p.id">#{{ p.id }}</option> }</select></label>
+      <label>{{ 'schedule.adjustment' | t }}<select class="form-select" [(ngModel)]="adjustmentKind"><option value="waive_charge">{{ 'schedule.returnCharge' | t }}</option><option value="extend_validity">{{ 'schedule.extend' | t }}</option></select></label>
+      @if (adjustmentKind === 'extend_validity') { <label>{{ 'schedule.unavailableMinutes' | t }}<input type="number" class="form-control" [(ngModel)]="unavailableMinutes" min="1" max="525600" /></label> }
+      <label>{{ 'schedule.reason' | t }}<textarea class="form-control" [(ngModel)]="adjustmentReason" maxlength="500"></textarea></label>
+      <button class="btn btn-secondary btn-sm" (click)="adjust()" [disabled]="busy() || !adjustmentPurchase || adjustmentReason.trim().length < 3">{{ 'schedule.confirm' | t }}</button>
+    </details> }
+    @if (s.liveClassId && (teacher() || s.whiteboardJoinCode)) { <a class="btn btn-secondary btn-sm mt-3" [routerLink]="teacher() ? ['/live', s.liveClassId] : ['/live/join', s.whiteboardJoinCode]">{{ 'schedule.whiteboard' | t }}</a> }
     @if (s.status === 'confirmed') {
       <details class="sync mt-3"><summary>{{ 'schedule.sync' | t }}</summary>
         @for (ref of s.sync; track ref.provider) { <p>{{ ref.provider === 'zoom' ? 'Zoom' : 'Google Calendar' }} · {{ ('schedule.status.' + ref.status) | t }}</p> }

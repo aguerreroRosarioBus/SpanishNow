@@ -6,18 +6,21 @@ import { LocalIntent, TimeInterval } from '../time/class-time';
 export interface SessionParticipant { userId: number; name: string; status: string; acceptedVersion: number | null; attendance: string; purchaseId?: number }
 export interface SessionProposal extends TimeInterval { version: number; status: string; kind: string; expiresAt: string; timeZone: string; localStart: string; utcOffset: string; minutes: number; charge?: string; leadTimeException: boolean }
 export interface ClassSession extends TimeInterval {
-  id: number; teacherId: number; teacher: { id: number; name: string; timeZone: string }; kind: string; cohortId: number | null;
+  id: number; teacherId: number; teacher: { id: number; name: string; timeZone: string }; kind: string; cohortId: number | null; liveClassId?: number | null; whiteboardJoinCode?: string | null;
   status: string; version: number; minutes: number; timeZone: string; localStart: string; utcOffset: string;
   participants: SessionParticipant[]; proposal: SessionProposal | null; proposals: SessionProposal[];
   rules: { freeCancelHours: number; arrivalToleranceMinutes: number } | null; groupResolutionRequired: boolean; timeZoneRulesChanged: boolean;
   sync: { provider: string; status: string; syncedVersion: number }[]; serverNow: string; replacementSessionId: number | null;
+  purchases?: { id: number; expiresAt: string; unitsAvailable: number; unitsReserved: number; unitsConsumed: number; extensionEligible?: boolean }[];
+  extensionRequests?: { userId: number; purchaseId: number; unavailableMinutes: number }[];
 }
 export interface ScheduleOptions {
   studentId: number | null; students: { id: number; name: string }[];
   purchases: { id: number; cohortId: number | null; minutesPerSession: number; seatsCovered: number; status: string; expiresAt: string; available: number; beneficiaryIds: number[] }[];
   cohorts: { id: number; groupSize: number; minutesPerSession: number; formingDeadlineAt: string; memberIds: number[] }[];
+  whiteboards?: { id: number; title: string }[];
 }
-export interface SessionRequest { intent: LocalIntent; participants?: { userId: number; purchaseId: number | null }[]; cohortId?: number; version?: number; leadTimeException?: boolean; reason?: string; requestedByStudentId?: number; chargeWaivedReason?: string }
+export interface SessionRequest { intent: LocalIntent; participants?: { userId: number; purchaseId: number | null }[]; cohortId?: number; liveClassId?: number; version?: number; leadTimeException?: boolean; reason?: string; requestedByStudentId?: number; chargeWaivedReason?: string }
 @Injectable({ providedIn: 'root' })
 export class ClassSessionsService {
   private http = inject(HttpClient);
@@ -31,6 +34,8 @@ export class ClassSessionsService {
   respond(id: number, version: number, action: 'accept' | 'decline', acknowledgeCharge = false) { return this.http.post<ClassSession>(`${this.api}/${id}/proposals/${version}/${action}`, { acknowledgeCharge }); }
   cancel(id: number, body: { version: number; reason: string; keepGroup?: boolean; requestedByStudentId?: number; chargeWaivedReason?: string; acknowledgeCharge?: boolean }) { return this.http.post<ClassSession>(`${this.api}/${id}/cancel`, body); }
   attendance(id: number, body: { version: number; userId: number; attendance: string; reason: string }) { return this.http.post<ClassSession>(`${this.api}/${id}/attendance`, body); }
+  adjustment(id: number, body: { version: number; purchaseId: number; kind: string; reason: string; unavailableMinutes?: number }) { return this.http.post<ClassSession>(`${this.api}/${id}/adjustment`, body); }
+  requestExtension(id: number, body: { version: number; purchaseId: number; reason: string; unavailableMinutes: number }) { return this.http.post<ClassSession>(`${this.api}/${id}/requestExtension`, body); }
   join(id: number) { return this.http.get<{ joinUrl: string; manual: boolean }>(`${this.api}/${id}/join`); }
   retrySync(id: number) { return this.http.post<ClassSession>(`${this.api}/${id}/sync/retry`, {}); }
 }

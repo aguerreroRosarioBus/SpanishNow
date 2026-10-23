@@ -28,6 +28,7 @@
         <label>{{ 'schedule.programmingZone' | t }}<input class="form-control" name="programmingZone" [ngModel]="draft().timeZone" (ngModelChange)="patch({ timeZone: $event })" maxlength="64" required /></label>
         <label>{{ 'schedule.minutes' | t }}<input type="number" class="form-control" name="minutes" [ngModel]="draft().minutes" (ngModelChange)="patch({ minutes: +$event })" min="1" max="65535" required /></label>
       </div>
+      @if (!editing() && options()?.whiteboards?.length) { <label>{{ 'schedule.whiteboard' | t }}<select class="form-select" name="whiteboard" [(ngModel)]="whiteboardId"><option [ngValue]="0">{{ 'schedule.optional' | t }}</option>@for (b of options()?.whiteboards; track b.id) { <option [ngValue]="b.id">{{ b.title }}</option> }</select></label> }
       @if (timeError()) { <p class="text-danger" role="alert">{{ timeError() }}</p> }
       @if (choices().options.length) { <fieldset><legend class="h6">{{ 'schedule.offset' | t }}</legend>@for (o of choices().options; track o.offset; let index = $index) { <label><input type="radio" name="occurrence" (change)="choose(o.offset, index)" /> UTC{{ o.offset }} · {{ o.startsAt }}</label> }</fieldset> }
       @for (a of choices().alternatives; track a.startsAt) { <button type="button" class="btn btn-secondary btn-sm me-2" (click)="useAlternative(a.localStart, a.timeZone, a.offset)">{{ 'schedule.alternative' | t }}: {{ a.localStart }} · {{ a.timeZone }} · UTC{{ a.offset }}</button> }

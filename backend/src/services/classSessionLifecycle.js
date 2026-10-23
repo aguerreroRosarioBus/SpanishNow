@@ -216,7 +216,7 @@ module.exports = core => {
       await reminders(session, seats, rules, transaction, now);
       await syncIntents(session, transaction);
       await notify(session, seats, 'session_cancelled', session.version, transaction);
-      await audit(session, user.id, 'cancelled', { version: session.version, charge: late && !waived ? 'consumed' : 'none', userIds: targets.map(s => s.userId) }, transaction, why);
+      await audit(session, user.id, 'cancelled', { version: session.version, charge: late && !waived ? 'consumed' : 'none', teacherInitiated: !requestedByStudent, userIds: targets.map(s => s.userId) }, transaction, why);
       if (waived) await audit(session, user.id, 'charge_waived', { version: session.version }, transaction, waived);
       return { ...(await core.detail(user, session.id, transaction)), charge: late && !waived ? 'consumed' : 'none' };
     });
@@ -225,27 +225,101 @@ module.exports = core => {
   async function attendance(user, sessionId, body, { now = new Date() } = {}) {
     return locked(user, sessionId, async ({ session, seats, transaction }) => {
       teacherOnly(user, session); version(session, body?.version);
-      if (session.status !== 'confirmed') fail('proposal_stale');
+      if (!['confirmed', 'completed', 'teacher_no_show'].includes(session.status)) fail('proposal_stale');
       const current = await core.detail(user, session.id, transaction);
       if (current.groupResolutionRequired) fail('group_incomplete', { reason: 'teacher_decision_required' });
       const rules = await policy(seats, transaction);
       await purchaseLocks(seats, transaction);
       const seat = seats.find(s => s.userId === body.userId && s.status !== 'cancelled');
       if (!seat || !['attended', 'student_no_show', 'teacher_no_show', 'excused'].includes(body.attendance)) invalid(['attendance', 'userId']);
-      if (seat.attendance !== 'pending') fail('version_conflict');
+      const correction = seat.attendance !== 'pending';
+      if (correction && !require('../config/permissions').hasPermission(user, 'class_credits.adjust')) fail('forbidden', {}, 403);
       if (body.attendance === 'attended' ? session.endsAt > now : new Date(time.addElapsed(session.startsAt.toISOString(), { minutes: rules.arrivalToleranceMinutes })) > now) fail('lead_time_too_short', {}, 400);
       const why = reason(body.reason);
+      const previous = seat.attendance;
+      const related = seats.filter(s => s.purchaseId === seat.purchaseId && s.status !== 'cancelled');
+      const previouslySettled = related.every(s => s.attendance !== 'pending');
+      const previouslyBilled = related.some(s => ['attended', 'student_no_show'].includes(s.attendance));
       await seat.update({ attendance: body.attendance, attendanceMarkedAt: now, attendanceMarkedById: user.id }, { transaction });
       const samePurchase = seats.filter(s => s.purchaseId === seat.purchaseId && s.status !== 'cancelled');
       if (samePurchase.every(s => s.attendance !== 'pending')) {
         const billed = samePurchase.some(s => ['attended', 'student_no_show'].includes(s.attendance));
-        await move(session, seat.purchaseId, billed ? 'consume' : 'release', user.id, transaction, why);
+        if (!previouslySettled) await move(session, seat.purchaseId, billed ? 'consume' : 'release', user.id, transaction, why);
+        else if (previouslyBilled && !billed) await returnConsumed(session, seat.purchaseId, user.id, why, transaction, true);
+        else if (!previouslyBilled && billed) fail('attendance_charge_review_required');
       }
       const allDone = seats.filter(s => s.status !== 'cancelled').every(s => s.attendance !== 'pending');
       const allTeacherAbsent = seats.filter(s => s.status !== 'cancelled').every(s => s.attendance === 'teacher_no_show');
       await session.update({ version: session.version + 1, ...(allDone ? { status: allTeacherAbsent ? 'teacher_no_show' : 'completed' } : {}) }, { transaction });
       await reminders(session, seats, rules, transaction, now);
-      await audit(session, user.id, 'attendance', { version: session.version, userId: seat.userId, attendance: seat.attendance }, transaction, why);
+      await audit(session, user.id, correction ? 'attendance_corrected' : 'attendance', { version: session.version, userId: seat.userId, previous, attendance: seat.attendance }, transaction, why);
+      return core.detail(user, session.id, transaction);
+    });
+  }
+
+  async function returnConsumed(session, purchaseId, actorId, why, transaction, allowWaived = false) {
+    const entries = await M.ClassCreditLedger.findAll({ where: { classSessionId: session.id, purchaseId }, transaction });
+    const consumed = entries.filter(e => e.toBucket === 'consumed').reduce((n, e) => n + e.units, 0)
+      - entries.filter(e => e.fromBucket === 'consumed').reduce((n, e) => n + e.units, 0);
+    if (allowWaived && consumed === 0 && entries.some(e => e.fromBucket === 'consumed')) return;
+    if (consumed !== 1) fail('no_session_charge_to_waive');
+    await credits.apply({ purchaseId, operation: 'adjust', units: 1, adjust: { from: 'consumed', to: 'available' },
+      operationKey: `adjust:session:${session.id}:purchase:${purchaseId}:waive`, classSessionId: session.id, actorId, reason: why }, { transaction });
+  }
+
+  async function extensionEligible(session, seats, purchaseId, transaction) {
+    if (seats.some(s => s.purchaseId === purchaseId && s.attendance === 'teacher_no_show')) return true;
+    const cancellations = await M.AuditLog.findAll({ where: { entityType: 'class_sessions', entityId: session.id, action: 'session.cancelled' }, transaction });
+    return cancellations.some(a => a.actorId === session.teacherId && a.data?.teacherInitiated
+      && seats.some(s => s.purchaseId === purchaseId && a.data.userIds?.includes(s.userId)));
+  }
+
+  async function requestExtension(user, sessionId, body) {
+    return locked(user, sessionId, async ({ session, seats, transaction }) => {
+      version(session, body?.version);
+      const purchaseId = core._internal.id(body.purchaseId);
+      if (!seats.some(s => s.purchaseId === purchaseId && s.userId === user.id)) fail('forbidden', {}, 403);
+      if (!await extensionEligible(session, seats, purchaseId, transaction)) invalid(['purchaseId']);
+      if (!Number.isSafeInteger(body.unavailableMinutes) || body.unavailableMinutes < 1 || body.unavailableMinutes > 525600) invalid(['unavailableMinutes']);
+      await audit(session, user.id, 'extension_requested', { purchaseId, unavailableMinutes: body.unavailableMinutes }, transaction, reason(body.reason));
+      return core.detail(user, session.id, transaction);
+    });
+  }
+
+  // PACK-09: excepción explícita, sin editar la instantánea ni abrir acceso administrativo al chat.
+  async function adjustment(user, sessionId, body) {
+    return locked(user, sessionId, async ({ session, seats, transaction }) => {
+      teacherOnly(user, session); version(session, body?.version);
+      if (!require('../config/permissions').hasPermission(user, 'class_credits.adjust')) fail('forbidden', {}, 403);
+      const why = reason(body.reason);
+      const purchaseId = core._internal.id(body.purchaseId);
+      if (!seats.some(s => s.purchaseId === purchaseId)) fail('not_found', {}, 404);
+      await purchaseLocks(seats, transaction);
+      if (body.kind === 'waive_charge') {
+        await returnConsumed(session, purchaseId, user.id, why, transaction);
+      } else if (body.kind === 'extend_validity') {
+        if (!await extensionEligible(session, seats, purchaseId, transaction)) invalid(['kind']);
+        if (!Number.isSafeInteger(body.unavailableMinutes) || body.unavailableMinutes < 1 || body.unavailableMinutes > 525600) invalid(['unavailableMinutes']);
+        const prior = await M.AuditLog.findAll({ where: { entityType: 'class_sessions', entityId: session.id, action: 'session.extend_validity' }, transaction });
+        if (prior.some(a => a.data?.purchaseId === purchaseId)) fail('compensation_already_recorded');
+        const consent = await M.AuditLog.findAll({ where: { entityType: 'class_sessions', entityId: session.id, action: 'session.extension_requested' }, order: [['id', 'DESC']], transaction });
+        if (!seats.filter(s => s.purchaseId === purchaseId).every(s => {
+          const latest = consent.find(a => a.actorId === s.userId && a.data?.purchaseId === purchaseId);
+          return latest?.data?.unavailableMinutes === body.unavailableMinutes;
+        })) fail('compensation_acceptance_required');
+        const purchase = await M.ClassPackagePurchase.findByPk(purchaseId, { transaction });
+        if (!purchase.unitsAvailable || purchase.status === 'cancelled') fail('package_not_active');
+        const previousExpiresAt = purchase.expiresAt.toISOString();
+        const expiresAt = new Date(time.addElapsed(previousExpiresAt, { minutes: body.unavailableMinutes }));
+        await purchase.update({ expiresAt, version: purchase.version + 1,
+          ...(purchase.status === 'expired' && expiresAt > new Date() ? { status: 'active' } : {}) }, { transaction });
+        await audit(session, user.id, 'extend_validity', { purchaseId, unavailableMinutes: body.unavailableMinutes, previousExpiresAt, expiresAt: expiresAt.toISOString() }, transaction, why);
+      } else invalid(['kind']);
+      await session.update({ version: session.version + 1 }, { transaction });
+      await audit(session, user.id, 'adjusted', { version: session.version, purchaseId, kind: body.kind }, transaction, why);
+      await M.ClassSessionProposal.update({ status: 'withdrawn', resolvedAt: new Date() }, { where: { sessionId: session.id, status: 'pending' }, transaction });
+      await reminders(session, seats, await policy(seats, transaction), transaction, new Date());
+      await notify(session, seats, 'session_adjusted', session.version, transaction);
       return core.detail(user, session.id, transaction);
     });
   }
@@ -267,5 +341,5 @@ module.exports = core => {
         timeZone: recipient.timeZone, minutes: job.payload.minutes }, transaction);
     });
   });
-  return { accept, decline, reschedule, cancel, attendance };
+  return { accept, decline, reschedule, cancel, attendance, adjustment, requestExtension };
 };

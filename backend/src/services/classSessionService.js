@@ -98,13 +98,23 @@ async function detail(user, sessionId, transaction) {
       disambiguation: session.disambiguation, minutes: session.minutes });
     timeZoneRulesChanged = expected.startsAt !== session.startsAt.toISOString() || expected.endsAt !== session.endsAt.toISOString();
   } catch { timeZoneRulesChanged = true; }
+  const visiblePurchaseIds = uniqueIds(seats.filter(s => s.purchaseId && (user?.id === session.teacherId || user?.id === s.userId)).map(s => s.purchaseId));
+  const visiblePurchases = await M.ClassPackagePurchase.findAll({ where: { id: visiblePurchaseIds }, attributes: ['id', 'expiresAt', 'unitsAvailable', 'unitsReserved', 'unitsConsumed'], transaction });
+  const extensionRequests = await M.AuditLog.findAll({ where: { entityType: 'class_sessions', entityId: session.id, action: 'session.extension_requested' }, order: [['id', 'DESC']], transaction });
+  const eligible = purchaseId => seats.some(s => s.purchaseId === purchaseId && s.attendance === 'teacher_no_show')
+    || decisions.some(a => a.action === 'session.cancelled' && a.data?.teacherInitiated && seats.some(s => s.purchaseId === purchaseId && a.data.userIds?.includes(s.userId)));
+  const board = session.liveClassId && session.status === 'confirmed' && seats.some(s => s.userId === user?.id && s.status !== 'cancelled')
+    ? await M.LiveClass.findOne({ where: { id: session.liveClassId, teacherId: session.teacherId, courseId: null }, attributes: ['joinCode'], transaction }) : null;
   return {
     ...session.toJSON(), teacher: person(session.teacherId),
     participants: seats.map(p => ({ userId: p.userId, name: person(p.userId)?.name, status: p.status, acceptedVersion: p.acceptedVersion,
       attendance: p.attendance, purchaseId: user?.id === session.teacherId || user?.id === p.userId ? p.purchaseId : undefined })),
     proposal: currentProposal ? { ...currentProposal.toJSON(), charge: proposalTerms?.late ? 'consumed_and_new_credit' : 'none' } : null,
     replacementSessionId: replacement?.data?.replacementSessionId || null,
-    proposals, sync: refs, rules: policy?.rules || null, groupResolutionRequired, timeZoneRulesChanged, serverNow: new Date().toISOString()
+    proposals, purchases: visiblePurchases.map(p => ({ ...p.toJSON(), extensionEligible: eligible(p.id) })),
+    extensionRequests: extensionRequests.filter(a => visiblePurchaseIds.includes(a.data?.purchaseId) && (user?.id === session.teacherId || user?.id === a.actorId))
+      .map(a => ({ userId: a.actorId, purchaseId: a.data.purchaseId, unavailableMinutes: a.data.unavailableMinutes })), whiteboardJoinCode: board?.joinCode || null,
+    sync: refs, rules: policy?.rules || null, groupResolutionRequired, timeZoneRulesChanged, serverNow: new Date().toISOString()
   };
 }
 
@@ -248,7 +258,7 @@ async function create(user, body, key, { now = new Date() } = {}) {
           { conversationId: conversation.id, userId: seat.userId, role: 'student' }], { transaction });
       }
     }
-    if (body.liveClassId && !await M.LiveClass.count({ where: { id: id(body.liveClassId), teacherId: user.id }, transaction })) fail('not_found', {}, 404);
+    if (body.liveClassId && !await M.LiveClass.count({ where: { id: id(body.liveClassId), teacherId: user.id, courseId: null }, transaction })) fail('not_found', {}, 404);
     const session = await M.ClassSession.create({ ...desired, teacherId: user.id, kind: body.cohortId ? 'group' : 'individual',
       cohortId: body.cohortId || null, liveClassId: body.liveClassId || null, idempotencyKey: key }, { transaction });
     const models = await M.ClassSessionParticipant.bulkCreate(seats.map(p => ({ ...p, sessionId: session.id })), { transaction });
@@ -282,7 +292,8 @@ async function options(user, query = {}) {
   const members = await M.ClassCohortMember.findAll({ where: { cohortId: cohorts.map(c => c.id), status: 'accepted' } });
   const students = await M.User.findAll({ where: { id: uniqueIds([...conversations.map(c => c.studentId), ...members.map(m => m.userId)]), suspendedAt: null }, attributes: ['id', 'name'] });
   const cohortTerms = await M.ClassPackageTemplateVersion.findAll({ where: { id: cohorts.map(c => c.templateVersionId) }, attributes: ['id', 'minutesPerSession'] });
-  return { studentId: conversation?.studentId || null, students, purchases: purchases.map(p => ({ id: p.id, cohortId: p.cohortId,
+  const whiteboards = await M.LiveClass.findAll({ where: { teacherId: user.id, courseId: null, status: ['draft', 'live'] }, attributes: ['id', 'title'], limit: 100 });
+  return { studentId: conversation?.studentId || null, students, whiteboards, purchases: purchases.map(p => ({ id: p.id, cohortId: p.cohortId,
     minutesPerSession: p.minutesPerSession, seatsCovered: p.seatsCovered, status: p.status, expiresAt: p.expiresAt,
     available: p.unitsAvailable, beneficiaryIds: beneficiaries.filter(b => b.purchaseId === p.id).map(b => b.userId) })),
     cohorts: cohorts.map(c => ({ id: c.id, groupSize: c.groupSize, minutesPerSession: cohortTerms.find(t => t.id === c.templateVersionId)?.minutesPerSession,

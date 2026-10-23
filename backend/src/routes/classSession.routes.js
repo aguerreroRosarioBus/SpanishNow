@@ -20,5 +20,5 @@ router.post('/:id/proposals', requireFeature('class_scheduling'), handle(async (
 for (const action of ['accept', 'decline']) router.post(`/:id/proposals/:version/${action}`, requireFeature('class_scheduling'), handle(async (req, res) => {
   res.json(await sessions[action](req.user, req.params.id, Number(req.params.version), req.body));
 }));
-for (const action of ['cancel', 'attendance']) router.post(`/:id/${action}`, handle(async (req, res) => res.json(await sessions[action](req.user, req.params.id, req.body))));
+for (const action of ['cancel', 'attendance', 'adjustment', 'requestExtension']) router.post(`/:id/${action}`, handle(async (req, res) => res.json(await sessions[action](req.user, req.params.id, req.body))));
 module.exports = router;

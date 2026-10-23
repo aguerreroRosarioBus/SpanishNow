@@ -1,5 +1,9 @@
 import { TranslationCatalog } from '../../core/i18n/i18n.types';
 const pairs: Record<string, [string, string]> = {
+  'errors.attendance_charge_review_required': ['This correction would add a charge. Request a reviewed adjustment before changing it.', 'Esta corrección agregaría un cargo. Solicitá un ajuste revisado antes de cambiarla.'],
+  'errors.no_session_charge_to_waive': ['This class has no outstanding charge to return.', 'Esta clase no tiene un cargo pendiente de devolución.'],
+  'errors.compensation_already_recorded': ['Validity compensation for this class and purchase is already recorded.', 'La compensación de vigencia de esta clase y compra ya está registrada.'],
+  'errors.compensation_acceptance_required': ['Each affected participant must request this exact extension first. A refund remains an option.', 'Cada participante afectado debe solicitar primero esta extensión exacta. La devolución sigue siendo una opción.'],
   title: ['Class schedule', 'Agenda de clases'], nav: ['Schedule', 'Agenda'], new: ['Propose a class', 'Proponer una clase'],
   empty: ['No classes in this period.', 'No hay clases en este período.'], loading: ['Loading schedule…', 'Cargando agenda…'], retry: ['Refresh', 'Actualizar'],
   zone: ['Your confirmed IANA time zone', 'Tu zona IANA confirmada'], confirmZone: ['Confirm time zone', 'Confirmar zona'], zoneHint: ['Check this time zone before scheduling or accepting a class. A device change never moves a class.', 'Revisá esta zona antes de programar o aceptar una clase. Cambiar de dispositivo nunca mueve una clase.'],
@@ -27,6 +31,13 @@ const pairs: Record<string, [string, string]> = {
   'status.active': ['Active', 'Activo'], 'status.paused': ['Paused', 'Pausado'], 'status.exhausted': ['No credits left', 'Sin saldo'],
   replaced: ['This class was replaced by a new confirmed class.', 'Esta clase fue reemplazada por una nueva clase confirmada.'],
   open: ['Open schedule', 'Abrir agenda'], attendance: ['Record attendance', 'Registrar asistencia'], participant: ['Participant', 'Participante'],
+  validUntil: ['Valid until', 'Válido hasta'], optional: ['Optional', 'Opcional'],
+  adjustment: ['Audited correction', 'Corrección auditada'], returnCharge: ['Return a charged class', 'Devolver una clase cobrada'], extend: ['Extend validity for teacher unavailability', 'Extender vigencia por indisponibilidad docente'],
+  unavailableMinutes: ['Actual unavailability in minutes', 'Indisponibilidad real en minutos'],
+  extensionChoice: ['You may request an agreed extension for the actual teacher unavailability, or request a refund of unused credits. An extension is optional and must be approved with an audit record.', 'Podés solicitar una extensión acordada por la indisponibilidad real del docente, o pedir devolución del saldo no utilizado. La extensión es opcional y requiere aprobación auditada.'],
+  requestExtension: ['Request and accept this extension', 'Solicitar y aceptar esta extensión'], extensionRequested: ['Requested extension: {minutes} minutes', 'Extensión solicitada: {minutes} minutos'],
+  correctionHint: ['A settled attendance correction needs credit adjustment permission and a reason. Returning a charge is possible; a new charge needs review.', 'Corregir asistencia liquidada exige permiso de ajuste y motivo. Se puede devolver un cargo; un cargo nuevo requiere revisión.'],
+  compensationHint: ['If a teacher cancellation or absence prevents use before expiry, record the actual unavailability and extend validity, or arrange a refund of unused credits. Each correction keeps its reason and original purchase history.', 'Si una cancelación o ausencia docente impide usar el paquete antes de vencer, registrá la indisponibilidad real y extendé la vigencia, o gestioná la devolución del saldo no utilizado. Cada corrección conserva el motivo y la compra original.'],
   groupDecision: ['A participant cancelled. The teacher must keep the agreed price with fewer participants or cancel and return the remaining reservations.', 'Un participante canceló. El docente debe aceptar dictar con menos personas al precio acordado o cancelar y devolver las reservas restantes.'],
   keepGroup: ['Teach with remaining participants at the agreed price', 'Dictar con quienes quedan al precio acordado'],
   sync: ['Calendar / meeting', 'Calendario / reunión'], syncPending: ['External integrations are not ready. The internal class and credits remain recorded.', 'Las integraciones externas no están listas. La clase interna y el saldo se conservan.'],
@@ -39,10 +50,11 @@ const pairs: Record<string, [string, string]> = {
   'status.expired': ['Expired', 'Vencida'], 'status.declined': ['Declined', 'Rechazada'], 'status.teacher_no_show': ['Teacher absent', 'Ausencia docente'], 'status.student_no_show': ['Student absent', 'Ausencia del alumno'],
   'status.invited': ['Invited', 'Invitado'], 'status.accepted': ['Accepted', 'Aceptado'], 'status.pending': ['Pending', 'Pendiente'],
   'status.attended': ['Attended', 'Asistió'], 'status.excused': ['Excused', 'Dispensado'], 'status.ready': ['Ready', 'Listo'], 'status.needs_attention': ['Needs attention', 'Requiere atención'],
+  'event.session_adjusted': ['Class credits or validity were corrected. Review the schedule.', 'Se corrigió saldo o vigencia. Revisá la agenda.'],
   'event.session_proposed': ['A class time was proposed.', 'Se propuso un horario de clase.'], 'event.session_confirmed': ['The class was confirmed.', 'La clase fue confirmada.'],
   'event.session_rescheduled': ['The new class time was accepted.', 'Se aceptó el nuevo horario de clase.'], 'event.session_declined': ['The time proposal was declined.', 'Se rechazó la propuesta de horario.'],
   'event.session_expired': ['The time proposal expired.', 'Venció la propuesta de horario.'], 'event.session_cancelled': ['A class or seat was cancelled. Review the current schedule.', 'Se canceló una clase o plaza. Revisá la agenda vigente.']
 };
 const en: Record<string, string> = {}, es: Record<string, string> = {};
-for (const [key, [english, spanish]] of Object.entries(pairs)) { en[`schedule.${key}`] = english; es[`schedule.${key}`] = spanish; }
+for (const [key, [english, spanish]] of Object.entries(pairs)) { const name = key.startsWith('errors.') ? key : `schedule.${key}`; en[name] = english; es[name] = spanish; }
 export const SCHEDULE_MESSAGES: { en: TranslationCatalog; es: TranslationCatalog } = { en, es };

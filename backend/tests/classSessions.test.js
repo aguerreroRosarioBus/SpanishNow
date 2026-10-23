@@ -289,3 +289,43 @@ test('la API exige reconocimiento de cargo tardío antes de consumir crédito', 
   await expect(sessions.cancel(c.students[0], s.id, { version: s.version, reason: 'Cancelar tarde' }, { now })).rejects.toMatchObject({ code: 'validation_failed' });
   expect(await credits.balance(c.purchases[0].id)).toMatchObject({ reserved: 1, consumed: 0 });
 });
+
+test('PACK-20: corregir asistencia exige capacidad, devuelve un consumo y conserva auditoría', async () => {
+  const c = await chain({ units: 1 }); let s = await confirmed(c);
+  const now = new Date(s.endsAt.getTime() + 1);
+  s = await sessions.attendance(c.teacher, s.id, { version: s.version, userId: c.students[0].id, attendance: 'student_no_show', reason: 'Marcado por error' }, { now });
+  const correction = { version: s.version, userId: c.students[0].id, attendance: 'teacher_no_show', reason: 'Fue una falla del docente' };
+  await expect(sessions.attendance(c.teacher, s.id, correction, { now })).rejects.toMatchObject({ code: 'forbidden' });
+  await c.teacher.update({ permissions: ['class_credits.adjust'] });
+  s = await sessions.attendance(c.teacher, s.id, correction, { now });
+  expect(s.status).toBe('teacher_no_show');
+  expect(await credits.balance(c.purchases[0].id)).toMatchObject({ consumed: 0, available: 1, reserved: 0 });
+  await expect(sessions.attendance(c.teacher, s.id, correction, { now })).rejects.toMatchObject({ code: 'version_conflict' });
+  await expect(sessions.attendance(c.teacher, s.id, { ...correction, version: s.version, attendance: 'attended' }, { now })).rejects.toMatchObject({ code: 'attendance_charge_review_required' });
+  expect(await M.AuditLog.count({ where: { entityId: s.id, action: 'session.attendance_corrected' } })).toBe(1);
+});
+
+test('PACK-09: dispensa posterior y compensación de vigencia son explícitas, únicas y propias', async () => {
+  const c = await chain(); let s = await confirmed(c);
+  s = await sessions.cancel(c.students[0], s.id, { version: s.version, reason: 'Cancelación tardía', acknowledgeCharge: true }, { now: new Date(time.addElapsed(s.startsAt.toISOString(), { hours: -1 })) });
+  await c.teacher.update({ permissions: ['class_credits.adjust'] });
+  const body = { version: s.version, kind: 'waive_charge', purchaseId: c.purchases[0].id, reason: 'Dispensa posterior por fuerza mayor' };
+  s = await sessions.adjustment(c.teacher, s.id, body);
+  expect(await credits.balance(c.purchases[0].id)).toMatchObject({ consumed: 0, available: 4 });
+  await expect(sessions.adjustment(c.teacher, s.id, { ...body, version: s.version })).rejects.toMatchObject({ code: 'no_session_charge_to_waive' });
+  const d = await chain(); let cancelled = await confirmed(d);
+  await d.purchases[0].reload();
+  const oldExpiry = d.purchases[0].expiresAt.toISOString(), snapshot = d.purchases[0].snapshot;
+  cancelled = await sessions.cancel(d.teacher, cancelled.id, { version: cancelled.version, reason: 'Indisponibilidad del docente' });
+  const extension = { version: cancelled.version, kind: 'extend_validity', purchaseId: d.purchases[0].id, unavailableMinutes: 180, reason: 'Tres horas reales sin disponibilidad que impiden utilizar el paquete' };
+  await expect(sessions.adjustment(d.teacher, cancelled.id, extension)).rejects.toMatchObject({ code: 'forbidden' });
+  await d.teacher.update({ permissions: ['class_credits.adjust'] });
+  await expect(sessions.adjustment(d.teacher, cancelled.id, extension)).rejects.toMatchObject({ code: 'compensation_acceptance_required' });
+  await sessions.requestExtension(d.students[0], cancelled.id, { ...extension, reason: 'Acepto extender tres horas en lugar de pedir devolución' });
+  cancelled = await sessions.adjustment(d.teacher, cancelled.id, extension);
+  expect(cancelled.purchases[0].expiresAt.toISOString()).toBe(time.addElapsed(oldExpiry, { minutes: 180 }));
+  await expect(sessions.adjustment(d.teacher, cancelled.id, { ...extension, version: cancelled.version })).rejects.toMatchObject({ code: 'compensation_already_recorded' });
+  await d.purchases[0].reload(); expect(d.purchases[0].snapshot).toEqual(snapshot);
+  expect((await sessions.detail(d.students[0], cancelled.id)).purchases).toHaveLength(1);
+  expect(await M.AuditLog.count({ where: { entityId: cancelled.id, action: 'session.extend_validity' } })).toBe(1);
+});
