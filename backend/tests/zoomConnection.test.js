@@ -97,3 +97,40 @@ test('P2: clave rotada devuelve estado needs_attention sin 500 y código traduci
     expect((await c.rowFor(teacher.id)).refreshLockedUntil).toBeNull();
   } finally { process.env.GOOGLE_TOKEN_ENCRYPTION_KEY = previousKey; }
 });
+
+test('P3: guarda refresh rotado con lease propio aunque connect cambie la versión', async () => {
+  const { teacher } = await chain(); await connected(teacher);
+  const row = await c.rowFor(teacher.id); const original = cipher.decrypt(row.credentials);
+  await row.update({ tokenExpiresAt: new Date(0) }); const refresh = adapter.refresh;
+  const spy = jest.spyOn(adapter, 'refresh').mockImplementationOnce(async tokens => {
+    const next = await refresh(tokens);
+    await c.connect(teacher); // cambia la versión, mantiene el mismo grant y lease
+    return next;
+  });
+  try {
+    const { tokens } = await c.credentials(teacher.id);
+    expect(tokens.rotation).toBe(1); expect(tokens.refreshToken).not.toBe(original.refreshToken);
+    const current = await c.rowFor(teacher.id);
+    expect(cipher.decrypt(current.credentials).refreshToken).toBe(tokens.refreshToken);
+    expect(current.refreshLockedUntil).toBeNull(); expect(current.oauthVerifier).not.toBeNull();
+  } finally { spy.mockRestore(); }
+});
+test('P3: refresh tardío no resucita un grant desconectado o reemplazado', async () => {
+  const { teacher } = await chain(); await connected(teacher);
+  await (await c.rowFor(teacher.id)).update({ tokenExpiresAt: new Date(0) }); const refresh = adapter.refresh;
+  const spy = jest.spyOn(adapter, 'refresh').mockImplementationOnce(async tokens => {
+    const next = await refresh(tokens); await c.disconnect(teacher); return next;
+  });
+  try { await expect(c.credentials(teacher.id)).rejects.toMatchObject({ code: 'integration_not_connected' }); }
+  finally { spy.mockRestore(); }
+  expect((await c.rowFor(teacher.id)).credentials).toBeNull();
+  await connected(teacher); await (await c.rowFor(teacher.id)).update({ tokenExpiresAt: new Date(0) });
+  let replacement;
+  const newer = jest.spyOn(adapter, 'refresh').mockImplementationOnce(async tokens => {
+    const next = await refresh(tokens); await connected(teacher);
+    replacement = (await c.rowFor(teacher.id)).credentials; return next;
+  });
+  try { await expect(c.credentials(teacher.id)).rejects.toMatchObject({ code: 'integration_not_connected' }); }
+  finally { newer.mockRestore(); }
+  expect((await c.rowFor(teacher.id)).credentials).toBe(replacement);
+});

@@ -83,12 +83,14 @@ async function credentials(userId) {
   try {
     const next = await adapter.refresh(tokens);
     const [saved] = await M.ExternalConnection.update({ credentials: cipher.encrypt(next), tokenExpiresAt: new Date(next.expiresAt),
-      refreshLockedUntil: null, version: row.version + 1, lastError: null }, { where: { id: row.id, version: row.version, status: 'connected', refreshLockedUntil: lease } });
+      refreshLockedUntil: null, version: db.literal('version + 1'), lastError: null },
+    // La versión puede cambiar por begin/connect. Solo el lease y el grant original identifican a quien rotó.
+    { where: { id: row.id, credentials: row.credentials, status: 'connected', refreshLockedUntil: lease } });
     if (!saved) fail('integration_not_connected');
     row = await rowFor(userId); return { row, tokens: next };
   } catch (error) {
     await M.ExternalConnection.update({ refreshLockedUntil: null, ...(error.code === 'zoom_revoked' ? { status: 'revoked', credentials: null, lastError: 'zoom_revoked' } : {}) },
-      { where: { id: row.id, version: row.version, refreshLockedUntil: lease } });
+      { where: { id: row.id, credentials: row.credentials, status: 'connected', refreshLockedUntil: lease } });
     throw error;
   }
 }
