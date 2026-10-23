@@ -6,6 +6,7 @@ import { ACTIVITIES_ES } from './activities';
 import { COMMENTS_ES } from './comments';
 import { TEACHER_COMMERCE_ES } from './teacher-commerce';
 import { EN } from './en';
+import { TEACHER_PROMOTIONS_ES } from './teacher-promotions';
 import { TranslationMessage } from '../i18n.types';
 
 export const ES = {
@@ -16,6 +17,7 @@ export const ES = {
   ...ACTIVITIES_ES,
   ...COMMENTS_ES,
   ...TEACHER_COMMERCE_ES,
+  ...TEACHER_PROMOTIONS_ES,
   'common.language': 'Idioma',
   'preferences.loadError': 'No pudimos cargar las preferencias de tu cuenta. Intenta de nuevo.',
   'preferences.saveError': 'No pudimos guardar las preferencias en tu cuenta. Intenta de nuevo.',

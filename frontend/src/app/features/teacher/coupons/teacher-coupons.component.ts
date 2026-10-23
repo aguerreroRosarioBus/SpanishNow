@@ -1,5 +1,4 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CouponService } from '../../../core/services/coupon.service';
 import { CourseService } from '../../../core/services/course.service';
@@ -9,7 +8,8 @@ import { Coupon, CouponInput } from '../../../core/models/sales.model';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { applyDiscount, normalizeCouponCode } from '../../../shared/utils/coupon-price';
-import { formatPrice } from '../../../shared/utils/money';
+import { I18nService } from '../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 
 type DiscountKind = 'percent' | 'amount';
 
@@ -17,7 +17,7 @@ type DiscountKind = 'percent' | 'amount';
 @Component({
   selector: 'app-teacher-coupons',
   standalone: true,
-  imports: [DatePipe, ReactiveFormsModule, IconComponent, ConfirmDialogComponent],
+  imports: [ReactiveFormsModule, IconComponent, ConfirmDialogComponent, TranslatePipe],
   templateUrl: './teacher-coupons.component.html',
   styleUrl: './teacher-coupons.component.scss'
 })
@@ -25,6 +25,7 @@ export class TeacherCouponsComponent implements OnInit {
   private service = inject(CouponService);
   private courseService = inject(CourseService);
   private toast = inject(ToastService);
+  private i18n = inject(I18nService);
 
   readonly currencies = [
     { code: 'usd', label: 'USD' },
@@ -35,13 +36,15 @@ export class TeacherCouponsComponent implements OnInit {
   coupons = signal<Coupon[]>([]);
   courses = signal<Course[]>([]);
   isLoading = signal(true);
-  errorMessage = signal('');
+  private loadFailed = signal(false);
+  errorMessage = computed(() => this.loadFailed() ? this.i18n.t('teacherPromotions.couponsError') : '');
 
   // Formulario (modal) crear/editar
   showForm = signal(false);
   editing = signal<Coupon | null>(null);
   isSaving = signal(false);
-  formError = signal('');
+  private formFailure = signal<{key: string; error?: unknown} | null>(null);
+  formError = computed(() => { const f = this.formFailure(); return f ? this.i18n.errorMessage(f.error, f.key) : ''; });
   kind = signal<DiscountKind>('percent');
   /** Con usos, el código y el descuento no se pueden cambiar. */
   locked = computed(() => (this.editing()?.redemptions ?? 0) > 0);
@@ -68,8 +71,11 @@ export class TeacherCouponsComponent implements OnInit {
     if (!course || !course.price) return '';
     const rule = this.currentRule();
     const result = rule ? applyDiscount(course.price, course.currency || 'usd', rule) : null;
-    if (!result) return rule?.amountOff != null ? 'La moneda del cupón no coincide con la del curso: no se aplicaría.' : '';
-    return `Ejemplo: «${course.title}» pasa de ${formatPrice(result.originalAmount, course.currency, 'es')} a ${formatPrice(result.amount, course.currency, 'es')}.`;
+    if (!result) return rule?.amountOff != null ? this.i18n.t('teacherPromotions.currencyMismatch') : '';
+    const currency = course.currency || 'usd';
+    return this.i18n.t('teacherPromotions.example', {
+      title: course.title, original: this.i18n.formatMoney(result.originalAmount, currency), final: this.i18n.formatMoney(result.amount, currency)
+    });
   });
   private formVersion = signal(0);
   private formCourseId = computed(() => { this.formVersion(); return this.form.controls.courseId.value; });
@@ -91,23 +97,28 @@ export class TeacherCouponsComponent implements OnInit {
 
   load(): void {
     this.isLoading.set(true);
-    this.errorMessage.set('');
+    this.loadFailed.set(false);
     this.service.list().subscribe({
       next: list => { this.coupons.set(list); this.isLoading.set(false); },
-      error: () => { this.errorMessage.set('No se pudieron cargar los cupones.'); this.isLoading.set(false); }
+      error: () => { this.loadFailed.set(true); this.isLoading.set(false); }
     });
   }
 
   // ===== Presentación =====
 
   discountLabel(c: Coupon): string {
-    return c.percentOff != null ? `${c.percentOff} %` : formatPrice(c.amountOff, c.currency, 'es');
+    return c.percentOff != null ? this.i18n.formatNumber(c.percentOff / 100, {style: 'percent'}) : this.i18n.formatMoney(c.amountOff ?? 0, c.currency || 'usd');
   }
   courseLabel(c: Coupon): string {
-    if (c.courseId == null) return 'Todos los cursos';
-    return c.course?.title ?? this.courses().find(x => x.id === c.courseId)?.title ?? `Curso ${c.courseId}`;
+    if (c.courseId == null) return this.i18n.t('teacherPromotions.allCourses');
+    return c.course?.title ?? this.courses().find(x => x.id === c.courseId)?.title ?? this.i18n.t('teacherPromotions.courseNumber', {id: c.courseId});
   }
-  usageLabel(c: Coupon): string { return c.maxRedemptions != null ? `${c.redemptions}/${c.maxRedemptions}` : `${c.redemptions}`; }
+  usageLabel(c: Coupon): string {
+    const used = this.i18n.formatNumber(c.redemptions);
+    return c.maxRedemptions != null ? `${used}/${this.i18n.formatNumber(c.maxRedemptions)}` : used;
+  }
+  /** El vencimiento se elige como día de calendario (se guarda a 00:00 UTC): se muestra en UTC para no correrlo de día. */
+  date(value: string): string { return this.i18n.formatInstant(value, 'UTC', {dateStyle: 'medium'}); }
   isExpired(c: Coupon): boolean { return !!c.expiresAt && new Date(c.expiresAt).getTime() < Date.now(); }
   coursesWithSlug = computed(() => this.courses().filter(c => !!c.slug));
 
@@ -118,7 +129,7 @@ export class TeacherCouponsComponent implements OnInit {
     this.kind.set('percent');
     this.form.reset({ code: '', percentOff: 10, amountOff: null, currency: 'usd', courseId: null, maxRedemptions: null, expiresAt: '', active: true });
     this.enableAll();
-    this.formError.set('');
+    this.formFailure.set(null);
     this.showForm.set(true);
   }
 
@@ -139,7 +150,7 @@ export class TeacherCouponsComponent implements OnInit {
     if (c.redemptions > 0) {
       for (const name of ['code', 'percentOff', 'amountOff', 'currency', 'courseId'] as const) this.form.controls[name].disable();
     }
-    this.formError.set('');
+    this.formFailure.set(null);
     this.showForm.set(true);
   }
 
@@ -155,27 +166,27 @@ export class TeacherCouponsComponent implements OnInit {
     if (normalized !== control.value) control.setValue(normalized);
   }
 
-  /** Valida lo mismo que la API antes de enviar. Devuelve el mensaje de error o '' si está bien. */
+  /** Valida lo mismo que la API antes de enviar. Devuelve la clave del error o '' si está bien. */
   private validate(): string {
     const v = this.form.getRawValue();
-    if (!this.locked() && !/^[A-Z0-9-]{1,40}$/.test(v.code ?? '')) return 'El código debe tener entre 1 y 40 caracteres: letras, números y guiones.';
+    if (!this.locked() && !/^[A-Z0-9-]{1,40}$/.test(v.code ?? '')) return 'teacherPromotions.codeError';
     if (!this.locked()) {
       if (this.kind() === 'percent') {
         const p = Number(v.percentOff);
-        if (!Number.isInteger(p) || p < 1 || p > 100) return 'El porcentaje debe ser un número entero entre 1 y 100.';
+        if (!Number.isInteger(p) || p < 1 || p > 100) return 'teacherPromotions.percentError';
       } else {
         const a = Number(v.amountOff);
-        if (!(a > 0)) return 'El monto de descuento debe ser mayor que 0.';
-        if (!v.currency) return 'Elige la moneda del descuento.';
+        if (!(a > 0)) return 'teacherPromotions.amountError';
+        if (!v.currency) return 'teacherPromotions.selectCurrency';
       }
     }
-    if (v.maxRedemptions != null && (!Number.isInteger(Number(v.maxRedemptions)) || Number(v.maxRedemptions) < 1)) return 'El máximo de usos debe ser un entero mayor que 0 (o dejalo vacío).';
+    if (v.maxRedemptions != null && (!Number.isInteger(Number(v.maxRedemptions)) || Number(v.maxRedemptions) < 1)) return 'teacherPromotions.maxError';
     return '';
   }
 
   save(): void {
     const error = this.validate();
-    if (error) { this.formError.set(error); return; }
+    if (error) { this.formFailure.set({key: error}); return; }
     const v = this.form.getRawValue();
     const maxRedemptions = v.maxRedemptions != null && `${v.maxRedemptions}` !== '' ? Number(v.maxRedemptions) : null;
     const expiresAt = v.expiresAt ? v.expiresAt : null;
@@ -194,18 +205,18 @@ export class TeacherCouponsComponent implements OnInit {
         };
 
     this.isSaving.set(true);
-    this.formError.set('');
+    this.formFailure.set(null);
     const request = editing ? this.service.update(editing.id, input) : this.service.create(input as CouponInput);
     request.subscribe({
       next: () => {
         this.isSaving.set(false);
         this.showForm.set(false);
-        this.toast.success(editing ? 'Cupón actualizado' : 'Cupón creado');
+        this.toast.success(this.i18n.t(editing ? 'teacherPromotions.couponUpdated' : 'teacherPromotions.couponCreated'));
         this.load();
       },
       error: err => {
         this.isSaving.set(false);
-        this.formError.set(err?.error?.error || 'No se pudo guardar el cupón.');
+        this.formFailure.set({key: 'teacherPromotions.couponSaveError', error: err});
       }
     });
   }
@@ -214,8 +225,8 @@ export class TeacherCouponsComponent implements OnInit {
 
   toggleActive(c: Coupon): void {
     this.service.update(c.id, { active: !c.active }).subscribe({
-      next: () => { this.toast.success(c.active ? 'Cupón desactivado' : 'Cupón activado'); this.load(); },
-      error: err => this.toast.error(err?.error?.error || 'No se pudo cambiar el estado del cupón')
+      next: () => { this.toast.success(this.i18n.t(c.active ? 'teacherPromotions.couponDeactivated' : 'teacherPromotions.couponActivated')); this.load(); },
+      error: err => this.toast.error(this.i18n.errorMessage(err, 'teacherPromotions.couponStatusError'))
     });
   }
 
@@ -227,11 +238,11 @@ export class TeacherCouponsComponent implements OnInit {
     this.toDelete.set(null);
     if (!c) return;
     this.service.remove(c.id).subscribe({
-      next: () => { this.toast.success('Cupón eliminado'); this.load(); },
+      next: () => { this.toast.success(this.i18n.t('teacherPromotions.couponDeleted')); this.load(); },
       error: err => {
         // 409: ya tiene usos; el servidor lo desactiva en su lugar
-        if (err?.status === 409) { this.toast.warning(err?.error?.error || 'El cupón ya tiene usos: se desactivó en lugar de eliminarse.'); this.load(); }
-        else this.toast.error(err?.error?.error || 'No se pudo eliminar el cupón');
+        if (err?.status === 409) { this.toast.warning(this.i18n.t('teacherPromotions.couponUsed')); this.load(); }
+        else this.toast.error(this.i18n.errorMessage(err, 'teacherPromotions.couponDeleteError'));
       }
     });
   }
@@ -248,12 +259,12 @@ export class TeacherCouponsComponent implements OnInit {
 
   async copyLink(c: Coupon): Promise<void> {
     const link = this.saleLink(c);
-    if (!link) { this.toast.warning('Elige un curso con página de venta para armar el link.'); return; }
+    if (!link) { this.toast.warning(this.i18n.t('teacherPromotions.chooseLinkCourse')); return; }
     try {
       await navigator.clipboard.writeText(link);
-      this.toast.success('Link copiado');
+      this.toast.success(this.i18n.t('teacherPromotions.linkCopied'));
     } catch {
-      window.prompt('Copia este link:', link);
+      window.prompt(this.i18n.t('teacherPromotions.copyPrompt'), link);
     }
   }
 }
