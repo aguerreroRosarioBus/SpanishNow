@@ -199,3 +199,34 @@ test('P2: webhook saltea un grant ilegible y procesa revocación de otro docente
   expect((await connection.rowFor(good.teacher.id)).status).toBe('revoked');
   expect((await refFor(good.session.id)).lastError).toBe('zoom_revoked');
 });
+
+test.each(['refresh', 'connect', 'complete'])('P2: %s concurrente conserva la reunión válida en ready', async operation => {
+  const c = await fixture(); const create = adapter.create;
+  jest.spyOn(adapter, 'create').mockImplementationOnce(async (...args) => {
+    const meeting = await create(...args);
+    if (operation === 'refresh') {
+      await (await connection.rowFor(c.teacher.id)).update({ tokenExpiresAt: new Date(0) });
+      await connection.credentials(c.teacher.id);
+    } else if (operation === 'connect') await connection.connect(c.teacher);
+    else await connected(c.teacher);
+    return meeting;
+  });
+  await sync(c.session.id);
+  expect((await refFor(c.session.id)).status).toBe('ready');
+  expect(await zoom.join(c.students[0], c.session.id)).toMatchObject({ manual: false, joinUrl: expect.stringContaining('/j/') });
+});
+test('P2: cambio de cuenta durante create reencola y reconcilia sin exponer la reunión anterior', async () => {
+  const c = await fixture(); const create = adapter.create;
+  jest.spyOn(adapter, 'create').mockImplementationOnce(async (...args) => {
+    const meeting = await create(...args); const row = await connection.rowFor(c.teacher.id);
+    const tokens = cipher.decrypt(row.credentials); tokens.accountId = 'otra-cuenta-fake';
+    await row.update({ credentials: cipher.encrypt(tokens), version: row.version + 1 });
+    return meeting;
+  });
+  await sync(c.session.id);
+  expect((await refFor(c.session.id)).status).toBe('needs_attention');
+  expect(await M.OutboxJob.count({ where: { topic: 'zoom.sync', aggregateId: c.session.id } })).toBe(2);
+  await expect(zoom.join(c.students[0], c.session.id)).rejects.toMatchObject({ code: 'integration_not_connected' });
+  await sync(c.session.id);
+  expect((await refFor(c.session.id)).status).toBe('ready');
+});

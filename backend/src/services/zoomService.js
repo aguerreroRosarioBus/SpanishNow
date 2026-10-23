@@ -93,11 +93,14 @@ async function sync(job, ctx = { stillOwned: async () => true }) {
         if (!session) return;
         const changed = before !== `${session.version}:${session.status}:${session.startsAt?.getTime()}`;
         const currentConnection = await connection.rowFor(session.teacherId);
-        const connected = currentConnection?.status === 'connected' && currentConnection.version === row.version;
+        // Refresh o reconexión de la misma cuenta no invalida el efecto ya aplicado.
+        const connected = currentConnection?.status === 'connected'
+          && (await connection.readTokens(currentConnection)).accountId === tokens.accountId;
         await ref.update({ connectionId: row.id, externalId: meeting?.id || ref.externalId, joinUrl: terminal.includes(session.status) ? null : meeting ? participantUrl(meeting.joinUrl) : null,
           syncedVersion: changed ? ref.syncedVersion : session.version, status: changed ? 'pending' : !connected ? 'needs_attention' : terminal.includes(session.status) ? 'cancelled' : 'ready',
           lastError: connected ? null : 'integration_not_connected', attempts: ref.attempts + 1 }, { transaction });
         if (changed) await enqueue(session, transaction, 'reconcile');
+        else if (!connected && currentConnection?.status === 'connected') await enqueue(session, transaction, 'account_changed');
         // Calendar recibe únicamente la ref de participante. No depende de que el evento ya exista.
         if (!changed && connected && session.status === 'confirmed' && features.isEnabled('google_calendar')
           && await M.ExternalConnection.count({ where: { userId: session.teacherId, provider: 'google_calendar', status: 'connected' }, transaction })) {
