@@ -15,27 +15,36 @@
     @for (item of items(); track item.id) {
       <article class="col-md-6"><div class="card p-3 h-100">
         <h2 class="h5">{{ name(item) }}</h2>
-        <p>{{ i18n.formatMoney(item.current.priceAmount,item.current.currency) }} · {{ 'packages.summary' | t:{count:item.current.sessionsCount,minutes:item.current.minutesPerSession,seats:item.current.seatsCovered,hours:item.current.validityHours} }}</p>
-        <p>{{ 'packages.version' | t:{version:item.current.version} }} · {{ ('packages.status.'+item.status) | t }}</p>
-        <div class="d-flex flex-wrap gap-2">
-          <button class="btn btn-outline-primary" [disabled]="busy() || item.status==='archived'" (click)="edit(item)">{{ 'packages.edit' | t }}</button>
-          <button class="btn btn-secondary" [disabled]="busy() || item.status==='archived'" (click)="status(item,item.status==='active'?'paused':'active')">{{ (item.status==='active'?'packages.pause':'packages.activate') | t }}</button>
-          <button class="btn btn-ghost" [disabled]="busy() || item.status==='archived'" (click)="status(item,'archived')">{{ 'packages.archive' | t }}</button>
-        </div>
+        @if (item.current; as current) {
+          <p>{{ i18n.formatMoney(current.priceAmount,current.currency) }} · {{ 'packages.summary' | t:{count:current.sessionsCount,minutes:current.minutesPerSession,seats:current.seatsCovered,hours:current.validityHours} }}</p>
+          <p>{{ 'packages.version' | t:{version:current.version} }} · {{ ('packages.status.'+item.status) | t }}</p>
+          <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-outline-primary" [disabled]="busy() || item.status==='archived'" (click)="edit(item)">{{ 'packages.edit' | t }}</button>
+            <button class="btn btn-secondary" [disabled]="busy() || item.status==='archived'" (click)="status(item,item.status==='active'?'paused':'active')">{{ (item.status==='active'?'packages.pause':'packages.activate') | t }}</button>
+            <button class="btn btn-ghost" [disabled]="busy() || item.status==='archived'" (click)="status(item,'archived')">{{ 'packages.archive' | t }}</button>
+          </div>
+        } @else {
+          <p>{{ ('packages.status.'+item.status) | t }}</p>
+          <p class="alert alert-warning" role="status">{{ 'packages.catalog.missingVersion' | t }}</p>
+          <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-primary" [disabled]="busy() || item.status==='archived'" (click)="edit(item)">{{ 'packages.catalog.complete' | t }}</button>
+            <button class="btn btn-outline-primary" [disabled]="busy()" (click)="importInitial()">{{ 'packages.catalog.repair' | t }}</button>
+          </div>
+        }
       </div></article>
     } @empty { <p>{{ 'packages.catalog.empty' | t }}</p> }
   </div>
   @if (selected(); as item) {
     <section class="card p-3 mt-4">
       <h2 class="h4">{{ 'packages.edit' | t }} — {{ name(item) }}</h2>
-      <p>{{ 'packages.catalog.immutable' | t }}</p>
+      <p>{{ (item.current ? 'packages.catalog.immutable' : 'packages.catalog.completeHint') | t }}</p>
       <form [formGroup]="form" (ngSubmit)="save()">
         <div class="row g-3">
           @for (field of textFields; track field) {
             <div class="col-md-6"><label [for]="field" class="form-label">{{ ('packages.field.'+field) | t }}</label><input [id]="field" class="form-control" [formControlName]="field" [maxlength]="field.startsWith('name')?150:field.startsWith('description')?8000:500"></div>
           }
           @for (field of numberFields; track field) {
-            <div class="col-md-4"><label [for]="field" class="form-label">{{ ('packages.field.'+field) | t }}</label><input [id]="field" type="number" min="1" step="1" class="form-control" [formControlName]="field" required></div>
+            <div class="col-md-4"><label [for]="field" class="form-label">{{ ('packages.field.'+field) | t }}</label><input [id]="field" type="number" min="1" step="1" class="form-control" [formControlName]="field" [required]="field!=='policyVersionId' || !!item.current"></div>
           }
           <div class="col-md-4"><label for="currency" class="form-label">{{ 'packages.field.currency' | t }}</label><input id="currency" class="form-control" formControlName="currency" maxlength="3" required></div>
           <div class="col-md-4"><label for="groupSize" class="form-label">{{ 'packages.field.modality' | t }}</label><select id="groupSize" class="form-select" [value]="form.get('groupSize')?.value" (change)="modality($any($event.target).value)"><option value="1">{{ 'packages.individual' | t }}</option><option value="2">{{ 'packages.group2' | t }}</option><option value="3">{{ 'packages.group3' | t }}</option></select></div>

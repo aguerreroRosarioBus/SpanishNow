@@ -26,3 +26,27 @@ describe('W05 ofertas UI',()=>{
     expect(c.name()).toBe('Cuatro sesiones');expect(c.offer()).toBe(before);expect(c.offer()!.amount).toBe(9000);expect(get).toHaveBeenCalledTimes(1);expect(f.nativeElement.textContent).toContain('America/Argentina/Cordoba');
   });
 });
+describe('Tanda B: ofertas con plantillas sin versión',()=>{
+  const setup=(items:unknown[],send=vi.fn(()=>of({id:77})))=>{
+    TestBed.configureTestingModule({imports:[OfferCreateComponent],providers:[provideRouter([]),{provide:I18N_CATALOGS,multi:true,useValue:PACKAGE_MESSAGES},{provide:ActivatedRoute,useValue:{snapshot:{queryParamMap:convertToParamMap({conversationId:'9'})}}},{provide:ChatService,useValue:{get:()=>of({counterpart:{id:5,name:'Alumno ficticio'}})}},{provide:PackagesService,useValue:{list:()=>of(items),sendOffer:send,error:()=> 'Error'}}]});
+    TestBed.inject(I18nService).setLocale('es');
+    const f=TestBed.createComponent(OfferCreateComponent);f.detectChanges();return {f,c:f.componentInstance,send};
+  };
+  it('una plantilla con current null no rompe el selector, avisa qué falta y enlaza al catálogo',()=>{
+    const {f,c}=setup([{id:1,status:'active',templateKey:'individual-1x30',current:null},{id:2,status:'draft',templateKey:'individual-4x50',current:null}]);
+    expect(c.items()).toEqual([]);expect(c.incomplete()).toBe(2);
+    const text=f.nativeElement.textContent as string;
+    expect(text).toContain('Paquetes sin versión: 2');
+    expect(f.nativeElement.querySelector('a[href="/teacher/class-packages"]')).toBeTruthy();
+  });
+  it('con un paquete individual activo con versión aparece en el selector aunque haya otro sin versión, y la oferta se envía (sandbox)',()=>{
+    const {f,c,send}=setup([{id:1,status:'draft',templateKey:'individual-1x30',current:null},{id:2,status:'active',templateKey:'individual-4x50',current}]);
+    expect(c.items().map(p=>p.id)).toEqual([2]);
+    const options=Array.from<HTMLElement>(f.nativeElement.querySelectorAll('#packageChoice option')).map(o=>o.textContent!.trim());
+    expect(options).toContain('Cuatro sesiones');
+    c.select(2);f.detectChanges();expect(f.nativeElement.textContent).toContain('USD');
+    const button=Array.from<HTMLButtonElement>(f.nativeElement.querySelectorAll('button')).find(b=>b.textContent!.includes('Enviar esta oferta'));
+    expect(button).toBeTruthy();c.send();
+    expect(send).toHaveBeenCalledTimes(1);expect(send.mock.calls[0]).toEqual([9,{templateVersionId:33},expect.any(String)]);
+  });
+});
