@@ -85,7 +85,7 @@ function createZoomRealAdapter({ oauthBaseUrl = 'https://zoom.us', apiBaseUrl = 
   async function profile(accessToken) {
     const [{ body: user }, { body: settings }] = await Promise.all([
       request(`${api}/users/me`, { accessToken }),
-      request(`${api}/users/me/settings?option=meeting_security`, { accessToken })
+      request(`${api}/users/me/settings`, { accessToken })
     ]);
     const type = Number(user?.type);
     const plan = type === 1 ? 'basic' : type === 2 ? 'licensed' : type === 4 ? 'unassigned' : 'unknown';
@@ -95,7 +95,7 @@ function createZoomRealAdapter({ oauthBaseUrl = 'https://zoom.us', apiBaseUrl = 
       plan, planType: Number.isFinite(type) ? type : null, maxMinutes,
       maxParticipants: Number.isFinite(rawCapacity) ? rawCapacity : 0,
       concurrentMeetings: 1,
-      waitingRoom: settings?.meeting_security?.waiting_room === true,
+      waitingRoom: settings?.in_meeting?.waiting_room === true,
       // Cada reunión enviada por SpanishNow recibe una contraseña aleatoria, además de la política de Zoom.
       passcodeRequired: true
     };

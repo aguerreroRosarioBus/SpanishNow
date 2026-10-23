@@ -43,7 +43,7 @@ beforeAll(async () => {
       id: 'zoom-user-7', account_id: 'zoom-account-9', email: 'teacher@example.test', type: 1,
       feature: { meeting_capacity: 100 }
     });
-    if (url.pathname === '/v2/users/me/settings') return send(res, 200, { meeting_security: { waiting_room: mode === 'waiting_room_default_on' } });
+    if (url.pathname === '/v2/users/me/settings') return send(res, 200, { in_meeting: { waiting_room: mode === 'waiting_room_default_on' }, meeting_security: { auto_security: true, meeting_password: true } });
     if (url.pathname === '/v2/users/me/meetings' && req.method === 'GET') {
       if (mode === 'rate_limited') return send(res, 429, { code: 429 }, { 'Retry-After': '12' });
       if (mode === 'unauthorized') return send(res, 401, { code: 124 });
@@ -98,7 +98,7 @@ test('OAuth PKCE, Basic, scopes granulares, capacidades de cuenta y rotación de
   expect(requests[0].headers.authorization).toBe(`Basic ${Buffer.from('local-client:local-secret').toString('base64')}`);
   expect(requests[0].body).toMatchObject({ grant_type: 'authorization_code', code: 'code-1', code_verifier: 'pkce-verifier',
     redirect_uri: process.env.ZOOM_REDIRECT_URI });
-  expect(requests.some(r => r.path === '/v2/users/me/settings' && r.query.get('option') === 'meeting_security')).toBe(true);
+  expect(requests.some(r => r.path === '/v2/users/me/settings' && !r.query.has('option'))).toBe(true);
 
   const rotated = await adapter.refresh(tokens);
   expect(rotated).toMatchObject({ accessToken: 'access-2', refreshToken: 'refresh-2', scopes: SCOPES.join(' ') });
