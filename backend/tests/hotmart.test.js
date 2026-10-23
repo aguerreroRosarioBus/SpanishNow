@@ -197,10 +197,16 @@ describe('selling on Hotmart', () => {
       expect(refused.body.code).toBe('refund_in_hotmart');
       expect((await as(world.teacher).post(`/api/teacher/orders/${order.id}/refund`, { manual: true })).status).toBe(200);
 
+      // El webhook y el token son de la cuenta única de Hotmart: un docente común no recibe la URL (ni en la respuesta).
       const setup = await as(world.teacher).get('/api/teacher/hotmart');
       expect(setup.status).toBe(200);
-      expect(setup.body.configured).toBe(true);
-      expect(setup.body.webhookUrl).toMatch(/\/api\/payments\/hotmart\/webhook$/);
+      expect(setup.body).toEqual({ canManage: false, configured: true });
+      expect('webhookUrl' in setup.body).toBe(false);
+      await world.teacher.update({ permissions: ['class_packages.manage_all'] });
+      const managed = await as(world.teacher).get('/api/teacher/hotmart');
+      expect(managed.body).toMatchObject({ canManage: true, configured: true });
+      expect(managed.body.webhookUrl).toMatch(/\/api\/payments\/hotmart\/webhook$/);
+      await world.teacher.update({ permissions: [] });
       expect((await as(world.student).get('/api/teacher/hotmart')).status).toBe(403);
     });
   });

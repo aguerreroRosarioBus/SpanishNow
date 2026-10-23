@@ -121,6 +121,9 @@
             <div class="form-text">{{ 'teacherManage.courseEdit.hotmartUrlHelp' | t }}</div>
           </div>
           @if (hotmartSetup(); as hs) {
+            @if (!hs.canManage) {
+              <p class="form-text" data-testid="webhook-admin-only">{{ 'teacherManage.courseEdit.webhookAdminOnly' | t }}</p>
+            } @else {
             <div class="mb-3">
               <label for="hotmartWebhook" class="form-label">{{ 'teacherManage.courseEdit.webhookUrl' | t }}</label>
               <div class="input-group">
@@ -138,6 +141,7 @@
               <li>{{ 'teacherManage.courseEdit.step2' | t }}</li>
               <li>{{ 'teacherManage.courseEdit.step3Before' | t }} <code>/checkout/thanks</code> {{ 'teacherManage.courseEdit.step3After' | t }}</li>
             </ol>
+            }
           }
         </div>
         <div class="modal-footer">

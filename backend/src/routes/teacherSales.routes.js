@@ -6,6 +6,7 @@ const { Order, Course, User, Coupon, Affiliate } = require('../models');
 const sales = require('../services/salesService');
 const { registerRefund } = require('../services/orderService');
 const hotmart = require('../services/hotmartService');
+const { hasPermission } = require('../config/permissions');
 
 for (const prefix of ['/sales', '/orders', '/hotmart']) router.use(prefix, authMiddleware, isTeacher);
 
@@ -104,9 +105,11 @@ router.post('/orders/:id/refund', async (req, res) => {
   }
 });
 
-// What the teacher pastes in Hotmart, and whether the server has the hottok to verify it.
+// The webhook URL and the hottok belong to the single Hotmart account of the platform, so only who manages Hotmart for every
+// teacher (class_packages.manage_all) gets the URL. A regular teacher only learns whether sales are configured.
 router.get('/hotmart', (req, res) => {
-  res.json({ webhookUrl: hotmart.webhookUrl(req), configured: hotmart.configured() });
+  const canManage = hasPermission(req.user, 'class_packages.manage_all');
+  res.json({ canManage, configured: hotmart.configured(), ...(canManage ? { webhookUrl: hotmart.webhookUrl(req) } : {}) });
 });
 
 module.exports = router;
