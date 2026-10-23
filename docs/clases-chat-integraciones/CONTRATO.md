@@ -365,7 +365,7 @@ Rutas aditivas de gestión (no cambian `credits.apply` ni requieren migración):
 | `POST /api/me/class-packages/:id/refund-requests` | Comprador; `{ version, quote, reason, type }` + `Idempotency-Key` |
 | `GET /api/admin/class-refund-requests` | `class_payments.review`; cola y seguimiento |
 | `POST /api/admin/class-refund-requests/:id/review` | `{ action: approve/manual_update/needs_information, reason, quote }`; misma capacidad |
-| `GET /api/admin/class-purchases/:id` | `class_payments.review` o `class_credits.adjust`; saldo sin conversación privada |
+| `GET /api/admin/class-purchases/:id` | `class_payments.review`, o `class_credits.adjust` sobre compras propias (`adjust_any` para las de otro docente); saldo sin conversación privada |
 | `POST /api/admin/class-purchases/:id/refund-deadline` | `class_payments.review`; `{ deadline, reason }`, solo mantener/ampliar con evidencia |
 | `GET /api/admin/class-payment-jobs` | `class_payments.review`; pendientes/fallidos y avisos aún sin resolver |
 | `POST /api/admin/class-payment-jobs/:id/retry` | Misma capacidad; `{ reason }`, solo fallidos permitidos |
@@ -480,7 +480,7 @@ Notas de W04 (1.1): el contexto (`{ type: course|package|session, id }`) viaja e
 | `POST /api/me/class-packages/:id/pause` · `/resume` · `/cancel` | `{ version, reason? }` (motivo obligatorio al cancelar); `409 package_not_active`, `409 sessions_pending_resolution` (PACK-07) |
 | `POST /api/me/class-packages/:id/refund-requests` | Solicitud con desglose (PACK-08) |
 | `GET /api/teacher/class-purchases?studentId=` | Compras de sus alumnos (para proponer) |
-| `POST /api/admin/class-purchases/:id/adjustments` | `class_credits.adjust`; `Idempotency-Key`, `{ units, direction: add/remove/restore, reason, version? }`; no cambia `credits.apply` |
+| `POST /api/admin/class-purchases/:id/adjustments` | `class_credits.adjust` solo sobre compras del propio docente; otras compras exigen `class_credits.adjust_any` (404 si no); `Idempotency-Key`, `{ units, direction: add/remove/restore, reason, version? }`; no cambia `credits.apply` |
 
 ### 9.7 Agenda — W06
 
@@ -597,7 +597,8 @@ En `backend/src/config/permissions.js` (catálogo). Ninguna se concede por ser `
 | `class_teachers.manage` | Habilitar/deshabilitar docentes para clases y chat |
 | `class_packages.manage_all` | Ver y gestionar catálogo, vínculos Hotmart y políticas de cualquier docente (PACK-03) |
 | `class_payments.review` | Ver y resolver pagos `paid_needs_review` y solicitudes de reembolso |
-| `class_credits.adjust` | Ajustes excepcionales de saldo/vigencia con motivo (PACK-09) |
+| `class_credits.adjust` | Ajustes excepcionales de saldo/vigencia con motivo (PACK-09), limitados a las compras del propio docente |
+| `class_credits.adjust_any` | Lo mismo sobre compras de cualquier docente (W05, revisión P2-3) |
 | `class_sessions.support` | Ver estado de proveedores, reintentar sync, reenviar invitación vigente (§16); no da enlace de anfitrión |
 | `chat.moderate` | Ver mensajes **reportados** y ocultarlos con motivo; cada lectura queda en `audit_logs` (CHAT-02) |
 
@@ -634,7 +635,7 @@ Registradas en [COORDINACION.md](COORDINACION.md#decisiones). P01 comercial fue 
 
 | Versión | Fecha | Cambio |
 | --- | --- | --- |
-| 1.7 | 22/10/2026 | W05 cierre: P01 versionada360h, solicitud/seguimiento, revisión/recuperación visual y grupos. Sin migraciones ni API de saldo nueva; ventas reales bloqueadas hasta verificación efectiva. |
+| 1.7 | 22/10/2026 | W05 cierre: P01 versionada360h, solicitud/seguimiento, revisión/recuperación visual y grupos. Sin migraciones ni API de saldo nueva; ventas reales bloqueadas hasta verificación efectiva. | Revisión cruzada: permiso aditivo `class_credits.adjust_any`; tras un reembolso total las liberaciones/restauraciones no devuelven saldo a disponible (cada `release` sigue con `refund`; `adjust` a disponible → 409); reembolso administrativo directo solo sin compra; un intento fallido no fija la transacción del pago.
 | 1.6 | 22/10/2026 | W06: precisa §9.7 (intención, revisiones, grupos, asistencia, correcciones/compensación aceptada, recordatorios y límites W07/W08). Conserva 1.3–1.5 de W05 y P01; sin esquema ni API de saldo nuevos. |
 | 1.5 | 22/10/2026 | W05: checkout fake, conciliación/saldo/pausa; mutaciones de compra con versión y ajustes idempotentes. P01 comercial resuelta por delegación de Andrés: nuevas condiciones de 15 días y revisión individual; integración efectiva previa a ventas reales, sin cambios de ledger W06. |
 | 1.4 | 22/10/2026 | W05 (Codex): lectura propia de invitaciones, metadata de ofertas/política. Sin esquema ni cambios de saldo. |
