@@ -89,3 +89,14 @@ test('políticas inmutables, permisos explícitos y flag apagado', async () => {
   expect((await as(teacher).post('/api/teacher/class-packages/import-initial')).body.code).toBe('feature_disabled');
   expect((await as(teacher).get('/api/teacher/class-settings')).status).toBe(200);
 });
+
+test('habilitar docente no depende del proveedor de pagos; reanudar ventas sí', async () => {
+  process.env.PAYMENTS_FAKE = '0';
+  const t = await createUser('teacher', 'catalog-sinproveedor');
+  const enabled = await patch(admin, `/admin/class-teachers/${t.id}`, { enabled: true });
+  expect(enabled.status).toBe(200); expect(enabled.body.classesEnabledAt).toBeTruthy(); expect(enabled.body.salesPausedAt).toBeTruthy();
+  expect(await AuditLog.count({ where: { action: 'class_teacher.enabled', entityId: t.id } })).toBe(1);
+  const resume = await patch(t, '/teacher/class-settings', { salesPaused: false });
+  expect(resume.status).toBe(503); expect(resume.body.code).toBe('package_provider_verification_required');
+  expect((await TeacherClassSettings.findByPk(t.id)).salesPausedAt).toBeTruthy();
+});
