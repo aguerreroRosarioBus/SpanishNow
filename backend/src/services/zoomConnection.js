@@ -133,25 +133,32 @@ async function credentials(userId) {
   const refreshed = row.tokenExpiresAt > new Date(Date.now() + 60000) ? tokens : await rotate(userId, tokens);
   return { row: await rowFor(userId), tokens: refreshed };
 }
+async function markRevokedIfCurrent(userId, tokens) {
+  const row = await rowFor(userId);
+  if (!row?.credentials || row.status !== 'connected') return false;
+  const current = await readTokens(row);
+  if (current.accessToken !== tokens.accessToken || current.refreshToken !== tokens.refreshToken) return false;
+  const [updated] = await M.ExternalConnection.update({ status: 'needs_attention', credentials: null, capabilities: null,
+    refreshLockedUntil: null, lastError: 'zoom_revoked', version: db.literal('version + 1') },
+  { where: { id: row.id, credentials: row.credentials, status: 'connected' } });
+  return Boolean(updated);
+}
 async function withCredentials(userId, tokens, operation) {
   adapter.assertConfigured();
   try { return { value: await operation(tokens), tokens }; }
   catch (error) {
     if (error.statusCode !== 401) throw error;
     const refreshed = await rotate(userId, tokens);
-    return { value: await operation(refreshed), tokens: refreshed };
+    try { return { value: await operation(refreshed), tokens: refreshed }; }
+    catch (retryError) {
+      if (retryError.statusCode === 401 && await markRevokedIfCurrent(userId, refreshed)) fail('zoom_revoked', 401);
+      throw retryError;
+    }
   }
 }
 async function status(user) {
   await teacher(user); adapter.assertConfigured();
-  let current = await rowFor(user.id);
-  if (current?.status === 'connected') {
-    try { await credentials(user.id); }
-    catch (error) {
-      if (!['zoom_revoked', 'zoom_authorization_lost', 'integration_not_connected', 'zoom_busy'].includes(error.code)) throw error;
-    }
-    current = await rowFor(user.id);
-  }
+  const current = await rowFor(user.id);
   return { fake: adapter.isFake(), status: current?.status || 'disconnected', accountEmail: current?.accountEmail || null,
     lastError: current?.lastError || null, capabilities: current?.status === 'connected' ? current.capabilities || null : null };
 }
@@ -160,7 +167,8 @@ async function disconnect(user) {
   const existing = await rowFor(user.id);
   let credentialsToRevoke = null;
   if (existing?.status === 'connected' && existing.credentials) {
-    try { credentialsToRevoke = await readTokens(existing); } catch { /* La revocación local sigue siendo posible si el cifrado quedó ilegible. */ }
+    try { credentialsToRevoke = (await credentials(user.id)).tokens; }
+    catch { /* Desconectar localmente no depende de que Zoom esté disponible para refrescar o revocar. */ }
   }
   await db.transaction(async transaction => {
     const row = await M.ExternalConnection.findOne({ where: { userId: user.id, provider: 'zoom' }, transaction, lock: transaction.LOCK.UPDATE });

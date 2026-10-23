@@ -74,6 +74,37 @@ test('configuración real incompleta responde 503 not_configured sin tumbar el s
   }
 });
 
+test('connect real usa la fachada, construye URL PKCE y persiste state de un uso', async () => {
+  const { teacher } = await chain();
+  const names = ['INTEGRATIONS_FAKE', 'ZOOM_CLIENT_ID', 'ZOOM_CLIENT_SECRET', 'ZOOM_REDIRECT_URI', 'ZOOM_WEBHOOK_SECRET_TOKEN'];
+  const previous = Object.fromEntries(names.map(name => [name, process.env[name]]));
+  try {
+    process.env.INTEGRATIONS_FAKE = '0';
+    process.env.ZOOM_CLIENT_ID = 'zoom-client-test';
+    process.env.ZOOM_CLIENT_SECRET = 'zoom-secret-test';
+    process.env.ZOOM_REDIRECT_URI = 'https://platform.spanishnow.ar/api/integrations/zoom/callback';
+    process.env.ZOOM_WEBHOOK_SECRET_TOKEN = 'zoom-webhook-test';
+
+    const result = await c.connect(teacher);
+    const url = new URL(result.url);
+    const row = await c.rowFor(teacher.id);
+    const pending = cipher.decrypt(row.oauthVerifier);
+    const challenge = require('node:crypto').createHash('sha256').update(pending.verifier).digest('base64url');
+
+    expect(result.fake).toBe(false);
+    expect(url.origin + url.pathname).toBe('https://zoom.us/oauth/authorize');
+    expect(url.searchParams.get('client_id')).toBe('zoom-client-test');
+    expect(url.searchParams.get('redirect_uri')).toBe(process.env.ZOOM_REDIRECT_URI);
+    expect(url.searchParams.get('state')).toBeTruthy();
+    expect(url.searchParams.get('code_challenge')).toBe(challenge);
+    expect(url.searchParams.get('code_challenge_method')).toBe('S256');
+    expect(row.oauthStateHash).toBe(adapter.hash(url.searchParams.get('state')));
+    expect(pending).not.toHaveProperty('code');
+  } finally {
+    for (const [name, value] of Object.entries(previous)) if (value === undefined) delete process.env[name]; else process.env[name] = value;
+  }
+});
+
 test('PKCE fake rechaza canje con verificador ajeno y la impersonación no inicia OAuth', async () => {
   const { teacher } = await chain(); const start = await c.connect(teacher); const agent = request.agent(app);
   const url = new URL(start.url); const row = await c.rowFor(teacher.id); const pending = cipher.decrypt(row.oauthVerifier);
@@ -86,8 +117,81 @@ test('revocación de refresh no expone ni conserva credenciales vencidas', async
   const { teacher } = await chain(); await connected(teacher); const row = await c.rowFor(teacher.id);
   const tokens = cipher.decrypt(row.credentials); tokens.refreshToken = 'revocado';
   await row.update({ credentials: cipher.encrypt(tokens), tokenExpiresAt: new Date(0) });
+  await expect(c.credentials(teacher.id)).rejects.toMatchObject({ code: 'zoom_revoked', statusCode: 401 });
   expect(await c.status(teacher)).toMatchObject({ status: 'needs_attention', capabilities: null, lastError: 'zoom_revoked' });
   expect((await c.rowFor(teacher.id)).credentials).toBeNull();
+});
+
+test('refresh rechazado deja la conexión en needs_attention', async () => {
+  const { teacher } = await chain(); await connected(teacher);
+  await (await c.rowFor(teacher.id)).update({ tokenExpiresAt: new Date(0) });
+  const refresh = jest.spyOn(adapter, 'refresh').mockRejectedValueOnce(new adapter.ZoomError('zoom_revoked', 401));
+  await expect(c.credentials(teacher.id)).rejects.toMatchObject({ code: 'zoom_revoked', statusCode: 401 });
+  expect((await c.rowFor(teacher.id)).toJSON()).toMatchObject({ status: 'needs_attention', credentials: null, lastError: 'zoom_revoked' });
+  refresh.mockRestore();
+});
+
+test('401 persistente tras refresh marca el grant en needs_attention', async () => {
+  const { teacher } = await chain(); await connected(teacher);
+  const { tokens } = await c.credentials(teacher.id);
+  const operation = jest.fn().mockRejectedValue(new adapter.ZoomError('zoom_unauthorized', 401));
+  await expect(c.withCredentials(teacher.id, tokens, operation)).rejects.toMatchObject({ code: 'zoom_revoked', statusCode: 401 });
+  expect(operation).toHaveBeenCalledTimes(2);
+  expect((await c.rowFor(teacher.id)).toJSON()).toMatchObject({ status: 'needs_attention', credentials: null, lastError: 'zoom_revoked' });
+});
+
+test.each([['zoom_provider_unavailable', 503], ['zoom_unauthorized', 401]])('callback redirige %s con un código estable', async (code, statusCode) => {
+  const previous = process.env.FRONTEND_URL;
+  process.env.FRONTEND_URL = 'http://localhost:4200';
+  const callback = jest.spyOn(c, 'callback').mockRejectedValueOnce(new adapter.ZoomError(code, statusCode));
+  try {
+    const response = await request(app).get('/api/integrations/zoom/callback').query({ state: 'state' });
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('http://localhost:4200/teacher/integrations/zoom?zoom=zoom_provider_unavailable');
+    expect(response.headers['cache-control']).toBe('no-store');
+  } finally {
+    callback.mockRestore();
+    if (previous === undefined) delete process.env.FRONTEND_URL; else process.env.FRONTEND_URL = previous;
+  }
+});
+
+test('status no consulta Zoom si el proveedor está caído', async () => {
+  const { teacher } = await chain(); await connected(teacher);
+  const names = ['INTEGRATIONS_FAKE', 'ZOOM_CLIENT_ID', 'ZOOM_CLIENT_SECRET', 'ZOOM_REDIRECT_URI', 'ZOOM_WEBHOOK_SECRET_TOKEN'];
+  const previous = Object.fromEntries(names.map(name => [name, process.env[name]]));
+  const refresh = jest.spyOn(adapter, 'refresh').mockRejectedValue(new adapter.ZoomError('zoom_provider_unavailable', 503, {}, { retryable: true }));
+  try {
+    process.env.INTEGRATIONS_FAKE = '0';
+    process.env.ZOOM_CLIENT_ID = 'zoom-client-test'; process.env.ZOOM_CLIENT_SECRET = 'zoom-secret-test';
+    process.env.ZOOM_REDIRECT_URI = 'https://platform.spanishnow.ar/api/integrations/zoom/callback';
+    process.env.ZOOM_WEBHOOK_SECRET_TOKEN = 'zoom-webhook-test';
+    expect(await c.status(teacher)).toMatchObject({ status: 'connected', fake: false });
+    expect(refresh).not.toHaveBeenCalled();
+  } finally {
+    refresh.mockRestore();
+    for (const [name, value] of Object.entries(previous)) if (value === undefined) delete process.env[name]; else process.env[name] = value;
+  }
+});
+
+test('desconectar renueva el access token vencido antes de revocar', async () => {
+  const { teacher } = await chain(); await connected(teacher);
+  await (await c.rowFor(teacher.id)).update({ tokenExpiresAt: new Date(0) });
+  const names = ['INTEGRATIONS_FAKE', 'ZOOM_CLIENT_ID', 'ZOOM_CLIENT_SECRET', 'ZOOM_REDIRECT_URI', 'ZOOM_WEBHOOK_SECRET_TOKEN'];
+  const previous = Object.fromEntries(names.map(name => [name, process.env[name]]));
+  const refresh = jest.spyOn(adapter, 'refresh').mockImplementationOnce(async tokens => ({ ...tokens,
+    accessToken: 'fresh-access-token', refreshToken: 'fresh-refresh-token', expiresAt: new Date(Date.now() + 3600000).toISOString() }));
+  const revoke = jest.spyOn(adapter, 'revoke').mockResolvedValue();
+  try {
+    process.env.INTEGRATIONS_FAKE = '0'; process.env.ZOOM_CLIENT_ID = 'zoom-client-test'; process.env.ZOOM_CLIENT_SECRET = 'zoom-secret-test';
+    process.env.ZOOM_REDIRECT_URI = 'https://platform.spanishnow.ar/api/integrations/zoom/callback'; process.env.ZOOM_WEBHOOK_SECRET_TOKEN = 'zoom-webhook-test';
+    const status = await c.disconnect(teacher);
+    expect(status.status).toBe('disconnected');
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(revoke).toHaveBeenCalledWith('fresh-access-token');
+  } finally {
+    refresh.mockRestore(); revoke.mockRestore();
+    for (const [name, value] of Object.entries(previous)) if (value === undefined) delete process.env[name]; else process.env[name] = value;
+  }
 });
 
 test('P1: A inicia y B completa: se descarta el grant pendiente, A sin credenciales y B sin acceso', async () => {
@@ -110,15 +214,19 @@ test('P1: A inicia y B completa: se descarta el grant pendiente, A sin credencia
   expect((await c.rowFor(a.id)).credentials).toBe(previous);
 });
 
-test('P2: clave rotada devuelve estado needs_attention sin 500 y código traducible', async () => {
+test('P2: clave rotada se detecta al usar credenciales y el estado refleja needs_attention sin 500', async () => {
   const { teacher } = await chain(); await connected(teacher);
   const previousKey = process.env.GOOGLE_TOKEN_ENCRYPTION_KEY;
   process.env.GOOGLE_TOKEN_ENCRYPTION_KEY = Buffer.alloc(32, 2).toString('base64');
   try {
     const response = await as(teacher).get('/api/integrations/zoom');
     expect(response.status).toBe(200);
-    expect(response.body).toMatchObject({ status: 'needs_attention', lastError: 'zoom_authorization_lost', capabilities: null });
-    expect(JSON.stringify(response.body)).not.toMatch(/accessToken|refreshToken|credentials/);
+    expect(response.body).toMatchObject({ status: 'connected' });
+    await expect(c.credentials(teacher.id)).rejects.toMatchObject({ code: 'zoom_authorization_lost' });
+    const refreshedStatus = await as(teacher).get('/api/integrations/zoom');
+    expect(refreshedStatus.status).toBe(200);
+    expect(refreshedStatus.body).toMatchObject({ status: 'needs_attention', lastError: 'zoom_authorization_lost', capabilities: null });
+    expect(JSON.stringify(refreshedStatus.body)).not.toMatch(/accessToken|refreshToken|credentials/);
     expect((await c.rowFor(teacher.id)).refreshLockedUntil).toBeNull();
   } finally { process.env.GOOGLE_TOKEN_ENCRYPTION_KEY = previousKey; }
 });

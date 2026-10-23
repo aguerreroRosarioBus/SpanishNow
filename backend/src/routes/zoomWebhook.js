@@ -29,7 +29,9 @@ router.post('/', require('express').raw({ type: 'application/json', limit: '256k
     for (const c of connections) {
       try {
         const tokens = await zoomConnections.readTokens(c);
-        if ((accountId && tokens.accountId === accountId) || (!accountId && zoomUserId && tokens.userId === zoomUserId)) { connection = c; break; }
+        const accountMatches = accountId ? String(tokens.accountId) === String(accountId) : Boolean(zoomUserId);
+        const userMatches = zoomUserId ? String(tokens.userId) === String(zoomUserId) : true;
+        if (accountMatches && userMatches) { connection = c; break; }
       }
       catch (error) { if (error.code !== 'zoom_authorization_lost') throw error; }
     }
@@ -54,11 +56,17 @@ router.post('/', require('express').raw({ type: 'application/json', limit: '256k
       if (body.event === 'meeting.deleted') await M.ExternalSyncRef.update({ status: 'needs_attention', lastError: 'zoom_meeting_missing' },
         { where: { connectionId: current.id, provider: 'zoom', externalId: String(meetingId), status: { [require('sequelize').Op.ne]: 'cancelled' } }, transaction });
       if (body.event === 'meeting.updated' && meetingId) {
+        const eventStart = Date.parse(body.payload?.object?.start_time);
+        const eventDuration = Number(body.payload?.object?.duration);
         const refs = await M.ExternalSyncRef.findAll({ where: { connectionId: current.id, provider: 'zoom', externalId: String(meetingId),
           status: { [require('sequelize').Op.ne]: 'cancelled' } }, transaction });
         for (const ref of refs) {
           const session = await M.ClassSession.findByPk(ref.sessionId, { transaction });
           if (!session || session.status !== 'confirmed') continue;
+          // Zoom emite meeting.updated al aplicar nuestro PATCH. Si horario y duración ya coinciden,
+          // el evento refleja el estado interno y no debe disparar otra sincronización.
+          if (Number.isFinite(eventStart) && eventStart === new Date(session.startsAt).getTime()
+            && Number.isFinite(eventDuration) && eventDuration === Number(session.minutes)) continue;
           await ref.update({ status: 'pending', lastError: null }, { transaction });
           await outbox.enqueue({ topic: 'zoom.sync', aggregateType: 'class_sessions', aggregateId: session.id,
             aggregateVersion: session.version, dedupeKey: `zoom:webhook:${eventKey}:${ref.id}` }, { transaction });

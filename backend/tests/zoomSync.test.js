@@ -143,6 +143,65 @@ test('webhooks: firma, antigüedad, challenge y dedupe durable sin completar ni 
   expect((await M.ClassSession.findByPk(c.session.id)).status).toBe('confirmed');
   expect((await c.purchases[0].reload()).unitsReserved).toBe(1);
 });
+
+test('meeting.updated emitido por el sync no vuelve a encolar Zoom ni Calendar', async () => {
+  const c = await fixture();
+  try {
+    await sync(c.session.id);
+    const proposal = await sessions.reschedule(c.teacher, c.session.id, { version: c.session.version,
+      intent: { ...c.body.intent, localStart: c.body.intent.localStart.replace('09:00', '12:00') } });
+    await sessions.accept(c.students[0], c.session.id, proposal.version);
+    await M.ExternalConnection.create({ userId: c.teacher.id, provider: 'google_calendar', status: 'connected' });
+    process.env.FEATURE_GOOGLE_CALENDAR = '1';
+    await sync(c.session.id);
+
+    const ref = await refFor(c.session.id);
+    const session = await M.ClassSession.findByPk(c.session.id);
+    const { tokens } = await connection.credentials(c.teacher.id);
+    const zoomJobsBefore = await M.OutboxJob.count({ where: { aggregateId: c.session.id, topic: 'zoom.sync' } });
+    const calendarJobsBefore = await M.OutboxJob.count({ where: { aggregateId: c.session.id, topic: 'calendar.sync' } });
+    const result = await webhook({ event: 'meeting.updated', event_ts: Date.now(), payload: { account_id: tokens.accountId,
+      object: { id: ref.externalId, host_id: tokens.userId, start_time: session.startsAt.toISOString(), duration: session.minutes } } });
+
+    expect(result.status).toBe(200);
+    expect(await M.OutboxJob.count({ where: { aggregateId: c.session.id, topic: 'zoom.sync' } })).toBe(zoomJobsBefore);
+    expect(await M.OutboxJob.count({ where: { aggregateId: c.session.id, topic: 'calendar.sync' } })).toBe(calendarJobsBefore);
+    expect((await refFor(c.session.id)).status).toBe('ready');
+  } finally { delete process.env.FEATURE_GOOGLE_CALENDAR; }
+});
+
+test('webhook distingue dos docentes de una misma cuenta Zoom por user_id/host_id', async () => {
+  const a = await fixture(); const b = await fixture();
+  await sync(a.session.id); await sync(b.session.id);
+  const rowA = await connection.rowFor(a.teacher.id); const rowB = await connection.rowFor(b.teacher.id);
+  const ordered = [{ row: rowA, fixture: a }, { row: rowB, fixture: b }].sort((left, right) => left.row.id - right.row.id);
+  const [first, second] = ordered;
+  const firstTokens = cipher.decrypt(first.row.credentials); const secondTokens = cipher.decrypt(second.row.credentials);
+  firstTokens.accountId = 'zoom-shared-account'; secondTokens.accountId = 'zoom-shared-account';
+  firstTokens.userId = 'zoom-teacher-first'; secondTokens.userId = 'zoom-teacher-second';
+  await first.row.update({ credentials: cipher.encrypt(firstTokens) });
+  await second.row.update({ credentials: cipher.encrypt(secondTokens) });
+  const findAll = M.ExternalConnection.findAll;
+  jest.spyOn(M.ExternalConnection, 'findAll').mockImplementation(options => findAll.call(M.ExternalConnection,
+    { ...options, order: [['id', 'ASC']] }));
+
+  const firstRef = await refFor(first.fixture.session.id); const secondRef = await refFor(second.fixture.session.id);
+  const jobsBeforeB = await M.OutboxJob.count({ where: { aggregateId: second.fixture.session.id, topic: 'zoom.sync' } });
+  const update = await webhook({ event: 'meeting.updated', event_ts: Date.now(), payload: { account_id: 'zoom-shared-account',
+    object: { id: secondRef.externalId, host_id: 'zoom-teacher-second', start_time: new Date(second.fixture.session.startsAt.getTime() + 60000).toISOString(), duration: second.fixture.session.minutes } } });
+  expect(update.status).toBe(200);
+  expect(await M.OutboxJob.count({ where: { aggregateId: second.fixture.session.id, topic: 'zoom.sync' } })).toBe(jobsBeforeB + 1);
+  expect((await refFor(first.fixture.session.id)).status).toBe('ready');
+  expect((await refFor(second.fixture.session.id)).status).toBe('pending');
+
+  const revoked = await webhook({ event: 'app_deauthorized', event_ts: Date.now() + 1,
+    payload: { account_id: 'zoom-shared-account', user_id: 'zoom-teacher-second' } });
+  expect(revoked.status).toBe(200);
+  expect((await connection.rowFor(first.fixture.teacher.id)).status).toBe('connected');
+  expect((await connection.rowFor(second.fixture.teacher.id)).status).toBe('needs_attention');
+  expect((await refFor(first.fixture.session.id)).status).toBe('ready');
+  expect((await refFor(second.fixture.session.id)).status).toBe('needs_attention');
+});
 test('outbox backoff y reintento después de límite de proveedor', async () => {
   const c = await fixture();
   const job = await M.OutboxJob.findOne({ where: { aggregateId: c.session.id, topic: 'zoom.sync' } });

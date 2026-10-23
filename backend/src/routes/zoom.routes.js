@@ -24,6 +24,14 @@ router.get('/integrations/zoom/callback', requireFeature('zoom'), wrap(async (re
       res.redirect(`${target}?zoom=zoom_oauth_invalid`);
       return;
     }
+    if (error.code === 'provider_unavailable' || error.code?.startsWith('zoom_')) {
+      res.redirect(`${target}?zoom=zoom_provider_unavailable`);
+      return;
+    }
+    if (error.code === 'forbidden') {
+      res.redirect(`${target}?zoom=forbidden`);
+      return;
+    }
     throw error;
   }
 }));

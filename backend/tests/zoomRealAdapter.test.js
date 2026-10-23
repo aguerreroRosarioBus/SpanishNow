@@ -29,12 +29,16 @@ beforeAll(async () => {
 
     if (url.pathname === '/oauth/token' && req.method === 'POST') {
       if (mode === 'invalid_grant' && body.grant_type === 'refresh_token') return send(res, 400, { error: 'invalid_grant' });
+      if (mode === 'invalid_request' && body.grant_type === 'refresh_token') return send(res, 400, { error: 'invalid_request', reason: 'Invalid Token!' });
+      if (mode === 'refresh_unauthorized' && body.grant_type === 'refresh_token') return send(res, 401, { error: 'invalid_request' });
       if (body.grant_type === 'authorization_code') return send(res, 200, {
-        access_token: 'access-1', refresh_token: 'refresh-1', expires_in: 3600, scope: SCOPES.join(' ')
+        access_token: 'access-1', refresh_token: 'refresh-1', expires_in: 3600,
+        scope: mode === 'missing_scopes' ? 'meeting:read:meeting' : SCOPES.join(' ')
       });
       return send(res, 200, { access_token: 'access-2', refresh_token: 'refresh-2', expires_in: 3600 });
     }
     if (url.pathname === '/oauth/revoke' && req.method === 'POST') return send(res, 200, {});
+    if (url.pathname === '/v2/users/me' && mode === 'profile_failure') return send(res, 503, { code: 300 });
     if (url.pathname === '/v2/users/me') return send(res, 200, {
       id: 'zoom-user-7', account_id: 'zoom-account-9', email: 'teacher@example.test', type: 1,
       feature: { meeting_capacity: 100 }
@@ -77,7 +81,7 @@ afterAll(async () => {
 test('OAuth PKCE, Basic, scopes granulares, capacidades de cuenta y rotación de refresh', async () => {
   const adapter = createZoomRealAdapter({ oauthBaseUrl: baseUrl, apiBaseUrl: `${baseUrl}/v2` });
   const challenge = 'pkce-s256-challenge';
-  const authorization = new URL(adapter.authorizationUrl({ state: 'state-1', challenge }));
+  const authorization = new URL(adapter.authorizeUrl({ state: 'state-1', challenge }));
   expect(authorization.pathname).toBe('/oauth/authorize');
   expect(authorization.searchParams.get('response_type')).toBe('code');
   expect(authorization.searchParams.get('code_challenge_method')).toBe('S256');
@@ -124,7 +128,9 @@ test('Meetings API reconcilia por correlationKey y soporta crear, actualizar, bo
 
   const updated = await adapter.update(tokens, created.id, { ...wanted, minutes: 35 });
   expect(updated).toMatchObject({ id: '789123456', correlationKey: 'class:42' });
-  expect(requests.some(r => r.method === 'PATCH' && r.path === '/v2/meetings/789123456')).toBe(true);
+  const updateRequest = requests.find(r => r.method === 'PATCH' && r.path === '/v2/meetings/789123456');
+  expect(updateRequest).toBeTruthy();
+  expect(updateRequest.body).not.toHaveProperty('password');
   expect(await adapter.host(tokens, created.id)).toBe('https://us06web.zoom.us/s/host-me?zak=ephemeral');
   await adapter.remove(tokens, created.id);
   expect(requests.some(r => r.method === 'DELETE' && r.path === '/v2/meetings/789123456')).toBe(true);
@@ -144,4 +150,19 @@ test('errores del proveedor exponen códigos estables y reintento sin contenido 
   });
   mode = 'invalid_grant';
   await expect(adapter.refresh({ refreshToken: 'old-refresh' })).rejects.toMatchObject({ code: 'zoom_revoked', statusCode: 401 });
+  mode = 'invalid_request';
+  await expect(adapter.refresh({ refreshToken: 'used-refresh' })).rejects.toMatchObject({ code: 'zoom_revoked', statusCode: 401 });
+  mode = 'refresh_unauthorized';
+  await expect(adapter.refresh({ refreshToken: 'expired-refresh' })).rejects.toMatchObject({ code: 'zoom_revoked', statusCode: 401 });
+});
+
+test.each([
+  ['profile_failure', 'zoom_provider_unavailable'],
+  ['missing_scopes', 'zoom_oauth_scopes_missing']
+])('OAuth revoca el token recién emitido si falla el perfil o faltan scopes (%s)', async (failure, code) => {
+  const adapter = createZoomRealAdapter({ oauthBaseUrl: baseUrl, apiBaseUrl: `${baseUrl}/v2` });
+  mode = failure;
+  await expect(adapter.authorize({ code: 'code-1', verifier: 'pkce-verifier' })).rejects.toMatchObject({ code });
+  const revoke = requests.find(r => r.path === '/oauth/revoke');
+  expect(revoke).toMatchObject({ method: 'POST', body: { token: 'access-1' } });
 });

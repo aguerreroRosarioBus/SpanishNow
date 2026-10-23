@@ -56,7 +56,7 @@ function createZoomRealAdapter({ oauthBaseUrl = 'https://zoom.us', apiBaseUrl = 
 
     const status = response.status;
     const oauthCode = typeof body?.error === 'string' ? body.error : '';
-    if (failure === 'refresh' && oauthCode === 'invalid_grant') fail('zoom_revoked', 401, { reason: 'invalid_grant' });
+    if (failure === 'refresh' && (status === 400 || status === 401)) fail('zoom_revoked', 401, { reason: 'refresh_rejected' });
     if (failure === 'authorize' && (status === 400 || oauthCode === 'invalid_grant')) fail('zoom_oauth_invalid', 400);
     if (status === 401) fail('zoom_unauthorized', 401);
     if (status === 429) {
@@ -114,18 +114,17 @@ function createZoomRealAdapter({ oauthBaseUrl = 'https://zoom.us', apiBaseUrl = 
     };
   }
 
-  function meetingPayload(wanted) {
+  function meetingPayload(wanted, { includePassword = true } = {}) {
     const correlationKey = String(wanted.correlationKey || '');
     if (!correlationKey || correlationKey.length > 180 || !Number.isFinite(Number(wanted.minutes)) || Number(wanted.minutes) < 1) {
       fail('validation_failed', 400);
     }
     const startsAt = new Date(wanted.startsAt);
     if (!Number.isFinite(startsAt.getTime())) fail('validation_failed', 400);
-    const passcode = crypto.randomBytes(5).toString('hex');
     return {
       topic: 'SpanishNow: clase', type: 2, start_time: startsAt.toISOString(), duration: Math.trunc(Number(wanted.minutes)),
       timezone: 'UTC', agenda: `${MEETING_MARKER}${correlationKey}`,
-      password: passcode,
+      ...(includePassword ? { password: crypto.randomBytes(5).toString('hex') } : {}),
       settings: { waiting_room: true, join_before_host: false, auto_recording: 'none' }
     };
   }
@@ -144,7 +143,7 @@ function createZoomRealAdapter({ oauthBaseUrl = 'https://zoom.us', apiBaseUrl = 
 
   return {
     scopes: SCOPES,
-    authorizationUrl({ state, challenge }) {
+    authorizeUrl({ state, challenge }) {
       const { clientId, redirectUri } = config();
       const url = new URL(`${oauth}/oauth/authorize`);
       url.search = new URLSearchParams({ response_type: 'code', client_id: clientId, redirect_uri: redirectUri,
@@ -157,10 +156,15 @@ function createZoomRealAdapter({ oauthBaseUrl = 'https://zoom.us', apiBaseUrl = 
         grant_type: 'authorization_code', code, redirect_uri: redirectUri, code_verifier: verifier
       } });
       const tokens = parseToken(result.body);
-      const info = await profile(tokens.accessToken);
-      const granted = String(tokens.scopes || '').split(/\s+/).filter(Boolean);
-      if (!SCOPES.every(scope => granted.includes(scope))) fail('zoom_oauth_scopes_missing', 400);
-      return { ...tokens, ...info };
+      try {
+        const info = await profile(tokens.accessToken);
+        const granted = String(tokens.scopes || '').split(/\s+/).filter(Boolean);
+        if (!SCOPES.every(scope => granted.includes(scope))) fail('zoom_oauth_scopes_missing', 400);
+        return { ...tokens, ...info };
+      } catch (error) {
+        await request(`${oauth}/oauth/revoke`, { method: 'POST', failure: 'oauth', form: { token: tokens.accessToken } }).catch(() => {});
+        throw error;
+      }
     },
     async refresh(tokens) {
       const result = await request(`${oauth}/oauth/token`, { method: 'POST', failure: 'refresh', form: {
@@ -195,7 +199,7 @@ function createZoomRealAdapter({ oauthBaseUrl = 'https://zoom.us', apiBaseUrl = 
     },
     async update(tokens, meetingId, wanted) {
       await request(`${api}/meetings/${encodeURIComponent(String(meetingId))}`, {
-        method: 'PATCH', accessToken: tokens.accessToken, json: meetingPayload(wanted), failure: 'meeting'
+        method: 'PATCH', accessToken: tokens.accessToken, json: meetingPayload(wanted, { includePassword: false }), failure: 'meeting'
       });
       return normalize(await getMeeting(tokens.accessToken, meetingId));
     },
