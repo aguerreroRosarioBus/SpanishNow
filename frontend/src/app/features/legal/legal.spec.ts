@@ -10,6 +10,7 @@ import { EN } from '../../core/i18n/catalogs/en';
 import { AUDIO_MESSAGES } from '../student/story-player/audio-messages';
 import { RegisterComponent } from '../auth/register/register.component';
 import { PurchasesComponent } from '../student/purchases/purchases.component';
+import { AuthService } from '../../core/services/auth.service';
 import { AdminLegalComponent } from './admin-legal/admin-legal.component';
 import { ExpectationsEditorComponent } from './expectations-editor/expectations-editor.component';
 import { LegalConsentComponent } from './legal-consent/legal-consent.component';
@@ -202,7 +203,7 @@ describe('W02 editor legal', () => {
   });
 
   it('estados, vista previa por idioma, borrador nuevo a 00:00 UTC y publicación con confirmación', () => {
-    const http = configure();
+    const http = configure([{ provide: AuthService, useValue: { hasPermission: (k: string) => k === 'legal.manage' } }]);
     const fixture = TestBed.createComponent(AdminLegalComponent);
     fixture.detectChanges();
     http.expectOne(`${api}/admin/legal-documents`).flush([adminDoc(3, '3', null), adminDoc(2, '2', '2026-01-02T00:00:00.000Z'), adminDoc(4, '4', '2026-01-03T00:00:00.000Z', '2099-01-01T00:00:00.000Z')]);

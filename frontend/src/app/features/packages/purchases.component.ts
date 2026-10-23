@@ -16,7 +16,7 @@ import { ClassPurchase } from './packages.model';
 @if(busy()){<p role="status">{{ 'packages.loading' | t }}</p>}
 @for(p of items();track p.id){
   <article class="card p-3 mb-3"><h2 class="h4">{{name(p)}}</h2>
-    <p>{{('packages.purchase.status.'+p.status)|t}} · {{'packages.offer.teacher'|t:{name:p.snapshot.teacherName} }}</p>
+    <p>{{('packages.purchase.status.'+p.status)|t}}@if(p.snapshot.teacherName){ · {{'packages.offer.teacher'|t:{name:p.snapshot.teacherName} }}}</p>
     <p>{{ 'packages.purchase.expiry' | t:{time:instant(p.expiresAt),zone:fmt.timeZone()} }}</p>
     <p>{{ 'packages.summary' | t:{count:p.snapshot.sessionsCount,minutes:p.minutesPerSession,seats:p.seatsCovered,hours:p.snapshot.validityHours} }}</p>
     <dl class="row">@for(bucket of buckets;track bucket){<dt class="col-8">{{('packages.balance.'+bucket)|t}}</dt><dd class="col-4">{{p.balance[bucket]}}</dd>}</dl>

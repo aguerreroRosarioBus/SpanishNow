@@ -87,6 +87,7 @@
         <p class="notice">{{ 'calendar.icsNote' | t }}</p>
         @if (teacher()) { <button class="btn btn-ghost btn-sm" (click)="retrySync()" [disabled]="busy()">{{ 'schedule.syncRetry' | t }}</button> }
         <button class="btn btn-ghost btn-sm" (click)="join()" [disabled]="busy()">{{ (teacher() ? 'schedule.start' : 'schedule.join') | t }}</button>
+        @if (meetingNotReady()) { <p class="notice" role="status">{{ 'schedule.meetingNotReady' | t }}</p> }
         @if (meeting(); as link) { <a [href]="link" target="_blank" rel="noopener noreferrer">{{ (teacher() ? 'schedule.start' : 'schedule.join') | t }}</a> }
       </details>
     }

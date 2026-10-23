@@ -35,6 +35,8 @@ export class ClassSessionCardComponent {
   attendanceUser = 0; attendanceStatus = 'attended'; attendanceReason = '';
   adjustmentPurchase = 0; adjustmentKind = 'waive_charge'; adjustmentReason = ''; unavailableMinutes = 50;
   meeting = signal<string | null>(null);
+  /** La alumna pidió el enlace y la reunión de Zoom aún no existe (no es un problema de conexión suyo). */
+  meetingNotReady = signal(false);
   private generation = 0;
   private clockOffset = 0;
   private request?: Subscription;
@@ -69,7 +71,7 @@ export class ClassSessionCardComponent {
     this.features.load();
     effect(() => { const id = this.sessionId(); const account = this.auth.currentUser()?.id; untracked(() => {
       this.generation++; this.request?.unsubscribe(); this.actionRequest?.unsubscribe(); this.busy.set(false);
-      this.session.set(null); this.decision.set(null); this.meeting.set(null); if (id && account) this.refresh();
+      this.session.set(null); this.decision.set(null); this.meeting.set(null); this.meetingNotReady.set(false); if (id && account) this.refresh();
     }); });
     const timer = setInterval(() => { if (this.document.visibilityState === 'visible' && !this.busy() && !this.decision()) this.refresh(false); }, 15000);
     this.destroyRef.onDestroy(() => { clearInterval(timer); this.request?.unsubscribe(); this.actionRequest?.unsubscribe(); });
@@ -130,10 +132,16 @@ export class ClassSessionCardComponent {
   retrySync(): void { const s = this.session(); if (s) this.act(this.api.retrySync(s.id)); }
   join(): void {
     const generation = this.generation; const s = this.session(); if (!s) return;
+    this.meetingNotReady.set(false);
     this.actionRequest = this.api.join(s.id).subscribe({ next: result => {
       if (generation !== this.generation) return;
       try { const u = new URL((this.teacher() && result.hostUrl) || result.joinUrl || ''); if (u.protocol === 'https:' && (u.hostname === 'zoom.us' || u.hostname.endsWith('.zoom.us'))) this.meeting.set(u.href); } catch { /* no se muestra una URL inválida */ }
-    }, error: error => { if (generation === this.generation) this.failure.set(error); } });
+    }, error: error => {
+      if (generation !== this.generation) return;
+      // «Conecta el servicio» es un mensaje para la docente: la alumna solo necesita saber que la reunión no está lista.
+      if (!this.teacher() && (error as { error?: { code?: unknown } } | null)?.error?.code === 'integration_not_connected') this.meetingNotReady.set(true);
+      else this.failure.set(error);
+    } });
   }
   displayProposal(p: SessionProposal): string { return this.i18n.formatInstant(p.expiresAt, isTimeZone(this.zone()) ? this.zone() : 'UTC'); }
 }
