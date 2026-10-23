@@ -401,3 +401,18 @@ test('AGENDA-08/AC07: aceptar una reprogramación reencola los avisos al nuevo h
   await outbox.runOnce({ limit: 200 });
   expect(await M.AuditLog.count({ where: { entityType: 'class_sessions', entityId: original.id, action: 'session.reminder', data: { startsAt: original.startsAt.toISOString() } } })).toBe(0);
 });
+
+test('AGENDA-05: una reprogramación pendiente no se acepta cuando el original ya empezó ni tras marcar asistencia', async () => {
+  const c = await chain(); const original = await confirmed(c);
+  const { Temporal } = require('@js-temporal/polyfill');
+  const localStart = Temporal.PlainDateTime.from(c.body.intent.localStart).add({ days: 1 }).toString({ smallestUnit: 'minute' });
+  const intent = { ...c.body.intent, localStart, offset: Temporal.PlainDateTime.from(localStart).toZonedDateTime(c.body.intent.timeZone).offset };
+  const proposedAt = new Date(original.startsAt.getTime() - 5 * 3600e3);
+  const pending = await sessions.reschedule(c.teacher, original.id, { version: original.version, intent, leadTimeException: true, reason: 'Pedido del alumno' }, { now: proposedAt });
+  expect(pending.proposal.expiresAt.getTime()).toBeLessThanOrEqual(original.startsAt.getTime());
+  const afterStart = new Date(original.startsAt.getTime() + 60 * 60e3);
+  const marked = await sessions.attendance(c.teacher, original.id, { version: pending.version, userId: c.students[0].id, attendance: 'attended', reason: 'Clase dictada' }, { now: afterStart });
+  expect(marked.proposals.some(p => p.status === 'pending')).toBe(false);
+  await expect(sessions.accept(c.students[0], original.id, pending.version, {}, { now: afterStart })).rejects.toMatchObject({ code: 'proposal_stale' });
+  expect(await credits.balance(c.purchases[0].id)).toMatchObject({ available: 3, reserved: 0, consumed: 1 });
+});

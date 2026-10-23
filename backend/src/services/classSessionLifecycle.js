@@ -82,6 +82,7 @@ module.exports = core => {
       }
       if (p?.status === 'accepted' && session.version === wanted && me.acceptedVersion === wanted) return core.detail(user, session.id, transaction);
       await pending(session, wanted, transaction, now);
+      if (p.kind === 'reschedule' && session.startsAt <= now) fail('proposal_stale');
       await zoneConfirmed(user.id, transaction);
       const desired = scheduleOf(p);
       const recalculated = time.resolveLocalIntent({ localStart: p.localStart, timeZone: p.timeZone, offset: p.utcOffset, disambiguation: p.disambiguation, minutes: p.minutes });
@@ -260,6 +261,7 @@ module.exports = core => {
       const allTeacherAbsent = seats.filter(s => s.status !== 'cancelled').every(s => s.attendance === 'teacher_no_show');
       const allStudentsAbsent = seats.filter(s => s.status !== 'cancelled').every(s => s.attendance === 'student_no_show');
       await session.update({ version: session.version + 1, ...(allDone ? { status: allTeacherAbsent ? 'teacher_no_show' : allStudentsAbsent ? 'student_no_show' : 'completed' } : {}) }, { transaction });
+      await M.ClassSessionProposal.update({ status: 'withdrawn', resolvedAt: now }, { where: { sessionId: session.id, status: 'pending' }, transaction });
       await reminders(session, seats, rules, transaction, now);
       await audit(session, user.id, correction ? 'attendance_corrected' : 'attendance', { version: session.version, userId: seat.userId, previous, attendance: seat.attendance }, transaction, why);
       return core.detail(user, session.id, transaction);

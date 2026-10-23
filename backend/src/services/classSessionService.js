@@ -210,7 +210,9 @@ async function proposal(session, seats, desired, body, settings, transaction, no
   if (!time.isAtLeastHoursBefore(desired.startsAt, nowIso(now), minHours) && !body.leadTimeException) fail('lead_time_too_short', { hours: minHours }, 400);
   const expiry = Math.min(asDate(time.addElapsed(nowIso(now), { hours: acquired.rules.proposalTtlHours })).getTime(),
     asDate(time.addElapsed(desired.startsAt, { hours: -acquired.rules.proposalCutoffBeforeStartHours })).getTime(),
-    initial && acquired.cohort?.status === 'forming' && !renewGroup ? acquired.cohort.formingDeadlineAt.getTime() : Infinity);
+    initial && acquired.cohort?.status === 'forming' && !renewGroup ? acquired.cohort.formingDeadlineAt.getTime() : Infinity,
+    // Una reprogramación no puede aceptarse cuando el horario confirmado original ya empezó.
+    initial ? Infinity : session.startsAt.getTime());
   if (expiry <= now.getTime()) fail('proposal_stale');
   await M.ClassSessionProposal.update({ status: 'superseded', resolvedAt: now }, { where: { sessionId: session.id, status: 'pending' }, transaction });
   const nextVersion = first ? 1 : session.version + 1;
