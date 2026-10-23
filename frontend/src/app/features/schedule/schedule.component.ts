@@ -16,7 +16,7 @@ import { SessionTimeComponent } from './session-time.component';
 interface Draft { localStart: string; timeZone: string; offset: string; disambiguation: Disambiguation; minutes: number }
 @Component({ selector: 'app-schedule', standalone: true, imports: [FormsModule, RouterLink, TranslatePipe, ClassSessionCardComponent, SessionTimeComponent],
   templateUrl: './schedule.component.html',
-  styles: [`.schedule-page{max-width:1000px;margin:0 auto}.schedule-form,.zone-box{padding:1rem;border:1px solid var(--color-border,#ddd);border-radius:var(--radius-md,10px);margin-bottom:1rem;background:var(--color-surface,#fff)}label{display:block;margin:.75rem 0}.zone-input{flex:1 1 16rem;width:auto;min-width:0;max-width:100%}.zone-box p{overflow-wrap:anywhere}@media(max-width:480px){.zone-input{font-size:.875rem;padding-inline:.5rem}}.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0 1rem}h1{font-size:1.5rem}h2{font-size:1.1rem}.filters{display:flex;gap:1rem;align-items:end;flex-wrap:wrap}.preview{padding:.75rem;background:var(--color-bg,#faf8f5);border-radius:8px}small{display:block}`]
+  styles: [`.schedule-page{max-width:1000px;margin:0 auto}.schedule-form,.zone-box{padding:1rem;border:1px solid var(--color-border,#ddd);border-radius:var(--radius-md,10px);margin-bottom:1rem;background:var(--color-surface,#fff)}label{display:block;margin:.75rem 0}.zone-input{flex:1 1 16rem;width:auto;min-width:0;max-width:100%}.zone-box p{overflow-wrap:anywhere}@media(max-width:480px){.zone-input{font-size:.875rem;padding-inline:.5rem}}.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0 1rem}h1{font-size:1.5rem}h2{font-size:1.1rem}.filters{display:flex;gap:.75rem;align-items:end;flex-wrap:wrap}.filters label{margin:0}.list-head{display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;flex-wrap:wrap}.class-list{margin-top:1.5rem}.preview{padding:.75rem;background:var(--color-bg,#faf8f5);border-radius:8px}small{display:block}`]
 })
 export class ScheduleComponent {
   private api = inject(ClassSessionsService);
@@ -28,6 +28,7 @@ export class ScheduleComponent {
   sessions = signal<ClassSession[]>([]); options = signal<ScheduleOptions | null>(null);
   notices = signal<{ id: string; sessionId: number; startsAt: string; minutes: number }[]>([]);
   loading = signal(false); busy = signal(false); failure = signal<unknown>(null); truncated = signal(false);
+  formOpen = signal(false);
   selected = signal<ClassSession | null>(null); editing = signal<ClassSession | null>(null);
   zoneInput = signal(''); private suggested = Intl.DateTimeFormat().resolvedOptions().timeZone;
   readonly deviceZone = this.suggested;
@@ -82,6 +83,8 @@ export class ScheduleComponent {
       this.selected.set(null); this.editing.set(null);
       if (this.conversationId !== (Number(query.get('conversationId')) || 0)) { this.studentId.set(0); this.purchaseId.set(0); this.cohortId.set(0); }
       this.conversationId = Number(query.get('conversationId')) || 0;
+      // Llegar desde una conversación para proponer una clase abre el formulario directamente.
+      this.formOpen.set(this.conversationId > 0);
       this.selectedId = Number(query.get('sessionId')); this.editingId = Number(query.get('reschedule'));
       this.loadSelection();
       this.reload();
@@ -146,7 +149,7 @@ export class ScheduleComponent {
       // La clave identifica un intento, no unos datos: con la clave anterior, volver a proponer lo mismo (p. ej. tras cancelar)
       // devolvería la clase vieja por idempotencia en vez de crear una nueva. Un reintento por corte de red sí la conserva.
       this.endAttempt();
-      if (generation !== this.generation) return; this.busy.set(false); this.selected.set(session); this.editing.set(null); this.reload();
+      if (generation !== this.generation) return; this.busy.set(false); this.selected.set(session); this.editing.set(null); this.formOpen.set(false); this.reload();
     }, error: error => {
       // Una respuesta definitiva 4xx no crea nada: el siguiente intento no debe arrastrar la clave (un 409 operation_key_conflict
       // la dejaría bloqueada). Con corte de red o 5xx se conserva para que el reintento sea idempotente.
@@ -155,5 +158,7 @@ export class ScheduleComponent {
   }
   private endAttempt(): void { this.key = crypto.randomUUID(); this.submittedHash = ''; }
   updated(session: ClassSession): void { if (this.selected()?.id === session.id) this.selected.set(session); this.reload(); }
+  openForm(): void { this.formOpen.set(true); }
+  closeForm(): void { this.formOpen.set(false); }
   stopEditing(): void { this.editing.set(null); void this.router.navigate(['/schedule']); }
 }

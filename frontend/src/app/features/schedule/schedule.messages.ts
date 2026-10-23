@@ -4,7 +4,7 @@ const pairs: Record<string, [string, string]> = {
   'errors.no_session_charge_to_waive': ['This class has no outstanding charge to return.', 'Esta clase no tiene un cargo pendiente de devolución.'],
   'errors.compensation_already_recorded': ['Validity compensation for this class and purchase is already recorded.', 'La compensación de vigencia de esta clase y compra ya está registrada.'],
   'errors.compensation_acceptance_required': ['Each affected participant must request this exact extension first. A refund remains an option.', 'Cada participante afectado debe solicitar primero esta extensión exacta. La devolución sigue siendo una opción.'],
-  title: ['Class schedule', 'Agenda de clases'], nav: ['Schedule', 'Agenda'], new: ['Propose a class', 'Proponer una clase'],
+  title: ['Class schedule', 'Agenda de clases'], classes: ['Classes', 'Clases'], nav: ['Schedule', 'Agenda'], new: ['Propose a class', 'Proponer una clase'],
   empty: ['No classes in this period.', 'No hay clases en este período.'], loading: ['Loading schedule…', 'Cargando agenda…'], retry: ['Refresh', 'Actualizar'],
   zone: ['Your confirmed IANA time zone', 'Tu zona IANA confirmada'], confirmZone: ['Confirm time zone', 'Confirmar zona'], zoneHint: ['Check this time zone before scheduling or accepting a class. A device change never moves a class.', 'Revisá esta zona antes de programar o aceptar una clase. Cambiar de dispositivo nunca mueve una clase.'],
   deviceZone: ['Your device suggests {zone}. Your saved preference stays unchanged.', 'Tu dispositivo sugiere {zone}. Tu preferencia guardada se conserva.'],

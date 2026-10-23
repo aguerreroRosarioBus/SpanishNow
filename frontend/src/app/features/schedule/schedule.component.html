@@ -1,5 +1,10 @@
 <div class="page-container schedule-page">
-  <h1>{{ 'schedule.title' | t }}</h1>
+  <div class="page-header">
+    <h1 class="page-title">{{ 'schedule.title' | t }}</h1>
+    @if (teacher() && features.enabled('class_scheduling') && !formOpen() && !editing()) {
+      <div class="page-actions"><button type="button" class="btn btn-primary" (click)="openForm()" data-testid="open-schedule-form">{{ 'schedule.new' | t }}</button></div>
+    }
+  </div>
   <section class="zone-box">
     <p>{{ 'schedule.zoneHint' | t }}</p>
     @if (deviceZone && deviceZone !== preferences.preferences()?.timeZone) { <p class="small">{{ 'schedule.deviceZone' | t:{ zone: deviceZone } }}</p> }
@@ -9,7 +14,7 @@
     @if (preferences.errorMessage()) { <p class="text-danger" role="alert">{{ preferences.errorMessage() }}</p><button class="btn btn-ghost btn-sm" (click)="preferences.retry()">{{ 'schedule.retry' | t }}</button> }
   </section>
   @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }} <button class="btn btn-ghost btn-sm" (click)="reload()">{{ 'schedule.retry' | t }}</button></div> }
-  @if (teacher() && features.enabled('class_scheduling')) {
+  @if (teacher() && features.enabled('class_scheduling') && (formOpen() || editing())) {
     <form class="schedule-form" (ngSubmit)="submit()" data-testid="schedule-form">
       <h2>{{ (editing() ? 'schedule.reschedule' : 'schedule.new') | t }}</h2>
       @if (options(); as opts) {
@@ -41,18 +46,23 @@
         <p class="small">{{ 'schedule.original' | t }}</p>
       }
       <button type="submit" class="btn btn-primary btn-sm" [disabled]="busy() || !zoneReady() || !choices().value || (!editing() && !cohortId() && (!studentId() || !purchaseId()))">{{ (editing() ? 'schedule.reschedule' : 'schedule.new') | t }}</button>
-      @if (editing()) { <button type="button" class="btn btn-ghost btn-sm ms-2" (click)="stopEditing()">{{ 'schedule.back' | t }}</button> }
+      <button type="button" class="btn btn-ghost btn-sm ms-2" (click)="editing() ? stopEditing() : closeForm()">{{ 'schedule.back' | t }}</button>
     </form>
   }
   @if (notices().length) { <section class="zone-box"><h2>{{ 'schedule.reminders' | t }}</h2>@for (notice of notices(); track notice.id) { <p><a routerLink="/schedule" [queryParams]="{ sessionId: notice.sessionId }">{{ i18n.formatInstant(notice.startsAt, zone()) }}</a></p> }</section> }
   @if (selected(); as selected) { <app-class-session-card [sessionId]="selected.id" (changed)="updated($event)" /> }
-  <form class="filters mb-3" (ngSubmit)="reload()">
-    <label>{{ 'schedule.from' | t }} (UTC)<input type="date" class="form-control" name="from" [(ngModel)]="fromDate" /></label>
-    <label>{{ 'schedule.to' | t }} (UTC)<input type="date" class="form-control" name="to" [(ngModel)]="toDate" /></label>
-    <button type="submit" class="btn btn-secondary btn-sm">{{ 'schedule.apply' | t }}</button>
-  </form>
-  @if (loading()) { <p role="status">{{ 'schedule.loading' | t }}</p> }
-  @if (truncated()) { <p>{{ 'schedule.truncated' | t }}</p> }
-  @for (s of sessions(); track s.id) { @if (s.id !== selected()?.id) { <app-class-session-card [sessionId]="s.id" (changed)="updated($event)" /> } }
-  @if (!loading() && !sessions().length) { <p>{{ 'schedule.empty' | t }}</p> }
+  <section class="class-list" aria-labelledby="classListTitle">
+    <div class="list-head">
+      <h2 id="classListTitle">{{ 'schedule.classes' | t }}</h2>
+      <form class="filters" (ngSubmit)="reload()">
+        <label>{{ 'schedule.from' | t }} (UTC)<input type="date" class="form-control" name="from" [(ngModel)]="fromDate" /></label>
+        <label>{{ 'schedule.to' | t }} (UTC)<input type="date" class="form-control" name="to" [(ngModel)]="toDate" /></label>
+        <button type="submit" class="btn btn-secondary btn-sm">{{ 'schedule.apply' | t }}</button>
+      </form>
+    </div>
+    @if (loading()) { <p role="status">{{ 'schedule.loading' | t }}</p> }
+    @if (truncated()) { <p>{{ 'schedule.truncated' | t }}</p> }
+    @for (s of sessions(); track s.id) { @if (s.id !== selected()?.id) { <app-class-session-card [sessionId]="s.id" (changed)="updated($event)" /> } }
+    @if (!loading() && !sessions().length) { <p class="state-box">{{ 'schedule.empty' | t }}</p> }
+  </section>
 </div>

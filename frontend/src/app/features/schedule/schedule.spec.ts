@@ -216,6 +216,26 @@ describe('W06: interfaz conectada por contratos de agenda', () => {
     expect(Object.keys(SCHEDULE_MESSAGES.en).every(key => key.startsWith('schedule.') || key.startsWith('errors.'))).toBe(true);
   });
 
+  describe('Tanda C: formulario de propuesta', () => {
+    it('el formulario está cerrado hasta que la docente lo abre con una acción visible, y se cierra al volver', () => {
+      auth.currentUser.set({ id: 2, role: 'teacher' });
+      const fixture = TestBed.createComponent(ScheduleComponent); fixture.detectChanges();
+      const el = fixture.nativeElement as HTMLElement;
+      expect(el.querySelector('[data-testid="schedule-form"]')).toBeNull();
+      (el.querySelector('[data-testid="open-schedule-form"]') as HTMLButtonElement).click(); fixture.detectChanges();
+      expect(el.querySelector('[data-testid="schedule-form"]')).toBeTruthy();
+      expect(el.querySelector('[data-testid="open-schedule-form"]')).toBeNull();
+      fixture.componentInstance.closeForm(); fixture.detectChanges();
+      expect(el.querySelector('[data-testid="schedule-form"]')).toBeNull(); fixture.destroy();
+    });
+    it('la alumna no ve la acción de proponer y el filtro de fechas queda dentro de la lista de clases', () => {
+      const fixture = TestBed.createComponent(ScheduleComponent); fixture.detectChanges();
+      const el = fixture.nativeElement as HTMLElement;
+      expect(el.querySelector('[data-testid="open-schedule-form"]')).toBeNull();
+      expect(el.querySelector('section.class-list form.filters')).toBeTruthy(); fixture.destroy();
+    });
+  });
+
   describe('Tanda B: clave de idempotencia al proponer una clase', () => {
     const setup = () => {
       auth.currentUser.set({ id: 2, role: 'teacher' });
