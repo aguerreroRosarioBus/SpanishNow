@@ -11,6 +11,7 @@ const outbox = require('../src/services/outbox');
 const calendar = require('../src/services/googleCalendarService');
 const connections = require('../src/services/externalConnections');
 const { fake } = require('../src/services/googleCalendar');
+const time = require('../src/domain/classTime');
 const { IntegrationError } = connections;
 const { chain, uuid } = require('./helpers/classSessions');
 const { as } = require('./helpers/fixtures');
@@ -79,14 +80,16 @@ describe('recorrido individual: oferta, propuesta NY, aceptación, proveedores y
     expect(await calendarRef(session.id)).toMatchObject({ status: 'ready' });
     expect(fake.eventCount('primary')).toBe(1);
 
-    // Clase dictada: consume una unidad de la compra original.
-    expect(await credits.balance(c.purchases[0].id)).toMatchObject({ reserved: 1, consumed: 0 });
+    // Clase dictada: la asistencia del docente consume la unidad reservada de la compra original.
+    const now = new Date(time.addElapsed(session.endsAt.toISOString(), { minutes: 1 }));
+    await sessions.attendance(c.teacher, session.id, { version: session.version, userId: c.students[0].id, attendance: 'attended', reason: 'Clase dictada' }, { now });
+    expect(await credits.balance(c.purchases[0].id)).toMatchObject({ reserved: 0, consumed: 1 });
 
     // Renovación: otra compra del mismo alumno. La compra anterior conserva su historial.
     const renewal = await chain({ teacher: c.teacher, students: c.students, units: 4 });
     expect(renewal.purchases[0].id).not.toBe(c.purchases[0].id);
     expect(await credits.balance(renewal.purchases[0].id)).toMatchObject({ available: 4, reserved: 0, consumed: 0 });
-    expect(await credits.balance(c.purchases[0].id)).toMatchObject({ reserved: 1, consumed: 0 });
+    expect(await credits.balance(c.purchases[0].id)).toMatchObject({ reserved: 0, consumed: 1 });
   });
 
   test('AC15: Zoom y Calendar fallan al primer intento; el outbox recupera sin duplicar reunión ni evento ni saldo', async () => {

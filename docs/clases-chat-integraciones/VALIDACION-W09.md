@@ -12,7 +12,8 @@ Resultado de ejecución (HEAD de la rama `w09-integracion` tras el último commi
 
 | Suite | Resultado |
 | --- | --- |
-| Backend `npx jest --runInBand` (base, antes de W09) | 64 suites, 1065 pruebas, OK |
+| Backend `npx jest --runInBand` (HEAD final, tras correcciones de revisión) | 65 suites, 1070 pruebas, OK |
+| Backend `npx jest --runInBand` (línea base, antes de W09) | 64 suites, 1065 pruebas, OK |
 | Backend `tests/w09.integration.test.js` | 5 pruebas, OK |
 | Backend `tests/errorCodes.test.js` (tras #46) | 5 pruebas, OK |
 | Frontend `npx ng test --watch=false` | 73 archivos, 477 pruebas, OK |
