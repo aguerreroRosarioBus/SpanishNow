@@ -3,13 +3,17 @@
   <p>{{ 'packages.catalog.hint' | t }}</p>
   @if (error()) { <p class="alert alert-danger" role="alert">{{ error() }}</p> }
   @if (settings(); as s) {
-    <section class="card p-3 mb-3">
+    <section class="card p-3 mb-3" aria-labelledby="salesTitle">
+      <h2 class="h5" id="salesTitle">{{ 'packages.catalog.salesTitle' | t }}</h2>
       <p>{{ (s.salesPausedAt ? 'packages.sales.paused' : 'packages.sales.open') | t }}</p>
       @if (!s.classesEnabledAt) { <p>{{ 'packages.sales.notEnabled' | t }}</p> }
       <button class="btn btn-secondary align-self-start" [disabled]="busy()" (click)="pause()">{{ (s.salesPausedAt ? 'packages.sales.resume' : 'packages.sales.pause') | t }}</button>
     </section>
   }
-  <button class="btn btn-primary mb-3" [disabled]="busy()" (click)="importInitial()">{{ 'packages.catalog.import' | t }}</button>
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+    <h2 class="h5 mb-0" id="packagesTitle">{{ 'packages.catalog.listTitle' | t }}</h2>
+    @if (items().length) { <button class="btn btn-secondary" [disabled]="busy()" (click)="importInitial()">{{ 'packages.catalog.import' | t }}</button> }
+  </div>
   @if (busy()) { <p role="status">{{ 'packages.loading' | t }}</p> }
   <div class="row g-3">
     @for (item of items(); track item.id) {
@@ -19,9 +23,9 @@
           <p>{{ i18n.formatMoney(current.priceAmount,current.currency) }} · {{ 'packages.summary' | t:{count:current.sessionsCount,minutes:current.minutesPerSession,seats:current.seatsCovered,hours:current.validityHours} }}</p>
           <p>{{ 'packages.version' | t:{version:current.version} }} · {{ ('packages.status.'+item.status) | t }}</p>
           <div class="d-flex flex-wrap gap-2">
-            <button class="btn btn-outline-primary" [disabled]="busy() || item.status==='archived'" (click)="edit(item)">{{ 'packages.edit' | t }}</button>
-            <button class="btn btn-secondary" [disabled]="busy() || item.status==='archived'" (click)="status(item,item.status==='active'?'paused':'active')">{{ (item.status==='active'?'packages.pause':'packages.activate') | t }}</button>
-            <button class="btn btn-ghost" [disabled]="busy() || item.status==='archived'" (click)="status(item,'archived')">{{ 'packages.archive' | t }}</button>
+            <button class="btn btn-outline-primary" [disabled]="busy() || item.status==='archived'" (click)="edit(item)" [attr.aria-label]="('packages.edit' | t) + ' — ' + name(item)">{{ 'packages.edit' | t }}</button>
+            <button class="btn btn-secondary" [disabled]="busy() || item.status==='archived'" (click)="status(item,item.status==='active'?'paused':'active')" [attr.aria-label]="((item.status==='active'?'packages.pause':'packages.activate') | t) + ' — ' + name(item)">{{ (item.status==='active'?'packages.pause':'packages.activate') | t }}</button>
+            <button class="btn btn-ghost" [disabled]="busy() || item.status==='archived'" (click)="status(item,'archived')" [attr.aria-label]="('packages.archive' | t) + ' — ' + name(item)">{{ 'packages.archive' | t }}</button>
           </div>
         } @else {
           <p>{{ ('packages.status.'+item.status) | t }}</p>
@@ -32,7 +36,15 @@
           </div>
         }
       </div></article>
-    } @empty { <p>{{ 'packages.catalog.empty' | t }}</p> }
+    } @empty {
+      @if (!busy()) {
+        <div class="col-12"><section class="state-box" data-testid="catalog-empty">
+          <h3 class="h5 mb-0">{{ 'packages.catalog.empty' | t }}</h3>
+          <p class="mb-0">{{ 'packages.catalog.emptyHint' | t }}</p>
+          <button class="btn btn-primary" [disabled]="busy()" (click)="importInitial()">{{ 'packages.catalog.import' | t }}</button>
+        </section></div>
+      }
+    }
   </div>
   @if (selected(); as item) {
     <section class="card p-3 mt-4">
