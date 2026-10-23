@@ -5,6 +5,7 @@
 #   spanishnow off      stop everything (frees RAM; nothing runs until the next `on`)
 #   spanishnow status   on/off, since when, which main, URL, RAM and CPU in use
 #   spanishnow logs     follow the log (Ctrl+C to leave)
+#   spanishnow public on|off   open/close https://platform.spanishnow.ar (Cloudflare tunnel; `on` also turns it on)
 #
 # Installed as a symlink: ln -sf /Users/andresguerrero/Repos/SpanishNow-run/scripts/spanishnow /opt/homebrew/bin/spanishnow
 set -uo pipefail
@@ -17,6 +18,8 @@ SRC_PLIST="$ROOT/scripts/$LABEL.plist"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 LOG="$ROOT/.run/run-main.log"
 PORT=4200
+PUBLIC_HOST=platform.spanishnow.ar
+MARKER="$ROOT/.run/public"
 
 pid() { launchctl print "$SERVICE" 2>/dev/null | awk '/^\tpid =/{print $3}'; }
 lan_ip() { ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || echo localhost; }
@@ -39,6 +42,7 @@ status() {
   echo "  main:        $(git -C "$ROOT" log -1 --format='%h %s')"
   echo "  dispositivos: https://$(lan_ip):$PORT"
   echo "  Mac:         https://localhost:$PORT"
+  if [ -f "$MARKER" ]; then echo "  público:     https://$PUBLIC_HOST (cerralo con: spanishnow public off)"; else echo "  público:     cerrado"; fi
   ps -o rss=,%cpu= -p "$procs" | awk '{r+=$1; c+=$2} END {printf "  consumo:     %.0f MB de RAM, %.1f%% de CPU\n", r/1024, c}'
 }
 
@@ -59,13 +63,36 @@ case "${1:-status}" in
   off)
     p="$(pid)"
     [ -z "$p" ] && { echo "SpanishNow ya estaba apagado."; exit 0; }
+    # Public access never survives an `off`: the next `on` is local only.
+    rm -f "$MARKER"
     # bootout (not kill) so launchd does not bring it back; `on` loads it again.
     launchctl bootout "$SERVICE" 2>/dev/null
     for _ in $(seq 1 30); do [ -z "$(pid)" ] && ! kill -0 "$p" 2>/dev/null && break; sleep 1; done
     if kill -0 "$p" 2>/dev/null; then echo "No se apagó a tiempo; revisá: spanishnow logs"; exit 1; fi
     echo "SpanishNow apagado."
     ;;
+  public)
+    case "${2:-}" in
+      on)
+        command -v cloudflared >/dev/null || { echo "Falta cloudflared (brew install cloudflared; DEVELOPMENT.md)." >&2; exit 1; }
+        mkdir -p "$ROOT/.run"; touch "$MARKER"
+        if [ -z "$(pid)" ]; then "$0" on >/dev/null || exit 1; else kill -USR1 "$(pid)"; fi
+        echo "Abriendo https://$PUBLIC_HOST ..."
+        for _ in $(seq 1 120); do
+          [ "$(curl -s -o /dev/null -w '%{http_code}' "https://$PUBLIC_HOST/")" = 200 ] && break
+          sleep 1
+        done
+        status
+        ;;
+      off)
+        rm -f "$MARKER"
+        p="$(pid)"; [ -n "$p" ] && kill -USR1 "$p"
+        echo "Acceso público cerrado (la red local sigue como estaba)."
+        ;;
+      *) echo "Uso: spanishnow public on | off" >&2; exit 2 ;;
+    esac
+    ;;
   status) status ;;
   logs) tail -n 20 -f "$LOG" ;;
-  *) echo "Uso: spanishnow on | off | status | logs" >&2; exit 2 ;;
+  *) echo "Uso: spanishnow on | off | status | logs | public on|off" >&2; exit 2 ;;
 esac

@@ -45,6 +45,8 @@ Se enciende y apaga a demanda con el comando `spanishnow`, desde cualquier termi
 | `spanishnow off` | Apaga todo; no consume nada hasta el próximo `on`. |
 | `spanishnow status` | Encendido o apagado, desde cuándo, qué `main`, URL, RAM y CPU. |
 | `spanishnow logs` | Sigue el log (Ctrl+C para salir). |
+| `spanishnow public on` | Abre `https://platform.spanishnow.ar` desde internet (enciende todo si estaba apagado). |
+| `spanishnow public off` | Cierra el acceso desde internet; la red local sigue igual. `spanishnow off` también lo cierra. |
 
 Por dentro, `scripts/run-main.sh` corre como servicio de macOS (launchd) definido en `scripts/com.spanishnow.run-main.plist`: no arranca solo al iniciar sesión y, si se cae mientras está encendido, launchd lo levanta de nuevo. `spanishnow on` instala o actualiza el plist en `~/Library/LaunchAgents` cuando cambia. El plist usa rutas de esta Mac y Node 24.13.0 de nvm; si cambia la versión de Node, actualizar `PATH`. Al encender macOS notifica "Encendido" y al apagar "Apagado". Recién encendido usa ~1,5–2 GB de RAM mientras Angular compila; en reposo la CPU queda en ~0%.
 
@@ -75,6 +77,22 @@ spanishnow off && spanishnow on
 - `run-main.sh` usa `~/.spanishnow/certs/lan.pem` y `lan-key.pem` si existen (otra carpeta con `RUN_MAIN_CERT_DIR`); si no, sigue con el autofirmado y lo avisa en el log. Los archivos quedan fuera del repo: la clave nunca se commitea.
 - El certificado incluye la IP LAN del momento. Si el router le da otra IP a la Mac, repetir el último `mkcert` con la nueva.
 - Celular: instalar y marcar como confiable `rootCA.pem` de `mkcert -CAROOT` (iOS: Ajustes › General › Información › Confianza de certificados). Nunca compartir esa carpeta: con su clave se pueden firmar sitios que esta Mac aceptaría.
+
+#### Acceso público (platform.spanishnow.ar)
+Zoom (OAuth y webhooks) y Hotmart (webhook) necesitan una URL HTTPS pública. En lugar de un hosting, un túnel de Cloudflare expone la copia fija en `https://platform.spanishnow.ar` solo mientras está abierto con `spanishnow public on`. El dominio `spanishnow.ar` ya usa los DNS de Cloudflare; el subdominio es un CNAME al túnel `spanishnow-platform`.
+
+Configuración (una vez, ya hecha en esta Mac):
+```bash
+brew install cloudflared
+cloudflared tunnel login
+cloudflared tunnel create spanishnow-platform
+cloudflared tunnel route dns spanishnow-platform platform.spanishnow.ar
+```
+
+- `cloudflared tunnel login` abre el navegador para autorizar `spanishnow.ar`; deja `~/.cloudflared/cert.pem`. `tunnel create` deja las credenciales del túnel en `~/.cloudflared/<id>.json`. Nada de eso va al repo.
+- `run-main.sh` corre `cloudflared tunnel run` hacia `https://localhost:4200` mientras exista `.run/public`, y pasa `FRONTEND_URL=https://platform.spanishnow.ar` al backend (reinicia el backend al abrir y al cerrar). `/api` llega por el proxy de `ng serve`, igual que en la red local. `angular.json` permite ese host en `allowedHosts`.
+- Requiere la Mac encendida: con el túnel cerrado, Cloudflare muestra un error en esa dirección. Mientras está abierto cualquiera con la URL llega a un servidor de desarrollo con `spanishnow_main`: abrirlo solo para probar.
+- Log del túnel en `.run/tunnel.log`. Otro host o túnel: `RUN_MAIN_PUBLIC_HOST` y `RUN_MAIN_TUNNEL`.
 
 ---
 
