@@ -1,7 +1,7 @@
 import { DOCUMENT } from '@angular/common';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize, forkJoin } from 'rxjs';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
@@ -15,7 +15,19 @@ export class ZoomCardComponent {
   private document = inject(DOCUMENT); private destroy = inject(DestroyRef);
   readonly status = signal<ZoomStatus | null>(null); readonly sessions = signal<ZoomSession[]>([]);
   readonly busy = signal(false); readonly failure = signal<unknown>(null); readonly disconnecting = signal(false);
-  constructor() { this.features.load(); this.refresh(); }
+  constructor() {
+    const route = inject(ActivatedRoute), router = inject(Router);
+    this.features.load();
+    const token = route.snapshot.queryParamMap.get('token');
+    if (route.snapshot.queryParamMap.get('zoom') === 'confirm' && token) {
+      // Sacar el token de la barra e historial antes de usarlo; la API exige la sesión que inició OAuth.
+      void router.navigate([], { relativeTo: route, queryParams: {}, replaceUrl: true });
+      this.busy.set(true);
+      this.api.complete(token).pipe(takeUntilDestroyed(this.destroy), finalize(() => this.busy.set(false))).subscribe({
+        next: status => { this.status.set(status); this.refreshSessions(); }, error: error => this.failure.set(error)
+      });
+    } else this.refresh();
+  }
   refresh(): void {
     if (this.busy()) return;
     this.busy.set(true); this.failure.set(null);

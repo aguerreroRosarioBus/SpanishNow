@@ -12,7 +12,7 @@ beforeAll(() => {
 });
 afterAll(() => { delete process.env.FEATURE_ZOOM; delete process.env.INTEGRATIONS_FAKE; });
 const { connected } = require('./zoomFixtures');
-test('OAuth fake por docente, cifrado, state de un uso, cookie obligatoria, perfil sin credenciales', async () => {
+test('OAuth fake por docente, cifrado, state de un uso, confirmación autenticada, perfil sin credenciales', async () => {
   const fixture = await chain(); const t = fixture.teacher;
   const { agent, url } = await connected(t);
   const row = await c.rowFor(t.id);
@@ -41,7 +41,7 @@ test('flag y modo fake fallan cerrados, OAuth caducado y código manipulado se r
   const { teacher } = await chain(); const start = await c.connect(teacher);
   const state = new URL(start.url).searchParams.get('state');
   await (await c.rowFor(teacher.id)).update({ oauthExpiresAt: new Date(0) });
-  expect((await request(app).get('/api/integrations/zoom/start').query({ state })).status).toBe(400);
+  expect((await request(app).get('/api/integrations/zoom/callback').query({ state })).status).toBe(400);
   process.env.FEATURE_ZOOM = '0';
   expect((await as(teacher).post('/api/integrations/zoom/connect')).body.code).toBe('feature_disabled');
   process.env.FEATURE_ZOOM = '1'; process.env.INTEGRATIONS_FAKE = '0';
@@ -51,8 +51,7 @@ test('flag y modo fake fallan cerrados, OAuth caducado y código manipulado se r
 
 test('PKCE fake rechaza canje con verificador ajeno y la impersonación no inicia OAuth', async () => {
   const { teacher } = await chain(); const start = await c.connect(teacher); const agent = request.agent(app);
-  const navigation = await agent.get(new URL(start.url).pathname + new URL(start.url).search);
-  const url = new URL(navigation.headers.location); const row = await c.rowFor(teacher.id); const pending = cipher.decrypt(row.oauthVerifier);
+  const url = new URL(start.url); const row = await c.rowFor(teacher.id); const pending = cipher.decrypt(row.oauthVerifier);
   await expect(adapter.authorize({ code: pending.code, expectedCode: pending.code, accountId: pending.accountId, verifier: 'interceptado' })).rejects.toMatchObject({ code: 'zoom_oauth_invalid' });
   expect((await agent.get(url.pathname + url.search)).status).toBe(302);
   const jwt = require('jsonwebtoken').sign({ id: teacher.id, role: 'teacher', impersonatedBy: 999 }, process.env.JWT_SECRET);
@@ -64,4 +63,24 @@ test('revocación de refresh no expone ni conserva credenciales vencidas', async
   await row.update({ credentials: cipher.encrypt(tokens), tokenExpiresAt: new Date(0) });
   expect(await c.status(teacher)).toMatchObject({ status: 'revoked', capabilities: null, lastError: 'zoom_revoked' });
   expect((await c.rowFor(teacher.id)).credentials).toBeNull();
+});
+
+test('P1: A inicia y B completa: se descarta el grant pendiente, A sin credenciales y B sin acceso', async () => {
+  const { teacher: a } = await chain(); const { teacher: b } = await chain();
+  const start = await c.connect(a); const url = new URL(start.url);
+  const callback = await request(app).get(url.pathname + url.search);
+  expect(callback.status).toBe(302);
+  const token = new URL(callback.headers.location).searchParams.get('token');
+  expect((await c.rowFor(a.id)).credentials).toBeNull();
+  expect((await as(b).post('/api/integrations/zoom/complete').send({ token })).status).toBe(403);
+  expect((await c.rowFor(a.id)).credentials).toBeNull();
+  expect(await c.rowFor(b.id)).toBeNull();
+  expect((await as(a).post('/api/integrations/zoom/complete').send({ token })).status).toBe(400);
+  // Reconectar desde una conexión existente y fallar la confirmación no modifica el grant previo.
+  await connected(a); const previous = (await c.rowFor(a.id)).credentials;
+  const next = new URL((await c.connect(a)).url);
+  const result = await request(app).get(next.pathname + next.search);
+  const another = new URL(result.headers.location).searchParams.get('token');
+  expect((await as(b).post('/api/integrations/zoom/complete').send({ token: another })).status).toBe(403);
+  expect((await c.rowFor(a.id)).credentials).toBe(previous);
 });

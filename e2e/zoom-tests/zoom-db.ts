@@ -20,3 +20,8 @@ export function zoomState(sessionId: number) {
     const session=await M.ClassSession.findByPk(p.sessionId);const ref=await M.ExternalSyncRef.findOne({where:{sessionId:p.sessionId,provider:'zoom'}});
     console.log(JSON.stringify({status:ref?.status,externalId:ref?.externalId,syncedVersion:ref?.syncedVersion,joinUrl:ref?.joinUrl,startsAt:session.startsAt,version:session.version,sessionStatus:session.status}));`, { sessionId });
 }
+
+export function zoomConnectionState(userId: number) {
+  return run(`const c=await require('./src/models').ExternalConnection.findOne({where:{userId:JSON.parse(process.env.ZOOM_E2E_PARAMS).userId,provider:'zoom'}});
+    console.log(JSON.stringify({status:c?.status||'disconnected',credentials:Boolean(c?.credentials),pending:Boolean(c?.oauthVerifier)}));`, { userId });
+}

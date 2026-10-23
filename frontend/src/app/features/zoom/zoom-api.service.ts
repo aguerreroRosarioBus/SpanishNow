@@ -15,6 +15,7 @@ export class ZoomApi {
   private url = `${environment.apiUrl}/integrations/zoom`;
   status() { return this.http.get<ZoomStatus>(this.url); }
   connect() { return this.http.post<{ url: string; fake: boolean }>(`${this.url}/connect`, {}); }
+  complete(token: string) { return this.http.post<ZoomStatus>(`${this.url}/complete`, { token }); }
   disconnect() { return this.http.delete<ZoomStatus>(this.url); }
   sessions() { return this.http.get<{ items: ZoomSession[] }>(`${this.url}/sessions`); }
   session(id: number) { return this.http.get<ZoomSessionStatus>(`${this.url}/sessions/${id}`); }

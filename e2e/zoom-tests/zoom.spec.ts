@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 import { login } from '../helpers/auth';
-import { zoomFixture, zoomState } from './zoom-db';
+import { zoomFixture, zoomState, zoomConnectionState } from './zoom-db';
 const api = 'http://localhost:3116/api';
 async function enter(page: Page, account: { email: string; password: string }, teacher = true) {
   await page.addInitScript(() => localStorage.setItem('spanishnow.locale', 'es'));
@@ -62,4 +62,18 @@ test('desconexión, reintento accionable y contingencia EN/ES sin declarar integ
   await page.getByRole('button', { name: 'Meeting', exact: true }).click();
   await expect(page.getByRole('link', { name: 'Open meeting', exact: true })).toHaveAttribute('href', 'https://zoom.us/j/123456789?pwd=manual');
   await page.screenshot({ path: info.outputPath('zoom-contingencia-en.png'), fullPage: true });
+});
+
+test('P1: enlace iniciado por A y completado por B rechaza sin conectar ninguna cuenta', async ({ page }) => {
+  const a = zoomFixture(), b = zoomFixture();
+  const started = await page.request.post(`${api}/integrations/zoom/connect`, {
+    headers: { Authorization: `Bearer ${a.teacher.token}` }, data: {}
+  });
+  expect(started.status()).toBe(200);
+  await enter(page, b.teacher);
+  await page.goto((await started.json()).url);
+  await expect(page.getByTestId('zoom-card').getByRole('alert')).toBeVisible();
+  await expect(page).not.toHaveURL(/token=/);
+  expect(zoomConnectionState(a.teacher.id)).toMatchObject({ credentials: false, pending: false });
+  expect(zoomConnectionState(b.teacher.id)).toMatchObject({ credentials: false });
 });

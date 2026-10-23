@@ -7,7 +7,7 @@ const M = require('../models');
 const cipher = require('./liveGoogleService');
 const adapter = require('./zoomAdapter');
 const { fail, hash } = adapter;
-const cookieName = 'spanishnow_zoom_state';
+const connections = require('./externalConnections');
 const scope = 'fake:meetings fake:account';
 const rowFor = userId => M.ExternalConnection.findOne({ where: { userId, provider: 'zoom' } });
 async function teacher(user) {
@@ -32,41 +32,33 @@ async function connect(user) {
     const [row] = await M.ExternalConnection.findOrCreate({ where: { userId: user.id, provider: 'zoom' }, transaction });
     await row.update({ oauthStateHash: hash(state), oauthVerifier: encrypted, oauthExpiresAt: new Date(Date.now() + 600000), version: row.version + 1 }, { transaction });
   });
-  const url = new URL('start', redirect()); url.searchParams.set('state', state);
+  await adapter.issueAuthorization({ code: pending.code, challenge: crypto.createHash('sha256').update(pending.verifier).digest('base64url'), accountId: pending.accountId });
+  const url = redirect(); url.search = new URLSearchParams({ state, code: pending.code }).toString();
   return { url: url.href, fake: true };
 }
-async function pending(state) {
-  if (typeof state !== 'string' || !/^[\w-]{43}$/.test(state)) fail('zoom_oauth_invalid', 400);
-  const row = await M.ExternalConnection.findOne({ where: { provider: 'zoom', oauthStateHash: hash(state) } });
-  if (!row?.oauthVerifier || !row.oauthExpiresAt || row.oauthExpiresAt <= new Date()) fail('zoom_oauth_invalid', 400);
-  return row;
-}
-async function start(state, res) {
-  adapter.assertFake(); const row = await pending(state);
-  const c = cipher.decrypt(row.oauthVerifier);
-  const user = await M.User.findByPk(row.userId); await teacher(user);
-  await adapter.issueAuthorization({ code: c.code, challenge: crypto.createHash('sha256').update(c.verifier).digest('base64url'), accountId: c.accountId });
-  res.cookie(cookieName, state, { httpOnly: true, secure: redirect().protocol === 'https:', sameSite: 'lax',
-    path: '/api/integrations/zoom/callback', maxAge: 600000 });
-  const url = redirect(); url.search = new URLSearchParams({ state, code: c.code }).toString();
-  return url.href;
-}
+// El callback nunca activa el grant: solo quien inició puede confirmarlo con su sesión autenticada.
 async function callback(req) {
   adapter.assertFake();
-  const state = req.query.state;
-  const cookie = (req.headers.cookie || '').split(';').map(s => s.trim()).find(s => s.startsWith(`${cookieName}=`))?.slice(cookieName.length + 1);
-  if (!cookie || typeof state !== 'string' || hash(cookie) !== hash(state)) fail('zoom_oauth_invalid', 400);
-  const row = await pending(state);
-  const user = await M.User.findByPk(row.userId); await teacher(user);
-  const c = cipher.decrypt(row.oauthVerifier);
+  const pending = await connections.consumeOAuth('zoom', req.query.state);
+  const user = await M.User.findByPk(pending.userId); await teacher(user);
   if (req.query.error) fail('zoom_oauth_denied', 400);
-  const credentials = await adapter.authorize({ code: req.query.code, expectedCode: c.code, verifier: c.verifier, accountId: hash(`${process.env.DB_NAME}:${user.id}:${user.email}`) });
-  const [changed] = await M.ExternalConnection.update({ status: 'connected', credentials: cipher.encrypt(credentials), accountEmail: credentials.email,
-    scopes: scope, tokenExpiresAt: new Date(credentials.expiresAt), oauthStateHash: null, oauthVerifier: null, oauthExpiresAt: null,
-    lastError: null, refreshLockedUntil: null, version: row.version + 1 },
-  { where: { id: row.id, version: row.version, oauthStateHash: hash(state) } });
-  if (!changed) fail('zoom_oauth_invalid', 400);
-  return row.userId;
+  const c = pending.verifier;
+  const tokens = await adapter.authorize({ code: req.query.code, expectedCode: c.code, verifier: c.verifier, accountId: c.accountId });
+  return connections.stagePending(pending.connectionId, tokens);
+}
+async function complete(user, token) {
+  await teacher(user); adapter.assertFake();
+  const result = await connections.completePending('zoom', token, user.id);
+  // El fake no tiene grants remotos que revocar. Al consumir el pendiente se descartan sus tokens.
+  if (!result.ok) fail('forbidden', 403);
+  const credentials = result.tokens;
+  await db.transaction(async transaction => {
+    const row = await M.ExternalConnection.findByPk(result.connectionId, { transaction, lock: transaction.LOCK.UPDATE });
+    await row.update({ status: 'connected', credentials: cipher.encrypt(credentials), accountEmail: credentials.email,
+      scopes: scope, tokenExpiresAt: new Date(credentials.expiresAt), lastError: null, refreshLockedUntil: null,
+      version: row.version + 1 }, { transaction });
+  });
+  return status(user);
 }
 async function credentials(userId) {
   adapter.assertFake();
@@ -114,4 +106,4 @@ async function disconnect(user) {
   });
   return status(user);
 }
-module.exports = { teacher, connect, start, callback, credentials, status, disconnect, cookieName, rowFor };
+module.exports = { teacher, connect, callback, complete, credentials, status, disconnect, rowFor };

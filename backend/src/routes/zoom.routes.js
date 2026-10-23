@@ -7,12 +7,12 @@ const secure = [authMiddleware, (req, res, next) => req.impersonatedBy
   ? next(new (require('../services/zoomAdapter').ZoomError)('forbidden', 403)) : next()];
 router.get('/integrations/zoom', ...secure, wrap(async (req, res) => res.json(await c.status(req.user))));
 router.post('/integrations/zoom/connect', ...secure, requireFeature('zoom'), wrap(async (req, res) => res.json(await c.connect(req.user))));
-router.get('/integrations/zoom/start', requireFeature('zoom'), wrap(async (req, res) => res.redirect(await c.start(req.query.state, res))));
 router.get('/integrations/zoom/callback', requireFeature('zoom'), wrap(async (req, res) => {
-  await c.callback(req);
-  res.clearCookie(c.cookieName, { path: '/api/integrations/zoom/callback' });
-  res.redirect(`${new URL(process.env.FRONTEND_URL || 'http://localhost:4200').origin}/teacher/integrations/zoom`);
+  const token = await c.callback(req);
+  res.set('Cache-Control', 'no-store');
+  res.redirect(`${new URL(process.env.FRONTEND_URL || 'http://localhost:4200').origin}/teacher/integrations/zoom?zoom=confirm&token=${encodeURIComponent(token)}`);
 }));
+router.post('/integrations/zoom/complete', ...secure, requireFeature('zoom'), wrap(async (req, res) => res.json(await c.complete(req.user, req.body?.token))));
 router.delete('/integrations/zoom', ...secure, wrap(async (req, res) => res.json(await c.disconnect(req.user))));
 const zoom = require('../services/zoomService');
 router.get('/integrations/zoom/sessions', ...secure, wrap(async (req, res) => res.json(await zoom.sessions(req.user))));

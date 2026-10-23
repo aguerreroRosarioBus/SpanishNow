@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
-import { provideRouter, ActivatedRoute } from '@angular/router';
+import { provideRouter, ActivatedRoute, convertToParamMap } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { of, Subject, throwError } from 'rxjs';
@@ -16,9 +16,10 @@ const account = { status: 'connected', fake: true, accountEmail: 'docente@zoom.i
 const preferences = { preferences: () => ({ timeZone: 'America/Argentina/Cordoba' }) };
 const session = { id: 7, teacherId: 1, version: 2, status: 'confirmed', minutes: 50, startsAt: '2026-11-02T15:00:00Z', endsAt: '2026-11-02T15:50:00Z',
   teacher: { id: 1, name: 'Docente', timeZone: 'America/New_York' }, timeZone: 'America/New_York', liveClassId: 8, whiteboardJoinCode: 'board' };
-function setupCard(api: object = {}) {
+function setupCard(api: object = {}, query = {}) {
   TestBed.configureTestingModule({ imports: [ZoomCardComponent], providers: [provideRouter([]),
     { provide: ZoomApi, useValue: { status: () => of(account), sessions: () => of({ items: [] }), error: () => 'Error seguro', ...api } },
+    { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(query) } } },
     { provide: FeaturesService, useValue: { load() {}, enabled: () => true } }, { provide: UserPreferencesService, useValue: preferences }] });
   const f = TestBed.createComponent(ZoomCardComponent); f.detectChanges(); return f;
 }
@@ -45,6 +46,12 @@ describe('W08 UI propia', () => {
     f.componentInstance.connect(); f.componentInstance.connect(); expect(connect).toHaveBeenCalledTimes(1);
     pending.error({ error: { code: 'zoom_busy' } }); f.detectChanges(); expect(f.nativeElement.querySelector('[role=alert]').textContent).toBe('Error seguro');
     expect(f.componentInstance.busy()).toBe(false);
+  });
+  it('confirma el pendiente con sesión y conserva el rechazo de otra cuenta', () => {
+    const complete = vi.fn(() => throwError(() => ({ error: { code: 'forbidden' } })));
+    const f = setupCard({ complete }, { zoom: 'confirm', token: 'pendiente' });
+    expect(complete).toHaveBeenCalledWith('pendiente'); expect(f.componentInstance.status()).toBeNull();
+    expect(f.nativeElement.querySelector('[role=alert]').textContent).toBe('Error seguro');
   });
   it('clase separa reunión/pizarra y conserva el borrador manual al cambiar EN/ES', () => {
     const manual = vi.fn(() => of({ manual: true })); const f = setupSession({ manual, join: () => of({ hostUrl: 'https://zoom.us/s/123456789?zak=fake', manual: false }) });
