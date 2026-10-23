@@ -17,11 +17,14 @@ beforeAll(() => {
 });
 afterAll(() => { for (const key of ['FEATURE_ZOOM', 'FEATURE_CLASS_SCHEDULING', 'FEATURE_CLASS_PACKAGES', 'INTEGRATIONS_FAKE', 'ZOOM_WEBHOOK_SECRET_TOKEN']) delete process.env[key]; });
 const createdSessions = new Set();
+const calendarConnections = new Set();
 afterEach(async () => {
   jest.restoreAllMocks();
   // Estas fixtures no deben dejar jobs que agoten el lote de las pruebas compartidas W06.
   await M.OutboxJob.destroy({ where: { aggregateType: 'class_sessions', aggregateId: [...createdSessions] } });
   createdSessions.clear();
+  await M.OutboxJob.destroy({ where: { aggregateType: 'external_connections', aggregateId: [...calendarConnections] } });
+  calendarConnections.clear();
 });
 const refFor = sessionId => M.ExternalSyncRef.findOne({ where: { sessionId, provider: 'zoom' } });
 const sync = sessionId => zoom.sync({ aggregateId: sessionId });
@@ -289,4 +292,42 @@ test('P3: join canónico W06 respeta feature, autenticación, impersonación y p
   expect(student.body.joinUrl).toContain('/j/'); expect(student.headers['cache-control']).toBe('no-store');
   const ics = await as(c.students[0]).get(`/api/class-sessions/${c.session.id}/calendar.ics`);
   expect(ics.status).toBe(200); expect(ics.text).toContain('/j/'); expect(ics.text).not.toMatch(/zak=|\/s\//);
+});
+
+test('W07/W08: jobs calendar.sync entregan automático/manual sin host y sobreviven timeout sin duplicar', async () => {
+  const c = await fixture(); const calendar = require('../src/services/googleCalendarService');
+  const { fake } = require('../src/services/googleCalendar');
+  const { IntegrationError } = require('../src/services/externalConnections');
+  fake.reset(); process.env.FEATURE_GOOGLE_CALENDAR = '1';
+  try {
+    const started = new URL((await calendar.connect(c.teacher)).url);
+    const redirected = new URL(await calendar.callback({ state: started.searchParams.get('state'), code: 'fake-code' }));
+    await calendar.complete(c.teacher, redirected.searchParams.get('token'));
+    const grant = await M.ExternalConnection.findOne({ where: { userId: c.teacher.id, provider: 'google_calendar' } });
+    calendarConnections.add(grant.id);
+    await sync(c.session.id);
+    const automatic = await M.OutboxJob.findOne({ where: { aggregateId: c.session.id, topic: 'calendar.sync', dedupeKey: { [require('sequelize').Op.startsWith]: 'calendar:zoom:' } } });
+    const run = async job => {
+      await job.update({ status: 'pending', runAt: new Date(0) });
+      const result = await outbox.runOnce({ limit: 1 }); await job.reload(); return result;
+    };
+    fake.loseResponseNext('insertEvent', new IntegrationError(503, 'provider_unavailable', {}, { retryable: true }));
+    expect((await run(automatic)).retried).toBe(1); expect(fake.eventCount('primary')).toBe(1);
+    expect((await run(automatic)).done).toBe(1); expect((await run(automatic)).done).toBe(1);
+    let event = fake.events()[0]; const eventId = event.id;
+    expect(event.startsAt).toBe(c.session.startsAt.toISOString());
+    expect(event.description).toContain((await refFor(c.session.id)).joinUrl);
+    expect(JSON.stringify(event)).not.toMatch(/zak=|hostUrl|start_url|\/s\//);
+    await connection.disconnect(c.teacher);
+    const manual = 'https://zoom.us/j/123456789?pwd=contingencia';
+    await zoom.manual(c.teacher, c.session.id, { version: c.session.version, joinUrl: manual });
+    let job = await M.OutboxJob.findOne({ where: { aggregateId: c.session.id, topic: 'calendar.sync', dedupeKey: { [require('sequelize').Op.startsWith]: 'calendar:zoom-manual:' } }, order: [['id', 'DESC']] });
+    expect((await run(job)).done).toBe(1);
+    event = fake.events()[0]; expect(event.id).toBe(eventId); expect(event.description).toContain(manual);
+    expect(fake.eventCount('primary')).toBe(1); expect((await refFor(c.session.id)).status).toBe('needs_attention');
+    await zoom.manual(c.teacher, c.session.id, { version: c.session.version, joinUrl: null });
+    job = await M.OutboxJob.findOne({ where: { aggregateId: c.session.id, topic: 'calendar.sync', dedupeKey: { [require('sequelize').Op.startsWith]: 'calendar:zoom-manual:' } }, order: [['id', 'DESC']] });
+    expect((await run(job)).done).toBe(1); expect(fake.events()[0].description).not.toContain('zoom.us');
+    expect(fake.eventCount('primary')).toBe(1);
+  } finally { delete process.env.FEATURE_GOOGLE_CALENDAR; }
 });
