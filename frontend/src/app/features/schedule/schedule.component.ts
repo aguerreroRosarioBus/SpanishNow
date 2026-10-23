@@ -112,7 +112,7 @@ export class ScheduleComponent {
     if (this.teacher()) this.loadOptions();
   }
   private loadOptions(): void { this.read(this.api.options(this.conversationId || undefined), value => { this.options.set(value); if (value.studentId) this.studentId.set(value.studentId); }); }
-  confirmZone(): void { if (isTimeZone(this.zoneInput())) this.preferences.saveTimeZone(this.zoneInput()); }
+  confirmZone(): void { if (isTimeZone(this.zoneInput())) this.preferences.saveTimeZone(this.zoneInput()); else this.failure.set({ error: { code: 'time_zone_invalid' } }); }
   patch(value: Partial<Draft>): void { this.draft.update(d => ({ ...d, ...value, offset: '', disambiguation: 'none' })); }
   choose(offset: string, index: number): void { this.draft.update(d => ({ ...d, offset, disambiguation: index ? 'later' : 'earlier' })); }
   useAlternative(localStart: string, timeZone: string, offset: string): void { this.draft.update(d => ({ ...d, localStart, timeZone, offset, disambiguation: 'none' })); }
@@ -129,6 +129,7 @@ export class ScheduleComponent {
     if (!edited && this.whiteboardId) body.liveClassId = Number(this.whiteboardId);
     if (edited) {
       body.version = edited.version;
+      if (['expired', 'declined'].includes(edited.status)) body.reason = this.reason;
       if (this.requestedBy) body.requestedByStudentId = Number(this.requestedBy);
       if (this.waiver.trim()) body.chargeWaivedReason = this.waiver;
     } else if (this.cohortId()) {

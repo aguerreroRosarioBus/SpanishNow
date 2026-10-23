@@ -202,14 +202,15 @@ function normalizeRequest(body) {
   if (body.leadTimeException && !(typeof body.reason === 'string' && body.reason.trim().length >= 3 && body.reason.length <= 500)) invalid(['reason']);
   return desired;
 }
-async function proposal(session, seats, desired, body, settings, transaction, now, initial, first = initial) {
+async function proposal(session, seats, desired, body, settings, transaction, now, initial, first = initial, renewGroup = false) {
   const acquired = await purchasesFor(session, seats, desired, transaction, { requireAll: !session.cohortId });
+  if (renewGroup && !acquired.complete) fail('group_incomplete');
   await conflicts(session, seats, desired, settings, now, transaction);
   const minHours = Math.max(acquired.rules.proposalLeadHours, settings.minLeadTimeHours);
   if (!time.isAtLeastHoursBefore(desired.startsAt, nowIso(now), minHours) && !body.leadTimeException) fail('lead_time_too_short', { hours: minHours }, 400);
   const expiry = Math.min(asDate(time.addElapsed(nowIso(now), { hours: acquired.rules.proposalTtlHours })).getTime(),
     asDate(time.addElapsed(desired.startsAt, { hours: -acquired.rules.proposalCutoffBeforeStartHours })).getTime(),
-    initial && acquired.cohort ? acquired.cohort.formingDeadlineAt.getTime() : Infinity);
+    initial && acquired.cohort?.status === 'forming' && !renewGroup ? acquired.cohort.formingDeadlineAt.getTime() : Infinity);
   if (expiry <= now.getTime()) fail('proposal_stale');
   await M.ClassSessionProposal.update({ status: 'superseded', resolvedAt: now }, { where: { sessionId: session.id, status: 'pending' }, transaction });
   const nextVersion = first ? 1 : session.version + 1;

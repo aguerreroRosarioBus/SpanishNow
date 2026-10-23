@@ -158,14 +158,16 @@ module.exports = core => {
   async function reschedule(user, sessionId, body, { now = new Date() } = {}) {
     return locked(user, sessionId, async ({ session, seats, settings, transaction }) => {
       teacherOnly(user, session); version(session, body?.version);
-      if (!['confirmed', 'forming', 'proposed'].includes(session.status) || session.startsAt <= now) fail('proposal_stale');
+      const renewGroup = session.kind === 'group' && ['expired', 'declined'].includes(session.status);
+      if ((!['confirmed', 'forming', 'proposed'].includes(session.status) && !renewGroup) || (session.status === 'confirmed' && session.startsAt <= now)) fail('proposal_stale');
+      if (renewGroup) reason(body.reason);
       await zoneConfirmed(user.id, transaction);
       const desired = core._internal.normalizeRequest(body);
       const rules = await policy(seats, transaction);
       const late = session.status === 'confirmed' && body.requestedByStudentId && !time.isAtLeastHoursBefore(session.startsAt.toISOString(), now.toISOString(), rules.freeCancelHours);
       if (body.requestedByStudentId && !seats.some(s => s.userId === body.requestedByStudentId)) invalid(['requestedByStudentId']);
       if (body.chargeWaivedReason) await audit(session, user.id, 'charge_waived', { requestedByStudentId: body.requestedByStudentId }, transaction, reason(body.chargeWaivedReason));
-      await proposal(session, seats.filter(s => s.status !== 'cancelled'), desired, body, settings, transaction, now, session.status !== 'confirmed', false);
+      await proposal(session, seats.filter(s => s.status !== 'cancelled'), desired, body, settings, transaction, now, session.status !== 'confirmed', false, renewGroup);
       await audit(session, user.id, 'reschedule_terms', { version: session.version, late: Boolean(late && !body.chargeWaivedReason), requestedByStudentId: body.requestedByStudentId || null }, transaction);
       // La versión cambió pero el horario original sigue vigente y debe conservar avisos.
       await reminders(session, seats, rules, transaction, now);
@@ -225,7 +227,7 @@ module.exports = core => {
   async function attendance(user, sessionId, body, { now = new Date() } = {}) {
     return locked(user, sessionId, async ({ session, seats, transaction }) => {
       teacherOnly(user, session); version(session, body?.version);
-      if (!['confirmed', 'completed', 'teacher_no_show'].includes(session.status)) fail('proposal_stale');
+      if (!['confirmed', 'completed', 'teacher_no_show', 'student_no_show'].includes(session.status)) fail('proposal_stale');
       const current = await core.detail(user, session.id, transaction);
       if (current.groupResolutionRequired) fail('group_incomplete', { reason: 'teacher_decision_required' });
       const rules = await policy(seats, transaction);
@@ -250,7 +252,8 @@ module.exports = core => {
       }
       const allDone = seats.filter(s => s.status !== 'cancelled').every(s => s.attendance !== 'pending');
       const allTeacherAbsent = seats.filter(s => s.status !== 'cancelled').every(s => s.attendance === 'teacher_no_show');
-      await session.update({ version: session.version + 1, ...(allDone ? { status: allTeacherAbsent ? 'teacher_no_show' : 'completed' } : {}) }, { transaction });
+      const allStudentsAbsent = seats.filter(s => s.status !== 'cancelled').every(s => s.attendance === 'student_no_show');
+      await session.update({ version: session.version + 1, ...(allDone ? { status: allTeacherAbsent ? 'teacher_no_show' : allStudentsAbsent ? 'student_no_show' : 'completed' } : {}) }, { transaction });
       await reminders(session, seats, rules, transaction, now);
       await audit(session, user.id, correction ? 'attendance_corrected' : 'attendance', { version: session.version, userId: seat.userId, previous, attendance: seat.attendance }, transaction, why);
       return core.detail(user, session.id, transaction);

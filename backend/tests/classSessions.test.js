@@ -294,6 +294,7 @@ test('PACK-20: corregir asistencia exige capacidad, devuelve un consumo y conser
   const c = await chain({ units: 1 }); let s = await confirmed(c);
   const now = new Date(s.endsAt.getTime() + 1);
   s = await sessions.attendance(c.teacher, s.id, { version: s.version, userId: c.students[0].id, attendance: 'student_no_show', reason: 'Marcado por error' }, { now });
+  expect(s.status).toBe('student_no_show');
   const correction = { version: s.version, userId: c.students[0].id, attendance: 'teacher_no_show', reason: 'Fue una falla del docente' };
   await expect(sessions.attendance(c.teacher, s.id, correction, { now })).rejects.toMatchObject({ code: 'forbidden' });
   await c.teacher.update({ permissions: ['class_credits.adjust'] });
@@ -303,6 +304,54 @@ test('PACK-20: corregir asistencia exige capacidad, devuelve un consumo y conser
   await expect(sessions.attendance(c.teacher, s.id, correction, { now })).rejects.toMatchObject({ code: 'version_conflict' });
   await expect(sessions.attendance(c.teacher, s.id, { ...correction, version: s.version, attendance: 'attended' }, { now })).rejects.toMatchObject({ code: 'attendance_charge_review_required' });
   expect(await M.AuditLog.count({ where: { entityId: s.id, action: 'session.attendance_corrected' } })).toBe(1);
+});
+
+test('pizarra opcional propia: solo participantes confirmados reciben código; no consume por ingresar', async () => {
+  const c = await chain(), other = await chain();
+  const board = await M.LiveClass.create({ teacherId: c.teacher.id, title: 'Pizarra ficticia', joinCode: uuid().slice(0, 16), board: {} });
+  expect((await sessions.options(c.teacher)).whiteboards.map(b => b.id)).toContain(board.id);
+  await expect(sessions.create(other.teacher, { ...other.body, liveClassId: board.id }, uuid())).rejects.toMatchObject({ code: 'not_found' });
+  const p = await sessions.create(c.teacher, { ...c.body, liveClassId: board.id }, uuid());
+  expect((await sessions.detail(c.students[0], p.session.id)).whiteboardJoinCode).toBeNull();
+  const confirmed = await sessions.accept(c.students[0], p.session.id, 1);
+  expect(confirmed.whiteboardJoinCode).toBe(board.joinCode);
+  expect(await credits.balance(c.purchases[0].id)).toMatchObject({ reserved: 1, consumed: 0 });
+  const cancelled = await sessions.cancel(c.students[0], p.session.id, { version: confirmed.version, reason: 'No puedo asistir' });
+  expect(cancelled.whiteboardJoinCode).toBeNull();
+});
+
+test('grupo de dos: la extensión necesita aceptación exacta de ambos beneficiarios', async () => {
+  const c = await chain({ size: 2 }); let s = await confirmed(c);
+  s = await sessions.cancel(c.teacher, s.id, { version: s.version, reason: 'Indisponibilidad del docente' });
+  await c.teacher.update({ permissions: ['class_credits.adjust'] });
+  const request = { version: s.version, purchaseId: c.purchases[0].id, unavailableMinutes: 60, reason: 'Acepto la extensión por indisponibilidad' };
+  await sessions.requestExtension(c.students[0], s.id, request);
+  await expect(sessions.adjustment(c.teacher, s.id, { ...request, kind: 'extend_validity' })).rejects.toMatchObject({ code: 'compensation_acceptance_required' });
+  await sessions.requestExtension(c.students[1], s.id, { ...request, unavailableMinutes: 30 });
+  await expect(sessions.adjustment(c.teacher, s.id, { ...request, kind: 'extend_validity' })).rejects.toMatchObject({ code: 'compensation_acceptance_required' });
+  await sessions.requestExtension(c.students[1], s.id, request);
+  const changed = await sessions.adjustment(c.teacher, s.id, { ...request, kind: 'extend_validity' });
+  expect(changed.version).toBe(s.version + 1);
+  expect(await credits.balance(c.purchases[0].id)).toMatchObject({ available: 4, reserved: 0, consumed: 0 });
+});
+
+test('GROUP-04: una cohorte lista puede programar más clases después del plazo inicial; vencida exige acuerdo nuevo completo', async () => {
+  const c = await chain({ size: 2 }); await confirmed(c);
+  await c.cohort.update({ formingDeadlineAt: new Date(Date.now() - 1000) });
+  const next = await sessions.create(c.teacher, { ...c.body, intent: { ...c.body.intent, localStart: c.body.intent.localStart.replace('09:00', '12:00') } }, uuid());
+  expect(next.session.status).toBe('proposed');
+  for (const student of c.students) await sessions.accept(student, next.session.id, 1);
+  expect(await credits.balance(c.purchases[0].id)).toMatchObject({ available: 2, reserved: 2 });
+  const d = await chain({ size: 3 }); const first = await sessions.create(d.teacher, d.body, uuid());
+  const now = new Date(new Date(first.session.proposal.expiresAt).getTime() + 1);
+  await sessions.expire(first.session.id, 1, { now });
+  await d.cohort.update({ formingDeadlineAt: new Date(Date.now() - 1000) });
+  const revised = await sessions.reschedule(d.teacher, first.session.id, { version: 1, intent: d.body.intent, reason: 'Nueva propuesta opcional con compras completas' }, { now });
+  expect(revised.status).toBe('proposed');
+  expect(await credits.balance(d.purchases[0].id)).toMatchObject({ available: 4, reserved: 0 });
+  await expect(sessions.accept(d.students[0], revised.id, 1, {}, { now })).rejects.toMatchObject({ code: 'proposal_stale' });
+  for (const student of d.students) await sessions.accept(student, revised.id, revised.version, {}, { now });
+  await d.cohort.reload(); expect(d.cohort.status).toBe('ready');
 });
 
 test('PACK-09: dispensa posterior y compensación de vigencia son explícitas, únicas y propias', async () => {

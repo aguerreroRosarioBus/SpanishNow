@@ -34,7 +34,7 @@
       @for (a of choices().alternatives; track a.startsAt) { <button type="button" class="btn btn-secondary btn-sm me-2" (click)="useAlternative(a.localStart, a.timeZone, a.offset)">{{ 'schedule.alternative' | t }}: {{ a.localStart }} · {{ a.timeZone }} · UTC{{ a.offset }}</button> }
       @if (choices().value; as resolved) { <div class="preview"><strong>{{ 'schedule.preview' | t }}</strong><app-session-time [interval]="resolved" [recipientZone]="zone()" [teacherZone]="draft().timeZone" /></div> }
       <label><input type="checkbox" name="exception" [(ngModel)]="exception" /> {{ 'schedule.exception' | t }}</label>
-      @if (exception) { <label>{{ 'schedule.reason' | t }}<input class="form-control" name="reason" [(ngModel)]="reason" maxlength="500" required /></label> }
+      @if (exception || (editing() && ['expired','declined'].includes(editing()!.status))) { <label>{{ 'schedule.reason' | t }}<input class="form-control" name="reason" [(ngModel)]="reason" maxlength="500" required /></label> }
       @if (editing(); as edited) {
         <label>{{ 'schedule.requestedBy' | t }}<select class="form-select" name="requestedBy" [(ngModel)]="requestedBy"><option [ngValue]="0">{{ 'schedule.teacherRequest' | t }}</option>@for (p of edited.participants; track p.userId) { <option [ngValue]="p.userId">{{ p.name }}</option> }</select></label>
         <label>{{ 'schedule.waive' | t }}<input class="form-control" name="waiver" [(ngModel)]="waiver" maxlength="500" /></label>

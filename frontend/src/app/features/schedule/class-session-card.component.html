@@ -25,7 +25,7 @@
         <button type="button" class="btn btn-primary btn-sm" (click)="startDecision('accept')" [disabled]="busy() || !zoneReady()">{{ 'schedule.accept' | t }}</button>
         <button type="button" class="btn btn-secondary btn-sm" (click)="startDecision('decline')" [disabled]="busy()">{{ 'schedule.decline' | t }}</button>
       }
-      @if (teacher() && ['forming','proposed','confirmed'].includes(s.status) && features.enabled('class_scheduling')) { <a routerLink="/schedule" [queryParams]="{ reschedule: s.id }" class="btn btn-secondary btn-sm">{{ 'schedule.reschedule' | t }}</a> }
+      @if (teacher() && (['forming','proposed','confirmed'].includes(s.status) || (s.kind === 'group' && ['expired','declined'].includes(s.status))) && features.enabled('class_scheduling')) { <a routerLink="/schedule" [queryParams]="{ reschedule: s.id }" class="btn btn-secondary btn-sm">{{ 'schedule.reschedule' | t }}</a> }
       @if (['forming','proposed','confirmed'].includes(s.status)) { <button type="button" class="btn btn-ghost btn-sm" (click)="startDecision('cancel')" [disabled]="busy()">{{ 'schedule.cancel' | t }}</button> }
       <button type="button" class="btn btn-ghost btn-sm" (click)="refresh()" [disabled]="busy()">{{ 'schedule.retry' | t }}</button>
     </div>
@@ -48,7 +48,7 @@
       }
       <button type="button" class="btn btn-ghost btn-sm ms-2" (click)="decision.set(null)" [disabled]="busy()">{{ 'schedule.back' | t }}</button></fieldset>
     }
-    @if (teacher() && (s.status === 'confirmed' || (canAdjust() && ['completed','teacher_no_show'].includes(s.status)))) {
+    @if (teacher() && (s.status === 'confirmed' || (canAdjust() && ['completed','teacher_no_show','student_no_show'].includes(s.status)))) {
       <details class="mt-3"><summary>{{ 'schedule.attendance' | t }}</summary>
         <p class="notice">{{ 'schedule.correctionHint' | t }}</p>
         <label>{{ 'schedule.participant' | t }}<select class="form-select" [(ngModel)]="attendanceUser"><option [ngValue]="0">{{ 'schedule.choose' | t }}</option>@for (p of s.participants; track p.userId) { @if (p.status !== 'cancelled' && (p.attendance === 'pending' || canAdjust())) { <option [ngValue]="p.userId">{{ p.name }}</option> } }</select></label>
