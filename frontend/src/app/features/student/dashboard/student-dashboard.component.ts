@@ -1,3 +1,7 @@
+import { LocaleDatePipe } from '../../../core/i18n/locale-format.pipe';
+import { UserPreferencesService } from '../../../core/services/user-preferences.service';
+import { I18nService } from '../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
@@ -9,18 +13,19 @@ import { Course, Enrollment } from '../../../core/models/course.model';
 import { NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem } from '@ng-bootstrap/ng-bootstrap';
 import { CourseCardComponent } from '../../../shared/components/course-card/course-card.component';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
-import { formatPrice } from '../../../shared/utils/money';
-import { PluralPipe } from '../../../shared/pipes/plural.pipe';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-student-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem, CourseCardComponent, IconComponent, PluralPipe, ConfirmDialogComponent],
+  imports: [LocaleDatePipe, TranslatePipe, CommonModule, RouterLink, NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem, CourseCardComponent, IconComponent, ConfirmDialogComponent],
   templateUrl: './student-dashboard.component.html',
   styleUrl: './student-dashboard.component.scss'
 })
 export class StudentDashboardComponent implements OnInit {
+  readonly i18n = inject(I18nService);
+  private readonly preferences = inject(UserPreferencesService);
+  readonly timeZone = computed(() => this.preferences.preferences()?.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
   private authService = inject(AuthService);
   private courseService = inject(CourseService);
   private enrollmentService = inject(EnrollmentService);
@@ -39,7 +44,8 @@ export class StudentDashboardComponent implements OnInit {
   // Estados de carga
   isLoadingCatalog = signal<boolean>(false);
   isLoadingMyCourses = signal<boolean>(false);
-  errorMessage = signal<string>('');
+  private failure = signal<unknown>(null);
+  errorMessage = computed(() => this.failure() ? this.i18n.errorMessage(this.failure(), 'student.catalogError') : '');
 
   readonly levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
@@ -64,6 +70,7 @@ export class StudentDashboardComponent implements OnInit {
     title: string;
     message: string;
     confirmText: string;
+    params: Record<string, string>;
     type: 'danger' | 'warning';
     onConfirm: () => void;
   } | null>(null);
@@ -96,7 +103,7 @@ export class StudentDashboardComponent implements OnInit {
 
   loadCatalog(): void {
     this.isLoadingCatalog.set(true);
-    this.errorMessage.set('');
+    this.failure.set(null);
 
     this.courseService.getCourses().subscribe({
       next: (courses) => {
@@ -105,7 +112,7 @@ export class StudentDashboardComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error loading catalog:', error);
-        this.errorMessage.set('Error al cargar el catálogo de cursos');
+        this.failure.set(error);
         this.isLoadingCatalog.set(false);
       }
     });
@@ -144,9 +151,9 @@ export class StudentDashboardComponent implements OnInit {
           // El curso tiene precio: la inscripción solo se da por compra
           this.router.navigate(['/courses', error.error.slug]);
         } else if (error.status === 400) {
-          this.toastService.warning('Ya estás inscrito en este curso');
+          this.toastService.warning(this.i18n.t('student.enrolled'));
         } else {
-          this.toastService.error('Error al inscribirse. Intenta de nuevo.');
+          this.toastService.error(this.i18n.errorMessage(error, 'student.enrollError'));
         }
       }
     });
@@ -154,7 +161,7 @@ export class StudentDashboardComponent implements OnInit {
 
   /** Precio formateado de un curso de pago; null si es gratis. */
   priceLabel(course: Course): string | null {
-    return course.price && course.price > 0 ? formatPrice(course.price, course.currency) : null;
+    return course.price && course.price > 0 ? this.i18n.formatMoney(course.price, course.currency || 'USD') : null;
   }
 
   /** Un curso con precio (y slug) se compra desde su página de venta. */
@@ -171,8 +178,8 @@ export class StudentDashboardComponent implements OnInit {
   }
 
   // Confirm Dialog Helpers
-  showConfirm(title: string, message: string, confirmText: string, onConfirm: () => void, type: 'danger' | 'warning' = 'danger'): void {
-    this.confirmDialogData.set({ title, message, confirmText, type, onConfirm });
+  showConfirm(title: string, message: string, confirmText: string, onConfirm: () => void, type: 'danger' | 'warning' = 'danger', params: Record<string, string> = {}): void {
+    this.confirmDialogData.set({ title, message, confirmText, type, onConfirm, params });
     this.showConfirmDialog.set(true);
   }
 
@@ -192,22 +199,23 @@ export class StudentDashboardComponent implements OnInit {
   // Reset course progress
   resetCourseProgress(enrollment: Enrollment): void {
     this.showConfirm(
-      'Reiniciar progreso',
-      `¿Reiniciar tu progreso en «${enrollment.course?.title}»? Se borrarán tu avance por historia, tus respuestas y tus refuerzos completados. Esta acción no se puede deshacer.`,
-      'Reiniciar',
+      'student.reset.title',
+      'student.reset.message',
+      'student.reset.confirm',
       () => {
         this.enrollmentService.resetCourseProgress(enrollment.id).subscribe({
           next: () => {
-            this.toastService.success('Progreso del curso reiniciado exitosamente');
+            this.toastService.success(this.i18n.t('student.reset.success'));
             this.loadMyCourses();
           },
           error: (error) => {
             console.error('Error resetting progress:', error);
-            this.toastService.error('Error al reiniciar el progreso del curso');
+            this.toastService.error(this.i18n.errorMessage(error, 'student.reset.error'));
           }
         });
       },
-      'warning'
+      'warning',
+      { course: enrollment.course?.title ?? this.i18n.t('student.course') }
     );
   }
 

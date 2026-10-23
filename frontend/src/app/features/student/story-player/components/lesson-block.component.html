@@ -1,16 +1,16 @@
 <section class="block">
-  <span class="eyebrow eyebrow--muted">{{ block().phase === 'before' ? 'Antes' : block().phase === 'during' ? 'Durante' : 'Después' }}</span>
+  <span class="eyebrow eyebrow--muted">{{ (block().phase === 'before' ? 'player.before' : block().phase === 'during' ? 'player.during' : 'player.after') | t }}</span>
   @switch (block().type) {
     @case ('expression') {
       <div class="expression-card">
         <h2 class="block__title">
-          Expresión clave
+          {{ 'player.keyExpression' | t }}
           @if (block().vocabularyRole === 'revisit') {
-            <span class="badge text-bg-secondary ms-2 align-middle" title="Ya la viste en una historia anterior">Repaso</span>
+            <span class="badge text-bg-secondary ms-2 align-middle" [title]="'player.revisitTitle' | t">{{ 'player.revisit' | t }}</span>
           }
         </h2>
         @if (block().vocabulary?.imageUrl; as image) {
-          <app-lesson-illustration class="expression-image" [src]="image" [alt]="'Imagen de ' + (block().vocabulary?.word || 'la expresión')" [compact]="true" />
+          <app-lesson-illustration class="expression-image" [src]="image" [alt]="'player.image' | t: {word: block().vocabulary?.word || i18n.t('player.expressionFallback')}" [compact]="true" />
         }
         <p class="read-text read-text--term">{{ block().vocabulary?.word || block().text }}</p>
         @if (block().vocabulary?.translation) {
@@ -24,10 +24,10 @@
 
     @case ('keyframe') {
       <div>
-        <h2 class="block__title">Fragmento de la historia</h2>
+        <h2 class="block__title">{{ 'player.fragment' | t }}</h2>
         <div class="kf-layout" [class.has-image]="block().imageUrl">
           @if (block().imageUrl; as image) {
-            <app-lesson-illustration class="kf-image" [src]="image" [alt]="block().imageAlt || block().text || 'Ilustración del fragmento'" />
+            <app-lesson-illustration class="kf-image" [src]="image" [alt]="block().imageAlt || block().text || i18n.t('player.illustration')" />
           }
           <div class="kf-content">
             <div class="story-text read-text">
@@ -43,10 +43,10 @@
 
     @case ('question') {
       <div>
-        <h2 class="block__title">Pregunta de comprensión</h2>
-        <p class="read-text">{{ block().question?.questionText || 'Pregunta' }}</p>
+        <h2 class="block__title">{{ 'player.comprehension' | t }}</h2>
+        <p class="read-text">{{ block().question?.questionText || i18n.t('player.question') }}</p>
         @if (block().question?.options?.length) {
-          <div class="options" role="group" aria-label="Opciones de respuesta">
+          <div class="options" role="group" [attr.aria-label]="'player.options' | t">
             @for (option of block().question?.options; track option) {
               <button type="button" class="option" [class.is-selected]="session.answerText() === option"
                 [attr.aria-pressed]="session.answerText() === option"
@@ -55,20 +55,20 @@
           </div>
         } @else {
           <input class="form-control mt-3 answer-input" type="text" maxlength="200"
-            [value]="session.answerText()" (input)="session.setAnswer($any($event.target).value)" placeholder="Escribe tu respuesta"
-            [disabled]="session.answerResult()?.isCorrect" aria-label="Tu respuesta" />
+            [value]="session.answerText()" (input)="session.setAnswer($any($event.target).value)" [placeholder]="'player.writeAnswer' | t"
+            [disabled]="session.answerResult()?.isCorrect" [attr.aria-label]="'player.yourAnswer' | t" />
         }
-        <button type="button" class="btn btn-secondary mt-3" (click)="session.submitAnswer()" [disabled]="!session.answerText().trim() || session.answerResult()?.isCorrect">Comprobar respuesta</button>
+        <button type="button" class="btn btn-secondary mt-3" (click)="session.submitAnswer()" [disabled]="!session.answerText().trim() || session.answerResult()?.isCorrect">{{ 'player.check' | t }}</button>
         @if (session.answerResult(); as result) {
           <div class="alert mt-3" [class.alert-success]="result.isCorrect" [class.alert-warning]="!result.isCorrect" role="status">
             @if (result.isCorrect) {
-              ¡Correcto! Puedes continuar.
+              {{ 'player.answerCorrect' | t }}
             } @else {
-              <strong>Vuelve a intentarlo</strong> o continúa cuando estés listo. No necesitas acertar para avanzar.
+              <strong>{{ 'player.tryAgain' | t }}</strong> {{ 'player.continueHelp' | t }}
               @if (result.context?.text) {
                 <blockquote class="mt-2 mb-2">{{ result.context?.text }}</blockquote>
               }
-              <button type="button" class="btn btn-secondary btn-sm" (click)="session.retryAnswer()">Reintentar</button>
+              <button type="button" class="btn btn-secondary btn-sm" (click)="session.retryAnswer()">{{ 'player.retry' | t }}</button>
             }
           </div>
         }

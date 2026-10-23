@@ -1,0 +1,23 @@
+import {TestBed} from '@angular/core/testing';
+import {of} from 'rxjs';
+import {vi} from 'vitest';
+import {TeacherOrdersComponent} from './teacher-orders.component';
+import {SalesService} from '../../../core/services/sales.service';
+import {CourseService} from '../../../core/services/course.service';
+import {UserPreferencesService} from '../../../core/services/user-preferences.service';
+import {I18nService} from '../../../core/i18n/i18n.service';
+import {TeacherOrder} from '../../../core/models/sales.model';
+it('órdenes: conserva filtro, decisión de acceso y confirmación sin marcar reembolso al cambiar idioma', () => {
+  const order = Object.freeze({id: 1, amount: 9015, currency: 'USD', refundedAmount: 1500, status: 'paid', provider: 'hotmart', buyer: {name: 'José original', email: 'ficticio@example.test'}, course: {title: 'Curso original'}, createdAt: '2026-10-23T02:30:00Z', paidAt: null}) as TeacherOrder;
+  const api = {orders: vi.fn(() => of({rows: [order], total: 1})), refund: vi.fn()};
+  TestBed.configureTestingModule({providers: [{provide: SalesService, useValue: api}, {provide: CourseService, useValue: {getCourses: () => of([])}}, {provide: UserPreferencesService, useValue: {preferences: () => ({timeZone: 'America/Argentina/Cordoba'})}}]});
+  const i18n = TestBed.inject(I18nService); i18n.setLocale('es');
+  const f = TestBed.createComponent(TeacherOrdersComponent); f.detectChanges(); const c = f.componentInstance;
+  c.query.set('Borrador filtro'); c.askRefund(order); c.revokeAccess.set(false);
+  i18n.setLocale('en'); f.detectChanges();
+  expect(f.nativeElement.textContent).toContain('Partial refund'); expect(f.nativeElement.textContent).toContain('90.15');
+  expect(f.nativeElement.textContent).toContain('USD'); expect(f.nativeElement.textContent).toContain('Oct 22, 2026');
+  expect(f.nativeElement.textContent).toContain('This does not return money.');
+  expect(c.refundTarget()).toBe(order); expect(c.revokeAccess()).toBe(false); expect(c.query()).toBe('Borrador filtro');
+  expect(api.orders).toHaveBeenCalledTimes(1); expect(api.refund).not.toHaveBeenCalled();
+});

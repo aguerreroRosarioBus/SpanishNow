@@ -1,3 +1,5 @@
+import { I18nService } from '../../../core/i18n/i18n.service';
+import { UserPreferencesService } from '../../../core/services/user-preferences.service';
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { describe, expect, it } from 'vitest';
@@ -17,10 +19,12 @@ const comment = (over: Partial<LessonComment> = {}): LessonComment => ({
 function setup(list: () => any) {
   TestBed.configureTestingModule({
     providers: [
+      {provide: UserPreferencesService, useValue: {preferences: () => ({timeZone: 'America/Argentina/Cordoba'})}},
       { provide: CommentService, useValue: { list: list, create: () => of({}), update: () => of({}), remove: () => of(undefined) } },
       { provide: ToastService, useValue: { success: () => {}, error: () => {} } }
     ]
   });
+  TestBed.inject(I18nService).setLocale('es');
   const fixture = TestBed.createComponent(LessonCommentsComponent);
   fixture.componentRef.setInput('storyId', 10);
   fixture.detectChanges();
@@ -55,4 +59,25 @@ describe('LessonCommentsComponent', () => {
     const fixture = setup(() => throwError(() => ({ status: 500, error: {} })));
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('No se pudieron cargar los comentarios.');
   });
+});
+
+
+it('EN/ES conserva comentario/respuesta/edición y confirmación pendientes, sin requests ni traducción humana', () => {
+  const list = vi.fn(() => of({rows: [comment()], total: 1}));
+  const f = setup(list); const c = f.componentInstance; const item = c.comments()[0];
+  c.draft.set('Borrador humano'); c.startReply(item); c.replyDraft.set('Respuesta humana');
+  c.startEdit(item); c.editDraft.set('Edición humana'); c.askDelete(item); f.detectChanges();
+  TestBed.inject(I18nService).setLocale('en'); f.detectChanges();
+  expect(f.nativeElement.textContent).toContain('Questions and comments');
+  expect(f.nativeElement.textContent).toContain('The comment and its replies will be deleted');
+  expect(c.draft()).toBe('Borrador humano'); expect(c.replyDraft()).toBe('Respuesta humana'); expect(c.editDraft()).toBe('Edición humana');
+  expect(c.toDelete()).toBe(item); expect(c.comments()[0]).toBe(item); expect(item.body).toBe(evil);
+  expect(list).toHaveBeenCalledTimes(1);
+});
+it('error ya visible cambia de idioma sin repetir carga', () => {
+  const list = vi.fn(() => throwError(() => ({error: {code: 'unknown', error: 'PRIVATE_INTERNAL'}})));
+  const f = setup(list);
+  TestBed.inject(I18nService).setLocale('en'); f.detectChanges();
+  expect(f.nativeElement.textContent).toContain('Could not load comments.');
+  expect(f.nativeElement.textContent).not.toContain('PRIVATE_INTERNAL'); expect(list).toHaveBeenCalledTimes(1);
 });

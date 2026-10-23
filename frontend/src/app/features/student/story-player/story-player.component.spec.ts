@@ -1,3 +1,4 @@
+import { I18nService } from '../../../core/i18n/i18n.service';
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { ActivatedRoute, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
@@ -64,6 +65,7 @@ describe('StoryPlayerComponent (flujo TPRS)', () => {
         provideHttpClientTesting(),
       ],
     }).compileComponents();
+    TestBed.inject(I18nService).setLocale('es');
     fixture = TestBed.createComponent(StoryPlayerComponent);
     component = fixture.componentInstance;
     nav = fixture.debugElement.injector.get(LessonNavigationStore);
@@ -72,6 +74,29 @@ describe('StoryPlayerComponent (flujo TPRS)', () => {
     await fixture.whenStable();
     fixture.detectChanges();
   }
+
+  it('EN/ES conserva respuesta, paso/progreso y audio sin repetir carga ni persistencia', async () => {
+    await create('q1');
+    session.setAnswer('Respuesta humana original');
+    const lesson = session.lesson();
+    const progress = lesson!.progress;
+    const completed = nav.completedStories();
+    const count = lessonApi.getStory.mock.calls.length;
+    const saved = lessonApi.setCurrentBlock.mock.calls.length;
+    const stop = vi.spyOn(session.audio, 'stop');
+    TestBed.inject(I18nService).setLocale('en');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Comprehension question');
+    expect(fixture.nativeElement.textContent).toContain('¿Dónde está María?');
+    expect(session.answerText()).toBe('Respuesta humana original');
+    expect(session.currentBlock()?.blockKey).toBe('q1');
+    expect(session.lesson()).toBe(lesson);
+    expect(session.lesson()!.progress).toBe(progress);
+    expect(nav.completedStories()).toBe(completed);
+    expect(lessonApi.getStory).toHaveBeenCalledTimes(count);
+    expect(lessonApi.setCurrentBlock).toHaveBeenCalledTimes(saved);
+    expect(stop).not.toHaveBeenCalled();
+  });
 
   const currentKey = () => session.currentBlock()?.blockKey;
 

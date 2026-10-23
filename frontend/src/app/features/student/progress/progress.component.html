@@ -1,21 +1,22 @@
 <div class="page-container">
   <div class="page-header">
     <div class="page-header__main">
-      <h1 class="page-title">Mi avance</h1>
-      <p class="page-summary">Seguimiento de tu progreso en todos los cursos</p>
+      <h1 class="page-title">{{ 'student.progress' | t }}</h1>
+      <p class="page-summary">{{ 'student.progressHelp' | t }}</p>
     </div>
   </div>
 
+  @if (errorMessage()) { <div class="alert alert-danger" role="alert">{{ errorMessage() }}</div> }
   @if (isLoading()) {
     <div class="text-center py-5" role="status">
       <div class="spinner-border text-primary" aria-hidden="true"></div>
-      <p class="text-muted mt-2 mb-0">Cargando tu progreso…</p>
+      <p class="text-muted mt-2 mb-0">{{ 'student.loadingProgress' | t }}</p>
     </div>
-  } @else if (courses().length === 0) {
+  } @else if (courses().length === 0 && !errorMessage()) {
     <div class="state-box">
-      <strong>No tienes cursos inscritos</strong>
-      <span>Inscríbete en un curso para comenzar a ver tu progreso.</span>
-      <a [routerLink]="['/student/dashboard']" [queryParams]="{ view: 'catalog' }" class="btn btn-primary mt-2">Explorar cursos</a>
+      <strong>{{ 'student.progressEmpty' | t }}</strong>
+      <span>{{ 'student.progressEmptyHelp' | t }}</span>
+      <a [routerLink]="['/student/dashboard']" [queryParams]="{ view: 'catalog' }" class="btn btn-primary mt-2">{{ 'student.explore' | t }}</a>
     </div>
   } @else {
     <div class="course-progress-stack">
@@ -26,21 +27,21 @@
               <h2>{{ course.enrollment.course?.title }}</h2>
               <span class="badge-level">{{ course.enrollment.course?.level }}</span>
             </div>
-            <a [routerLink]="['/student/course', course.enrollment.courseId, 'play']" class="btn btn-secondary btn-sm">Continuar</a>
+            <a [routerLink]="['/student/course', course.enrollment.courseId, 'play']" class="btn btn-secondary btn-sm">{{ 'student.continue' | t }}</a>
           </header>
 
           @if (course.failed) {
-            <div class="alert alert-warning mb-0" role="alert">No se pudo cargar el avance de este curso.</div>
+            <div class="alert alert-warning mb-0" role="alert">{{ 'student.courseProgressError' | t }}</div>
           } @else {
             @if (course.stories.length === 0) {
-              <p class="text-secondary-ui mb-0">Este curso todavía no tiene historias.</p>
+              <p class="text-secondary-ui mb-0">{{ 'student.noStories' | t }}</p>
             } @else {
               <div class="progress-card__summary">
                 <div class="d-flex justify-content-between mb-1">
-                  <span class="text-secondary-ui">Historias completadas</span>
+                  <span class="text-secondary-ui">{{ 'student.completedStories' | t }}</span>
                   <strong class="small">{{ completedCount(course) }}/{{ course.stories.length }} · {{ percentage(course) }}%</strong>
                 </div>
-                <div class="progress" role="progressbar" [attr.aria-valuenow]="percentage(course)" aria-valuemin="0" aria-valuemax="100" aria-label="Historias completadas">
+                <div class="progress" role="progressbar" [attr.aria-valuenow]="percentage(course)" aria-valuemin="0" aria-valuemax="100" [attr.aria-label]="'student.completedStories' | t">
                   <div class="progress-bar" [class.is-complete]="percentage(course) === 100" [style.width.%]="percentage(course)"></div>
                 </div>
               </div>
@@ -52,43 +53,43 @@
                 <div class="cert__body">
                   @if (quizSummary(course); as quizzes) {
                     @if (quizzes.total > 0) {
-                      <div class="cert__meta">Quizzes aprobados: {{ quizzes.passed }}/{{ quizzes.total }}</div>
+                      <div class="cert__meta">{{ 'student.quizzesPassed' | t : { passed: quizzes.passed, total: quizzes.total } }}</div>
                     }
                   }
                   @if (cert.code) {
-                    <strong>Tu certificado está listo</strong>
-                    <div class="cert__meta">Código: {{ cert.code }} ·
-                      <a [href]="verificationUrl(cert.code)" target="_blank" rel="noopener">Link de verificación</a>
+                    <strong>{{ 'student.certificateReady' | t }}</strong>
+                    <div class="cert__meta">{{ 'student.certificateCode' | t : { code: cert.code } }} ·
+                      <a [href]="verificationUrl(cert.code)" target="_blank" rel="noopener">{{ 'student.verifyLink' | t }}</a>
                     </div>
                   } @else if (cert.eligible) {
-                    <strong>¡Completaste el curso!</strong>
-                    <div class="cert__meta">Ya puedes obtener tu certificado.</div>
+                    <strong>{{ 'student.courseFinished' | t }}</strong>
+                    <div class="cert__meta">{{ 'student.canClaim' | t }}</div>
                   } @else {
-                    <strong>Certificado</strong>
+                    <strong>{{ 'student.certificate' | t }}</strong>
                     <div class="cert__meta">{{ missingText(cert) }}</div>
                   }
                 </div>
                 @if (cert.code) {
                   <a class="btn btn-primary btn-sm" [href]="pdfUrl(cert.code)" target="_blank" rel="noopener">
-                    <app-icon name="download" [size]="15" />Descargar PDF
+                    <app-icon name="download" [size]="15" />{{ 'student.downloadPdf' | t }}
                   </a>
                 } @else if (cert.eligible && claimingId() !== course.enrollment.id) {
-                  <button type="button" class="btn btn-primary btn-sm" (click)="startClaim(course)">Obtener certificado</button>
+                  <button type="button" class="btn btn-primary btn-sm" (click)="startClaim(course)">{{ 'student.getCertificate' | t }}</button>
                 }
               </div>
               @if (claimingId() === course.enrollment.id) {
                 <form class="cert-form" (submit)="$event.preventDefault(); issueCertificate(course)">
-                  <label class="form-label" [attr.for]="'certName' + course.enrollment.id">Confirma el nombre que aparecerá en el certificado</label>
+                  <label class="form-label" [attr.for]="'certName' + course.enrollment.id">{{ 'student.confirmName' | t }}</label>
                   <div class="cert-form__row">
                     <input type="text" class="form-control" [id]="'certName' + course.enrollment.id" name="certName" maxlength="100"
                            [value]="claimName()" (input)="claimName.set($any($event.target).value)" />
                     <button type="submit" class="btn btn-primary" [disabled]="isIssuing() || !claimName().trim()">
                       @if (isIssuing()) { <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> }
-                      Emitir certificado
+                      {{ 'student.issueCertificate' | t }}
                     </button>
-                    <button type="button" class="btn btn-secondary" (click)="cancelClaim()" [disabled]="isIssuing()">Cancelar</button>
+                    <button type="button" class="btn btn-secondary" (click)="cancelClaim()" [disabled]="isIssuing()">{{ 'common.cancel' | t }}</button>
                   </div>
-                  <small class="text-secondary-ui">Una vez emitido, el nombre queda impreso en el PDF.</small>
+                  <small class="text-secondary-ui">{{ 'student.namePrinted' | t }}</small>
                   @if (claimError()) { <div class="alert alert-danger mb-0 mt-2" role="alert">{{ claimError() }}</div> }
                 </form>
               }
@@ -102,35 +103,35 @@
               <table class="progress-table">
                 <thead>
                   <tr>
-                    <th scope="col">Historia</th>
-                    <th scope="col">Unidad</th>
-                    <th scope="col">Estado</th>
-                    <th scope="col">Respuestas</th>
-                    <th scope="col">Refuerzos</th>
+                    <th scope="col">{{ 'student.story' | t }}</th>
+                    <th scope="col">{{ 'student.unit' | t }}</th>
+                    <th scope="col">{{ 'student.status' | t }}</th>
+                    <th scope="col">{{ 'student.answers' | t }}</th>
+                    <th scope="col">{{ 'student.reinforcements' | t }}</th>
                   </tr>
                 </thead>
                 <tbody>
                   @for (story of course.stories; track story.storyId) {
                     <tr class="story-progress-item">
-                      <th scope="row" class="cell-story" data-label="Historia">{{ story.storyTitle }}</th>
-                      <td class="cell-unit" data-label="Unidad">{{ unitTitle(story.unitTitle) }}</td>
-                      <td data-label="Estado">
+                      <th scope="row" class="cell-story" [attr.data-label]="'student.story' | t">{{ story.storyTitle }}</th>
+                      <td class="cell-unit" [attr.data-label]="'student.unit' | t">{{ unitTitle(story.unitTitle) }}</td>
+                      <td [attr.data-label]="'student.status' | t">
                         <span class="badge-status" [class.badge-status--published]="story.narrativeCompleted" [class.badge-status--draft]="!story.narrativeCompleted">
-                          {{ story.narrativeCompleted ? 'Lectura completada' : 'Pendiente' }}
+                          {{ (story.narrativeCompleted ? 'student.readingCompleted' : 'student.pending') | t }}
                         </span>
                       </td>
-                      <td data-label="Respuestas">
+                      <td [attr.data-label]="'student.answers' | t">
                         @if (story.answers.total > 0) {
-                          {{ story.answers.correct }}/{{ story.answers.total }}<span class="attempts"> · {{ story.answers.attempts | plural:'intento':'intentos' }}</span>
+                          {{ story.answers.correct }}/{{ story.answers.total }}<span class="attempts"> · {{ 'student.attempts' | t : { count: story.answers.attempts } }}</span>
                         } @else {
-                          <span class="dash" aria-label="Sin datos">—</span>
+                          <span class="dash" [attr.aria-label]="'student.noData' | t">—</span>
                         }
                       </td>
-                      <td data-label="Refuerzos">
+                      <td [attr.data-label]="'student.reinforcements' | t">
                         @if (story.reinforcements.total > 0) {
                           {{ story.reinforcements.completed }}/{{ story.reinforcements.total }}
                         } @else {
-                          <span class="dash" aria-label="Sin datos">—</span>
+                          <span class="dash" [attr.aria-label]="'student.noData' | t">—</span>
                         }
                       </td>
                     </tr>

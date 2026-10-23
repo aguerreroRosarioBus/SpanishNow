@@ -1,3 +1,4 @@
+import { I18nService } from '../../../core/i18n/i18n.service';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { ToastService } from '../../../core/services/toast.service';
 import { StudentAnswerResult, StudentLesson, StudentLessonBlock, StudentLessonService } from '../../../core/services/student-lesson.service';
@@ -9,6 +10,7 @@ export const REINFORCEMENT_TYPES = ['flashcards', 'matching', 'listen_repeat'];
 /** Estado de la lección TPRS publicada de la historia actual (bloques, respuestas, refuerzos). */
 @Injectable()
 export class LessonSessionStore {
+  private i18n = inject(I18nService);
   private api = inject(StudentLessonService);
   private toastService = inject(ToastService);
   private nav = inject(LessonNavigationStore);
@@ -16,8 +18,8 @@ export class LessonSessionStore {
 
   lesson = signal<StudentLesson | null>(null);
   loading = signal(false);
-  error = signal('');
-  visibleError = this.error.asReadonly();
+  private failure = signal<{key: string; error?: unknown} | null>(null);
+  visibleError = computed(() => { const f = this.failure(); return f ? (f.error ? this.i18n.errorMessage(f.error, f.key) : this.i18n.t(f.key)) : ''; });
 
   answerText = signal('');
   answerResult = signal<StudentAnswerResult | null>(null);
@@ -40,7 +42,7 @@ export class LessonSessionStore {
   load(storyId: number): void {
     this.audio.stop();
     this.loading.set(true);
-    this.error.set('');
+    this.failure.set(null);
     this.answerResult.set(null);
     this.api.getStory(storyId).subscribe({
       next: lesson => {
@@ -49,7 +51,7 @@ export class LessonSessionStore {
         if (lesson.progress.narrativeCompleted) this.nav.markStoryCompleted(lesson.storyId);
         const blocks = lesson.blocks.filter(block => block.active && block.phase !== 'later').sort((a, b) => a.position - b.position);
         if (!blocks.length) {
-          this.error.set('Esta revisión no contiene bloques disponibles.');
+          this.failure.set({key: 'player.noBlocks'});
           return;
         }
         if (!lesson.progress.lastBlockKey) this.persistCurrentBlock(blocks[0]);
@@ -58,7 +60,7 @@ export class LessonSessionStore {
         this.loading.set(false);
         if (this.nav.handleLocked(error)) return;
         console.error('Error loading assigned lesson:', error);
-        this.error.set(error?.error?.error || 'No se pudo cargar la lección publicada. Intenta nuevamente.');
+        this.failure.set({key: 'player.lessonError', error});
         this.loading.set(false);
       }
     });
@@ -79,7 +81,7 @@ export class LessonSessionStore {
         this.answerText.set('');
         this.answerResult.set(null);
       },
-      error: error => { if (!this.nav.handleLocked(error)) this.error.set(error?.error?.error || 'No se pudo guardar tu avance. Vuelve a intentar.'); }
+      error: error => { if (!this.nav.handleLocked(error)) this.failure.set({key: 'player.progressError', error}); }
     });
   }
 
@@ -106,7 +108,7 @@ export class LessonSessionStore {
     const block = this.currentBlock();
     const answer = this.answerText().trim();
     if (!lesson || !block?.questionId || !answer) return;
-    this.error.set('');
+    this.failure.set(null);
     this.api.answer(lesson.progress.id, block.blockKey, block.questionId, answer).subscribe({
       next: result => {
         this.answerResult.set(result);
@@ -115,7 +117,7 @@ export class LessonSessionStore {
           answers: [...p.answers, { blockKey: result.blockKey, questionId: result.questionId, studentAnswer: answer, isCorrect: result.isCorrect, attempt: result.attempt }]
         }));
       },
-      error: error => { if (!this.nav.handleLocked(error)) this.error.set(error?.error?.error || 'No se pudo comprobar la respuesta. Intenta nuevamente.'); }
+      error: error => { if (!this.nav.handleLocked(error)) this.failure.set({key: 'player.answerError', error}); }
     });
   }
 
@@ -126,9 +128,9 @@ export class LessonSessionStore {
       next: () => {
         this.patchProgress(p => ({ ...p, narrativeCompleted: true }));
         this.nav.markStoryCompleted(lesson.storyId);
-        this.toastService.success('Lectura completada. Los refuerzos son opcionales.');
+        this.toastService.success(this.i18n.t('player.readingComplete'));
       },
-      error: error => { if (!this.nav.handleLocked(error)) this.error.set(error?.error?.error || 'Completa primero los bloques narrativos.'); }
+      error: error => { if (!this.nav.handleLocked(error)) this.failure.set({key: 'player.completeFirst', error}); }
     });
   }
 
@@ -142,9 +144,9 @@ export class LessonSessionStore {
           reinforcements: [...p.reinforcements.filter(item => item.blockKey !== block.blockKey), { blockKey: block.blockKey, completed: true }]
         }));
         onDone();
-        this.toastService.success('Refuerzo completado para esta historia.');
+        this.toastService.success(this.i18n.t('player.reinforcementComplete'));
       },
-      error: error => { if (!this.nav.handleLocked(error)) this.error.set(error?.error?.error || 'No se pudo guardar el refuerzo.'); }
+      error: error => { if (!this.nav.handleLocked(error)) this.failure.set({key: 'player.reinforcementError', error}); }
     });
   }
 

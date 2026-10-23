@@ -2,29 +2,29 @@
   @if (isLoading()) {
     <div class="text-center py-5" role="status">
       <div class="spinner-border text-primary" aria-hidden="true"></div>
-      <p class="text-muted mt-2 mb-0">Loading your dashboard…</p>
+      <p class="text-muted mt-2 mb-0">{{ 'affiliate.loading' | t }}</p>
     </div>
   } @else if (notFound()) {
     <div class="state-box">
-      <strong>Dashboard not found</strong>
-      <span>This link is not valid anymore. Ask the course teacher for your current affiliate link.</span>
+      <strong>{{ 'affiliate.notFound' | t }}</strong>
+      <span>{{ 'affiliate.invalid' | t }}</span>
     </div>
   } @else if (loadError()) {
-    <div class="alert alert-danger" role="alert">We could not load your dashboard right now. Please try again later.</div>
+    <div class="alert alert-danger" role="alert">{{ 'affiliate.error' | t }}</div>
   } @else if (data(); as d) {
     <div class="page-header">
       <div class="page-header__main">
-        <p class="eyebrow">Affiliate dashboard</p>
-        <h1 class="page-title">Hi, {{ d.affiliate.name }}</h1>
-        <p class="page-summary">You earn {{ d.affiliate.commissionPercent }}% of every sale made through your links. Your code is <code>{{ d.affiliate.code }}</code>.</p>
+        <p class="eyebrow">{{ 'affiliate.title' | t }}</p>
+        <h1 class="page-title">{{ 'affiliate.hello' | t: {name: d.affiliate.name} }}</h1>
+        <p class="page-summary">{{ 'affiliate.commission' | t: {percent: number(d.affiliate.commissionPercent), code: d.affiliate.code} }}</p>
       </div>
     </div>
 
     <section class="block" aria-labelledby="links-title">
-      <h2 id="links-title" class="block__title">Your links</h2>
-      <p class="block__hint">Share these links. When someone buys within 30 days of clicking one, the sale is credited to you.</p>
+      <h2 id="links-title" class="block__title">{{ 'affiliate.links' | t }}</h2>
+      <p class="block__hint">{{ 'affiliate.shareHelp' | t }}</p>
       @if (d.links.length === 0) {
-        <div class="state-box"><span>There are no published courses to promote yet.</span></div>
+        <div class="state-box"><span>{{ 'affiliate.noCourses' | t }}</span></div>
       } @else {
         <ul class="links">
           @for (l of d.links; track l.url) {
@@ -33,31 +33,31 @@
                 <strong>{{ l.courseTitle }}</strong>
                 <code class="links__url">{{ l.url }}</code>
               </div>
-              <button type="button" class="btn btn-secondary btn-sm" (click)="copy(l.url)" [attr.aria-label]="'Copy link for ' + l.courseTitle">
-                <app-icon [name]="copiedUrl() === l.url ? 'check' : 'copy'" [size]="15" />{{ copiedUrl() === l.url ? 'Copied' : 'Copy link' }}
+              <button type="button" class="btn btn-secondary btn-sm" (click)="copy(l.url)" [attr.aria-label]="'affiliate.copyFor' | t: {title: l.courseTitle}">
+                <app-icon [name]="copiedUrl() === l.url ? 'check' : 'copy'" [size]="15" />{{ (copiedUrl() === l.url ? 'affiliate.copied' : 'affiliate.copy') | t }}
               </button>
             </li>
           }
         </ul>
         @if (manualUrl()) {
-          <p class="block__hint" role="status">Your browser blocked copying. Select and copy this link: <code>{{ manualUrl() }}</code></p>
+          <p class="block__hint" role="status">{{ 'affiliate.manual' | t }} <code>{{ manualUrl() }}</code></p>
         }
       }
     </section>
 
     <section class="block" aria-labelledby="stats-title">
-      <h2 id="stats-title" class="block__title">Earnings</h2>
+      <h2 id="stats-title" class="block__title">{{ 'affiliate.earnings' | t }}</h2>
       @if (!hasStats()) {
-        <div class="state-box"><span>No sales yet. Your earnings will show up here.</span></div>
+        <div class="state-box"><span>{{ 'affiliate.noEarnings' | t }}</span></div>
       } @else {
         @for (s of d.stats; track s.currency) {
-          <div class="currency" [attr.aria-label]="'Earnings in ' + s.currency.toUpperCase()">
+          <div class="currency" [attr.aria-label]="'affiliate.currency' | t: {currency: s.currency.toUpperCase()}">
             <h3 class="currency__title">{{ s.currency.toUpperCase() }}</h3>
             <div class="kpi-grid">
-              <div class="kpi"><span class="kpi__label">Sales</span><strong class="kpi__value">{{ s.orders }}</strong><span class="kpi__hint">{{ money(s.sales, s.currency) }} sold</span></div>
-              <div class="kpi"><span class="kpi__label">Commission earned</span><strong class="kpi__value">{{ money(s.commission, s.currency) }}</strong></div>
-              <div class="kpi"><span class="kpi__label">Paid to you</span><strong class="kpi__value">{{ money(s.paid, s.currency) }}</strong></div>
-              <div class="kpi kpi--owed"><span class="kpi__label">Still owed</span><strong class="kpi__value">{{ money(s.owed, s.currency) }}</strong></div>
+              <div class="kpi"><span class="kpi__label">{{ 'affiliate.sales' | t }}</span><strong class="kpi__value">{{ number(s.orders) }}</strong><span class="kpi__hint">{{ 'affiliate.sold' | t: {amount: money(s.sales, s.currency)} }}</span></div>
+              <div class="kpi"><span class="kpi__label">{{ 'affiliate.commissionEarned' | t }}</span><strong class="kpi__value">{{ money(s.commission, s.currency) }}</strong></div>
+              <div class="kpi"><span class="kpi__label">{{ 'affiliate.paid' | t }}</span><strong class="kpi__value">{{ money(s.paid, s.currency) }}</strong></div>
+              <div class="kpi kpi--owed"><span class="kpi__label">{{ 'affiliate.owed' | t }}</span><strong class="kpi__value">{{ money(s.owed, s.currency) }}</strong></div>
             </div>
           </div>
         }
@@ -65,20 +65,20 @@
     </section>
 
     <section class="block" aria-labelledby="orders-title">
-      <h2 id="orders-title" class="block__title">Sales</h2>
+      <h2 id="orders-title" class="block__title">{{ 'affiliate.sales' | t }}</h2>
       @if (d.orders.length === 0) {
-        <div class="state-box"><span>No sales to show yet.</span></div>
+        <div class="state-box"><span>{{ 'affiliate.noSales' | t }}</span></div>
       } @else {
         <div class="table-wrap">
           <table class="data-table">
             <thead><tr>
-              <th scope="col">Date</th><th scope="col">Course</th><th scope="col" class="num">Sale</th>
-              <th scope="col" class="num">Commission</th><th scope="col">Status</th>
+              <th scope="col">{{ 'affiliate.date' | t }}</th><th scope="col">{{ 'affiliate.course' | t }}</th><th scope="col" class="num">{{ 'affiliate.sale' | t }}</th>
+              <th scope="col" class="num">{{ 'affiliate.commissionColumn' | t }}</th><th scope="col">{{ 'affiliate.status' | t }}</th>
             </tr></thead>
             <tbody>
               @for (o of d.orders; track $index) {
                 <tr>
-                  <td>{{ o.paidAt | date:'mediumDate':undefined:'en-US' }}</td>
+                  <td>{{ date(o.paidAt) }}</td>
                   <td>{{ o.courseTitle }}</td>
                   <td class="num">{{ money(o.amount, o.currency) }}</td>
                   <td class="num">{{ money(o.commissionAmount, o.currency) }}</td>
@@ -92,17 +92,17 @@
     </section>
 
     <section class="block" aria-labelledby="payouts-title">
-      <h2 id="payouts-title" class="block__title">Payments received</h2>
+      <h2 id="payouts-title" class="block__title">{{ 'affiliate.payouts' | t }}</h2>
       @if (d.payouts.length === 0) {
-        <div class="state-box"><span>No payments have been recorded yet.</span></div>
+        <div class="state-box"><span>{{ 'affiliate.noPayouts' | t }}</span></div>
       } @else {
         <div class="table-wrap">
           <table class="data-table">
-            <thead><tr><th scope="col">Date</th><th scope="col" class="num">Amount</th><th scope="col">Note</th></tr></thead>
+            <thead><tr><th scope="col">{{ 'affiliate.date' | t }}</th><th scope="col" class="num">{{ 'affiliate.amount' | t }}</th><th scope="col">{{ 'affiliate.note' | t }}</th></tr></thead>
             <tbody>
               @for (p of d.payouts; track $index) {
                 <tr>
-                  <td>{{ p.paidAt | date:'mediumDate':undefined:'en-US' }}</td>
+                  <td>{{ date(p.paidAt) }}</td>
                   <td class="num">{{ money(p.amount, p.currency) }}</td>
                   <td>{{ p.note || '—' }}</td>
                 </tr>

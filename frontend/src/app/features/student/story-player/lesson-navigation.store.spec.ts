@@ -1,3 +1,5 @@
+import { UserPreferencesService } from '../../../core/services/user-preferences.service';
+import { I18nService } from '../../../core/i18n/i18n.service';
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { describe, expect, it } from 'vitest';
@@ -18,6 +20,7 @@ const course = (intro: string | null) => ({
 function setup(intro: string | null, completedStoryIds: number[] = []) {
   TestBed.configureTestingModule({
     providers: [
+      {provide: UserPreferencesService, useValue: {preferences: () => null}},
       LessonNavigationStore,
       { provide: ToastService, useValue: { warning: () => {} } },
       { provide: CourseService, useValue: { getCourse: () => of(course(intro)) } },
@@ -27,6 +30,7 @@ function setup(intro: string | null, completedStoryIds: number[] = []) {
       } },
     ],
   });
+  TestBed.inject(I18nService).setLocale('es');
   const store = TestBed.inject(LessonNavigationStore);
   store.load(1);
   return store;

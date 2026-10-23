@@ -1,3 +1,5 @@
+import { I18nService } from '../../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { Component, computed, inject } from '@angular/core';
 import { LessonAudioControlsComponent } from './lesson-audio-controls.component';
 import { TooltipDisplayComponent } from '../../../../shared/components/tooltip-display/tooltip-display.component';
@@ -9,11 +11,12 @@ import { LessonIllustrationComponent } from './lesson-illustration.component';
 @Component({
   selector: 'app-full-story-block',
   standalone: true,
-  imports: [LessonAudioControlsComponent, TooltipDisplayComponent, LessonIllustrationComponent],
+  imports: [TranslatePipe, LessonAudioControlsComponent, TooltipDisplayComponent, LessonIllustrationComponent],
   templateUrl: './full-story-block.component.html',
   styleUrl: './full-story-block.component.scss'
 })
 export class FullStoryBlockComponent {
+  i18n = inject(I18nService);
   session = inject(LessonSessionStore);
 
   /**
@@ -27,7 +30,7 @@ export class FullStoryBlockComponent {
     if (!frames.some(b => b.imageUrl)) return null;
     return frames.map(b => ({
       key: b.blockKey, text: b.text || '', imageUrl: b.imageUrl || null,
-      alt: b.imageAlt || b.text || 'Ilustración del fragmento',
+      alt: b.imageAlt || b.text || this.i18n.t('player.illustration'),
       tooltips: (b.tooltips || []).map(t => ({ ...t })) as DisplayTooltip[]
     }));
   });

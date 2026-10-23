@@ -1,26 +1,26 @@
 <div class="page-container">
   <div class="page-header">
     <div class="page-header__main">
-      <h1 class="page-title">Maestros</h1>
-      <p class="page-summary">Profesores de SpanishNow</p>
+      <h1 class="page-title">{{ 'student.teachers' | t }}</h1>
+      <p class="page-summary">{{ 'student.teachersHelp' | t }}</p>
     </div>
   </div>
 
   @if (isLoading()) {
     <div class="text-center py-5" role="status">
       <div class="spinner-border text-primary" aria-hidden="true"></div>
-      <p class="text-muted mt-2 mb-0">Cargando profesores…</p>
+      <p class="text-muted mt-2 mb-0">{{ 'student.loadingTeachers' | t }}</p>
     </div>
   } @else if (error()) {
     <div class="state-box state-box--error" role="alert">
       <app-icon name="alert-triangle" [size]="18" />
       <span>{{ error() }}</span>
-      <button type="button" class="btn btn-secondary btn-sm" (click)="loadTeachers()">Reintentar</button>
+      <button type="button" class="btn btn-secondary btn-sm" (click)="loadTeachers()">{{ 'preferences.retry' | t }}</button>
     </div>
   } @else if (teachers().length === 0) {
     <div class="state-box">
-      <strong>No hay profesores registrados</strong>
-      <span>Aún no hay profesores en la plataforma.</span>
+      <strong>{{ 'student.teachersEmpty' | t }}</strong>
+      <span>{{ 'student.teachersEmptyHelp' | t }}</span>
     </div>
   } @else {
     <div class="card-grid">
@@ -31,7 +31,7 @@
             <h2 class="teacher-card__name">{{ teacher.name }}</h2>
             <span class="teacher-card__email">{{ teacher.email }}</span>
           </div>
-          <span class="badge-level">{{ teacher.coursesCount | plural:'curso':'cursos':'Sin cursos' }}</span>
+          <span class="badge-level">{{ 'student.courseCount' | t : { count: teacher.coursesCount } }}</span>
         </article>
       }
     </div>

@@ -1,11 +1,11 @@
 <div class="page-container">
   <div class="page-header">
     <div class="page-header__main">
-      <h1 class="page-title">Afiliados</h1>
-      <p class="page-summary">Personas que venden tus cursos a comisión. No necesitan cuenta: les pasás un link de venta y un panel privado. Los pagos los hacés por fuera y los registrás acá.</p>
+      <h1 class="page-title">{{ 'teacherPromotions.affiliates' | t }}</h1>
+      <p class="page-summary">{{ 'teacherPromotions.affiliateSummary' | t }}</p>
     </div>
     <div class="page-actions">
-      <button type="button" class="btn btn-primary" (click)="openCreate()"><app-icon name="plus" [size]="16" />Nuevo afiliado</button>
+      <button type="button" class="btn btn-primary" (click)="openCreate()"><app-icon name="plus" [size]="16" />{{ 'teacherPromotions.newAffiliate' | t }}</button>
     </div>
   </div>
 
@@ -16,22 +16,22 @@
   @if (isLoading()) {
     <div class="text-center py-5" role="status">
       <div class="spinner-border text-primary" aria-hidden="true"></div>
-      <p class="text-muted mt-2 mb-0">Cargando afiliados…</p>
+      <p class="text-muted mt-2 mb-0">{{ 'teacherPromotions.loadingAffiliates' | t }}</p>
     </div>
   } @else if (affiliates().length === 0 && !errorMessage()) {
     <div class="state-box">
-      <strong>No tienes afiliados todavía</strong>
-      <span>Creá uno con «Nuevo afiliado» para darle un link con tu comisión.</span>
+      <strong>{{ 'teacherPromotions.emptyAffiliates' | t }}</strong>
+      <span>{{ 'teacherPromotions.emptyAffiliateHint' | t }}</span>
     </div>
   } @else if (affiliates().length > 0) {
     <div class="table-wrap">
       <table class="data-table">
         <thead>
           <tr>
-            <th scope="col">Afiliado</th><th scope="col">Código</th><th scope="col" class="num">Comisión</th>
-            <th scope="col" class="num">Ventas</th><th scope="col" class="num">Comisión generada</th>
-            <th scope="col" class="num">Pagado</th><th scope="col" class="num">Adeudado</th>
-            <th scope="col">Estado</th><th scope="col"><span class="visually-hidden">Acciones</span></th>
+            <th scope="col">{{ 'teacherPromotions.affiliate' | t }}</th><th scope="col">{{ 'teacherPromotions.code' | t }}</th><th scope="col" class="num">{{ 'teacherPromotions.commission' | t }}</th>
+            <th scope="col" class="num">{{ 'teacherPromotions.sales' | t }}</th><th scope="col" class="num">{{ 'teacherPromotions.earned' | t }}</th>
+            <th scope="col" class="num">{{ 'teacherPromotions.paid' | t }}</th><th scope="col" class="num">{{ 'teacherPromotions.owed' | t }}</th>
+            <th scope="col">{{ 'teacherPromotions.status' | t }}</th><th scope="col"><span class="visually-hidden">{{ 'teacherPromotions.actions' | t }}</span></th>
           </tr>
         </thead>
         <tbody>
@@ -39,27 +39,27 @@
             <tr>
               <td>{{ a.name }}<small class="d-block text-secondary-ui">{{ a.email }}</small></td>
               <td><code>{{ a.code }}</code></td>
-              <td class="num">{{ a.commissionPercent }} %</td>
+              <td class="num">{{ percent(a.commissionPercent) }}</td>
               @if (hasStats(a)) {
-                <td class="num">@for (s of a.stats; track s.currency) { <span class="stat-line">{{ s.orders }} · {{ statValue(s, 'sales') }}</span> }</td>
+                <td class="num">@for (s of a.stats; track s.currency) { <span class="stat-line">{{ number(s.orders) }} · {{ statValue(s, 'sales') }}</span> }</td>
                 <td class="num">@for (s of a.stats; track s.currency) { <span class="stat-line">{{ statValue(s, 'commission') }}</span> }</td>
                 <td class="num">@for (s of a.stats; track s.currency) { <span class="stat-line">{{ statValue(s, 'paid') }}</span> }</td>
                 <td class="num">@for (s of a.stats; track s.currency) { <span class="stat-line stat-line--owed">{{ statValue(s, 'owed') }}</span> }</td>
               } @else {
-                <td class="num text-secondary-ui" colspan="4">Sin ventas todavía</td>
+                <td class="num text-secondary-ui" colspan="4">{{ 'teacherPromotions.noSales' | t }}</td>
               }
-              <td><span class="badge-status" [class.badge-status--published]="a.active" [class.badge-status--draft]="!a.active">{{ a.active ? 'Activo' : 'Inactivo' }}</span></td>
+              <td><span class="badge-status" [class.badge-status--published]="a.active" [class.badge-status--draft]="!a.active">{{ (a.active ? 'teacherPromotions.active' : 'teacherPromotions.inactive') | t }}</span></td>
               <td class="actions">
-                <button type="button" class="btn btn-ghost btn-sm" (click)="openDetail(a)" [attr.aria-label]="'Ver detalle de ' + a.name">Detalle</button>
-                <button type="button" class="btn btn-ghost btn-sm" (click)="openLinks(a)" [attr.aria-label]="'Links de ' + a.name"><app-icon name="link" [size]="15" />Links</button>
+                <button type="button" class="btn btn-ghost btn-sm" (click)="openDetail(a)" [attr.aria-label]="'teacherPromotions.affiliateDetail' | t: {name: a.name}">{{ 'teacherPromotions.detail' | t }}</button>
+                <button type="button" class="btn btn-ghost btn-sm" (click)="openLinks(a)" [attr.aria-label]="'teacherPromotions.affiliateLinks' | t: {name: a.name}"><app-icon name="link" [size]="15" />{{ 'teacherPromotions.links' | t }}</button>
                 <div ngbDropdown container="body" placement="bottom-end">
-                  <button type="button" ngbDropdownToggle class="btn-icon" [attr.aria-label]="'Más acciones de ' + a.name"><app-icon name="more" [size]="18" /></button>
+                  <button type="button" ngbDropdownToggle class="btn-icon" [attr.aria-label]="'teacherPromotions.affiliateMore' | t: {name: a.name}"><app-icon name="more" [size]="18" /></button>
                   <div ngbDropdownMenu role="menu">
-                    <button type="button" ngbDropdownItem role="menuitem" (click)="openEdit(a)">Editar</button>
-                    <button type="button" ngbDropdownItem role="menuitem" (click)="toggleActive(a)">{{ a.active ? 'Desactivar' : 'Activar' }}</button>
-                    <button type="button" ngbDropdownItem role="menuitem" (click)="askRegenerate(a)">Regenerar link del panel</button>
+                    <button type="button" ngbDropdownItem role="menuitem" (click)="openEdit(a)">{{ 'teacherPromotions.edit' | t }}</button>
+                    <button type="button" ngbDropdownItem role="menuitem" (click)="toggleActive(a)">{{ (a.active ? 'teacherPromotions.disable' : 'teacherPromotions.enable') | t }}</button>
+                    <button type="button" ngbDropdownItem role="menuitem" (click)="askRegenerate(a)">{{ 'teacherPromotions.regeneratePanel' | t }}</button>
                     <div class="dropdown-divider"></div>
-                    <button type="button" ngbDropdownItem role="menuitem" class="dropdown-item--danger" (click)="askDelete(a)"><app-icon name="trash" [size]="15" />Eliminar</button>
+                    <button type="button" ngbDropdownItem role="menuitem" class="dropdown-item--danger" (click)="askDelete(a)"><app-icon name="trash" [size]="15" />{{ 'teacherPromotions.delete' | t }}</button>
                   </div>
                 </div>
               </td>
@@ -68,7 +68,7 @@
         </tbody>
       </table>
     </div>
-    <p class="note">Las cifras se muestran por moneda y nunca se suman entre monedas. «Adeudado» es la comisión pendiente menos lo que ya pagaste.</p>
+    <p class="note">{{ 'teacherPromotions.statsHint' | t }}</p>
   }
 </div>
 
@@ -78,45 +78,45 @@
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="affTitle">{{ editing() ? 'Editar afiliado' : 'Nuevo afiliado' }}</h5>
-          <button type="button" class="btn-close" (click)="closeForm()" aria-label="Cerrar"></button>
+          <h5 class="modal-title" id="affTitle">{{ (editing() ? 'teacherPromotions.editAffiliate' : 'teacherPromotions.newAffiliate') | t }}</h5>
+          <button type="button" class="btn-close" (click)="closeForm()" [attr.aria-label]="'teacherPromotions.close' | t"></button>
         </div>
         <form [formGroup]="form" (ngSubmit)="save()" class="d-flex flex-column overflow-hidden" novalidate>
           <div class="modal-body">
             @if (formError()) { <div class="alert alert-danger" role="alert">{{ formError() }}</div> }
             <div class="mb-3">
-              <label for="affName" class="form-label">Nombre *</label>
+              <label for="affName" class="form-label">{{ 'teacherPromotions.nameRequired' | t }}</label>
               <input id="affName" type="text" class="form-control" formControlName="name" maxlength="120" autocomplete="off">
             </div>
             <div class="mb-3">
-              <label for="affEmail" class="form-label">Email *</label>
+              <label for="affEmail" class="form-label">{{ 'teacherPromotions.emailRequired' | t }}</label>
               <input id="affEmail" type="email" class="form-control" formControlName="email" autocomplete="off" aria-describedby="affEmailHelp">
-              <div id="affEmailHelp" class="form-text">Si compra con este email, la venta no genera comisión.</div>
+              <div id="affEmailHelp" class="form-text">{{ 'teacherPromotions.selfPurchaseHint' | t }}</div>
             </div>
             <div class="mb-3">
-              <label for="affPercent" class="form-label">Comisión (%) *</label>
+              <label for="affPercent" class="form-label">{{ 'teacherPromotions.commissionRequired' | t }}</label>
               <div class="input-group">
                 <input id="affPercent" type="number" class="form-control" formControlName="commissionPercent" min="1" max="90" step="1" aria-describedby="affPercentHelp">
                 <span class="input-group-text">%</span>
               </div>
-              <div id="affPercentHelp" class="form-text">Entre 1 y 90. Se calcula sobre lo que efectivamente paga el comprador (después del cupón). Si la cambiás, solo afecta ventas futuras.</div>
+              <div id="affPercentHelp" class="form-text">{{ 'teacherPromotions.commissionHint' | t }}</div>
             </div>
             <div class="mb-3">
-              <label for="affNotes" class="form-label">Notas</label>
-              <textarea id="affNotes" class="form-control" rows="2" formControlName="notes" placeholder="Solo las ves vos"></textarea>
+              <label for="affNotes" class="form-label">{{ 'teacherPromotions.notes' | t }}</label>
+              <textarea id="affNotes" class="form-control" rows="2" formControlName="notes" [placeholder]="'teacherPromotions.privateNotes' | t"></textarea>
             </div>
             @if (editing()) {
               <div class="form-check form-switch">
                 <input class="form-check-input" type="checkbox" role="switch" id="affActive" formControlName="active">
-                <label class="form-check-label" for="affActive">Activo</label>
+                <label class="form-check-label" for="affActive">{{ 'teacherPromotions.active' | t }}</label>
               </div>
             }
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" (click)="closeForm()" [disabled]="isSaving()">Cancelar</button>
+            <button type="button" class="btn btn-secondary" (click)="closeForm()" [disabled]="isSaving()">{{ 'teacherPromotions.cancel' | t }}</button>
             <button type="submit" class="btn btn-primary" [disabled]="isSaving()">
               @if (isSaving()) { <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> }
-              {{ editing() ? 'Guardar cambios' : 'Crear afiliado' }}
+              {{ (editing() ? 'teacherPromotions.saveChanges' : 'teacherPromotions.createAffiliate') | t }}
             </button>
           </div>
         </form>
@@ -131,44 +131,44 @@
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="linksTitle">Links de {{ a.name }}</h5>
-          <button type="button" class="btn-close" (click)="closeLinks()" aria-label="Cerrar"></button>
+          <h5 class="modal-title" id="linksTitle">{{ 'teacherPromotions.affiliateLinks' | t: {name: a.name} }}</h5>
+          <button type="button" class="btn-close" (click)="closeLinks()" [attr.aria-label]="'teacherPromotions.close' | t"></button>
         </div>
         <div class="modal-body">
           <section class="mb-4">
-            <h6>Link de venta</h6>
-            <p class="form-text mt-0">Elige el curso. El link lleva el código <code>{{ a.code }}</code>: la venta se atribuye durante 30 días desde el último click.</p>
+            <h6>{{ 'teacherPromotions.saleLink' | t }}</h6>
+            <p class="form-text mt-0">{{ 'teacherPromotions.saleLinkHint' | t: {code: a.code} }}</p>
             @if (coursesWithSlug().length === 0) {
-              <div class="alert alert-warning mb-0" role="note">No tienes cursos publicados con página de venta.</div>
+              <div class="alert alert-warning mb-0" role="note">{{ 'teacherPromotions.noPublishedCourses' | t }}</div>
             } @else {
-              <label for="linkCourse" class="visually-hidden">Curso del link de venta</label>
+              <label for="linkCourse" class="visually-hidden">{{ 'teacherPromotions.saleLinkCourse' | t }}</label>
               <select id="linkCourse" class="form-select mb-2" (change)="onLinkCourse($any($event.target).value)">
                 @for (c of coursesWithSlug(); track c.id) { <option [value]="c.id" [selected]="c.id === linkCourseId()">{{ c.title }}</option> }
               </select>
               <div class="input-group">
-                <input type="text" class="form-control" readonly [value]="saleLink()" aria-label="Link de venta con el código del afiliado" (focus)="$any($event.target).select()">
-                <button type="button" class="btn btn-secondary" (click)="copyLink(saleLink())" [disabled]="!saleLink()"><app-icon name="copy" [size]="15" />Copiar</button>
+                <input type="text" class="form-control" readonly [value]="saleLink()" [attr.aria-label]="'teacherPromotions.saleLinkAria' | t" (focus)="$any($event.target).select()">
+                <button type="button" class="btn btn-secondary" (click)="copyLink(saleLink())" [disabled]="!saleLink()"><app-icon name="copy" [size]="15" />{{ 'teacherPromotions.copy' | t }}</button>
               </div>
             }
           </section>
           <section>
-            <h6>Panel del afiliado</h6>
-            <p class="form-text mt-0">Link privado donde ve sus links, ventas y comisiones (sin datos de compradores). Quien lo tenga puede verlo: si se filtra, regeneralo.</p>
+            <h6>{{ 'teacherPromotions.affiliatePanel' | t }}</h6>
+            <p class="form-text mt-0">{{ 'teacherPromotions.panelHint' | t }}</p>
             @if (panelLink()) {
               <div class="input-group mb-2">
-                <input type="text" class="form-control" readonly [value]="panelLink()" aria-label="Link del panel del afiliado" (focus)="$any($event.target).select()">
-                <button type="button" class="btn btn-secondary" (click)="copyLink(panelLink())"><app-icon name="copy" [size]="15" />Copiar</button>
+                <input type="text" class="form-control" readonly [value]="panelLink()" [attr.aria-label]="'teacherPromotions.panelLinkAria' | t" (focus)="$any($event.target).select()">
+                <button type="button" class="btn btn-secondary" (click)="copyLink(panelLink())"><app-icon name="copy" [size]="15" />{{ 'teacherPromotions.copy' | t }}</button>
               </div>
             } @else {
-              <div class="alert alert-info" role="note">Por seguridad el link del panel solo se muestra cuando lo generás. Generá uno nuevo para copiarlo (el anterior dejará de funcionar).</div>
+              <div class="alert alert-info" role="note">{{ 'teacherPromotions.panelSecretHint' | t }}</div>
             }
-            <button type="button" class="btn btn-ghost btn-sm" (click)="askRegenerate(a)"><app-icon name="rotate" [size]="15" />{{ panelLink() ? 'Regenerar link del panel' : 'Generar link del panel' }}</button>
+            <button type="button" class="btn btn-ghost btn-sm" (click)="askRegenerate(a)"><app-icon name="rotate" [size]="15" />{{ (panelLink() ? 'teacherPromotions.regeneratePanel' : 'teacherPromotions.generatePanel') | t }}</button>
           </section>
           @if (manualLink()) {
-            <div class="alert alert-warning mt-3 mb-0" role="status">Tu navegador no dejó copiar. Selecciona y copia este link: <code class="manual">{{ manualLink() }}</code></div>
+            <div class="alert alert-warning mt-3 mb-0" role="status">{{ 'teacherPromotions.manualCopy' | t }} <code class="manual">{{ manualLink() }}</code></div>
           }
         </div>
-        <div class="modal-footer"><button type="button" class="btn btn-secondary" (click)="closeLinks()">Cerrar</button></div>
+        <div class="modal-footer"><button type="button" class="btn btn-secondary" (click)="closeLinks()">{{ 'teacherPromotions.close' | t }}</button></div>
       </div>
     </div>
   </div>
@@ -181,53 +181,53 @@
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="detailTitle">{{ a.name }} <code class="ms-2">{{ a.code }}</code></h5>
-          <button type="button" class="btn-close" (click)="closeDetail()" aria-label="Cerrar"></button>
+          <button type="button" class="btn-close" (click)="closeDetail()" [attr.aria-label]="'teacherPromotions.close' | t"></button>
         </div>
         <div class="modal-body">
           @if (detailError()) { <div class="alert alert-danger" role="alert">{{ detailError() }}</div> }
           @if (detailLoading()) {
-            <div class="text-center py-4" role="status"><div class="spinner-border text-primary" aria-hidden="true"></div><p class="text-muted mt-2 mb-0">Cargando detalle…</p></div>
+            <div class="text-center py-4" role="status"><div class="spinner-border text-primary" aria-hidden="true"></div><p class="text-muted mt-2 mb-0">{{ 'teacherPromotions.loadingDetail' | t }}</p></div>
           } @else {
             @if (hasStats(a)) {
               <div class="summary">
                 @for (s of a.stats; track s.currency) {
                   <div class="summary__item">
                     <span class="summary__cur">{{ s.currency.toUpperCase() }}</span>
-                    <span>Ventas {{ s.orders }} · {{ statValue(s, 'sales') }}</span>
-                    <span>Comisión {{ statValue(s, 'commission') }}</span>
-                    <span>Pagado {{ statValue(s, 'paid') }}</span>
-                    <strong>Adeudado {{ statValue(s, 'owed') }}</strong>
+                    <span>{{ 'teacherPromotions.salesValue' | t: {count: number(s.orders), amount: statValue(s, 'sales')} }}</span>
+                    <span>{{ 'teacherPromotions.commissionValue' | t: {amount: statValue(s, 'commission')} }}</span>
+                    <span>{{ 'teacherPromotions.paidValue' | t: {amount: statValue(s, 'paid')} }}</span>
+                    <strong>{{ 'teacherPromotions.owedValue' | t: {amount: statValue(s, 'owed')} }}</strong>
                   </div>
                 }
               </div>
             }
 
-            <h6 class="mt-3">Pagos</h6>
+            <h6 class="mt-3">{{ 'teacherPromotions.payments' | t }}</h6>
             <form class="payout-form" [formGroup]="payoutForm" (ngSubmit)="savePayout()" novalidate>
-              <div><label for="payAmount" class="form-label">Monto</label><input id="payAmount" type="number" class="form-control" formControlName="amount" min="0.01" step="0.01" placeholder="25.00"></div>
-              <div><label for="payCurrency" class="form-label">Moneda</label>
+              <div><label for="payAmount" class="form-label">{{ 'teacherPromotions.amount' | t }}</label><input id="payAmount" type="number" class="form-control" formControlName="amount" min="0.01" step="0.01" placeholder="25.00"></div>
+              <div><label for="payCurrency" class="form-label">{{ 'teacherPromotions.currency' | t }}</label>
                 <select id="payCurrency" class="form-select" formControlName="currency">@for (cur of currencies; track cur.code) { <option [value]="cur.code">{{ cur.label }}</option> }</select></div>
-              <div><label for="payDate" class="form-label">Fecha</label><input id="payDate" type="date" class="form-control" formControlName="paidAt"></div>
-              <div class="payout-form__note"><label for="payNote" class="form-label">Nota</label><input id="payNote" type="text" class="form-control" formControlName="note" maxlength="300" placeholder="Ej: PayPal, transferencia"></div>
+              <div><label for="payDate" class="form-label">{{ 'teacherPromotions.date' | t }}</label><input id="payDate" type="date" class="form-control" formControlName="paidAt"></div>
+              <div class="payout-form__note"><label for="payNote" class="form-label">{{ 'teacherPromotions.note' | t }}</label><input id="payNote" type="text" class="form-control" formControlName="note" maxlength="300" [placeholder]="'teacherPromotions.notePlaceholder' | t"></div>
               <button type="submit" class="btn btn-primary" [disabled]="isPaying()">
                 @if (isPaying()) { <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> }
-                Registrar pago
+                {{ 'teacherPromotions.recordPayment' | t }}
               </button>
             </form>
             @if (payoutError()) { <div class="alert alert-danger mt-2" role="alert">{{ payoutError() }}</div> }
             @if (payouts().length === 0) {
-              <p class="text-secondary-ui mt-2 mb-0">Todavía no registraste pagos.</p>
+              <p class="text-secondary-ui mt-2 mb-0">{{ 'teacherPromotions.noPayments' | t }}</p>
             } @else {
               <div class="table-wrap mt-2">
                 <table class="data-table">
-                  <thead><tr><th scope="col">Fecha</th><th scope="col" class="num">Monto</th><th scope="col">Nota</th><th scope="col"><span class="visually-hidden">Acciones</span></th></tr></thead>
+                  <thead><tr><th scope="col">{{ 'teacherPromotions.date' | t }}</th><th scope="col" class="num">{{ 'teacherPromotions.amount' | t }}</th><th scope="col">{{ 'teacherPromotions.note' | t }}</th><th scope="col"><span class="visually-hidden">{{ 'teacherPromotions.actions' | t }}</span></th></tr></thead>
                   <tbody>
                     @for (p of payouts(); track p.id) {
                       <tr>
-                        <td>{{ p.paidAt | date:'d MMM y' }}</td>
+                        <td>{{ date(p.paidAt) }}</td>
                         <td class="num">{{ money(p.amount, p.currency) }}</td>
                         <td>{{ p.note || '—' }}</td>
-                        <td class="text-end"><button type="button" class="btn btn-ghost btn-sm" (click)="askDeletePayout(p)" [attr.aria-label]="'Eliminar el pago de ' + money(p.amount, p.currency)">Eliminar</button></td>
+                        <td class="text-end"><button type="button" class="btn btn-ghost btn-sm" (click)="askDeletePayout(p)" [attr.aria-label]="'teacherPromotions.deletePaymentAria' | t: {amount: money(p.amount, p.currency)}">{{ 'teacherPromotions.delete' | t }}</button></td>
                       </tr>
                     }
                   </tbody>
@@ -235,20 +235,20 @@
               </div>
             }
 
-            <h6 class="mt-4">Órdenes atribuidas</h6>
+            <h6 class="mt-4">{{ 'teacherPromotions.attributedOrders' | t }}</h6>
             @if (orders().length === 0) {
-              <p class="text-secondary-ui mb-0">Todavía no hay ventas atribuidas a este afiliado.</p>
+              <p class="text-secondary-ui mb-0">{{ 'teacherPromotions.noAttributedOrders' | t }}</p>
             } @else {
               <div class="table-wrap">
                 <table class="data-table">
-                  <thead><tr><th scope="col">Fecha</th><th scope="col">Comprador</th><th scope="col">Curso</th><th scope="col" class="num">Monto</th><th scope="col" class="num">Comisión</th><th scope="col">Estado</th></tr></thead>
+                  <thead><tr><th scope="col">{{ 'teacherPromotions.date' | t }}</th><th scope="col">{{ 'teacherPromotions.buyer' | t }}</th><th scope="col">{{ 'teacherPromotions.course' | t }}</th><th scope="col" class="num">{{ 'teacherPromotions.amount' | t }}</th><th scope="col" class="num">{{ 'teacherPromotions.commission' | t }}</th><th scope="col">{{ 'teacherPromotions.status' | t }}</th></tr></thead>
                   <tbody>
                     @for (o of orders(); track o.id) {
                       <tr>
-                        <td>{{ (o.paidAt ?? o.createdAt) | date:'d MMM y' }}</td>
+                        <td>{{ orderDate(o) }}</td>
                         <td>{{ o.buyer.name }}<small class="d-block text-secondary-ui">{{ o.buyer.email }}</small></td>
                         <td>{{ o.course.title }}</td>
-                        <td class="num">{{ money(o.amount, o.currency) }}@if (o.refundedAmount > 0) { <small class="d-block text-secondary-ui">Devuelto {{ money(o.refundedAmount, o.currency) }}</small> }</td>
+                        <td class="num">{{ money(o.amount, o.currency) }}@if (o.refundedAmount > 0) { <small class="d-block text-secondary-ui">{{ 'teacherPromotions.returned' | t: {amount: money(o.refundedAmount, o.currency)} }}</small> }</td>
                         <td class="num">{{ money(o.commissionAmount, o.currency) }}</td>
                         <td><span class="badge-status" [class.badge-status--published]="o.commissionStatus === 'pending'" [class.badge-status--draft]="o.commissionStatus === 'none'" [class.badge-status--danger]="o.commissionStatus === 'void'">{{ commissionLabel(o) }}</span></td>
                       </tr>
@@ -259,24 +259,24 @@
             }
           }
         </div>
-        <div class="modal-footer"><button type="button" class="btn btn-secondary" (click)="closeDetail()">Cerrar</button></div>
+        <div class="modal-footer"><button type="button" class="btn btn-secondary" (click)="closeDetail()">{{ 'teacherPromotions.close' | t }}</button></div>
       </div>
     </div>
   </div>
 }
 
 @if (toRegenerate(); as t) {
-  <app-confirm-dialog [show]="true" title="Regenerar link del panel"
-    [message]="'El link del panel que tiene ' + t.name + ' dejará de funcionar y vas a tener que pasarle el nuevo. ¿Regenerarlo?'"
-    confirmText="Regenerar" type="warning" (confirmed)="confirmRegenerate()" (cancelled)="cancelRegenerate()"></app-confirm-dialog>
+  <app-confirm-dialog [show]="true" [title]="'teacherPromotions.regeneratePanel' | t"
+    [message]="'teacherPromotions.regenerateMessage' | t: {name: t.name}"
+    [confirmText]="'teacherPromotions.regenerate' | t" type="warning" (confirmed)="confirmRegenerate()" (cancelled)="cancelRegenerate()"></app-confirm-dialog>
 }
 @if (toDelete(); as t) {
-  <app-confirm-dialog [show]="true" title="Eliminar afiliado"
-    [message]="'¿Eliminar a ' + t.name + '? Si ya tiene ventas no se borra: se desactiva.'"
-    confirmText="Eliminar" type="danger" (confirmed)="confirmDelete()" (cancelled)="cancelDelete()"></app-confirm-dialog>
+  <app-confirm-dialog [show]="true" [title]="'teacherPromotions.deleteAffiliate' | t"
+    [message]="'teacherPromotions.affiliateDeleteMessage' | t: {name: t.name}"
+    [confirmText]="'teacherPromotions.delete' | t" type="danger" (confirmed)="confirmDelete()" (cancelled)="cancelDelete()"></app-confirm-dialog>
 }
 @if (payoutToDelete(); as p) {
-  <app-confirm-dialog [show]="true" title="Eliminar pago"
-    [message]="'¿Eliminar el pago de ' + money(p.amount, p.currency) + '? El adeudado del afiliado vuelve a subir.'"
-    confirmText="Eliminar" type="danger" (confirmed)="confirmDeletePayout()" (cancelled)="cancelDeletePayout()"></app-confirm-dialog>
+  <app-confirm-dialog [show]="true" [title]="'teacherPromotions.deletePayment' | t"
+    [message]="'teacherPromotions.paymentDeleteMessage' | t: {amount: money(p.amount, p.currency)}"
+    [confirmText]="'teacherPromotions.delete' | t" type="danger" (confirmed)="confirmDeletePayout()" (cancelled)="cancelDeletePayout()"></app-confirm-dialog>
 }
