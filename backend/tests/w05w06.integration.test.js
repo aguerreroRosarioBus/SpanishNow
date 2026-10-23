@@ -77,7 +77,9 @@ test('reembolso confirmado por Hotmart con clase reservada: compra cancelada, re
   // la reserva no se pierde ni se reinterpreta: cancelar la sesión la libera por credits.apply
   const r = await as(w.teacher).post(`/api/class-sessions/${confirmed.id}/cancel`).send({ version: confirmed.version, reason: 'Compra reembolsada' });
   expect(r.status).toBe(200);
-  expect(await balance(purchase.id)).toMatchObject({ reserved: 0 });
+  expect(await balance(purchase.id)).toMatchObject({ available: 0, reserved: 0, refunded: 4 });
+  await purchase.reload();
+  expect(purchase.unitsGranted).toBe(purchase.unitsAvailable + purchase.unitsReserved + purchase.unitsConsumed + purchase.unitsExpired + purchase.unitsRefunded);
   await expect(sessions.create(w.teacher, { ...body, intent: intent(6) }, randomUUID())).rejects.toMatchObject({ code: 'package_not_active' });
 });
 
@@ -101,4 +103,18 @@ test.each([['group2-1x50-total', 2], ['group3-1x50-seat', 3]])('grupo %s: compra
   const done = await sessions.cancel(w.teacher, session.id, { version: session.version, reason: 'No puedo dictar' });
   expect(done.status).toBe('cancelled');
   for (const p of bought) expect(await balance(p.id)).toMatchObject({ available: 1, reserved: 0 });
+});
+
+test('P2-4: tras un reembolso total, restaurar o sumar saldo es 409 y nada vuelve a «disponible»', async () => {
+  const w = await packageWorld();
+  await zones(w.teacher, [w.buyer]);
+  const { offer, purchase } = await pay(w.buyer, w.teacher, { templateVersionId: w.version.id });
+  const order = await M.ClassPackageOrder.findOne({ where: { offerId: offer.id } });
+  await events.handleEvent({ ...checkout.fakeBody(order, offer, 'PURCHASE_REFUNDED', randomUUID()) }, { provider: 'fake' });
+  const db = require('../src/config/database');
+  for (const adjust of [{ from: 'none', to: 'available' }, { from: 'consumed', to: 'available' }]) {
+    await expect(db.transaction(transaction => credits.apply({ purchaseId: purchase.id, operation: 'adjust', units: 1, operationKey: `adjust:p24:${adjust.from}`, actorId: w.teacher.id, reason: 'x', adjust }, { transaction })))
+      .rejects.toMatchObject({ code: 'package_not_active' });
+  }
+  expect(await balance(purchase.id)).toMatchObject({ available: 0, refunded: 4 });
 });

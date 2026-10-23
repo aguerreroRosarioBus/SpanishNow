@@ -2,7 +2,8 @@
 // Every movement locks the purchase row, is idempotent by operationKey and keeps
 //   unitsGranted = unitsAvailable + unitsReserved + unitsConsumed + unitsExpired + unitsRefunded
 // (also a CHECK constraint in the database). The caller owns the transaction so the movement commits with its own changes.
-const { ClassPackagePurchase, ClassCreditLedger } = require('../models');
+const { createHash } = require('crypto');
+const { ClassPackagePurchase, ClassCreditLedger, ClassPackageOrder } = require('../models');
 
 // statusCode is what the app's error middleware reads; status is kept as an alias. code/params reach the client.
 class CreditError extends Error {
@@ -79,6 +80,10 @@ async function apply({ purchaseId, operation, units, operationKey, classSessionI
   if (NEEDS_ACTIVE.has(operation) && purchase.status !== 'active') {
     throw new CreditError(409, 'package_not_active', 'El paquete no está activo', { status: purchase.status });
   }
+  // Compra con la orden reembolsada: el saldo no puede volver a «disponible» (ni sumando ni restaurando consumidos).
+  const refundedOrder = purchase.status === 'cancelled' && to === 'available' && (operation === 'release' || operation === 'adjust')
+    && (await ClassPackageOrder.findByPk(purchase.orderId, { transaction }))?.status === 'refunded';
+  if (refundedOrder && operation === 'adjust') throw new CreditError(409, 'package_not_active', 'La compra fue reembolsada', { status: purchase.status });
   if (from !== 'none' && purchase[COLUMN[from]] < units) {
     throw new CreditError(409, 'insufficient_credit', 'Saldo insuficiente', { bucket: from, available: purchase[COLUMN[from]], requested: units });
   }
@@ -99,6 +104,11 @@ async function apply({ purchaseId, operation, units, operationKey, classSessionI
     purchaseId: purchase.id, operation, units, fromBucket: from, toBucket: to, operationKey, classSessionId, actorId,
     reason: reason ? String(reason).slice(0, 255) : null
   }, { transaction });
+  if (refundedOrder) {
+    // Lo que se libera tras un reembolso confirmado también se devuelve: cada liberación sigue con su `refund`.
+    const refund = await apply({ purchaseId, operation: 'refund', units, operationKey: `refund:release:${createHash('sha256').update(operationKey).digest('hex').slice(0, 40)}` }, { transaction });
+    return { entry, purchase: refund.purchase, replayed: false };
+  }
   return { entry, purchase, replayed: false };
 }
 
