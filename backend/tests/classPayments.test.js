@@ -80,8 +80,8 @@ test('otra transacción sobre el mismo link no duplica crédito ni pisa el cobro
   expect((await order.reload()).providerTransactionId).toBe(body.data.purchase.transaction);expect(await Purchase.count({where:{offerId:w.offer.id}})).toBe(1);
 });
 test('solicitar devolución no marca reembolsado antes de ejecutar fake/proveedor; P01 no inventa parciales',async()=>{
-  const w=await world();const {order,body}=await pending(w);await apply(body);const admin=await createUser('student','w05-refunder');await admin.update({permissions:['class_payments.review']});
-  const r=await as(admin).post(`/api/admin/class-payments/${order.id}/resolve`,{action:'refund',reason:'Prueba íntegra ficticia'});expect(r.body.refundRequested).toBe(true);expect((await order.reload()).status).toBe('paid');
+  const w=await world();const {order,body}=await pending(w);body.data.purchase.price.value=1;await apply(body);const admin=await createUser('student','w05-refunder');await admin.update({permissions:['class_payments.review']});
+  const r=await as(admin).post(`/api/admin/class-payments/${order.id}/resolve`,{action:'refund',reason:'Prueba íntegra ficticia'});expect(r.body.refundRequested).toBe(true);expect((await order.reload()).status).toBe('paid_needs_review');
   await review.refund({aggregateId:order.id});expect((await order.reload()).status).toBe('refunded');
 });
 test('dinero de webhook se convierte a unidades menores sin redondear silenciosamente',()=>{
@@ -126,4 +126,10 @@ test.each(['amount','product'])('P2-2: reembolso con datos que no cuadran (%s) c
   expect((await order.reload()).status).toBe('paid_needs_review');expect((await p.reload()).status).toBe('cancelled');
   const credits=require('../src/services/classCredits');const db=require('../src/config/database');
   await expect(db.transaction(t=>credits.apply({purchaseId:p.id,operation:'reserve',units:1,operationKey:`reserve:p22:${p.id}`},{transaction:t}))).rejects.toMatchObject({code:'package_not_active'});
+});
+test('P2-5: el reembolso administrativo directo no salta P01 si ya existe la compra',async()=>{
+  const w=await world();const {order,body}=await pending(w);await apply(body);const admin=await createUser('student','w05-p25');await admin.update({permissions:['class_payments.review']});
+  const r=await as(admin).post(`/api/admin/class-payments/${order.id}/resolve`,{action:'refund',reason:'Intento directo ficticio'});
+  expect(r.status).toBe(409);expect(r.body.code).toBe('payment_review_required');
+  expect(await require('../src/models').OutboxJob.count({where:{topic:'payment.refund',aggregateId:order.id}})).toBe(0);expect((await order.reload()).status).toBe('paid');
 });
