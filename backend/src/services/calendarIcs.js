@@ -7,7 +7,7 @@ const NOTE = {
 };
 const TITLE = { es: 'Clase de español · SpanishNow', en: 'Spanish class · SpanishNow' };
 const stamp = date => new Date(date).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
-const escape = text => String(text).replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/;/g, '\;').replace(/,/g, '\\,');
+const escape = text => String(text).replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/;/g, '\\;').replace(/,/g, '\\,');
 // RFC 5545 §3.1: líneas de hasta 75 octetos; la continuación empieza con un espacio.
 function fold(line) {
   const out = []; let current = '';

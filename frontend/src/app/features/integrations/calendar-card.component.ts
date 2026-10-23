@@ -43,7 +43,7 @@ const OUTCOMES = ['connected', 'denied', 'scopes', 'error'];
           <fieldset><legend class="h6">{{ 'calendar.busy' | t }}</legend>
             @for (c of s.calendars; track c.id) {
               <label class="cal"><input type="checkbox" [checked]="busyIds().includes(c.id)" [disabled]="c.id === target()" (change)="toggle(c.id)" />
-                {{ c.summary }}@if (c.accessRole !== 'owner' && c.accessRole !== 'writer') { <span class="notice">({{ 'calendar.readOnly' | t }})</span> }</label>
+                {{ c.summary }}@if (c.accessRole !== 'owner') { <span class="notice">({{ 'calendar.readOnly' | t }})</span> }</label>
             }
             <p class="notice">{{ 'calendar.busyHint' | t }}</p>
           </fieldset>
@@ -74,7 +74,7 @@ export class CalendarCardComponent implements OnInit {
   failure = signal<unknown>(null); outcome = signal<string | null>(null);
   target = signal(''); busyIds = signal<string[]>([]);
   error = computed(() => this.failure() ? this.i18n.errorMessage(this.failure()) : '');
-  writable = computed(() => (this.state()?.calendars ?? []).filter(c => c.accessRole === 'owner' || c.accessRole === 'writer'));
+  writable = computed(() => (this.state()?.calendars ?? []).filter(c => c.accessRole === 'owner'));
 
   ngOnInit(): void {
     const result = this.route.snapshot.queryParamMap.get('calendar');

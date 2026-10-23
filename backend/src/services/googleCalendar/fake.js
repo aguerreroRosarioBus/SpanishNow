@@ -51,6 +51,7 @@ module.exports = {
   /** Cambio hecho "desde Google" por la persona: mueve el evento (nueva hora) o lo borra. */
   editExternally(calendarId, id, patch) { const e = store.events.get(keyOf(calendarId, id)); touch(calendarId, Object.assign(e, patch)); },
   removeExternally(calendarId, id) { const e = store.events.get(keyOf(calendarId, id)); touch(calendarId, Object.assign(e, { cancelled: true })); },
+  addCalendar: calendar => store.calendars.push(calendar),
   channels: () => [...store.channels.values()],
 
   // ---- interfaz

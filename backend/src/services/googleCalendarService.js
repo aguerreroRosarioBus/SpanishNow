@@ -123,7 +123,7 @@ async function scheduleTick(connectionId, { transaction } = {}) {
 
 const validCalendar = (calendars, id) => typeof id === 'string' && id.length > 0 && id.length <= 255 && calendars.some(c => c.id === id);
 
-/** PATCH { targetCalendarId, busyCalendarIds }: el destino debe poder escribirse; los de ocupación solo leerse. */
+/** PATCH { targetCalendarId, busyCalendarIds }: el destino debe ser propio (owner); los de ocupación solo leerse. */
 async function update(user, body = {}) {
   const row = await ownConnection(user);
   if (!row || row.status !== 'connected') throw new IntegrationError(409, 'integration_not_connected');
@@ -134,7 +134,7 @@ async function update(user, body = {}) {
   if (body.targetCalendarId !== undefined) {
     const target = calendars.find(c => c.id === body.targetCalendarId);
     if (!target) invalid(['targetCalendarId']);
-    if (!['owner', 'writer'].includes(target.accessRole)) invalid(['targetCalendarId']);
+    if (target.accessRole !== 'owner') invalid(['targetCalendarId']); // el scope pedido solo cubre calendarios propios
     patch.targetCalendarId = target.id;
   }
   if (body.busyCalendarIds !== undefined) {

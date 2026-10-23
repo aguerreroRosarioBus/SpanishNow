@@ -12,6 +12,12 @@ const { createUser } = require('./helpers/fixtures');
 const outbox = require('../src/services/outbox');
 
 describe('ICS', () => {
+  test('escapa ; , \\ y saltos de línea en SUMMARY/DESCRIPTION', () => {
+    const text = buildIcs({ session: { id: 1, version: 1, status: 'confirmed', startsAt: new Date('2026-11-02T13:00:00Z'), endsAt: new Date('2026-11-02T13:50:00Z') },
+      url: 'https://x.test/a;b', zoomJoinUrl: 'https://zoom.us/j/1;2,3' }).replace(/\r\n /g, '');
+    expect(text).toContain('Zoom: https://zoom.us/j/1\\;2\\,3');
+    expect(text).not.toMatch(/DESCRIPTION:[^\r\n]*[^\\];/);
+  });
   const session = { id: 42, version: 3, status: 'confirmed', startsAt: new Date('2026-11-02T13:00:00Z'), endsAt: new Date('2026-11-02T13:50:00Z'), updatedAt: new Date('2026-10-30T10:00:00Z') };
   test('UID estable, SEQUENCE = versión, UTC, líneas plegadas y texto escapado', () => {
     const text = buildIcs({ session, host: 'spanishnow.test', url: 'https://spanishnow.test/schedule', zoomJoinUrl: 'https://zoom.us/j/1?pwd=' + 'a'.repeat(120) });

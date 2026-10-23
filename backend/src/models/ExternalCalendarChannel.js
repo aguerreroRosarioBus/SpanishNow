@@ -6,7 +6,7 @@ module.exports = sequelize.define('ExternalCalendarChannel', {
   connectionId: { type: D.INTEGER, allowNull: false },
   calendarId: { type: D.STRING(255), allowNull: false },
   channelId: { type: D.STRING(64), unique: true },
-  resourceId: D.STRING(255), tokenHash: D.STRING(64), expiresAt: D.DATE,
+  address: D.STRING(1000), resourceId: D.STRING(255), tokenHash: D.STRING(64), expiresAt: D.DATE,
   lastMessageNumber: { type: D.BIGINT, allowNull: false, defaultValue: 0 },
   syncToken: D.TEXT, lastSyncedAt: D.DATE
 }, { tableName: 'external_calendar_channels', timestamps: true });

@@ -6,7 +6,7 @@ Entrega de Claude (Sonnet) para [#20](https://github.com/aguerreroRosarioBus/Spa
 
 | ID | Evidencia |
 | --- | --- |
-| CAL-01 | OAuth por docente con `external_connections` (independiente de `google_connections`), destino y calendarios de ocupación elegibles, solo permisos de eventos/free-busy/lista de calendarios. El alumno no conecta nada. Prueba: `w07.calendar` (rutas), `w07.adapters` (scopes). |
+| CAL-01 | OAuth por docente con `external_connections` (independiente de `google_connections`), destino y calendarios de ocupación elegibles, solo permisos de eventos de calendarios propios (`calendar.events.owned`, destino solo `owner`), free-busy y lista de calendarios. El alumno no conecta nada. Prueba: `w07.calendar` (rutas), `w07.adapters` (scopes). |
 | CAL-02 | SpanishNow gobierna: un evento por sesión confirmada vía outbox; free/busy sin títulos ni participantes. |
 | CAL-03 | Free/busy leído justo antes de confirmar, fuera de la transacción; ocupado → 409, fallo de lectura → 503 recuperable, nunca confirma a ciegas. **No cubierto:** la opción de «revisión docente explícita» como alternativa al reintento (el docente puede desconectar). |
 | CAL-04 | Ref con `externalId`, `calendarId`, `etag`, `syncedVersion`, estado; id de evento determinista + `correlationKey` en `extendedProperties`: un timeout no duplica. El evento lleva horario UTC, zona y enlace a la agenda; Zoom de participante si está `ready` (nunca el de anfitrión). |
@@ -23,7 +23,8 @@ Entrega de Claude (Sonnet) para [#20](https://github.com/aguerreroRosarioBus/Spa
 - **Una conexión `needs_attention`/`revoked` bloquea nuevas confirmaciones** (503 `integration_needs_attention`) hasta reconectar o desconectar: es la lectura estricta de CAL-03. Propuesta para Opus: si se prefiere no frenar la agenda, permitir confirmar con aviso explícito del docente.
 - **Un job ordinario no recrea un evento borrado desde Google**; solo el reintento explícito (`sync/retry`, `force`) lo hace.
 - **Cadena de sondeo durable** (`calendar.reconcile` se reprograma a sí misma por ventana de 5 min, o 30 con push) en vez de un cron aparte; se siembra al conectar y tras cada sync.
-- Cambiar el calendario destino no mueve eventos ya creados (la ref conserva su `calendarId`).
+- Cambiar el calendario destino no mueve eventos ya creados (la ref conserva su `calendarId`); los canales push se detienen al cambiar o quitar `GOOGLE_CALENDAR_NOTIFICATIONS_URL` y cuando un calendario deja de usarse (`external_calendar_channels.address`).
+- El callback OAuth exige la cookie de `/start` (httpOnly, SameSite=Lax); `redirect` y `FRONTEND_URL` se validan como en Classroom/Drive.
 - Free/busy no suma el buffer del docente; solo el intervalo exacto de la clase.
 
 ## Superficies compartidas (cambios aditivos)

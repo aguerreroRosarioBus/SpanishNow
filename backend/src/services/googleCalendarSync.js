@@ -148,16 +148,23 @@ async function inspectEvents(connection, calendarId, events) {
   }
 }
 
+// Detiene el canal registrado (mejor esfuerzo) y limpia sus datos; conserva el token de sync incremental.
+async function dropChannel(row, api, token) {
+  if (row.channelId) await api.stopChannel(token, { channelId: row.channelId, resourceId: row.resourceId }).catch(() => {});
+  await row.update({ channelId: null, resourceId: null, tokenHash: null, address: null, expiresAt: null, lastMessageNumber: 0 });
+}
+
 async function ensureChannel(connection, calendarId, api, token) {
   const [row] = await M.ExternalCalendarChannel.findOrCreate({ where: { connectionId: connection.id, calendarId } });
   const address = process.env.GOOGLE_CALENDAR_NOTIFICATIONS_URL;
-  if (!address) return row;
-  if (row.channelId && row.expiresAt && row.expiresAt.getTime() - Date.now() > CHANNEL_RENEW_MARGIN_MS) return row;
+  // Sin URL pública (variable quitada) no hay push: se detiene el canal viejo y se sigue por sondeo.
+  if (!address) { if (row.channelId) await dropChannel(row, api, token); return row; }
+  if (row.channelId && row.address === address && row.expiresAt && row.expiresAt.getTime() - Date.now() > CHANNEL_RENEW_MARGIN_MS) return row;
   const channelId = `sn${crypto.randomBytes(16).toString('hex')}`;
   const channelToken = crypto.randomBytes(24).toString('base64url');
   const created = await api.watch(token, calendarId, { channelId, token: channelToken, address, ttlSeconds: CHANNEL_TTL_SECONDS });
   const previous = row.channelId && { channelId: row.channelId, resourceId: row.resourceId };
-  await row.update({ channelId, resourceId: created.resourceId, tokenHash: connections.sha256(channelToken), expiresAt: created.expiresAt, lastMessageNumber: 0 });
+  await row.update({ channelId, resourceId: created.resourceId, address, tokenHash: connections.sha256(channelToken), expiresAt: created.expiresAt, lastMessageNumber: 0 });
   if (previous) await api.stopChannel(token, previous).catch(() => {});
   return row;
 }
@@ -188,6 +195,9 @@ async function reconcile(connectionId, { tick = false } = {}) {
       attributes: ['calendarId'], group: ['calendarId'] });
     const calendarIds = [...new Set([connection.targetCalendarId, ...refCalendars.map(r => r.calendarId)].filter(Boolean))];
     for (const calendarId of calendarIds) await reconcileCalendar(connection, calendarId);
+    // Calendarios que ya no se usan (cambió el destino y no quedan eventos activos): se detiene su canal y se descarta el registro.
+    const unused = await M.ExternalCalendarChannel.findAll({ where: { connectionId, calendarId: { [Op.notIn]: calendarIds.length ? calendarIds : [''] } } });
+    for (const row of unused) { await calendar.call(connection, (api, token) => dropChannel(row, api, token)); await row.destroy(); }
   } finally {
     if (tick) await calendar.scheduleTick(connectionId).catch(() => {});
   }

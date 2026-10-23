@@ -11,7 +11,7 @@ import { CalendarCardComponent } from './calendar-card.component';
 
 const connected = (): GoogleCalendarStatus => ({ provider: 'google_calendar', enabled: true, fake: true, status: 'connected', connected: true, accountEmail: 'docente@example.test',
   targetCalendarId: 'primary', busyCalendarIds: ['primary'], version: 3,
-  calendars: [{ id: 'primary', summary: 'Principal', primary: true, accessRole: 'owner' }, { id: 'ro', summary: 'Solo lectura', primary: false, accessRole: 'reader' }, { id: 'clases', summary: 'Clases', primary: false, accessRole: 'owner' }] });
+  calendars: [{ id: 'primary', summary: 'Principal', primary: true, accessRole: 'owner' }, { id: 'ro', summary: 'Solo lectura', primary: false, accessRole: 'reader' }, { id: 'clases', summary: 'Clases', primary: false, accessRole: 'owner' }, { id: 'equipo', summary: 'Equipo', primary: false, accessRole: 'writer' }] });
 const disconnected = (): GoogleCalendarStatus => ({ provider: 'google_calendar', enabled: true, fake: true, status: 'disconnected', connected: false, calendars: [] });
 
 describe('W07: tarjeta de Google Calendar', () => {
@@ -47,7 +47,7 @@ describe('W07: tarjeta de Google Calendar', () => {
     api.status.mockReturnValue(of(connected()));
     const fixture = create();
     const options = [...fixture.nativeElement.querySelectorAll('#calendarTarget option')].map((o: HTMLOptionElement) => o.value);
-    expect(options).toEqual(['primary', 'clases']);
+    expect(options).toEqual(['primary', 'clases']); // solo calendarios propios: el scope pedido no cubre los de otros
     expect(fixture.nativeElement.textContent).toContain('docente@example.test');
     expect(fixture.nativeElement.textContent).toContain('solo lectura');
     const component = fixture.componentInstance;

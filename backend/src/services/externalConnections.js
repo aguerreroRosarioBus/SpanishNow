@@ -112,13 +112,19 @@ async function accessToken(connectionId, refresher) {
     const claim = await sequelize.transaction(async transaction => {
       const row = await ExternalConnection.findByPk(connectionId, { transaction, lock: transaction.LOCK.UPDATE });
       if (!row?.credentials || !['connected'].includes(row.status)) fail('integration_not_connected', {}, 409);
-      const credentials = decrypt(row.credentials);
+      let credentials;
+      // Una clave de cifrado rotada o credenciales corruptas no son un fallo transitorio: hay que volver a conectar.
+      try { credentials = decrypt(row.credentials); } catch { return { lost: true }; }
       if (credentials.expiresAt > Date.now() + REFRESH_MARGIN_MS) return { token: credentials.accessToken };
       if (row.refreshLockedUntil && new Date(row.refreshLockedUntil).getTime() > Date.now()) return { wait: true };
       const lease = new Date(Date.now() + REFRESH_LEASE_MS);
       await row.update({ refreshLockedUntil: lease }, { transaction });
       return { credentials, lease };
     });
+    if (claim.lost) {
+      await markNeedsAttention(connectionId, 'authorization_lost');
+      fail('authorization_lost', {}, 409, { needsAttention: true });
+    }
     if (claim.token) return claim.token;
     if (claim.wait) {
       if (Date.now() > deadline) fail('provider_unavailable', { reason: 'refresh_in_progress' }, 503, { retryable: true });

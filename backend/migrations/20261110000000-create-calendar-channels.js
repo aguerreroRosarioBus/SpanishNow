@@ -2,7 +2,7 @@
 
 /**
  * W07 (CAL-07): estado de sincronización de Google Calendar por (conexión, calendario): token de sync incremental y,
- * si hay GOOGLE_CALENDAR_NOTIFICATIONS_URL, el canal push (id, recurso, hash del token y vencimiento). Sin canal se
+ * si hay GOOGLE_CALENDAR_NOTIFICATIONS_URL, el canal push (id, recurso, URL registrada, hash del token y vencimiento). Sin canal se
  * sincroniza por sondeo. Aditiva: no toca tablas existentes. Segura de repetir.
  */
 module.exports = {
@@ -14,6 +14,7 @@ module.exports = {
       connectionId: { type: S.INTEGER, allowNull: false, references: { model: 'external_connections', key: 'id' }, onDelete: 'CASCADE' },
       calendarId: { type: S.STRING(255), allowNull: false },
       channelId: { type: S.STRING(64) },
+      address: { type: S.STRING(1000) },
       resourceId: { type: S.STRING(255) },
       tokenHash: { type: S.STRING(64) },
       expiresAt: { type: S.DATE },

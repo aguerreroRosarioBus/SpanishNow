@@ -524,3 +524,65 @@ describe('ICS para el alumno (CAL-05)', () => {
     expect(Number(cancelled.match(/SEQUENCE:(\d+)/)[1])).toBeGreaterThan(p.version);
   });
 });
+
+describe('P3 de la revisión cruzada', () => {
+  test('el scope de eventos es solo de calendarios propios y el destino debe ser owner', async () => {
+    const { SCOPES } = require('../src/services/googleCalendar');
+    expect(SCOPES).toContain('https://www.googleapis.com/auth/calendar.events.owned');
+    expect(SCOPES).not.toContain('https://www.googleapis.com/auth/calendar.events');
+    const teacher = await createUser('teacher', 'cal-owner');
+    await connect(teacher);
+    const writer = { id: 'equipo@example.test', summary: 'Equipo', primary: false, accessRole: 'writer' };
+    fake.addCalendar(writer);
+    const patch = body => require('supertest')(require('../src/app')).patch('/api/integrations/google-calendar').set('Authorization', `Bearer ${teacher.token}`).send(body);
+    expect((await patch({ targetCalendarId: writer.id })).status).toBe(400);
+    expect((await patch({ targetCalendarId: 'clases@example.test' })).status).toBe(200);
+  });
+
+  test('los canales push viejos se detienen al cambiar la URL, quitarla o cambiar el calendario destino', async () => {
+    process.env.GOOGLE_CALENDAR_NOTIFICATIONS_URL = 'https://api.example.test/a/notifications';
+    const { c, connection } = await withConnection();
+    const s = await confirmed(c);
+    await drain();
+    await sync.reconcile(connection.id);
+    const [first] = fake.channels();
+    expect(first.address).toBe('https://api.example.test/a/notifications');
+    // Cambia la URL: se crea el canal nuevo y se detiene el anterior.
+    process.env.GOOGLE_CALENDAR_NOTIFICATIONS_URL = 'https://api.example.test/b/notifications';
+    await sync.reconcile(connection.id);
+    expect(fake.channels().map(ch => ch.address)).toEqual(['https://api.example.test/b/notifications']);
+    expect(fake.calls().stopChannel).toBe(1);
+    // Se quita la variable: se detiene el canal y se sigue por sondeo.
+    delete process.env.GOOGLE_CALENDAR_NOTIFICATIONS_URL;
+    await sync.reconcile(connection.id);
+    expect(fake.channels()).toEqual([]);
+    const row = await M.ExternalCalendarChannel.findOne({ where: { connectionId: connection.id } });
+    expect(row).toMatchObject({ channelId: null, resourceId: null, tokenHash: null, address: null });
+    expect(row.syncToken).toMatch(/^fake-sync-/);
+    // Cambia el calendario destino y ya no hay eventos en el viejo: el canal del calendario sin uso se detiene.
+    process.env.GOOGLE_CALENDAR_NOTIFICATIONS_URL = 'https://api.example.test/b/notifications';
+    await sync.reconcile(connection.id);
+    expect(fake.channels().map(ch => ch.calendarId)).toEqual(['primary']);
+    await M.ExternalSyncRef.update({ status: 'cancelled' }, { where: { sessionId: s.id } });
+    await M.ExternalConnection.update({ targetCalendarId: 'clases@example.test' }, { where: { id: connection.id } });
+    await sync.reconcile(connection.id);
+    expect(fake.channels().map(ch => ch.calendarId)).toEqual(['clases@example.test']);
+    expect(await M.ExternalCalendarChannel.count({ where: { connectionId: connection.id, calendarId: 'primary' } })).toBe(0);
+  });
+
+  test('una clave de cifrado rotada deja la conexión en needs_attention en vez de fallar sin aviso', async () => {
+    const { c, connection } = await withConnection();
+    const s = await confirmed(c);
+    const original = process.env.GOOGLE_TOKEN_ENCRYPTION_KEY;
+    const { encrypt, decrypt } = require('../src/services/liveGoogleService');
+    const row = await M.ExternalConnection.findByPk(connection.id);
+    await row.update({ credentials: encrypt({ ...decrypt(row.credentials), expiresAt: 0 }) });
+    process.env.GOOGLE_TOKEN_ENCRYPTION_KEY = Buffer.alloc(32, 1).toString('base64'); // rotada: ya no descifra
+    try {
+      await drain();
+      expect(await M.ExternalConnection.findByPk(connection.id)).toMatchObject({ status: 'needs_attention', lastError: 'authorization_lost' });
+      expect(await refOf(s.id)).toMatchObject({ status: 'needs_attention' });
+      await expect(connections.accessToken(connection.id, () => {})).rejects.toMatchObject({ code: 'integration_not_connected' });
+    } finally { process.env.GOOGLE_TOKEN_ENCRYPTION_KEY = original; }
+  });
+});
