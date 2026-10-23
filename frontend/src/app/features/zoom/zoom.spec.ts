@@ -36,6 +36,8 @@ describe('W08 UI propia', () => {
     const disconnect = vi.fn(() => of({ ...account, status: 'disconnected', capabilities: null })); const f = setupCard({ disconnect });
     const i18n = TestBed.inject(I18nService); i18n.setLocale('es'); f.detectChanges();
     expect(f.nativeElement.textContent).toContain('120 minutos'); expect(f.nativeElement.textContent).toContain('Conectada');
+    // La tarjeta no afirma que la cuenta tenga sala de espera: SpanishNow la activa en cada reunión.
+    expect(f.nativeElement.textContent).toContain('SpanishNow activa la sala de espera');
     f.componentInstance.disconnect(); expect(disconnect).not.toHaveBeenCalled();
     f.componentInstance.disconnecting.set(true); i18n.setLocale('en'); f.detectChanges();
     expect(f.nativeElement.textContent).toContain('Disconnect?'); expect(f.componentInstance.disconnecting()).toBe(true);
@@ -98,7 +100,9 @@ describe('W08 API y errores seguros', () => {
     expect(api.error({ error: { code: 'provider_unavailable' } })).toContain('not configured');
     expect(api.error({ error: { code: 'zoom_provider_unavailable' } })).toContain('could not complete');
     expect(api.error({ error: { code: 'zoom_oauth_scopes_missing' } })).toContain('requested permissions');
+    expect(api.error({ error: { code: 'zoom_waiting_room_disabled' } })).toContain('waiting room');
     i18n.setLocale('es'); expect(api.error({ error: { code: 'zoom_invalid_link' } })).toContain('participante');
+    expect(api.error({ error: { code: 'zoom_waiting_room_disabled' } })).toContain('sala de espera');
     expect(api.error({ error: { code: 'provider_unavailable' } })).toContain('todavía no está configurado');
     expect(api.error({ error: { code: 'zoom_provider_unavailable' } })).toContain('no pudo completar');
     expect(api.error({ error: { code: 'zoom_oauth_scopes_missing' } })).toContain('permisos solicitados');

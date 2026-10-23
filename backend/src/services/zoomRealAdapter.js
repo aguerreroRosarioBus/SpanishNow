@@ -110,7 +110,8 @@ function createZoomRealAdapter({ oauthBaseUrl = 'https://zoom.us', apiBaseUrl = 
     return {
       id: String(meeting.id), joinUrl: meeting.join_url,
       correlationKey: typeof meeting.agenda === 'string' && meeting.agenda.startsWith(MEETING_MARKER)
-        ? meeting.agenda.slice(MEETING_MARKER.length) : null
+        ? meeting.agenda.slice(MEETING_MARKER.length) : null,
+      waitingRoom: meeting.settings ? meeting.settings.waiting_room === true : undefined
     };
   }
 
@@ -193,8 +194,10 @@ function createZoomRealAdapter({ oauthBaseUrl = 'https://zoom.us', apiBaseUrl = 
     },
     async create(tokens, wanted) {
       const result = await request(`${api}/users/me/meetings`, { method: 'POST', accessToken: tokens.accessToken, json: meetingPayload(wanted) });
-      const meeting = normalize(result.body);
+      let meeting = normalize(result.body);
       if (!meeting?.id || !meeting.joinUrl) fail('zoom_provider_unavailable', 502, { reason: 'invalid_meeting_response' });
+      // Si la respuesta de creación no trae settings, se consulta la reunión para confirmar la sala de espera.
+      if (meeting.waitingRoom === undefined) meeting = { ...meeting, waitingRoom: normalize(await getMeeting(tokens.accessToken, meeting.id)).waitingRoom === true };
       return meeting;
     },
     async update(tokens, meetingId, wanted) {
