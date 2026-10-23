@@ -108,7 +108,9 @@ export class CalendarCardComponent implements OnInit {
     });
   }
   private apply(s: GoogleCalendarStatus): void {
-    this.state.set(s); this.target.set(s.targetCalendarId ?? ''); this.busyIds.set(s.busyCalendarIds ?? []);
+    // El servidor guarda el alias «primary» de Google; la lista trae el id real (el email): se resuelve para que el select lo muestre.
+    const real = (id: string) => id === 'primary' ? (s.calendars ?? []).find(c => c.primary)?.id ?? id : id;
+    this.state.set(s); this.target.set(real(s.targetCalendarId ?? '')); this.busyIds.set([...new Set((s.busyCalendarIds ?? []).map(real))]);
   }
   private run<T>(call: import('rxjs').Observable<T>, ok: (value: T) => void): void {
     if (this.busy()) return;

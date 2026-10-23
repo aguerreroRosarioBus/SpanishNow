@@ -82,12 +82,12 @@
         @for (ref of s.sync; track ref.provider) { <p>{{ ref.provider === 'zoom' ? 'Zoom' : 'Google Calendar' }} · {{ ('schedule.status.' + ref.status) | t }}
           @if (ref.provider === 'google_calendar' && ref.status === 'needs_attention' && teacher()) { <br /><span class="notice">{{ syncMessage(ref.lastError) | t }}</span>
             @if (ref.lastError === 'integration_not_connected' || ref.lastError === 'authorization_lost') { <a [routerLink]="['/teacher/integrations']">{{ 'calendar.manage' | t }}</a> } }</p> }
-        <p class="notice">{{ 'schedule.syncPending' | t }}</p>
+        @if (!s.sync.length || hasPendingSync()) { <p class="notice">{{ 'schedule.syncPending' | t }}</p> }
         <button class="btn btn-ghost btn-sm" (click)="downloadIcs()" [disabled]="busy()">{{ 'calendar.ics' | t }}</button>
         <p class="notice">{{ 'calendar.icsNote' | t }}</p>
         @if (teacher()) { <button class="btn btn-ghost btn-sm" (click)="retrySync()" [disabled]="busy()">{{ 'schedule.syncRetry' | t }}</button> }
-        @if (!teacher()) { <button class="btn btn-ghost btn-sm" (click)="join()">{{ 'schedule.join' | t }}</button> }
-        @if (meeting(); as link) { <a [href]="link" target="_blank" rel="noopener noreferrer">{{ 'schedule.join' | t }}</a> }
+        <button class="btn btn-ghost btn-sm" (click)="join()" [disabled]="busy()">{{ (teacher() ? 'schedule.start' : 'schedule.join') | t }}</button>
+        @if (meeting(); as link) { <a [href]="link" target="_blank" rel="noopener noreferrer">{{ (teacher() ? 'schedule.start' : 'schedule.join') | t }}</a> }
       </details>
     }
   }

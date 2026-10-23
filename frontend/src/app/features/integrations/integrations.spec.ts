@@ -114,4 +114,14 @@ describe('W07: tarjeta de Google Calendar', () => {
     expect(Object.keys(CALENDAR_MESSAGES.en).sort()).toEqual(Object.keys(CALENDAR_MESSAGES.es).sort());
     expect(Object.keys(CALENDAR_MESSAGES.en).every(key => key.startsWith('calendar.'))).toBe(true);
   });
+
+  it('el alias «primary» guardado se muestra seleccionado con el id real del calendario principal', () => {
+    const s = connected(); s.calendars = [{ id: 'docente@example.test', summary: 'Principal', primary: true, accessRole: 'owner' }, { id: 'clases', summary: 'Clases', primary: false, accessRole: 'owner' }];
+    api.status.mockReturnValue(of(s));
+    const fixture = create(); fixture.detectChanges();
+    expect(fixture.componentInstance.target()).toBe('docente@example.test');
+    expect(fixture.componentInstance.busyIds()).toEqual(['docente@example.test']);
+    const select = fixture.nativeElement.querySelector('#calendarTarget') as HTMLSelectElement;
+    return fixture.whenStable().then(() => { fixture.detectChanges(); expect(select.selectedOptions[0]?.textContent).toContain('Principal'); });
+  });
 });

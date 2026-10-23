@@ -36,7 +36,7 @@ export class ClassSessionsService {
   attendance(id: number, body: { version: number; userId: number; attendance: string; reason: string }) { return this.http.post<ClassSession>(`${this.api}/${id}/attendance`, body); }
   adjustment(id: number, body: { version: number; purchaseId: number; kind: string; reason: string; unavailableMinutes?: number }) { return this.http.post<ClassSession>(`${this.api}/${id}/adjustment`, body); }
   requestExtension(id: number, body: { version: number; purchaseId: number; reason: string; unavailableMinutes: number }) { return this.http.post<ClassSession>(`${this.api}/${id}/requestExtension`, body); }
-  join(id: number) { return this.http.get<{ joinUrl: string; manual: boolean }>(`${this.api}/${id}/join`); }
+  join(id: number) { return this.http.get<{ joinUrl?: string; hostUrl?: string; manual: boolean }>(`${this.api}/${id}/join`); }
   /** ICS de la versión vigente (W07): sirve sin conectar Google. */
   ics(id: number) { return this.http.get(`${this.api}/${id}/calendar.ics`, { responseType: 'blob' }); }
   retrySync(id: number) { return this.http.post<ClassSession>(`${this.api}/${id}/sync/retry`, {}); }

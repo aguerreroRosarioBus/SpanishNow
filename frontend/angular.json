@@ -117,7 +117,8 @@
               "host": "0.0.0.0",
               "proxyConfig": "proxy.lan.json",
               "ssl": true,
-              "allowedHosts": ["platform.spanishnow.ar"]
+              "allowedHosts": ["platform.spanishnow.ar"],
+              "headers": { "Cache-Control": "no-store" }
             }
           },
           "defaultConfiguration": "development"

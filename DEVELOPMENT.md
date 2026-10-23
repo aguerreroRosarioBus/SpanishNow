@@ -92,6 +92,7 @@ cloudflared tunnel route dns spanishnow-platform platform.spanishnow.ar
 - `cloudflared tunnel login` abre el navegador para autorizar `spanishnow.ar`; deja `~/.cloudflared/cert.pem`. `tunnel create` deja las credenciales del túnel en `~/.cloudflared/<id>.json`. Nada de eso va al repo.
 - `run-main.sh` corre `cloudflared tunnel run` hacia `https://localhost:4200` mientras exista `.run/public`, y pasa `FRONTEND_URL=https://platform.spanishnow.ar` al backend (reinicia el backend al abrir y al cerrar). `/api` llega por el proxy de `ng serve`, igual que en la red local. `angular.json` permite ese host en `allowedHosts`.
 - Requiere la Mac encendida: con el túnel cerrado, Cloudflare muestra un error en esa dirección. Mientras está abierto cualquiera con la URL llega a un servidor de desarrollo con `spanishnow_main`: abrirlo solo para probar.
+- Caché: `ng serve` usa nombres fijos (`main.js`) y renombra los `chunk-*.js` en cada recompilación; Cloudflare, por defecto, hace que el navegador cachee los `.js` 4 h y un `main.js` viejo pide chunks que ya no existen. La configuración `lan` envía `Cache-Control: no-store` (`headers` en `angular.json`). Conviene además, en Cloudflare, dejar «Caching → Configuration → Browser Cache TTL» en «Respect Existing Headers». Tras este cambio hay que hacer una recarga forzada (Cmd+Shift+R) una vez para descartar el `main.js` ya cacheado.
 - Log del túnel en `.run/tunnel.log`. Otro host o túnel: `RUN_MAIN_PUBLIC_HOST` y `RUN_MAIN_TUNNEL`.
 
 ---
