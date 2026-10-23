@@ -5,6 +5,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { of, Subject, throwError } from 'rxjs';
 import { ZoomCardComponent } from './zoom-card.component';
+import { ZoomSummaryComponent } from './zoom-summary.component';
 import { ZoomSessionComponent } from './zoom-session.component';
 import { ZoomApi } from './zoom-api.service';
 import { AuthService } from '../../core/services/auth.service';
@@ -110,5 +111,14 @@ describe('W08 API y errores seguros', () => {
     api.manual(7, 2, null).subscribe(); const request = TestBed.inject(HttpTestingController).expectOne(r => r.url.endsWith('/zoom/sessions/7/manual-link'));
     expect(request.request.method).toBe('PUT'); expect(request.request.body).toEqual({ version: 2, joinUrl: null }); request.flush({ manual: false });
     TestBed.inject(HttpTestingController).verify();
+  });
+});
+
+describe('Integraciones: resumen de Zoom', () => {
+  it('muestra el estado y enlaza a la página de Zoom', () => {
+    TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: ZoomApi, useValue: { status: () => of(account) } }] });
+    const f = TestBed.createComponent(ZoomSummaryComponent); f.detectChanges();
+    expect(f.nativeElement.textContent).toContain('docente@zoom.invalid');
+    expect(f.nativeElement.querySelector('a').getAttribute('href')).toBe('/teacher/integrations/zoom');
   });
 });
