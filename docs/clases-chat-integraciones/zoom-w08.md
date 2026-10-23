@@ -93,7 +93,7 @@ Recorrido manual con cuentas ficticias habilitadas para clases:
 6. Desconectar; verificar estado accionable. Guardar un participante manual (rechazar host, HTTP y dominios ajenos), alternar EN/ES y comprobar que no se afirma conexión exitosa.
 7. Firmar y repetir webhook `meeting.ended`: una sola evidencia auditada y ningún cambio de asistencia/saldo.
 
-Desactivar: `FEATURE_ZOOM=0` impide nuevas conexiones/preflight y el endpoint join; mantiene lectura, historial y gestión de contingencia. El docente puede consultar el enlace manual guardado. No elimina sesiones ni saldo. Detener `OUTBOX_WORKER` pausa efectos sin perder jobs. No desactivar `INTEGRATIONS_FAKE` para probar cuentas reales: no hay adaptador real en este PR.
+Desactivar: `FEATURE_ZOOM=0` impide nuevas conexiones/preflight y el endpoint join; mantiene lectura, historial y gestión de contingencia. No elimina sesiones ni saldo. Detener `OUTBOX_WORKER` pausa efectos sin perder jobs. No desactivar `INTEGRATIONS_FAKE` para probar cuentas reales: no hay adaptador real en este PR.
 
 ## Limitaciones concretas
 
@@ -112,4 +112,12 @@ Las capacidades, PKCE/OAuth y errores se validan contra el proveedor fake, no co
 | P3 redirects | `4732252` | URLs inválidas, producción/localhost y access_denied con código |
 | P3 join W06 | `66344ff` | Feature/auth/impersonación/rol, ICS sin host |
 
-Resultados finales de suites completas: se registran después de la validación de esta revisión.
+## Resultados finales de la revisión
+
+- Backend completo `npm --prefix backend test -- --runInBand`: **63 suites, 1047/1047**, 110,1 s.
+- Angular completo `npm --prefix frontend test -- --watch=false`: **73 archivos, 474/474**.
+- Build de producción: **aprobado**. Advertencias existentes de Sass, presupuestos de bundle/estilos y CommonJS (`jsbi`); fuentes existentes descargadas para el build.
+- E2E W06: **8/8** (36,5 s); W07: **4/4** (41,9 s); W08: **6/6** (39,9 s), en ese orden, un worker por suite y escritorio/móvil secuenciales.
+- W08 incluye OAuth A/B en navegador y las regresiones backend de los ocho hallazgos. Integración Calendar W07 en `53a4e4e`: handler real vía outbox, timeout/retry/replay sin duplicar, automático/manual y eliminación del enlace, sin host/ZAK.
+- `git diff --check`: aprobado. Main `68eb350` incorporado por merge; sin cambios en pantalla común ni servicio genérico W07.
+- Solo fake, sin cuentas ni llamadas reales a Zoom, cobros ni correos reales. PR #50 listo para verificación de Claude; sin merge del PR.
