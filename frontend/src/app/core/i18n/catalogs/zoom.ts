@@ -1,7 +1,7 @@
 import { TranslationCatalog } from '../i18n.types';
 export const ZOOM_EN = {
   'zoom.title': 'Zoom meetings', 'zoom.intro': 'Connect your own account and manage meetings for your confirmed classes.',
-  'zoom.fake': 'Test mode. This account and these meetings are simulated.', 'zoom.connect': 'Connect Zoom', 'zoom.disconnect': 'Disconnect Zoom',
+  'zoom.fake': 'Test mode. This account and these meetings are simulated.', 'zoom.connect': 'Connect Zoom', 'zoom.reconnect': 'Reconnect Zoom', 'zoom.disconnect': 'Disconnect Zoom',
   'zoom.disconnectConfirm': 'Disconnect? Classes and balances stay available. Meeting updates will stop.',
   'zoom.confirm': 'Confirm', 'zoom.back': 'Back', 'zoom.refresh': 'Refresh', 'zoom.loading': 'Loading…',
   'zoom.capacity': 'Account capacity: up to {minutes} minutes and {participants} people, including the teacher.',
@@ -17,6 +17,10 @@ export const ZOOM_EN = {
   'zoom.hostHint': 'The host link is temporary and only available to this class’s teacher.',
   'zoom.status.pending': 'Pending', 'zoom.status.connected': 'Connected', 'zoom.status.ready': 'Ready',
   'zoom.status.needs_attention': 'Needs attention', 'zoom.status.revoked': 'Authorization revoked', 'zoom.status.disconnected': 'Disconnected', 'zoom.status.cancelled': 'Cancelled',
+  'zoom.state.syncing': 'The meeting is not ready yet: it is being created or synced with Zoom. Refresh in a few minutes.',
+  'zoom.state.disconnectedTeacher': 'Zoom is disconnected, so there is no meeting yet. Reconnect your account or add a manual participant link.',
+  'zoom.state.disconnectedStudent': 'The meeting is not ready yet because the teacher needs to reconnect Zoom. Check again later.',
+  'zoom.retryLoad': 'Try again', 'zoom.backToAgenda': 'Back to the schedule',
   'zoom.error.generic': 'Zoom is unavailable. Refresh or reconnect, then retry.',
   'zoom.error.provider_unavailable': 'Zoom is not configured yet. Try again later or contact support.',
   'zoom.error.zoom_provider_unavailable': 'Zoom could not complete this request. Try again later.',
@@ -42,7 +46,7 @@ export const ZOOM_EN = {
 } as const satisfies TranslationCatalog;
 export const ZOOM_ES = {
   'zoom.title': 'Reuniones Zoom', 'zoom.intro': 'Conectá tu propia cuenta y gestioná las reuniones de tus clases confirmadas.',
-  'zoom.fake': 'Modo de prueba. La cuenta y las reuniones son simuladas.', 'zoom.connect': 'Conectar Zoom', 'zoom.disconnect': 'Desconectar Zoom',
+  'zoom.fake': 'Modo de prueba. La cuenta y las reuniones son simuladas.', 'zoom.connect': 'Conectar Zoom', 'zoom.reconnect': 'Reconectar Zoom', 'zoom.disconnect': 'Desconectar Zoom',
   'zoom.disconnectConfirm': '¿Desconectar? Las clases y el saldo siguen disponibles. Se detienen las actualizaciones de reuniones.',
   'zoom.confirm': 'Confirmar', 'zoom.back': 'Volver', 'zoom.refresh': 'Actualizar', 'zoom.loading': 'Cargando…',
   'zoom.capacity': 'Capacidad de la cuenta: hasta {minutes} minutos y {participants} personas, incluido el docente.',
@@ -58,6 +62,10 @@ export const ZOOM_ES = {
   'zoom.hostHint': 'El enlace de anfitrión es temporal y solo está disponible para el docente de esta clase.',
   'zoom.status.pending': 'Pendiente', 'zoom.status.connected': 'Conectada', 'zoom.status.ready': 'Lista',
   'zoom.status.needs_attention': 'Requiere atención', 'zoom.status.revoked': 'Autorización revocada', 'zoom.status.disconnected': 'Desconectada', 'zoom.status.cancelled': 'Cancelada',
+  'zoom.state.syncing': 'La reunión todavía no está lista: se está creando o sincronizando con Zoom. Actualizá en unos minutos.',
+  'zoom.state.disconnectedTeacher': 'Zoom está desconectado, por eso todavía no hay reunión. Reconectá tu cuenta o agregá un enlace manual de participante.',
+  'zoom.state.disconnectedStudent': 'La reunión todavía no está lista porque el docente debe reconectar Zoom. Volvé a revisar más tarde.',
+  'zoom.retryLoad': 'Reintentar', 'zoom.backToAgenda': 'Volver a la Agenda',
   'zoom.error.generic': 'Zoom no está disponible. Actualizá o reconectá y reintentá.',
   'zoom.error.provider_unavailable': 'Zoom todavía no está configurado. Reintentá más tarde o contactá a soporte.',
   'zoom.error.zoom_provider_unavailable': 'Zoom no pudo completar esta solicitud. Reintentá más tarde.',

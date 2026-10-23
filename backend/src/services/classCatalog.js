@@ -76,7 +76,11 @@ async function present(row, { versions = false, publicView = false, transaction 
     const { createdById, hotmartProductId, hotmartOfferCode, hotmartCheckoutUrl, ...rest } = v.toJSON();
     return publicView ? rest : v.toJSON();
   };
+  // Plantilla sin versión vigente (current null: creada fuera de la API sin `currentVersionId`, o con la versión borrada a mano):
+  // si quedó alguna versión guardada se devuelve la última para precargar «completar datos».
+  const orphan = current ? null : await Version.findOne({ where: { templateId: row.id }, order: [['version', 'DESC']], transaction });
   return { id: row.id, teacherId: row.teacherId, templateKey: row.templateKey, status: row.status, current: visible(current), policy: currentPolicy ? { version: currentPolicy.version, rules: currentPolicy.rules } : null,
+    ...(orphan ? { lastVersion: visible(orphan) } : {}),
     ...(versions ? { versions: (await Version.findAll({ where: { templateId: row.id }, order: [['version', 'DESC']], transaction })).map(visible) } : {}) };
 }
 async function list(user, requested) {
@@ -98,16 +102,19 @@ async function create(user, body, requested) {
   });
 }
 async function newVersion(user, id, body) {
-  if (!only(body, ['version', ...FIELDS]) || !positive(body.version)) throw invalid(['version']);
+  // `version: 0` es la única forma de completar una plantilla que quedó sin versión vigente (ver `present`).
+  if (!only(body, ['version', ...FIELDS]) || !(positive(body.version) || body.version === 0)) throw invalid(['version']);
   const values = validateVersion(body);
   return sequelize.transaction(async transaction => {
     const row = await owned(user, id, { transaction, lock: transaction.LOCK.UPDATE });
-    const previous = await Version.findByPk(row.currentVersionId, { transaction });
-    if (previous.version !== body.version) throw fail(409, 'version_conflict');
+    const previous = row.currentVersionId ? await Version.findByPk(row.currentVersionId, { transaction }) : null;
+    if ((previous ? previous.version : 0) !== body.version) throw fail(409, 'version_conflict');
     if (row.status === 'archived') throw fail(409, 'version_conflict');
     const rules = await policy(body, transaction, user.id); await assertProductFree(values.hotmartProductId, { transaction });
     if (row.status === 'active') assertReady(values);
-    const v = await Version.create({ ...values, templateId: row.id, version: previous.version + 1, policyVersionId: rules.id, createdById: user.id }, { transaction });
+    // Sin versión vigente se continúa tras la última existente (si la hubiera) para no chocar con el índice (templateId, version).
+    const last = previous ? previous.version : (await Version.max('version', { where: { templateId: row.id }, transaction })) || 0;
+    const v = await Version.create({ ...values, templateId: row.id, version: last + 1, policyVersionId: rules.id, createdById: user.id }, { transaction });
     await row.update({ currentVersionId: v.id }, { transaction });
     return present(row, { transaction });
   });
@@ -116,7 +123,8 @@ async function setStatus(user, id, body) {
   if (!only(body, ['status', 'version']) || !['active', 'paused', 'archived'].includes(body.status) || !positive(body.version)) throw invalid(['status', 'version']);
   return sequelize.transaction(async transaction => {
     const row = await owned(user, id, { transaction, lock: transaction.LOCK.UPDATE });
-    const current = await Version.findByPk(row.currentVersionId, { transaction });
+    const current = row.currentVersionId ? await Version.findByPk(row.currentVersionId, { transaction }) : null;
+    if (!current) throw fail(409, 'template_without_version');
     if (current.version !== body.version) throw fail(409, 'version_conflict');
     if (row.status === 'archived' && body.status !== 'archived') throw fail(409, 'version_conflict');
     if (body.status === 'active') assertReady(current);
@@ -131,8 +139,17 @@ async function importInitial(user, requested) {
     const rules = await require('./classRefundPolicy').current(user.id, transaction);
     await TeacherClassSettings.findOrCreate({ where: { userId: teacherId }, defaults: { salesPausedAt: new Date() }, transaction });
     for (const item of initial) {
-      if (await Template.findOne({ where: { teacherId, templateKey: item.templateKey }, transaction })) continue;
       const { templateKey, ...values } = item;
+      const existing = await Template.findOne({ where: { teacherId, templateKey }, transaction });
+      if (existing) {
+        // Una plantilla sin versión vigente (la FK currentVersionId es ON DELETE SET NULL: alguien borró la versión a mano)
+        // se repara con la versión inicial; si ya tiene versión vigente no se toca.
+        if (existing.currentVersionId && await Version.findByPk(existing.currentVersionId, { transaction })) continue;
+        const last = (await Version.max('version', { where: { templateId: existing.id }, transaction })) || 0;
+        const v = await Version.create({ ...values, policyVersionId: rules.id, templateId: existing.id, version: last + 1, createdById: user.id }, { transaction });
+        await existing.update({ currentVersionId: v.id }, { transaction });
+        continue;
+      }
       const row = await Template.create({ teacherId, templateKey, status: 'draft' }, { transaction });
       const v = await Version.create({ ...values, policyVersionId: rules.id, templateId: row.id, version: 1, createdById: user.id }, { transaction });
       await row.update({ currentVersionId: v.id }, { transaction });

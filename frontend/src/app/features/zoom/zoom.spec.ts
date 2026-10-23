@@ -122,3 +122,65 @@ describe('Integraciones: resumen de Zoom', () => {
     expect(f.nativeElement.querySelector('a').getAttribute('href')).toBe('/teacher/integrations/zoom');
   });
 });
+
+describe('Tanda B: acción principal de la tarjeta de Zoom según el estado', () => {
+  const buttons = (f: { nativeElement: HTMLElement }) => Array.from(f.nativeElement.querySelectorAll<HTMLButtonElement>('.zoom-actions button')).map(b => ({ text: b.textContent!.trim(), primary: b.classList.contains('btn-primary') }));
+  const withStatus = (status: string) => { const f = setupCard({ status: () => of({ ...account, status }) }); TestBed.inject(I18nService).setLocale('es'); f.detectChanges(); return f; };
+  it('conectada: Actualizar es lo principal y «Conectar Zoom» no aparece (Reconectar queda secundario)', () => {
+    const list = buttons(withStatus('connected'));
+    expect(list).toEqual([{ text: 'Reconectar Zoom', primary: false }, { text: 'Desconectar Zoom', primary: false }, { text: 'Actualizar', primary: true }]);
+    expect(list.some(b => b.text === 'Conectar Zoom')).toBe(false);
+  });
+  it('desconectada: Conectar Zoom es lo principal y no hay Desconectar', () => {
+    expect(buttons(withStatus('disconnected'))).toEqual([{ text: 'Conectar Zoom', primary: true }, { text: 'Actualizar', primary: false }]);
+  });
+  it('con problema (requiere atención): Reconectar Zoom es lo principal', () => {
+    expect(buttons(withStatus('needs_attention'))).toEqual([{ text: 'Reconectar Zoom', primary: true }, { text: 'Desconectar Zoom', primary: false }, { text: 'Actualizar', primary: false }]);
+  });
+});
+
+describe('Tanda B: pantalla de la reunión distingue «sin crear» de «Zoom desconectado» y ofrece salida', () => {
+  const state = (sync: object, teacher = true) => {
+    const f = setupSession({ session: () => of(sync) }, teacher); TestBed.inject(I18nService).setLocale('es'); f.detectChanges(); return f;
+  };
+  const text = (f: { nativeElement: HTMLElement }) => f.nativeElement.textContent!.replace(/\s+/g, ' ');
+  const joinDisabled = (f: { nativeElement: HTMLElement }) => Array.from(f.nativeElement.querySelectorAll<HTMLButtonElement>('.zoom-actions button')).find(b => b.textContent!.trim() === 'Reunión')!.disabled;
+  it('sin reunión creada (pendiente o sin motivo): dice que todavía se crea, no «Zoom no está disponible», y no deja entrar', () => {
+    for (const sync of [{ status: 'pending', manual: false, lastError: null }, { status: 'needs_attention', manual: false, lastError: null }]) {
+      TestBed.resetTestingModule();
+      const f = state(sync);
+      expect(f.nativeElement.querySelector('[data-testid=zoom-state-syncing]')).toBeTruthy();
+      expect(text(f)).toContain('se está creando o sincronizando'); expect(text(f)).not.toContain('Zoom no está disponible');
+      expect(joinDisabled(f)).toBe(true);
+      expect(f.nativeElement.querySelector('a[href="/schedule?sessionId=7"]')).toBeTruthy();
+    }
+  });
+  it('Zoom desconectado: la docente va a reconectar; la alumna solo ve que el docente debe hacerlo', () => {
+    const sync = { status: 'needs_attention', manual: false, lastError: 'integration_not_connected' };
+    const teacher = state(sync);
+    expect(teacher.nativeElement.querySelector('[data-testid=zoom-state-disconnected]')).toBeTruthy();
+    expect(teacher.nativeElement.querySelector('a[href="/teacher/integrations/zoom"]')).toBeTruthy();
+    TestBed.resetTestingModule();
+    const student = state(sync, false);
+    expect(text(student)).toContain('el docente debe reconectar Zoom');
+    expect(student.nativeElement.querySelector('a[href="/teacher/integrations/zoom"]')).toBeNull();
+  });
+  it('lista o con enlace manual permite entrar', () => {
+    expect(joinDisabled(state({ status: 'ready', manual: false, lastError: null }))).toBe(false);
+    TestBed.resetTestingModule();
+    expect(joinDisabled(state({ status: 'needs_attention', manual: true, lastError: null }))).toBe(false);
+  });
+  it('si falla la lectura de la clase ofrece reintentar y volver a la Agenda; si solo falla el estado, la clase sigue visible', () => {
+    TestBed.configureTestingModule({ imports: [ZoomSessionComponent], providers: [provideRouter([]),
+      { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => '7' } } } },
+      { provide: AuthService, useValue: { currentUser: signal({ id: 1 }) } }, { provide: UserPreferencesService, useValue: preferences },
+      { provide: ClassSessionsService, useValue: { get: vi.fn().mockReturnValueOnce(throwError(() => ({ status: 0 }))).mockReturnValue(of(session)) } },
+      { provide: ZoomApi, useValue: { session: vi.fn().mockReturnValueOnce(of({ status: 'pending', manual: false })).mockReturnValue(throwError(() => ({ status: 500 }))), error: () => 'Error seguro' } }] });
+    const f = TestBed.createComponent(ZoomSessionComponent); f.detectChanges();
+    expect(f.nativeElement.querySelector('[data-testid=zoom-recovery]')).toBeTruthy();
+    expect(f.nativeElement.querySelector('[data-testid=zoom-recovery] a').getAttribute('href')).toBe('/schedule');
+    f.nativeElement.querySelector('[data-testid=zoom-recovery] button').click(); f.detectChanges();
+    expect(f.componentInstance.session()).toBeTruthy(); expect(f.nativeElement.querySelector('[data-testid=zoom-recovery]')).toBeNull();
+    expect(f.nativeElement.querySelector('[data-testid=zoom-sync-failure]')).toBeTruthy();
+  });
+});

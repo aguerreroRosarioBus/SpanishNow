@@ -17,6 +17,8 @@ async function chain({ size = 1, units = 4, teacher: existingTeacher, students: 
   const terms = await M.ClassPackageTemplateVersion.create({ templateId: template.id, version: 1, nameEn: 'Classes', nameEs: 'Clases',
     modality: size === 1 ? 'individual' : 'group', groupSize: size, billing, sessionsCount: units, minutesPerSession: 50,
     seatsCovered: billing === 'per_group' ? size : 1, priceAmount: 9000, currency: 'USD', validityHours: 2160, policyVersionId: policy.id });
+  // Como hace la API: sin esto la plantilla queda con `current: null` en el catálogo del docente.
+  await template.update({ currentVersionId: terms.id });
   const cohort = size > 1 ? await M.ClassCohort.create({ teacherId: teacher.id, templateVersionId: terms.id, groupSize: size,
     formingDeadlineAt: new Date(Date.now() + 6 * 86400e3), tentativeStartsAt: new Date(Date.now() + 7 * 86400e3) }) : null;
   const conversations = [];

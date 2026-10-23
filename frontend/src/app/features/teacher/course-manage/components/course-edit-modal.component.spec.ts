@@ -6,6 +6,7 @@ import { CourseManageStore } from '../course-manage.store';
 import { CourseService } from '../../../../core/services/course.service';
 import { CouponService } from '../../../../core/services/coupon.service';
 import { ToastService } from '../../../../core/services/toast.service';
+import { HotmartService } from '../../../../core/services/hotmart.service';
 import { Course } from '../../../../core/models/course.model';
 
 describe('CourseEditModalComponent cover changes', () => {
@@ -42,5 +43,34 @@ describe('CourseEditModalComponent cover changes', () => {
     expect(component.coverPreview()).toBe(course.imageUrl); component.save();
     expect(api.updateCourse.mock.calls[0][1]).not.toBeInstanceOf(FormData);
     expect(api.updateCourse.mock.calls[0][1]).not.toHaveProperty('image');
+  });
+});
+
+describe('Tanda B: el webhook de Hotmart solo lo ve quien lo administra', () => {
+  const course = { id: 7, title: 'Mi curso', price: 2500, currency: 'usd', isPublished: true, units: [{ id: 1 }], enrollmentCount: 9 } as Course;
+  const render = (setup: object) => {
+    TestBed.configureTestingModule({ providers: [
+      { provide: CourseManageStore, useValue: { course: signal<Course | null>({ ...course }), courseId: signal(7), close: vi.fn() } },
+      { provide: CourseService, useValue: { getCourses: () => of([]), updateCourse: vi.fn() } },
+      { provide: CouponService, useValue: { list: () => of([]) } },
+      { provide: HotmartService, useValue: { setup: () => of(setup) } },
+      { provide: ToastService, useValue: { success: vi.fn(), warning: vi.fn() } }
+    ] });
+    const fixture = TestBed.createComponent(CourseEditModalComponent); fixture.detectChanges(); return fixture;
+  };
+  it('docente común: sin URL del webhook, sin estado del token ni pasos de Hotmart; ve la nota y sigue cargando producto y link', () => {
+    const f = render({ canManage: false, configured: true });
+    const el = f.nativeElement as HTMLElement;
+    expect(el.querySelector('#hotmartWebhook')).toBeNull();
+    expect(el.querySelector('[data-testid=webhook-admin-only]')).toBeTruthy();
+    expect(el.querySelector('#hotmartProduct')).toBeTruthy(); expect(el.querySelector('#hotmartUrl')).toBeTruthy();
+    expect(el.textContent).not.toContain('HOTMART_HOTTOK');
+  });
+  it('quien administra Hotmart ve la URL, el estado del token y los pasos', () => {
+    const f = render({ canManage: true, configured: false, webhookUrl: 'https://example.test/api/payments/hotmart/webhook' });
+    const el = f.nativeElement as HTMLElement;
+    expect((el.querySelector('#hotmartWebhook') as HTMLInputElement).value).toBe('https://example.test/api/payments/hotmart/webhook');
+    expect(el.querySelector('[data-testid=webhook-admin-only]')).toBeNull();
+    expect(el.querySelectorAll('ol li')).toHaveLength(3);
   });
 });

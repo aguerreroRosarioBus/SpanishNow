@@ -1,6 +1,13 @@
 <section class="zoom-page" data-testid="zoom-session" [attr.aria-busy]="busy()">
   <h1>{{ 'zoom.title' | t }}</h1>
   @if (failure()) { <p class="alert alert-warning" role="alert">{{ api.error(failure()) }}</p> }
+  @if (failure() && !session()) {
+    <!-- Sin la clase no hay nada más que mostrar: la pantalla ofrece la salida en vez de quedar en blanco. -->
+    <div class="zoom-actions" data-testid="zoom-recovery">
+      <button type="button" class="btn btn-primary" (click)="refresh()" [disabled]="busy()">{{ 'zoom.retryLoad' | t }}</button>
+      <a class="btn btn-secondary" routerLink="/schedule">{{ 'zoom.backToAgenda' | t }}</a>
+    </div>
+  }
   @if (notice()) { <p role="status">{{ notice() | t }}</p> }
   @if (sync()?.fake) { <p class="test-notice">{{ 'zoom.fake' | t }}</p> }
   @if (session(); as s) {
@@ -10,17 +17,25 @@
     </div>
     <div class="zoom-panel">
       <h2>{{ 'zoom.meeting' | t }}</h2>
-      @if (sync(); as r) {
-        <p>{{ ('zoom.status.' + r.status) | t }}</p>
-        @if (r.manual) { <p class="test-notice">{{ 'zoom.manualActive' | t }}</p> }
-        @if (r.lastError) { <p role="alert">{{ api.error({ error: { code: r.lastError } }) }}</p> }
+      @if (syncFailure()) { <p class="alert alert-warning" role="alert" data-testid="zoom-sync-failure">{{ api.error(syncFailure()) }}</p> }
+      @switch (meetingState()) {
+        @case ('syncing') { <p role="status" data-testid="zoom-state-syncing">{{ 'zoom.state.syncing' | t }}</p> }
+        @case ('disconnected') {
+          <p role="status" data-testid="zoom-state-disconnected">{{ (teacher() ? 'zoom.state.disconnectedTeacher' : 'zoom.state.disconnectedStudent') | t }}</p>
+          @if (teacher()) { <p><a class="btn btn-primary" routerLink="/teacher/integrations/zoom">{{ 'zoom.reconnect' | t }}</a></p> }
+        }
+        @case ('error') { <p role="alert">{{ api.error({ error: { code: sync()!.lastError } }) }}</p> }
+        @case ('ready') { <p>{{ 'zoom.status.ready' | t }}</p> }
+        @case ('manual') { <p class="test-notice">{{ 'zoom.manualActive' | t }}</p> }
+        @case ('cancelled') { <p>{{ 'zoom.status.cancelled' | t }}</p> }
       }
       @if (s.status === 'confirmed') {
         @if (teacher()) { <p>{{ 'zoom.hostHint' | t }}</p> }
         <div class="zoom-actions">
-          <button type="button" class="btn btn-primary" (click)="join()" [disabled]="busy()">{{ 'zoom.meeting' | t }}</button>
+          <button type="button" class="btn btn-primary" (click)="join()" [disabled]="busy() || !canJoin()">{{ 'zoom.meeting' | t }}</button>
           @if (teacher()) { <button type="button" class="btn btn-secondary" (click)="retry()" [disabled]="busy()">{{ 'zoom.retry' | t }}</button> }
           <button type="button" class="btn btn-secondary" (click)="refresh()" [disabled]="busy()">{{ 'zoom.refresh' | t }}</button>
+          <a class="btn btn-secondary" routerLink="/schedule" [queryParams]="{ sessionId: s.id }">{{ 'zoom.backToAgenda' | t }}</a>
         </div>
       }
       @if (meeting(); as link) { <p><a [href]="link" target="_blank" rel="noopener noreferrer">{{ 'zoom.openMeeting' | t }}</a></p> }

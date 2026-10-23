@@ -43,7 +43,7 @@ describe('gestión de cursos docentes: idioma', () => {
       {provide: ActivatedRoute, useValue: {snapshot: {paramMap: new Map([['id', '5']]), queryParamMap: new Map()}}},
       {provide: CourseService, useValue: api.course}, {provide: UnitService, useValue: api.unit}, {provide: StoryService, useValue: {}},
       {provide: QuizService, useValue: api.quiz}, {provide: MaterialService, useValue: api.material},
-      {provide: HotmartService, useValue: {setup: () => of({webhookUrl: 'https://example.test/hook', configured: false})}},
+      {provide: HotmartService, useValue: {setup: () => of({webhookUrl: 'https://example.test/hook', configured: false, canManage: true})}},
       {provide: CouponService, useValue: {list: () => of([])}}]});
     i18n = TestBed.inject(I18nService); i18n.setLocale('es');
     f = TestBed.createComponent(CourseManageComponent); f.detectChanges();

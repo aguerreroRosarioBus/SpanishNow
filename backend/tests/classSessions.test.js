@@ -419,3 +419,19 @@ test('AGENDA-05: una reprogramación pendiente no se acepta cuando el original y
   await expect(sessions.accept(c.students[0], original.id, pending.version, {}, { now: afterStart })).rejects.toMatchObject({ code: 'proposal_stale' });
   expect(await credits.balance(c.purchases[0].id)).toMatchObject({ available: 3, reserved: 0, consumed: 1 });
 });
+
+test('Tanda B: la misma clave tras cancelar devuelve la clase cancelada (200) y una clave nueva crea otra; el cliente debe renovar la clave por intento', async () => {
+  const c = await chain();
+  const key = uuid();
+  const first = await as(c.teacher).post('/api/class-sessions').set('Idempotency-Key', key).send(c.body);
+  expect(first.status).toBe(201);
+  const cancelled = await as(c.teacher).post(`/api/class-sessions/${first.body.id}/cancel`).send({ version: first.body.version, reason: 'prueba de reproposición' });
+  expect(cancelled.status).toBe(200); expect(cancelled.body.status).toBe('cancelled');
+  // Reutilizar la clave: idempotencia pura, no se crea nada y la respuesta es la clase ya cancelada.
+  const replay = await as(c.teacher).post('/api/class-sessions').set('Idempotency-Key', key).send(c.body);
+  expect(replay.status).toBe(200); expect(replay.body).toMatchObject({ id: first.body.id, status: 'cancelled' });
+  expect(await M.ClassSession.count({ where: { teacherId: c.teacher.id } })).toBe(1);
+  // Una clave nueva con los mismos datos es otro intento y sí propone.
+  const again = await as(c.teacher).post('/api/class-sessions').set('Idempotency-Key', uuid()).send(c.body);
+  expect(again.status).toBe(201); expect(again.body.id).not.toBe(first.body.id); expect(again.body.status).toBe('proposed');
+});

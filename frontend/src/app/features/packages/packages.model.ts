@@ -10,8 +10,14 @@ export interface PackageVersion {
 }
 export interface PackageTemplate {
   id: number; teacherId: number; templateKey: string; status: 'draft' | 'active' | 'paused' | 'archived';
-  current: PackageVersion; versions?: PackageVersion[]; policy?:{version:number;rules:{refundWindowHours:number;refundMode?:string}};
+  /** `null` cuando la plantilla quedó sin versión vigente (ver backend `classCatalog.present`): hay que completarla o reimportar. */
+  current: PackageVersion | null;
+  /** Con `current` null y versiones guardadas: la última, para precargar «Completar datos» sin reescribirlo todo. */
+  lastVersion?: PackageVersion; versions?: PackageVersion[]; policy?:{version:number;rules:{refundWindowHours:number;refundMode?:string}};
 }
+/** Plantilla con versión vigente: la única que se puede ofrecer, activar o agrupar. */
+export type CompleteTemplate = PackageTemplate & { current: PackageVersion };
+export const hasVersion = (t: PackageTemplate): t is CompleteTemplate => t.current != null;
 export interface ClassSettings { classesEnabledAt: string | null; salesPausedAt: string | null; acceptsInquiries: boolean }
 export interface ClassOffer {
   canCheckout?:boolean;canManage?:boolean;

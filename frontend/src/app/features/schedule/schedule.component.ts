@@ -143,9 +143,17 @@ export class ScheduleComponent {
     const hash = JSON.stringify(body); if (hash !== this.submittedHash) { this.key = crypto.randomUUID(); this.submittedHash = hash; }
     this.failure.set(null); this.busy.set(true); const generation = this.generation;
     this.write = (edited ? this.api.reschedule(edited.id, body) : this.api.create(body, this.key)).subscribe({ next: session => {
+      // La clave identifica un intento, no unos datos: con la clave anterior, volver a proponer lo mismo (p. ej. tras cancelar)
+      // devolvería la clase vieja por idempotencia en vez de crear una nueva. Un reintento por corte de red sí la conserva.
+      this.endAttempt();
       if (generation !== this.generation) return; this.busy.set(false); this.selected.set(session); this.editing.set(null); this.reload();
-    }, error: error => { if (generation === this.generation) { this.busy.set(false); this.failure.set(error); if (error.status === 409 && edited) this.read(this.api.get(edited.id), s => this.editing.set(s)); } } });
+    }, error: error => {
+      // Una respuesta definitiva 4xx no crea nada: el siguiente intento no debe arrastrar la clave (un 409 operation_key_conflict
+      // la dejaría bloqueada). Con corte de red o 5xx se conserva para que el reintento sea idempotente.
+      if (error.status >= 400 && error.status < 500) this.endAttempt();
+      if (generation === this.generation) { this.busy.set(false); this.failure.set(error); if (error.status === 409 && edited) this.read(this.api.get(edited.id), s => this.editing.set(s)); } } });
   }
+  private endAttempt(): void { this.key = crypto.randomUUID(); this.submittedHash = ''; }
   updated(session: ClassSession): void { if (this.selected()?.id === session.id) this.selected.set(session); this.reload(); }
   stopEditing(): void { this.editing.set(null); void this.router.navigate(['/schedule']); }
 }

@@ -39,20 +39,29 @@ export class PackageCatalogComponent implements OnInit {
     if(this.busy()) return; this.busy.set(true); this.failure.set(null);
     this.api.importInitial().subscribe({next:items=>{this.items.set(items);this.busy.set(false);this.api.settings().subscribe(s=>this.settings.set(s));},error:e=>this.fail(e)});
   }
-  name(t: PackageTemplate) { return this.i18n.locale()==='es' ? t.current.nameEs : t.current.nameEn; }
+  /** Plantilla sin versión vigente: no tiene nombre ni condiciones que mostrar (ver `PackageTemplate.current`). */
+  incomplete(t: PackageTemplate) { return !t.current; }
+  name(t: PackageTemplate) { return !t.current ? t.templateKey : this.i18n.locale()==='es' ? t.current.nameEs : t.current.nameEn; }
   edit(t: PackageTemplate) {
     this.selected.set(t); this.saved.set(false); this.failure.set(null);
-    this.form.reset(); this.form.patchValue({ ...t.current,
-      expectations: t.current.expectations ?? Object.fromEntries(this.locales.map(l => [l, Object.fromEntries(this.fields.map(k => [k, '']))]))
-    });
+    const blank = Object.fromEntries(this.locales.map(l => [l, Object.fromEntries(this.fields.map(k => [k, '']))]));
+    this.form.reset();
+    // Sin versión vigente se parte de la última guardada, si la hay; si no, solo de la modalidad individual y el docente
+    // completa nombre, importe y duración.
+    const base = t.current ?? t.lastVersion;
+    this.form.patchValue(base ? { ...base, expectations: base.expectations ?? blank }
+      : { modality:'individual', groupSize:1, billing:'per_buyer', seatsCovered:1, currency:'USD', expectations: blank });
   }
   save() {
     const t=this.selected(); if(!t || this.busy() || this.form.invalid) return;
     this.busy.set(true); this.failure.set(null); this.saved.set(false);
-    this.api.save(t.id,{...this.form.getRawValue(),version:t.current.version}).subscribe({next:s=>{this.replace(s);this.selected.set(s);this.saved.set(true);this.busy.set(false);},error:e=>this.fail(e)});
+    const body = this.form.getRawValue();
+    if (body.policyVersionId == null || body.policyVersionId === '') delete body.policyVersionId; // el backend usa la política vigente
+    // `version: 0` completa una plantilla que quedó sin versión vigente.
+    this.api.save(t.id,{...body,version:t.current?.version ?? 0}).subscribe({next:s=>{this.replace(s);this.selected.set(s);this.saved.set(true);this.busy.set(false);},error:e=>this.fail(e)});
   }
   status(t: PackageTemplate, status: string) {
-    if(this.busy()) return; this.busy.set(true); this.failure.set(null);
+    if(this.busy() || !t.current) return; this.busy.set(true); this.failure.set(null);
     this.api.status(t.id,status,t.current.version).subscribe({next:s=>{this.replace(s);this.busy.set(false);},error:e=>this.fail(e)});
   }
   pause() {
