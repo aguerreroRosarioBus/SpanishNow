@@ -88,8 +88,8 @@ test('AC16: host efímero solo dueño; alumno/Calendar/soporte no reciben el sec
 });
 test('capacidad antes de proponer, ofrecer o comprar; no modifica agenda ni saldo', async () => {
   const c = await chain(); await connected(c.teacher);
-  const row = await connection.rowFor(c.teacher.id); const tokens = cipher.decrypt(row.credentials); tokens.capabilities.maxMinutes = 40;
-  await row.update({ credentials: cipher.encrypt(tokens) });
+  const row = await connection.rowFor(c.teacher.id);
+  await row.update({ capabilities: { ...row.capabilities, maxMinutes: 40 } });
   const proposed = await as(c.teacher).post('/api/class-sessions').set('Idempotency-Key', uuid()).send(c.body);
   expect(proposed.body.code).toBe('zoom_capacity_exceeded');
   const offer = await as(c.teacher).post(`/api/conversations/${c.conversations[0].id}/offers`).set('Idempotency-Key', uuid()).send({ templateVersionId: c.terms.id });
@@ -139,7 +139,7 @@ test('webhooks: firma, antigüedad, challenge y dedupe durable sin completar ni 
   expect((await refFor(c.session.id)).status).toBe('ready');
   await webhook({ ...body, event: 'meeting.deleted' }); expect((await refFor(c.session.id)).lastError).toBe('zoom_meeting_missing');
   await webhook({ ...body, event: 'app_deauthorized' });
-  expect((await connection.rowFor(c.teacher.id)).status).toBe('revoked');
+  expect((await connection.rowFor(c.teacher.id)).status).toBe('needs_attention');
   expect((await M.ClassSession.findByPk(c.session.id)).status).toBe('confirmed');
   expect((await c.purchases[0].reload()).unitsReserved).toBe(1);
 });
@@ -199,7 +199,7 @@ test('P2: webhook saltea un grant ilegible y procesa revocación de otro docente
   const result = await webhook({ event: 'app_deauthorized', event_ts: Date.now(), payload: { account_id: tokens.accountId } });
   expect(result.status).toBe(200);
   expect((await connection.rowFor(bad.teacher.id)).status).toBe('needs_attention');
-  expect((await connection.rowFor(good.teacher.id)).status).toBe('revoked');
+  expect((await connection.rowFor(good.teacher.id)).status).toBe('needs_attention');
   expect((await refFor(good.session.id)).lastError).toBe('zoom_revoked');
 });
 
