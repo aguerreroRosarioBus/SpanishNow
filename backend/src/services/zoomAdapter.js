@@ -42,10 +42,10 @@ function tokens(accountId, rotation = 0) {
 }
 module.exports = {
   ZoomError, fail, assertFake, hash,
-  async authorize({ code, expectedCode, verifier }) {
+  async authorize({ code, expectedCode, verifier, accountId }) {
     assertFake();
     if (!verifier || code !== expectedCode) fail('zoom_oauth_invalid', 400);
-    const accountId = crypto.randomUUID();
+    if (!accountId) fail('zoom_oauth_invalid', 400);
     return { ...tokens(accountId), email: `docente-${accountId.slice(0, 8)}@zoom.invalid`,
       // Capacidades explícitas de la cuenta simulada, nunca una afirmación sobre licencias reales.
       capabilities: { maxMinutes: 120, maxParticipants: 100, concurrentMeetings: 1, waitingRoom: true, passcodeRequired: true } };

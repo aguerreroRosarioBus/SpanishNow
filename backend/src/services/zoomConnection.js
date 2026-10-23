@@ -58,7 +58,7 @@ async function callback(req) {
   const user = await M.User.findByPk(row.userId); await teacher(user);
   const c = cipher.decrypt(row.oauthVerifier);
   if (req.query.error) fail('zoom_oauth_denied', 400);
-  const credentials = await adapter.authorize({ code: req.query.code, expectedCode: c.code, verifier: c.verifier });
+  const credentials = await adapter.authorize({ code: req.query.code, expectedCode: c.code, verifier: c.verifier, accountId: hash(`${process.env.DB_NAME}:${user.id}:${user.email}`) });
   const [changed] = await M.ExternalConnection.update({ status: 'connected', credentials: cipher.encrypt(credentials), accountEmail: credentials.email,
     scopes: scope, tokenExpiresAt: new Date(credentials.expiresAt), oauthStateHash: null, oauthVerifier: null, oauthExpiresAt: null,
     lastError: null, refreshLockedUntil: null, version: row.version + 1 },
@@ -106,8 +106,9 @@ async function disconnect(user) {
     if (!row) return;
     await row.update({ status: 'disconnected', credentials: null, oauthStateHash: null, oauthVerifier: null, oauthExpiresAt: null,
       tokenExpiresAt: null, refreshLockedUntil: null, version: row.version + 1 }, { transaction });
+    const sessions = await M.ClassSession.findAll({ where: { teacherId: user.id }, attributes: ['id'], transaction });
     await M.ExternalSyncRef.update({ status: 'needs_attention', lastError: 'integration_not_connected' },
-      { where: { provider: 'zoom', connectionId: row.id, status: { [Op.ne]: 'cancelled' } }, transaction });
+      { where: { provider: 'zoom', sessionId: sessions.map(s => s.id), status: { [Op.ne]: 'cancelled' } }, transaction });
   });
   return status(user);
 }

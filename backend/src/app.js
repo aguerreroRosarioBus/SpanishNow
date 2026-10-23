@@ -33,6 +33,7 @@ app.use(cors(corsOptions));
 const payments = require('./config/payments');
 payments.assertSafe();
 app.use('/api/payments', require('./routes/payments.routes'));
+app.use('/api/integrations/zoom/webhook', require('./routes/zoomWebhook')); // W08: firma sobre bytes exactos
 app.use(express.json({ charset: 'utf-8', limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, charset: 'utf-8' }));
 

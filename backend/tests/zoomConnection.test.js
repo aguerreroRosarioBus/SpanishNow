@@ -11,13 +11,7 @@ beforeAll(() => {
   process.env.GOOGLE_TOKEN_ENCRYPTION_KEY = Buffer.alloc(32, 8).toString('base64');
 });
 afterAll(() => { delete process.env.FEATURE_ZOOM; delete process.env.INTEGRATIONS_FAKE; });
-async function connected(teacher) {
-  const start = await c.connect(teacher); const agent = request.agent(app);
-  const first = await agent.get(new URL(start.url).pathname + new URL(start.url).search);
-  const url = new URL(first.headers.location);
-  const callback = await agent.get(url.pathname + url.search);
-  expect(callback.status).toBe(302); return { agent, url };
-}
+const { connected } = require('./zoomFixtures');
 test('OAuth fake por docente, cifrado, state de un uso, cookie obligatoria, perfil sin credenciales', async () => {
   const fixture = await chain(); const t = fixture.teacher;
   const { agent, url } = await connected(t);
@@ -54,4 +48,3 @@ test('flag y modo fake fallan cerrados, OAuth caducado y código manipulado se r
   await expect(c.connect(teacher)).rejects.toMatchObject({ code: 'zoom_fake_required' });
   process.env.INTEGRATIONS_FAKE = '1';
 });
-module.exports = { connected };
