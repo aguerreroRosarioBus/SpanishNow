@@ -1,0 +1,28 @@
+<section class="zoom-page" data-testid="zoom-card" [attr.aria-busy]="busy()">
+  <header><h1>{{ 'zoom.title' | t }}</h1><p>{{ 'zoom.intro' | t }}</p></header>
+  @if (failure()) { <p class="alert alert-warning" role="alert">{{ api.error(failure()) }}</p> }
+  @if (status(); as s) {
+    @if (s.fake) { <p class="test-notice">{{ 'zoom.fake' | t }}</p> }
+    <div class="zoom-panel">
+      <p><strong>{{ ('zoom.status.' + s.status) | t }}</strong> @if (s.accountEmail) { · {{ s.accountEmail }} }</p>
+      @if (s.lastError) { <p role="alert">{{ api.error({ error: { code: s.lastError } }) }}</p> }
+      @if (s.capabilities; as c) { <p>{{ 'zoom.capacity' | t:{ minutes: c.maxMinutes, participants: c.maxParticipants } }}</p><p>{{ 'zoom.protection' | t }}</p> }
+      @else if (s.status === 'connected') { <p>{{ 'zoom.unknownCapacity' | t }}</p> }
+      <div class="zoom-actions">
+        @if (features.enabled('zoom')) { <button type="button" class="btn btn-primary" (click)="connect()" [disabled]="busy()">{{ 'zoom.connect' | t }}</button> }
+        @if (s.status !== 'disconnected') { <button type="button" class="btn btn-secondary" (click)="disconnecting.set(true)" [disabled]="busy()">{{ 'zoom.disconnect' | t }}</button> }
+        <button type="button" class="btn btn-secondary" (click)="refresh()" [disabled]="busy()">{{ 'zoom.refresh' | t }}</button>
+      </div>
+      @if (disconnecting()) { <fieldset><legend>{{ 'zoom.disconnect' | t }}</legend><p>{{ 'zoom.disconnectConfirm' | t }}</p><div class="zoom-actions"><button type="button" class="btn btn-secondary" (click)="disconnect()" [disabled]="busy()">{{ 'zoom.confirm' | t }}</button><button type="button" class="btn btn-ghost" (click)="disconnecting.set(false)" [disabled]="busy()">{{ 'zoom.back' | t }}</button></div></fieldset> }
+    </div>
+  } @else if (busy()) { <p role="status">{{ 'zoom.loading' | t }}</p> }
+  <h2>{{ 'zoom.sessions' | t }}</h2>
+  @for (s of sessions(); track s.id) {
+    <article class="zoom-panel">
+      <p><time [attr.datetime]="s.startsAt">{{ i18n.formatInstant(s.startsAt, preferences.preferences()?.timeZone || 'UTC') }}</time> · {{ s.minutes }} min · {{ ('zoom.status.' + s.status) | t }}</p>
+      @if (s.manual) { <p>{{ 'zoom.manualActive' | t }}</p> }
+      @if (s.upcomingWithoutMeeting) { <p class="alert alert-warning" role="alert">{{ 'zoom.upcoming' | t }}</p> }
+      <a [routerLink]="['/zoom/sessions', s.id]" class="btn btn-secondary">{{ 'zoom.openSession' | t }}</a>
+    </article>
+  } @empty { @if (!busy()) { <p>{{ 'zoom.empty' | t }}</p> } }
+</section>

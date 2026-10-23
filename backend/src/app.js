@@ -33,6 +33,7 @@ app.use(cors(corsOptions));
 const payments = require('./config/payments');
 payments.assertSafe();
 app.use('/api/payments', require('./routes/payments.routes'));
+app.use('/api/integrations/zoom/webhook', require('./routes/zoomWebhook')); // W08: firma sobre bytes exactos
 app.use(express.json({ charset: 'utf-8', limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, charset: 'utf-8' }));
 
@@ -51,6 +52,7 @@ app.use((req, res, next) => {
 });
 
 // Routes
+app.use('/api', require('./routes/zoom.routes')); // W08: rutas propias y preflight de capacidad
 app.use('/api', require('./routes/legal.routes'));
 app.use('/api', require('./routes/classCatalog.routes')); // W05: catálogo versionado y configuración de clases
 app.use('/api', require('./routes/classOffers.routes')); // W05: ofertas inmutables del chat

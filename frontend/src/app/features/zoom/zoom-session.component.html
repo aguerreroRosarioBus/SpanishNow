@@ -1,0 +1,40 @@
+<section class="zoom-page" data-testid="zoom-session" [attr.aria-busy]="busy()">
+  <h1>{{ 'zoom.title' | t }}</h1>
+  @if (failure()) { <p class="alert alert-warning" role="alert">{{ api.error(failure()) }}</p> }
+  @if (notice()) { <p role="status">{{ notice() | t }}</p> }
+  @if (sync()?.fake) { <p class="test-notice">{{ 'zoom.fake' | t }}</p> }
+  @if (session(); as s) {
+    <div class="zoom-panel"><app-session-time [interval]="s" [recipientZone]="zone()" [teacherZone]="s.teacher.timeZone || s.timeZone" />
+      <p>{{ s.teacher.name }}</p>
+      <a routerLink="/schedule" [queryParams]="{ sessionId: s.id }">{{ 'zoom.agenda' | t }}</a>
+    </div>
+    <div class="zoom-panel">
+      <h2>{{ 'zoom.meeting' | t }}</h2>
+      @if (sync(); as r) {
+        <p>{{ ('zoom.status.' + r.status) | t }}</p>
+        @if (r.manual) { <p class="test-notice">{{ 'zoom.manualActive' | t }}</p> }
+        @if (r.lastError) { <p role="alert">{{ api.error({ error: { code: r.lastError } }) }}</p> }
+      }
+      @if (s.status === 'confirmed') {
+        @if (teacher()) { <p>{{ 'zoom.hostHint' | t }}</p> }
+        <div class="zoom-actions">
+          <button type="button" class="btn btn-primary" (click)="join()" [disabled]="busy()">{{ 'zoom.meeting' | t }}</button>
+          @if (teacher()) { <button type="button" class="btn btn-secondary" (click)="retry()" [disabled]="busy()">{{ 'zoom.retry' | t }}</button> }
+          <button type="button" class="btn btn-secondary" (click)="refresh()" [disabled]="busy()">{{ 'zoom.refresh' | t }}</button>
+        </div>
+      }
+      @if (meeting(); as link) { <p><a [href]="link" target="_blank" rel="noopener noreferrer">{{ 'zoom.openMeeting' | t }}</a></p> }
+    </div>
+    @if (s.liveClassId && (teacher() || s.whiteboardJoinCode)) {
+      <div class="zoom-panel"><h2>{{ 'zoom.whiteboard' | t }}</h2><a class="btn btn-secondary" [routerLink]="teacher() ? ['/live', s.liveClassId] : ['/live/join', s.whiteboardJoinCode]">{{ 'zoom.whiteboard' | t }}</a></div>
+    }
+    @if (teacher() && s.status === 'confirmed') {
+      <form class="zoom-panel" (ngSubmit)="saveManual()">
+        <h2>{{ 'zoom.manual' | t }}</h2><p>{{ 'zoom.manualHint' | t }}</p>
+        <label for="zoom-manual">{{ 'zoom.manual' | t }}</label><input id="zoom-manual" type="url" class="form-control" [(ngModel)]="manualLink" name="zoom-manual" maxlength="1000" autocomplete="off" />
+        <div class="zoom-actions mt-3"><button class="btn btn-secondary" type="submit" [disabled]="busy() || !manualLink.trim()">{{ 'zoom.saveManual' | t }}</button>
+        @if (sync()?.manual) { <button class="btn btn-ghost" type="button" (click)="saveManual(true)" [disabled]="busy()">{{ 'zoom.removeManual' | t }}</button> }</div>
+      </form>
+    }
+  } @else if (busy()) { <p role="status">{{ 'zoom.loading' | t }}</p> }
+</section>

@@ -41,11 +41,15 @@ async function buildEvent(session, ref) {
   const text = TEXT[teacher?.locale === 'en' ? 'en' : 'es'];
   const seats = await M.ClassSessionParticipant.findAll({ where: { sessionId: session.id, status: { [Op.ne]: 'cancelled' } } });
   const students = await M.User.findAll({ where: { id: seats.map(s => s.userId) }, attributes: ['id', 'email'] });
-  const zoom = await M.ExternalSyncRef.findOne({ where: { sessionId: session.id, provider: 'zoom', status: 'ready' }, attributes: ['joinUrl'] });
+  const zoom = await M.ExternalSyncRef.findOne({ where: { sessionId: session.id, provider: 'zoom' }, attributes: ['status', 'joinUrl', 'manualJoinUrl'] });
   const link = `${calendar.frontendUrl()}/schedule`;
   const lines = [text.details, link];
   // Solo el enlace de participante; el de anfitrión nunca se guarda ni se envía aquí.
-  if (zoom?.joinUrl && /^https:\/\/([\w-]+\.)*zoom\.us\//.test(zoom.joinUrl)) lines.push(`${text.zoom}: ${zoom.joinUrl}`);
+  const zoomLink = zoom?.manualJoinUrl || (zoom?.status === 'ready' ? zoom.joinUrl : null);
+  if (zoomLink) {
+    try { lines.push(`${text.zoom}: ${require('./zoomService').participantUrl(zoomLink, !zoom.manualJoinUrl)}`); }
+    catch { /* W08: sin enlace de participante válido; nunca enviar un start_url heredado. */ }
+  }
   return {
     id: eventIdFor(ref.correlationKey), summary: text.summary, description: lines.join('\n\n'),
     startsAt: session.startsAt.toISOString(), endsAt: session.endsAt.toISOString(), timeZone: session.timeZone,
