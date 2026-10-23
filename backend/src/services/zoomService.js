@@ -48,11 +48,12 @@ async function assertCapacity(teacherId, minutes, participants = 1, { preflight 
     if (preflight) return;
     fail('integration_not_connected');
   }
+  // La sala de espera no se exige por defecto de la cuenta: cada reunión la activa y se verifica tras crearla/actualizarla.
   // El preflight siempre usa la copia persistida. No descifra ni refresca tokens y no hace llamadas a Zoom.
   const capability = row.capabilities;
   if (!capability || !Number.isFinite(capability.maxMinutes) || !Number.isFinite(capability.maxParticipants)
     || !Number.isFinite(capability.concurrentMeetings) || capability.concurrentMeetings < 1
-    || !capability.waitingRoom || !capability.passcodeRequired || capability.plan === 'unknown') fail('zoom_capacity_unknown');
+    || !capability.passcodeRequired || capability.plan === 'unknown') fail('zoom_capacity_unknown');
   if (minutes > capability.maxMinutes || participants + 1 > capability.maxParticipants) fail('zoom_capacity_exceeded', 409,
     { maxMinutes: capability.maxMinutes, maxParticipants: capability.maxParticipants });
 }
@@ -61,7 +62,7 @@ async function enqueue(session, transaction, reason = 'retry') {
     dedupeKey: `zoom:${reason}:${session.id}:v${session.version}:${crypto.randomUUID()}` }, { transaction });
 }
 function safeError(error) {
-  return ['provider_unavailable', 'zoom_provider_unavailable', 'zoom_revoked', 'zoom_authorization_lost', 'zoom_busy', 'zoom_capacity_unknown', 'zoom_capacity_exceeded', 'zoom_meeting_missing', 'integration_not_connected', 'zoom_rate_limited'].includes(error.code)
+  return ['provider_unavailable', 'zoom_provider_unavailable', 'zoom_revoked', 'zoom_authorization_lost', 'zoom_busy', 'zoom_capacity_unknown', 'zoom_capacity_exceeded', 'zoom_waiting_room_disabled', 'zoom_meeting_missing', 'integration_not_connected', 'zoom_rate_limited'].includes(error.code)
     ? error.code : 'zoom_provider_unavailable';
 }
 async function sync(job, ctx = { stillOwned: async () => true }) {
@@ -97,6 +98,8 @@ async function sync(job, ctx = { stillOwned: async () => true }) {
         const wanted = { correlationKey: ref.correlationKey, startsAt: session.startsAt.toISOString(), timeZone: 'UTC',
           minutes: session.minutes, sessionVersion: session.version, settings: { waitingRoom: true, passcodeRequired: true, autoRecording: 'none', joinBeforeHost: false } };
         meeting = existing ? await providerCall('update', existing.id, wanted) : await providerCall('create', wanted);
+        // Si Zoom (o la cuenta) forzó la sala de espera apagada, la clase no queda lista.
+        if (meeting?.waitingRoom !== true) fail('zoom_waiting_room_disabled', 409);
       }
       if (!await ctx.stillOwned()) fail('zoom_busy', 503);
       // Una cancelación/reprogramación que llegó durante el efecto se corrige con la verdad interna vigente.

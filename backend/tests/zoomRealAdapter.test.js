@@ -43,7 +43,7 @@ beforeAll(async () => {
       id: 'zoom-user-7', account_id: 'zoom-account-9', email: 'teacher@example.test', type: 1,
       feature: { meeting_capacity: 100 }
     });
-    if (url.pathname === '/v2/users/me/settings') return send(res, 200, { meeting_security: { waiting_room: true } });
+    if (url.pathname === '/v2/users/me/settings') return send(res, 200, { in_meeting: { waiting_room: mode === 'waiting_room_default_on' }, meeting_security: { auto_security: true, meeting_password: true } });
     if (url.pathname === '/v2/users/me/meetings' && req.method === 'GET') {
       if (mode === 'rate_limited') return send(res, 429, { code: 429 }, { 'Retry-After': '12' });
       if (mode === 'unauthorized') return send(res, 401, { code: 124 });
@@ -54,12 +54,14 @@ beforeAll(async () => {
       return send(res, 200, { meetings: [{ id: 123, join_url: 'https://zoom.us/j/123456789', agenda: 'otra' }], next_page_token: 'page-2' });
     }
     if (url.pathname === '/v2/users/me/meetings' && req.method === 'POST') return send(res, 201, {
-      id: 789123456, join_url: 'https://zoom.us/j/789123456?pwd=join-code', agenda: body.agenda
+      id: 789123456, join_url: 'https://zoom.us/j/789123456?pwd=join-code', agenda: body.agenda,
+      ...(mode === 'create_without_settings' ? {} : { settings: { waiting_room: mode !== 'waiting_room_forced_off' } })
     });
     if (url.pathname === '/v2/meetings/789123456' && req.method === 'PATCH') return send(res, 204);
     if (url.pathname === '/v2/meetings/789123456' && req.method === 'GET') return send(res, 200, {
       id: 789123456, join_url: 'https://zoom.us/j/789123456?pwd=join-code', agenda: 'SpanishNow correlation=class:42',
-      start_url: 'https://us06web.zoom.us/s/host-me?zak=ephemeral'
+      start_url: 'https://us06web.zoom.us/s/host-me?zak=ephemeral',
+      settings: { waiting_room: mode !== 'waiting_room_forced_off' }
     });
     if (url.pathname === '/v2/meetings/789123456' && req.method === 'DELETE') return send(res, 204);
     return send(res, 404, { code: 404 });
@@ -91,12 +93,12 @@ test('OAuth PKCE, Basic, scopes granulares, capacidades de cuenta y rotación de
   const tokens = await adapter.authorize({ code: 'code-1', verifier: 'pkce-verifier' });
   expect(tokens).toMatchObject({ accessToken: 'access-1', refreshToken: 'refresh-1', accountId: 'zoom-account-9',
     userId: 'zoom-user-7', email: 'teacher@example.test', capabilities: {
-      plan: 'basic', maxMinutes: 40, maxParticipants: 100, concurrentMeetings: 1, waitingRoom: true, passcodeRequired: true
+      plan: 'basic', maxMinutes: 40, maxParticipants: 100, concurrentMeetings: 1, waitingRoom: false, passcodeRequired: true
     } });
   expect(requests[0].headers.authorization).toBe(`Basic ${Buffer.from('local-client:local-secret').toString('base64')}`);
   expect(requests[0].body).toMatchObject({ grant_type: 'authorization_code', code: 'code-1', code_verifier: 'pkce-verifier',
     redirect_uri: process.env.ZOOM_REDIRECT_URI });
-  expect(requests.some(r => r.path === '/v2/users/me/settings' && r.query.get('option') === 'meeting_security')).toBe(true);
+  expect(requests.some(r => r.path === '/v2/users/me/settings' && !r.query.has('option'))).toBe(true);
 
   const rotated = await adapter.refresh(tokens);
   expect(rotated).toMatchObject({ accessToken: 'access-2', refreshToken: 'refresh-2', scopes: SCOPES.join(' ') });
@@ -165,4 +167,22 @@ test.each([
   await expect(adapter.authorize({ code: 'code-1', verifier: 'pkce-verifier' })).rejects.toMatchObject({ code });
   const revoke = requests.find(r => r.path === '/oauth/revoke');
   expect(revoke).toMatchObject({ method: 'POST', body: { token: 'access-1' } });
+});
+
+test('cuenta con sala de espera desactivada por defecto: la reunión se crea con sala de espera activa', async () => {
+  const adapter = createZoomRealAdapter({ oauthBaseUrl: baseUrl, apiBaseUrl: `${baseUrl}/v2` });
+  const wanted = { correlationKey: 'class:42', startsAt: '2026-10-24T18:30:00.000Z', minutes: 40 };
+  const created = await adapter.create({ accessToken: 'access-2' }, wanted);
+  expect(created.waitingRoom).toBe(true);
+  expect(requests.find(r => r.method === 'POST' && r.path === '/v2/users/me/meetings').body.settings.waiting_room).toBe(true);
+});
+test('si la creación no devuelve settings se consulta la reunión; si Zoom la apaga, waitingRoom es falso', async () => {
+  const adapter = createZoomRealAdapter({ oauthBaseUrl: baseUrl, apiBaseUrl: `${baseUrl}/v2` });
+  const wanted = { correlationKey: 'class:42', startsAt: '2026-10-24T18:30:00.000Z', minutes: 40 };
+  mode = 'create_without_settings';
+  expect((await adapter.create({ accessToken: 'access-2' }, wanted)).waitingRoom).toBe(true);
+  expect(requests.some(r => r.method === 'GET' && r.path === '/v2/meetings/789123456')).toBe(true);
+  mode = 'waiting_room_forced_off';
+  expect((await adapter.create({ accessToken: 'access-2' }, wanted)).waitingRoom).toBe(false);
+  expect((await adapter.update({ accessToken: 'access-2' }, '789123456', wanted)).waitingRoom).toBe(false);
 });

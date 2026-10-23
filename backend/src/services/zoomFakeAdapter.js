@@ -64,7 +64,7 @@ module.exports = {
     });
     return { ...tokens(accountId), email: `docente-${accountId.slice(0, 8)}@zoom.invalid`,
       // Capacidades explícitas de la cuenta simulada, nunca una afirmación sobre licencias reales.
-      capabilities: { maxMinutes: 120, maxParticipants: 100, concurrentMeetings: 1, waitingRoom: true, passcodeRequired: true } };
+      capabilities: { maxMinutes: 120, maxParticipants: 100, concurrentMeetings: 1, waitingRoom: false, passcodeRequired: true } };
   },
   async refresh(credentials) {
     assertFake();
@@ -79,14 +79,17 @@ module.exports = {
     return store(credentials.accountId, data => {
       // El endpoint simulado NO es idempotente: el servicio debe reconciliar antes de llamar.
       const id = String(crypto.randomInt(100000000, 999999999));
-      const meeting = { ...wanted, id, joinUrl: `https://zoom.us/j/${id}?pwd=${crypto.randomBytes(12).toString('hex')}` };
+      const meeting = { ...wanted, id, joinUrl: `https://zoom.us/j/${id}?pwd=${crypto.randomBytes(12).toString('hex')}`,
+        // El simulador respeta la sala de espera pedida; ZOOM_FAKE_FORCE_WAITING_ROOM_OFF simula una cuenta que la bloquea.
+        waitingRoom: wanted.settings?.waitingRoom === true && process.env.ZOOM_FAKE_FORCE_WAITING_ROOM_OFF !== '1' };
       data[id] = meeting; return meeting;
     });
   },
   async update(credentials, id, wanted) {
     return store(credentials.accountId, data => {
       if (!data[id]) fail('zoom_meeting_missing', 404);
-      return (data[id] = { ...data[id], ...wanted });
+      return (data[id] = { ...data[id], ...wanted,
+        waitingRoom: wanted.settings?.waitingRoom === true && process.env.ZOOM_FAKE_FORCE_WAITING_ROOM_OFF !== '1' });
     });
   },
   async remove(credentials, id) { return store(credentials.accountId, data => { delete data[id]; }); },

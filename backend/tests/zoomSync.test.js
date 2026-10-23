@@ -44,6 +44,25 @@ test('AC05: sync durable refleja UTC de NY y duración, configuración protegida
   expect(ref.status).toBe('ready'); expect(ref.syncedVersion).toBe(c.session.version);
   expect(await M.OutboxJob.count({ where: { aggregateId: c.session.id, topic: 'zoom.sync' } })).toBe(1);
 });
+test('docente con sala de espera desactivada por defecto: la reunión se crea con sala de espera', async () => {
+  const c = await fixture();
+  const row = await connection.rowFor(c.teacher.id);
+  await row.update({ capabilities: { ...row.capabilities, waitingRoom: false } });
+  await sync(c.session.id);
+  const ref = await refFor(c.session.id); const { tokens } = await connection.credentials(c.teacher.id);
+  expect(ref.status).toBe('ready');
+  expect(await adapter.find(tokens, ref.correlationKey)).toMatchObject({ waitingRoom: true, settings: { waitingRoom: true } });
+});
+test('reunión devuelta sin sala de espera: zoom_waiting_room_disabled y ref en needs_attention', async () => {
+  const c = await fixture();
+  process.env.ZOOM_FAKE_FORCE_WAITING_ROOM_OFF = '1';
+  try { await expect(sync(c.session.id)).rejects.toMatchObject({ code: 'zoom_waiting_room_disabled' }); }
+  finally { delete process.env.ZOOM_FAKE_FORCE_WAITING_ROOM_OFF; }
+  const ref = await refFor(c.session.id);
+  expect(ref).toMatchObject({ status: 'needs_attention', lastError: 'zoom_waiting_room_disabled' });
+  await sync(c.session.id);
+  expect((await refFor(c.session.id)).status).toBe('ready');
+});
 test('AC15: respuesta perdida después de crear se reconcilia incluso al recargar el adaptador', async () => {
   const c = await fixture(); const create = adapter.create;
   const spy = jest.spyOn(adapter, 'create').mockImplementationOnce(async (...args) => { await create(...args); throw new Error('https://zoom.us/s/secret?zak=secret token=secret'); });
