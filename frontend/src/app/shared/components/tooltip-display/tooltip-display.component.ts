@@ -2,11 +2,12 @@ import { Component, Input, OnChanges, OnInit, SimpleChanges, signal, inject, Vie
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { TooltipService, DisplayTooltip } from '../../../core/services/tooltip.service';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 
 @Component({
   selector: 'app-tooltip-display',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslatePipe],
   template: `
     <div
       class="tooltip-display-container"
@@ -33,6 +34,7 @@ import { TooltipService, DisplayTooltip } from '../../../core/services/tooltip.s
           <button
             type="button"
             class="btn-close btn-sm float-end"
+            [attr.aria-label]="'teacherComposer.tooltipDisplay.closeAria' | t"
             (click)="closeTooltip()"
           ></button>
           <div class="tooltip-popover-body" role="status">

@@ -1,69 +1,69 @@
 <div class="wb-backdrop" role="presentation" (mousedown)="requestClose()">
   <section #dialog class="wb-dialog" role="dialog" aria-modal="true" aria-labelledby="wb-title" tabindex="-1" (mousedown)="$event.stopPropagation()">
     <header class="wb-head">
-      <h2 id="wb-title">{{ title() }}</h2>
-      <button type="button" class="wb-btn wb-close" aria-label="Cerrar pizarra" title="Cerrar (Esc)" (click)="requestClose()"><app-icon name="close" /></button>
+      <h2 id="wb-title">{{ titleKey() | t }}</h2>
+      <button type="button" class="wb-btn wb-close" [attr.aria-label]="'teacherComposer.wb.closeAria' | t" [title]="'teacherComposer.wb.closeTitle' | t" (click)="requestClose()"><app-icon name="close" /></button>
     </header>
 
-    <div class="wb-toolbar" role="toolbar" aria-label="Herramientas de dibujo">
-      <div class="wb-group" role="group" aria-label="Herramientas">
+    <div class="wb-toolbar" role="toolbar" [attr.aria-label]="'teacherComposer.wb.toolbarAria' | t">
+      <div class="wb-group" role="group" [attr.aria-label]="'teacherComposer.wb.toolsGroup' | t">
         <button *ngFor="let t of tools" type="button" class="wb-btn wb-tool" [class.active]="tool() === t.id" [attr.aria-pressed]="tool() === t.id"
-          [attr.aria-label]="t.label + ' (' + t.shortcut + ')'" [title]="t.label + ' (' + t.shortcut + ')'" (click)="tool.set(t.id)">
+          [attr.aria-label]="(t.labelKey | t) + ' (' + t.shortcut + ')'" [title]="(t.labelKey | t) + ' (' + t.shortcut + ')'" (click)="tool.set(t.id)">
           <app-icon [name]="t.icon" />
         </button>
       </div>
 
-      <div class="wb-group" role="group" aria-label="Grosor del trazo">
+      <div class="wb-group" role="group" [attr.aria-label]="'teacherComposer.wb.sizeGroup' | t">
         <button *ngFor="let size of sizes; let i = index" type="button" class="wb-btn wb-size" [class.active]="sizeIndex() === i" [attr.aria-pressed]="sizeIndex() === i"
-          [attr.aria-label]="'Grosor ' + (i + 1) + ' de ' + sizes.length" [title]="'Grosor ' + (i + 1) + ' de ' + sizes.length + ' ( [ y ] )'" (click)="sizeIndex.set(i)">
+          [attr.aria-label]="'teacherComposer.wb.sizeAria' | t:{ n: i + 1, total: sizes.length }" [title]="'teacherComposer.wb.sizeTitle' | t:{ n: i + 1, total: sizes.length }" (click)="sizeIndex.set(i)">
           <span class="wb-dot" [style.width.px]="dot(i)" [style.height.px]="dot(i)"></span>
         </button>
       </div>
 
-      <div class="wb-group wb-colors" role="group" aria-label="Color">
+      <div class="wb-group wb-colors" role="group" [attr.aria-label]="'teacherComposer.wb.colorGroup' | t">
         <button *ngFor="let c of palette" type="button" class="wb-swatch" [class.active]="color() === c.value" [style.background]="c.value"
-          [attr.aria-pressed]="color() === c.value" [attr.aria-label]="c.name" [title]="c.name" (click)="color.set(c.value)"></button>
-        <label class="wb-swatch wb-custom" [class.active]="isCustomColor()" title="Color personalizado">
-          <input type="color" [value]="color()" (input)="setCustomColor($event)" aria-label="Color personalizado">
+          [attr.aria-pressed]="color() === c.value" [attr.aria-label]="c.nameKey | t" [title]="c.nameKey | t" (click)="color.set(c.value)"></button>
+        <label class="wb-swatch wb-custom" [class.active]="isCustomColor()" [title]="'teacherComposer.wb.customColor' | t">
+          <input type="color" [value]="color()" (input)="setCustomColor($event)" [attr.aria-label]="'teacherComposer.wb.customColor' | t">
           <span class="wb-custom-core" [style.background]="isCustomColor() ? color() : null"><app-icon *ngIf="!isCustomColor()" name="plus" /></span>
         </label>
       </div>
 
-      <div class="wb-group wb-actions" role="group" aria-label="Acciones">
-        <button type="button" class="wb-btn" [disabled]="!canUndo()" aria-label="Deshacer (Ctrl+Z)" title="Deshacer (Ctrl+Z)" (click)="undo()"><app-icon name="undo" /></button>
-        <button type="button" class="wb-btn" [disabled]="!canRedo()" aria-label="Rehacer (Ctrl+Mayús+Z)" title="Rehacer (Ctrl+Mayús+Z)" (click)="redo()"><app-icon name="redo" /></button>
-        <button type="button" class="wb-btn wb-danger" [disabled]="!hasStrokes()" aria-label="Borrar todo" title="Borrar todo" (click)="askClear()"><app-icon name="trash" /></button>
+      <div class="wb-group wb-actions" role="group" [attr.aria-label]="'teacherComposer.wb.actionsGroup' | t">
+        <button type="button" class="wb-btn" [disabled]="!canUndo()" [attr.aria-label]="'teacherComposer.wb.undo' | t" [title]="'teacherComposer.wb.undo' | t" (click)="undo()"><app-icon name="undo" /></button>
+        <button type="button" class="wb-btn" [disabled]="!canRedo()" [attr.aria-label]="'teacherComposer.wb.redo' | t" [title]="'teacherComposer.wb.redo' | t" (click)="redo()"><app-icon name="redo" /></button>
+        <button type="button" class="wb-btn wb-danger" [disabled]="!hasStrokes()" [attr.aria-label]="'teacherComposer.wb.clearAll' | t" [title]="'teacherComposer.wb.clearAll' | t" (click)="askClear()"><app-icon name="trash" /></button>
       </div>
     </div>
 
     <div class="wb-bg" *ngIf="backgroundUrl()">
       <label class="wb-check" *ngIf="bgState() !== 'error'">
         <input type="checkbox" [checked]="useBackground()" [disabled]="bgState() !== 'ready'" (change)="useBackground.set($any($event.target).checked)">
-        Partir de la imagen actual
+        {{ 'teacherComposer.wb.useCurrent' | t }}
       </label>
-      <span class="wb-note" *ngIf="bgState() === 'loading'" role="status">Cargando imagen…</span>
-      <span class="wb-note wb-warn" *ngIf="bgState() === 'error'" role="status">No se pudo cargar la imagen actual para editarla (el navegador lo impide). Puedes dibujar desde cero: reemplazará a la anterior.</span>
+      <span class="wb-note" *ngIf="bgState() === 'loading'" role="status">{{ 'teacherComposer.wb.loadingImage' | t }}</span>
+      <span class="wb-note wb-warn" *ngIf="bgState() === 'error'" role="status">{{ 'teacherComposer.wb.bgError' | t }}</span>
     </div>
 
     <div class="wb-stage">
       <div class="wb-paper">
         <canvas #base class="wb-canvas" aria-hidden="true"></canvas>
-        <canvas #live class="wb-canvas wb-live" role="img" aria-label="Lienzo de dibujo. Usa el puntero, el dedo o el lápiz para dibujar."
+        <canvas #live class="wb-canvas wb-live" role="img" [attr.aria-label]="'teacherComposer.wb.canvasAria' | t"
           (pointerdown)="onPointerDown($event)" (pointermove)="onPointerMove($event)" (pointerup)="onPointerUp($event)" (pointercancel)="onPointerCancel($event)"></canvas>
       </div>
     </div>
 
     <div class="wb-confirm" *ngIf="confirm() as kind" role="alertdialog" aria-labelledby="wb-confirm-text">
-      <p id="wb-confirm-text">{{ kind === 'discard' ? 'Tienes un dibujo sin usar. ¿Descartarlo?' : '¿Borrar todo el dibujo? Podrás deshacerlo.' }}</p>
-      <button type="button" class="wb-text" (click)="confirm.set(null)">{{ kind === 'discard' ? 'Seguir dibujando' : 'No borrar' }}</button>
-      <button type="button" class="wb-text wb-danger-text" (click)="kind === 'discard' ? cancelled.emit() : clearAll()">{{ kind === 'discard' ? 'Descartar' : 'Borrar todo' }}</button>
+      <p id="wb-confirm-text">{{ (kind === 'discard' ? 'teacherComposer.wb.confirmDiscard' : 'teacherComposer.wb.confirmClear') | t }}</p>
+      <button type="button" class="wb-text" (click)="confirm.set(null)">{{ (kind === 'discard' ? 'teacherComposer.wb.keepDrawing' : 'teacherComposer.wb.dontClear') | t }}</button>
+      <button type="button" class="wb-text wb-danger-text" (click)="kind === 'discard' ? cancelled.emit() : clearAll()">{{ (kind === 'discard' ? 'teacherComposer.wb.discard' : 'teacherComposer.wb.clearAll') | t }}</button>
     </div>
-    <p class="wb-error" *ngIf="error()" role="alert">{{ error() }}</p>
+    <p class="wb-error" *ngIf="errorKey()" role="alert">{{ errorKey() | t }}</p>
 
     <footer class="wb-foot">
-      <span class="wb-hint">P lápiz · M marcador · E borrador · L línea · R rectángulo · O elipse · Mayús para figuras regulares</span>
-      <button type="button" class="wb-secondary" (click)="requestClose()">Cancelar</button>
-      <button type="button" class="wb-primary" [disabled]="!hasStrokes() || exporting()" (click)="use()">{{ exporting() ? 'Preparando…' : 'Usar como ilustración' }}</button>
+      <span class="wb-hint">{{ 'teacherComposer.wb.hint' | t }}</span>
+      <button type="button" class="wb-secondary" (click)="requestClose()">{{ 'teacherComposer.wb.cancel' | t }}</button>
+      <button type="button" class="wb-primary" [disabled]="!hasStrokes() || exporting()" (click)="use()">{{ (exporting() ? 'teacherComposer.wb.preparing' : 'teacherComposer.wb.use') | t }}</button>
     </footer>
   </section>
 </div>

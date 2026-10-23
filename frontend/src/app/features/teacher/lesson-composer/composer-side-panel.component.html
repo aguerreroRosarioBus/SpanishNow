@@ -1,25 +1,25 @@
-<aside #scroller class="side-panel" aria-label="Panel lateral de la lección" (mouseenter)="onPointerEnter()" (mouseleave)="onPointerLeave()" (wheel)="onUserScrollIntent()" (touchmove)="onUserScrollIntent()" (scroll)="onScroll()">
-  <div class="tabs" role="tablist" aria-label="Contenido del panel lateral" (keydown)="onTabKeydown($event)">
+<aside #scroller class="side-panel" [attr.aria-label]="'teacherComposer.panel.aria' | t" (mouseenter)="onPointerEnter()" (mouseleave)="onPointerLeave()" (wheel)="onUserScrollIntent()" (touchmove)="onUserScrollIntent()" (scroll)="onScroll()">
+  <div class="tabs" role="tablist" [attr.aria-label]="'teacherComposer.panel.tabsAria' | t" (keydown)="onTabKeydown($event)">
     <button *ngFor="let t of tabs" type="button" role="tab" class="tab" [id]="'side-tab-' + t.id" [attr.aria-selected]="tab() === t.id"
       [attr.aria-controls]="'side-panel-' + t.id" [attr.tabindex]="tab() === t.id ? 0 : -1" [class.active]="tab() === t.id" (click)="tab.set(t.id)">
-      {{ t.label }}<span *ngIf="t.id === 'tprs'" class="tab-count"> {{ doneCount() }}/{{ checklist().length }}</span>
+      {{ t.labelKey | t }}<span *ngIf="t.id === 'tprs'" class="tab-count"> {{ doneCount() }}/{{ checklist().length }}</span>
     </button>
   </div>
 
   <div *ngIf="tab() === 'story'" id="side-panel-story" role="tabpanel" aria-labelledby="side-tab-story">
-    <p class="helper">Los keyframes activos, unidos como se guardará el texto de la historia al publicar.</p>
-    <div *ngIf="storyParagraphs().length; else emptyStory" class="story-text" aria-live="polite"><button *ngFor="let par of storyParagraphs()" type="button" class="story-par" [class.is-active]="highlightedKeyframeKey() === par.key" [attr.aria-current]="highlightedKeyframeKey() === par.key ? 'true' : null" [attr.data-block-key]="par.key" title="Ir a este fragmento en la lección" (click)="navigate.emit(par.key)">{{ par.text }}</button></div>
-    <ng-template #emptyStory><p class="empty-note">Aún no hay texto. Escribe el primer fragmento en «Durante».</p></ng-template>
+    <p class="helper">{{ 'teacherComposer.panel.storyHelp' | t }}</p>
+    <div *ngIf="storyParagraphs().length; else emptyStory" class="story-text" aria-live="polite"><button *ngFor="let par of storyParagraphs()" type="button" class="story-par" [class.is-active]="highlightedKeyframeKey() === par.key" [attr.aria-current]="highlightedKeyframeKey() === par.key ? 'true' : null" [attr.data-block-key]="par.key" [title]="'teacherComposer.panel.goToFragment' | t" (click)="navigate.emit(par.key)">{{ par.text }}</button></div>
+    <ng-template #emptyStory><p class="empty-note">{{ 'teacherComposer.panel.emptyStory' | t }}</p></ng-template>
   </div>
 
   <div *ngIf="tab() === 'tprs'" id="side-panel-tprs" role="tabpanel" aria-labelledby="side-tab-tprs">
-    <p class="helper">Orientativo: no impide guardar ni publicar.</p>
+    <p class="helper">{{ 'teacherComposer.panel.tprsHelp' | t }}</p>
     <ul class="checklist" aria-live="polite">
       <li *ngFor="let item of checklist()" [class.ok]="item.ok">
         <span class="mark" aria-hidden="true"><app-icon [name]="item.ok ? 'check' : 'circle'" [size]="14" /></span>
         <div>
           <strong>{{ item.label }}</strong> <small>({{ item.detail }})</small>
-          <span class="visually-hidden">{{ item.ok ? ' — cumplido' : ' — pendiente' }}</span>
+          <span class="visually-hidden">{{ (item.ok ? 'teacherComposer.panel.met' : 'teacherComposer.panel.pending') | t }}</span>
           <p *ngIf="item.hint" class="hint">{{ item.hint }}</p>
         </div>
       </li>
@@ -27,9 +27,9 @@
   </div>
 
   <div *ngIf="tab() === 'preview'" id="side-panel-preview" role="tabpanel" aria-labelledby="side-tab-preview">
-    <p class="helper">Así aparecen los bloques activos, siguiendo su orden y fase.</p>
-    <section *ngFor="let phase of phases"><h4>{{ phaseLabel(phase) }}</h4><div *ngFor="let block of previewBlocks(phase)" class="preview-item" [class.is-active]="activeBlockKey() === block.blockKey" [attr.aria-current]="activeBlockKey() === block.blockKey ? 'true' : null" [attr.data-block-key]="block.blockKey" (click)="onItemClick($event, block)"><button type="button" class="goto" [attr.aria-label]="'Ir al bloque: ' + typeLabel(block.type)" (click)="navigate.emit(block.blockKey)">{{ typeLabel(block.type) }}</button><p>{{ previewLabel(block) }}</p><img *ngIf="block.type === 'expression' && vocabImage(block) as vimg" class="preview-image" [src]="vimg" [alt]="previewLabel(block)" loading="lazy"><img *ngIf="block.type === 'keyframe' && block.imageUrl" class="preview-image" [src]="block.imageUrl" [alt]="block.imageAlt || previewLabel(block)" loading="lazy"><ng-container *ngIf="block.type === 'question'"><ng-container [ngSwitch]="questionState(block)"><div *ngSwitchCase="'question'"><p class="student-question">{{ questionText(block) }}</p><small>Contexto disponible: {{ contextText(block) }}</small><button type="button" class="text-button" (click)="setQuestionState(block, 'wrong')">Simular respuesta incorrecta</button></div><div *ngSwitchCase="'wrong'" class="wrong-answer"><p>Respuesta incorrecta. Recuerda este fragmento:</p><blockquote>{{ contextText(block) }}</blockquote><button type="button" class="text-button" (click)="setQuestionState(block, 'correct')">Reintentar</button><button type="button" class="text-button" (click)="setQuestionState(block, 'continued')">Continuar</button></div><p *ngSwitchCase="'correct'" class="correct-answer"><app-icon name="check" [size]="14" /> Respuesta correcta; puedes continuar.</p><p *ngSwitchCase="'continued'" class="helper">Continuaste sin exigir una respuesta correcta.</p></ng-container></ng-container><audio *ngIf="block.type === 'keyframe' && block.audioUrl" [src]="block.audioUrl" controls></audio></div></section>
-    <div class="preview-item full-preview" *ngIf="hasDuring()"><span>Lectura reunida</span><p>{{ narrativeText() }}</p></div>
-    <audio *ngIf="audioNormalUrl()" [src]="audioNormalUrl()!" controls aria-label="Audio completo"></audio>
+    <p class="helper">{{ 'teacherComposer.panel.previewHelp' | t }}</p>
+    <section *ngFor="let phase of phases"><h4>{{ phaseLabel(phase) }}</h4><div *ngFor="let block of previewBlocks(phase)" class="preview-item" [class.is-active]="activeBlockKey() === block.blockKey" [attr.aria-current]="activeBlockKey() === block.blockKey ? 'true' : null" [attr.data-block-key]="block.blockKey" (click)="onItemClick($event, block)"><button type="button" class="goto" [attr.aria-label]="'teacherComposer.panel.goToBlock' | t:{ type: typeLabel(block.type) }" (click)="navigate.emit(block.blockKey)">{{ typeLabel(block.type) }}</button><p>{{ previewLabel(block) }}</p><img *ngIf="block.type === 'expression' && vocabImage(block) as vimg" class="preview-image" [src]="vimg" [alt]="previewLabel(block)" loading="lazy"><img *ngIf="block.type === 'keyframe' && block.imageUrl" class="preview-image" [src]="block.imageUrl" [alt]="block.imageAlt || previewLabel(block)" loading="lazy"><ng-container *ngIf="block.type === 'question'"><ng-container [ngSwitch]="questionState(block)"><div *ngSwitchCase="'question'"><p class="student-question">{{ questionText(block) }}</p><small>{{ 'teacherComposer.panel.contextAvailable' | t:{ text: contextText(block) } }}</small><button type="button" class="text-button" (click)="setQuestionState(block, 'wrong')">{{ 'teacherComposer.panel.simulateWrong' | t }}</button></div><div *ngSwitchCase="'wrong'" class="wrong-answer"><p>{{ 'teacherComposer.panel.wrongAnswer' | t }}</p><blockquote>{{ contextText(block) }}</blockquote><button type="button" class="text-button" (click)="setQuestionState(block, 'correct')">{{ 'teacherComposer.panel.retry' | t }}</button><button type="button" class="text-button" (click)="setQuestionState(block, 'continued')">{{ 'teacherComposer.panel.continue' | t }}</button></div><p *ngSwitchCase="'correct'" class="correct-answer"><app-icon name="check" [size]="14" /> {{ 'teacherComposer.panel.correctAnswer' | t }}</p><p *ngSwitchCase="'continued'" class="helper">{{ 'teacherComposer.panel.continued' | t }}</p></ng-container></ng-container><audio *ngIf="block.type === 'keyframe' && block.audioUrl" [src]="block.audioUrl" controls></audio></div></section>
+    <div class="preview-item full-preview" *ngIf="hasDuring()"><span>{{ 'teacherComposer.panel.fullReading' | t }}</span><p>{{ narrativeText() }}</p></div>
+    <audio *ngIf="audioNormalUrl()" [src]="audioNormalUrl()!" controls [attr.aria-label]="'teacherComposer.panel.fullAudioAria' | t"></audio>
   </div>
 </aside>

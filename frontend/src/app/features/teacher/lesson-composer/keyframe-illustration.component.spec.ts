@@ -1,3 +1,4 @@
+import { I18nService } from '../../../core/i18n/i18n.service';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -21,6 +22,7 @@ describe('KeyframeIllustrationComponent', () => {
     TestBed.configureTestingModule({ imports: [KeyframeIllustrationComponent], providers: [provideHttpClient(), provideHttpClientTesting()] });
     http = TestBed.inject(HttpTestingController);
     board = TestBed.inject(WhiteboardService);
+    TestBed.inject(I18nService).setLocale('es');
     fixture = TestBed.createComponent(KeyframeIllustrationComponent);
     component = fixture.componentInstance;
     imageChange = []; altChange = [];
@@ -112,13 +114,13 @@ describe('KeyframeIllustrationComponent', () => {
     expect(component.error()).toContain('guardar');
   });
 
-  it('un error del backend muestra su mensaje', async () => {
+  it('un error del backend con código conocido se traduce', async () => {
     setup(kf());
     pickFile(png());
-    imageReq().flush({ error: 'No se pudo subir la imagen a Cloudinary' }, { status: 502, statusText: 'Bad Gateway' });
+    imageReq().flush({ code: 'provider_unavailable' }, { status: 502, statusText: 'Bad Gateway' });
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(el().querySelector('[role=alert]')?.textContent).toContain('Cloudinary');
+    expect(el().querySelector('[role=alert]')?.textContent).toContain('servicio externo');
     expect(imageChange).toEqual([]);
     expect(component.busy()).toBe(false);
   });
@@ -126,7 +128,7 @@ describe('KeyframeIllustrationComponent', () => {
   it('«Dibujar» abre la pizarra en blanco y sube el PNG resultante', async () => {
     setup(kf());
     buttonByText('Dibujar').click();
-    expect(board.request()).toEqual({ backgroundUrl: null, title: 'Dibujar ilustración' });
+    expect(board.request()).toEqual({ backgroundUrl: null, titleKey: 'teacherComposer.wb.titleIllustration' });
     board.finish(png(20));
     await fixture.whenStable();
     imageReq().flush({ blockKey: 'k1', imageUrl: 'https://cdn/d.png' });

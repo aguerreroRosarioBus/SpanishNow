@@ -1,6 +1,7 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { I18nService } from '../../../core/i18n/i18n.service';
 import { ImageSearchComponent } from './image-search.component';
 import { ImageSearchResult } from '../../../core/services/image-search.service';
 
@@ -13,6 +14,7 @@ describe('ImageSearchComponent', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({ imports: [ImageSearchComponent], providers: [provideHttpClient(), provideHttpClientTesting()] });
     http = TestBed.inject(HttpTestingController);
+    TestBed.inject(I18nService).setLocale('es');
     fixture = TestBed.createComponent(ImageSearchComponent); component = fixture.componentInstance;
     fixture.componentRef.setInput('initialQuery', 'una casa');
     selected = []; component.imageSelected.subscribe(file => selected.push(file)); fixture.detectChanges();
@@ -50,18 +52,18 @@ describe('ImageSearchComponent', () => {
   });
   it('preserves the selected file on download failure and displays the server error from a Blob', async () => {
     await populate(); const pending = component.select(image);
-    const body = JSON.stringify({ error: 'La imagen supera los 5 MB.' });
+    const body = JSON.stringify({ code: 'rate_limited' });
     const blob = new Blob([body], { type: 'application/json' });
     // jsdom's Blob lacks text(), which modern browsers implement.
     Object.defineProperty(blob, 'text', { value: async () => body });
     http.expectOne(r => r.url.endsWith('/images/import')).flush(blob, { status: 413, statusText: 'Too Large' });
-    await pending; expect(selected).toEqual([]); expect(component.error()).toContain('5 MB');
+    await pending; expect(selected).toEqual([]); expect(component.error()).toContain('Demasiadas solicitudes');
     expect(component.expanded()).toBe(true); expect(component.importing()).toBeNull();
   });
   it('shows missing-configuration errors and empty search results', async () => {
     component.toggle(); let pending = component.search();
-    findSearch().flush({ error: 'La búsqueda no está configurada.' }, { status: 503, statusText: 'Unavailable' });
-    await pending; expect(component.error()).toContain('configurada');
+    findSearch().flush({ code: 'feature_disabled' }, { status: 503, statusText: 'Unavailable' });
+    await pending; expect(component.error()).toContain('no está disponible');
     pending = component.search(); findSearch().flush({ results: [], page: 1, hasMore: false }); await pending; fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('No encontramos imágenes');
   });

@@ -6,14 +6,17 @@ import { Vocabulary } from '../../../core/models/course.model';
 import { VocabularyService } from '../../../core/services/vocabulary.service';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { ImageSearchComponent } from '../../../shared/components/image-search/image-search.component';
-import { IMAGE_ACCEPT, validateImageFile } from './image-file';
+import { IMAGE_ACCEPT, imageFileErrorKey } from './image-file';
+import { I18nService } from '../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
+import { Failure, failureText } from './failure';
 import { WhiteboardService } from './whiteboard/whiteboard.service';
 
 /** Crea (o reutiliza) una expresión del vocabulario de la unidad sin salir del compositor. */
 @Component({
   selector: 'app-inline-vocabulary-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, IconComponent, ImageSearchComponent],
+  imports: [CommonModule, FormsModule, IconComponent, ImageSearchComponent, TranslatePipe],
   templateUrl: './inline-vocabulary-form.component.html',
   styleUrl: './inline-forms.scss'
 })
@@ -21,6 +24,7 @@ export class InlineVocabularyFormComponent implements OnDestroy {
   private api = inject(VocabularyService);
   private host = inject<ElementRef<HTMLElement>>(ElementRef);
   private whiteboard = inject(WhiteboardService);
+  private i18n = inject(I18nService);
 
   unitId = input.required<number>();
   initialWord = input('');
@@ -36,7 +40,9 @@ export class InlineVocabularyFormComponent implements OnDestroy {
   word = signal('');
   translation = signal('');
   busy = signal(false);
-  error = signal('');
+  /** Error pendiente de traducir; se traduce al leer para seguir el idioma activo. */
+  private failure = signal<Failure | null>(null);
+  error = computed(() => failureText(this.i18n, this.failure()));
   match = computed(() => {
     const key = this.word().trim().toLocaleLowerCase('es');
     return key ? this.existing().find(v => v.word.trim().toLocaleLowerCase('es') === key) ?? null : null;
@@ -55,13 +61,13 @@ export class InlineVocabularyFormComponent implements OnDestroy {
     const file = input.files?.[0];
     input.value = '';
     if (!file) return;
-    const invalid = validateImageFile(file);
-    if (invalid) { this.error.set(invalid); return; }
-    this.error.set(''); this.setImage(file);
+    const invalid = imageFileErrorKey(file);
+    if (invalid) { this.failure.set({ key: invalid }); return; }
+    this.failure.set(null); this.setImage(file);
   }
   async draw(): Promise<void> {
-    const file = await this.whiteboard.open({ backgroundUrl: null, title: 'Dibujar la expresión' });
-    if (file) { this.error.set(''); this.setImage(file); }
+    const file = await this.whiteboard.open({ backgroundUrl: null, titleKey: 'teacherComposer.wb.titleExpression' });
+    if (file) { this.failure.set(null); this.setImage(file); }
   }
   removeImage(): void { this.setImage(null); }
 
@@ -75,8 +81,8 @@ export class InlineVocabularyFormComponent implements OnDestroy {
     const match = this.match();
     if (match) { this.created.emit(match); return; }
     const word = this.word().trim(), translation = this.translation().trim();
-    if (!word || !translation) { this.error.set('Escribe la expresión y su traducción.'); return; }
-    this.busy.set(true); this.error.set('');
+    if (!word || !translation) { this.failure.set({ key: 'teacherComposer.vForm.enterBoth' }); return; }
+    this.busy.set(true); this.failure.set(null);
     try {
       const form = new FormData();
       form.append('unitId', String(this.unitId()));
@@ -86,7 +92,7 @@ export class InlineVocabularyFormComponent implements OnDestroy {
       if (image) form.append('image', image, image.name);
       this.created.emit(await firstValueFrom(this.api.createVocabulary(form)));
     } catch (error: any) {
-      this.error.set(error?.error?.error || 'No se pudo crear la expresión.');
+      this.failure.set({ key: 'teacherComposer.vForm.createError', error });
     } finally { this.busy.set(false); }
   }
 }

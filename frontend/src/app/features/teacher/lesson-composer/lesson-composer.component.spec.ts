@@ -1,3 +1,4 @@
+import { I18nService } from '../../../core/i18n/i18n.service';
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { signal } from '@angular/core';
@@ -39,6 +40,7 @@ describe('LessonComposerComponent', () => {
         { provide: VocabularyService, useValue: { getVocabularyByUnit: () => of(vocab), createVocabulary } },
       ],
     }).compileComponents();
+    TestBed.inject(I18nService).setLocale('es');
     fixture = TestBed.createComponent(LessonComposerComponent);
     component = fixture.componentInstance;
     fixture.componentRef.setInput('story', { id: 7, unitId: 1, title: 'María', text: 'texto', order: 1 });

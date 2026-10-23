@@ -5,20 +5,20 @@ import { LessonBlock, LessonBlockType, LessonPhase } from '../../../core/service
 import { storyTextFromBlocks, tprsChecklist } from './tprs-checklist';
 import { PROGRAMMATIC_SCROLL_MS, canAutoScroll, nearestScrollTop, scrollBehavior } from './scroll-sync';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
+import { I18nService } from '../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 
 export type SidePanelTab = 'story' | 'tprs' | 'preview';
 const PHASES: LessonPhase[] = ['before', 'during', 'after', 'later'];
-const PHASE_LABEL: Record<LessonPhase, string> = { before: 'Antes', during: 'Durante', after: 'Después', later: 'Más adelante' };
-const TYPE_LABEL: Record<LessonBlockType, string> = { expression: 'Expresión', keyframe: 'Keyframe', question: 'Pregunta', full_story: 'Lectura y audio completos', flashcards: 'Tarjetas', matching: 'Emparejar', listen_repeat: 'Repetición oral' };
-const TABS: { id: SidePanelTab; label: string }[] = [
-  { id: 'story', label: 'La historia hasta ahora' }, { id: 'tprs', label: 'Chequeo TPRS' }, { id: 'preview', label: 'Vista previa' }
+const TABS: { id: SidePanelTab; labelKey: string }[] = [
+  { id: 'story', labelKey: 'teacherComposer.panel.tabStory' }, { id: 'tprs', labelKey: 'teacherComposer.panel.tabTprs' }, { id: 'preview', labelKey: 'teacherComposer.panel.tabPreview' }
 ];
 
 /** Panel lateral del compositor: texto acumulado, chequeo TPRS en vivo y vista previa del recorrido del alumno. */
 @Component({
   selector: 'app-composer-side-panel',
   standalone: true,
-  imports: [CommonModule, IconComponent],
+  imports: [CommonModule, IconComponent, TranslatePipe],
   templateUrl: './composer-side-panel.component.html',
   styleUrl: './composer-side-panel.component.scss'
 })
@@ -36,6 +36,7 @@ export class ComposerSidePanelComponent {
 
   private scroller = viewChild<ElementRef<HTMLElement>>('scroller');
   private injector = inject(Injector);
+  private i18n = inject(I18nService);
   private pointerOver = false;
   private lastUserScrollAt = -Infinity;
   private programmaticUntil = 0;
@@ -45,7 +46,7 @@ export class ComposerSidePanelComponent {
   questionStates = signal<Record<string, 'question' | 'wrong' | 'correct' | 'continued'>>({});
 
   storyText = computed(() => storyTextFromBlocks(this.blocks()));
-  checklist = computed(() => tprsChecklist({ blocks: this.blocks(), vocabulary: this.vocabulary(), questions: this.questions(), storyId: this.storyId() }));
+  checklist = computed(() => tprsChecklist({ blocks: this.blocks(), vocabulary: this.vocabulary(), questions: this.questions(), storyId: this.storyId() }, (key, params) => this.i18n.t(key, params)));
   doneCount = computed(() => this.checklist().filter(item => item.ok).length);
 
   /** Keyframes activos con texto, un párrafo cada uno (mismo criterio que storyText). */
@@ -89,15 +90,15 @@ export class ComposerSidePanelComponent {
     this.navigate.emit(block.blockKey);
   }
 
-  phaseLabel(phase: LessonPhase): string { return PHASE_LABEL[phase]; }
-  typeLabel(type: LessonBlockType): string { return TYPE_LABEL[type]; }
+  phaseLabel(phase: LessonPhase): string { return this.i18n.t('teacherComposer.phase.' + phase); }
+  typeLabel(type: LessonBlockType): string { return this.i18n.t('teacherComposer.type.' + type); }
   previewBlocks(phase: LessonPhase): LessonBlock[] { return this.blocks().filter(b => b.phase === phase && b.active); }
   hasDuring(): boolean { return this.blocks().some(b => b.phase === 'during'); }
   narrativeText(): string { return this.previewBlocks('during').filter(b => b.type === 'keyframe').map(b => b.text || '').join(' '); }
   previewLabel(block: LessonBlock): string { return block.text || block.vocabularySnapshot?.word || this.vocabulary().find(v => v.id === block.vocabularyId)?.word || block.questionSnapshot?.questionText || this.typeLabel(block.type); }
   vocabImage(block: LessonBlock): string | null { return this.vocabulary().find(v => v.id === block.vocabularyId)?.imageUrl || null; }
-  questionText(block: LessonBlock): string { return block.questionSnapshot?.questionText || this.questions().find(q => q.id === block.questionId)?.questionText || block.text || 'Pregunta sin contenido'; }
-  contextText(block: LessonBlock): string { return this.blocks().find(item => item.blockKey === block.contextBlockKey)?.text || 'Keyframe sin texto'; }
+  questionText(block: LessonBlock): string { return block.questionSnapshot?.questionText || this.questions().find(q => q.id === block.questionId)?.questionText || block.text || this.i18n.t('teacherComposer.panel.emptyQuestion'); }
+  contextText(block: LessonBlock): string { return this.blocks().find(item => item.blockKey === block.contextBlockKey)?.text || this.i18n.t('teacherComposer.noContext'); }
   questionState(block: LessonBlock): string { return this.questionStates()[block.blockKey] || 'question'; }
   setQuestionState(block: LessonBlock, state: 'wrong' | 'correct' | 'continued'): void { this.questionStates.update(s => ({ ...s, [block.blockKey]: state })); }
 

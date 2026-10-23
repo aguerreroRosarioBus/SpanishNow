@@ -1,6 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 
-export interface WhiteboardRequest { backgroundUrl: string | null; title?: string; }
+/** `titleKey`: clave I18N del título (se traduce al mostrar, así sigue el idioma activo). */
+export interface WhiteboardRequest { backgroundUrl: string | null; titleKey?: string; }
 
 /**
  * Abre la pizarra como diálogo sobre el compositor. La pizarra se renderiza una sola vez, en la raíz del compositor

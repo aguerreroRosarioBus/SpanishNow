@@ -1,5 +1,7 @@
 import { LessonBlock } from '../../../core/services/lesson-plan.service';
 import { Question, Vocabulary } from '../../../core/models/course.model';
+import { TranslationMessage, TranslationParams } from '../../../core/i18n/i18n.types';
+import { TEACHER_COMPOSER_ES } from '../../../core/i18n/catalogs/teacher-composer';
 
 /**
  * Chequeo TPRS en vivo del compositor. Refleja (de forma simplificada y sin bloquear) las reglas de
@@ -24,6 +26,22 @@ export interface ChecklistInput {
   /** Historia que se está componiendo (la reaparición debe apuntar a otra). */
   storyId?: number;
 }
+
+/** Traductor de claves `teacherComposer.*` (normalmente `I18nService.t`). */
+export type Translate = (key: string, params?: TranslationParams) => string;
+
+/** Traductor por defecto (español), para usar el chequeo fuera de un componente y en pruebas puras. */
+export const spanishTranslate: Translate = (key, params = {}) => {
+  const message = (TEACHER_COMPOSER_ES as Record<string, TranslationMessage>)[key];
+  if (message === undefined) return `[${key}]`;
+  let template: string;
+  if (typeof message === 'string') template = message;
+  else {
+    const count = Number(params['count']);
+    template = message[`=${count}` as `=${number}`] ?? message[new Intl.PluralRules('es').select(count)] ?? message.other;
+  }
+  return template.replace(/\{([a-zA-Z]\w*)\}/g, (token, name: string) => Object.hasOwn(params, name) ? String(params[name]) : token);
+};
 
 const MAX_KEYFRAME_WORDS = 45;
 const MIN_KEYFRAME_WORDS = 3;
@@ -55,9 +73,10 @@ export function storyTextFromBlocks(blocks: LessonBlock[]): string {
   return blocks.filter(b => b.type === 'keyframe' && b.active).map(b => (b.text ?? '').trim()).filter(Boolean).join('\n\n');
 }
 
-const plural = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`;
+const K = 'teacherComposer.checklist.';
 
-export function tprsChecklist(input: ChecklistInput): ChecklistItem[] {
+export function tprsChecklist(input: ChecklistInput, translate: Translate = spanishTranslate): ChecklistItem[] {
+  const t = (key: string, params?: TranslationParams): string => translate(K + key, params);
   const { blocks, vocabulary, questions } = input;
   const active = blocks.filter(b => b.active);
   const text = storyTextFromBlocks(blocks);
@@ -75,41 +94,41 @@ export function tprsChecklist(input: ChecklistInput): ChecklistItem[] {
   // R1: 2–3 expresiones objetivo en «Antes», todas presentes en el texto.
   const targets = [...new Map(active.filter(b => b.type === 'expression' && b.phase === 'before' && (b.vocabularyRole ?? 'target') === 'target' && wordOf(b))
     .map(b => [normalizeKey(wordOf(b)), wordOf(b)] as const)).values()];
-  const missing = targets.filter(t => !containsExpression(text, t));
+  const missing = targets.filter(x => !containsExpression(text, x));
   let targetsHint = '';
-  if (targets.length < 2) targetsHint = 'Añade 2 o 3 expresiones objetivo en «Antes» (o marca una en el texto del fragmento).';
-  else if (targets.length > 3) targetsHint = 'Reduce a 2 o 3 expresiones objetivo.';
-  else if (missing.length) targetsHint = `Estas expresiones aún no aparecen en la historia: ${missing.map(m => `«${m}»`).join(', ')}.`;
+  if (targets.length < 2) targetsHint = t('r1.few');
+  else if (targets.length > 3) targetsHint = t('r1.many');
+  else if (missing.length) targetsHint = t('r1.missing', { list: missing.map(m => t('quoted', { text: m })).join(', ') });
 
   // R2: keyframes con texto comprensible (2 o más; de 3 a 45 palabras cada uno).
   const keyframes = active.filter(b => b.type === 'keyframe');
   const filled = keyframes.filter(b => (b.text ?? '').trim());
   const sized = filled.map(b => wordCount(b.text));
   let keyframesHint = '';
-  if (keyframes.length > filled.length) keyframesHint = 'Hay fragmentos vacíos: escribe su texto o elimínalos.';
-  else if (filled.length < 2) keyframesHint = 'Divide la historia en 2 o más fragmentos (usa «＋ Seguir la historia»).';
-  else if (sized.some(n => n > MAX_KEYFRAME_WORDS)) keyframesHint = `Algún fragmento supera las ${MAX_KEYFRAME_WORDS} palabras; pártelo.`;
-  else if (sized.some(n => n < MIN_KEYFRAME_WORDS)) keyframesHint = `Algún fragmento tiene menos de ${MIN_KEYFRAME_WORDS} palabras.`;
+  if (keyframes.length > filled.length) keyframesHint = t('r2.empty');
+  else if (filled.length < 2) keyframesHint = t('r2.few');
+  else if (sized.some(n => n > MAX_KEYFRAME_WORDS)) keyframesHint = t('r2.long', { max: MAX_KEYFRAME_WORDS });
+  else if (sized.some(n => n < MIN_KEYFRAME_WORDS)) keyframesHint = t('r2.short', { min: MIN_KEYFRAME_WORDS });
 
   // R3: preguntas sí/no o de dos opciones, después del keyframe que las responde.
   const during = active.filter(b => b.type === 'question' && b.phase === 'during');
   const problems: string[] = [];
   during.forEach(b => {
     const q = questionOf(b);
-    const label = q.text ? `«${q.text}»` : 'Una pregunta sin elegir';
-    if (!b.questionId) { problems.push(`${label}: elige o crea la pregunta.`); return; }
-    if (q.type !== 'yes_no' && !(q.type === 'choice' && q.options.length === 2)) problems.push(`${label}: usa una pregunta Sí/No o de dos opciones.`);
+    const label = q.text ? t('quoted', { text: q.text }) : t('r3.unnamed');
+    if (!b.questionId) { problems.push(t('r3.pick', { label })); return; }
+    if (q.type !== 'yes_no' && !(q.type === 'choice' && q.options.length === 2)) problems.push(t('r3.type', { label }));
     const at = blocks.findIndex(x => x.blockKey === b.blockKey);
     const frames = blocks.map((x, i) => ({ x, i })).filter(({ x }) => x.type === 'keyframe' && x.active);
     const context = frames.find(({ x }) => x.blockKey === b.contextBlockKey);
-    if (!context || context.i > at) { problems.push(`${label}: colócala después del fragmento al que se refiere.`); return; }
+    if (!context || context.i > at) { problems.push(t('r3.place', { label })); return; }
     const words = contentStems(q.type === 'yes_no' ? q.text : q.correct || q.text);
     const found = frames.filter(({ x }) => { const set = new Set(tokens(x.text ?? '').map(stem)); return words.some(w => set.has(w)); }).map(({ x }) => x.blockKey);
     if (found.length && !found.includes(context.x.blockKey) && frames.findIndex(f => f.x.blockKey === found[0]) > frames.findIndex(f => f.x.blockKey === context.x.blockKey)) {
-      problems.push(`${label}: lo que pregunta aparece solo en un fragmento posterior.`);
+      problems.push(t('r3.later', { label }));
     }
   });
-  const duringHint = !during.length ? 'Añade preguntas Sí/No o de dos opciones bajo los fragmentos («＋ Pregunta sobre esto»).' : problems[0] ?? '';
+  const duringHint = !during.length ? t('r3.none') : problems[0] ?? '';
 
   // R4: sin cuestionario final (como mucho 1 pregunta en «Después»).
   const finalQuestions = active.filter(b => b.type === 'question' && b.phase === 'after').length;
@@ -121,11 +140,11 @@ export function tprsChecklist(input: ChecklistInput): ChecklistItem[] {
   const full = active.filter(b => b.type === 'full_story').length;
 
   return [
-    { id: 'targets', rule: 'R1', label: '2–3 expresiones objetivo que aparecen en el texto', ok: !targetsHint, hint: targetsHint, detail: plural(targets.length, 'objetivo', 'objetivos') },
-    { id: 'keyframes', rule: 'R2', label: 'Fragmentos con texto comprensible', ok: !keyframesHint, hint: keyframesHint, detail: plural(filled.length, 'fragmento', 'fragmentos') },
-    { id: 'during', rule: 'R3', label: 'Preguntas Sí/No o de dos opciones tras su fragmento', ok: !duringHint, hint: duringHint, detail: plural(during.length, 'pregunta', 'preguntas') },
-    { id: 'after', rule: 'R4', label: 'Sin cuestionario final', ok: finalQuestions <= 1, hint: finalQuestions > 1 ? 'Deja como máximo 1 pregunta en «Después»; las demás pásalas a «Durante».' : '', detail: plural(finalQuestions, 'pregunta al final', 'preguntas al final') },
-    { id: 'revisit', rule: 'R5', label: 'Reaparición en una historia posterior', ok: revisits > 0, hint: revisits > 0 ? '' : 'En «Más adelante», añade una expresión y elige la historia donde volverá (no hace falta en la última historia del curso).', detail: plural(revisits, 'reaparición', 'reapariciones') },
-    { id: 'full_story', rule: 'R7', label: 'Una lectura completa', ok: full === 1, hint: full === 1 ? '' : full === 0 ? 'Añade el bloque de lectura/audio completo en «Después».' : 'Deja una sola lectura completa activa.', detail: plural(full, 'lectura', 'lecturas') }
+    { id: 'targets', rule: 'R1', label: t('r1.label'), ok: !targetsHint, hint: targetsHint, detail: t('r1.detail', { count: targets.length }) },
+    { id: 'keyframes', rule: 'R2', label: t('r2.label'), ok: !keyframesHint, hint: keyframesHint, detail: t('r2.detail', { count: filled.length }) },
+    { id: 'during', rule: 'R3', label: t('r3.label'), ok: !duringHint, hint: duringHint, detail: t('r3.detail', { count: during.length }) },
+    { id: 'after', rule: 'R4', label: t('r4.label'), ok: finalQuestions <= 1, hint: finalQuestions > 1 ? t('r4.hint') : '', detail: t('r4.detail', { count: finalQuestions }) },
+    { id: 'revisit', rule: 'R5', label: t('r5.label'), ok: revisits > 0, hint: revisits > 0 ? '' : t('r5.hint'), detail: t('r5.detail', { count: revisits }) },
+    { id: 'full_story', rule: 'R7', label: t('r7.label'), ok: full === 1, hint: full === 1 ? '' : full === 0 ? t('r7.none') : t('r7.many'), detail: t('r7.detail', { count: full }) }
   ];
 }

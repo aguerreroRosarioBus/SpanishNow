@@ -1,3 +1,4 @@
+import { I18nService } from '../../../core/i18n/i18n.service';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -15,6 +16,7 @@ describe('InlineVocabularyFormComponent (imagen)', () => {
     TestBed.configureTestingModule({ imports: [InlineVocabularyFormComponent], providers: [provideHttpClient(), provideHttpClientTesting()] });
     http = TestBed.inject(HttpTestingController);
     board = TestBed.inject(WhiteboardService);
+    TestBed.inject(I18nService).setLocale('es');
     fixture = TestBed.createComponent(InlineVocabularyFormComponent);
     component = fixture.componentInstance;
     created = [];
@@ -68,7 +70,7 @@ describe('InlineVocabularyFormComponent (imagen)', () => {
   it('con un dibujo de la pizarra lo adjunta; un archivo inválido muestra error', async () => {
     fill('el gato', 'the cat');
     buttonByText('Dibujar').click();
-    expect(board.request()?.title).toBe('Dibujar la expresión');
+    expect(board.request()?.titleKey).toBe('teacherComposer.wb.titleExpression');
     board.finish(new File(['p'], 'ilustracion.png', { type: 'image/png' }));
     await fixture.whenStable();
     expect(component.image()?.name).toBe('ilustracion.png');

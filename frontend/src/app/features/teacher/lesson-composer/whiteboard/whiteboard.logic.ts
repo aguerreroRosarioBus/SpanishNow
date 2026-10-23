@@ -6,14 +6,14 @@ export const BOARD_HEIGHT = 900;
 export type Tool = 'pen' | 'marker' | 'eraser' | 'line' | 'rect' | 'ellipse';
 export interface Pt { x: number; y: number; /** presión 0..1 (0.5 = ratón/táctil) */ p: number; }
 
-export interface ToolInfo { id: Tool; label: string; shortcut: string; icon: string; }
+export interface ToolInfo { id: Tool; labelKey: string; shortcut: string; icon: string; }
 export const TOOLS: ToolInfo[] = [
-  { id: 'pen', label: 'Lápiz', shortcut: 'P', icon: 'pencil' },
-  { id: 'marker', label: 'Marcador', shortcut: 'M', icon: 'highlighter' },
-  { id: 'eraser', label: 'Borrador', shortcut: 'E', icon: 'eraser' },
-  { id: 'line', label: 'Línea', shortcut: 'L', icon: 'line' },
-  { id: 'rect', label: 'Rectángulo', shortcut: 'R', icon: 'rectangle' },
-  { id: 'ellipse', label: 'Elipse', shortcut: 'O', icon: 'ellipse' },
+  { id: 'pen', labelKey: 'teacherComposer.wb.tool.pen', shortcut: 'P', icon: 'pencil' },
+  { id: 'marker', labelKey: 'teacherComposer.wb.tool.marker', shortcut: 'M', icon: 'highlighter' },
+  { id: 'eraser', labelKey: 'teacherComposer.wb.tool.eraser', shortcut: 'E', icon: 'eraser' },
+  { id: 'line', labelKey: 'teacherComposer.wb.tool.line', shortcut: 'L', icon: 'line' },
+  { id: 'rect', labelKey: 'teacherComposer.wb.tool.rect', shortcut: 'R', icon: 'rectangle' },
+  { id: 'ellipse', labelKey: 'teacherComposer.wb.tool.ellipse', shortcut: 'O', icon: 'ellipse' },
 ];
 export const isShapeTool = (tool: Tool): boolean => tool === 'line' || tool === 'rect' || tool === 'ellipse';
 
@@ -23,11 +23,11 @@ export function toolForShortcut(key: string): Tool | null {
 }
 
 /** Colores pensados para ilustraciones infantiles. */
-export const PALETTE: { value: string; name: string }[] = [
-  { value: '#222222', name: 'Negro' }, { value: '#e53935', name: 'Rojo' }, { value: '#fb8c00', name: 'Naranja' },
-  { value: '#fdd835', name: 'Amarillo' }, { value: '#43a047', name: 'Verde' }, { value: '#26c6da', name: 'Celeste' },
-  { value: '#1e88e5', name: 'Azul' }, { value: '#8e24aa', name: 'Morado' }, { value: '#ec407a', name: 'Rosa' },
-  { value: '#8d6e63', name: 'Marrón' },
+export const PALETTE: { value: string; nameKey: string }[] = [
+  { value: '#222222', nameKey: 'teacherComposer.wb.color.black' }, { value: '#e53935', nameKey: 'teacherComposer.wb.color.red' }, { value: '#fb8c00', nameKey: 'teacherComposer.wb.color.orange' },
+  { value: '#fdd835', nameKey: 'teacherComposer.wb.color.yellow' }, { value: '#43a047', nameKey: 'teacherComposer.wb.color.green' }, { value: '#26c6da', nameKey: 'teacherComposer.wb.color.cyan' },
+  { value: '#1e88e5', nameKey: 'teacherComposer.wb.color.blue' }, { value: '#8e24aa', nameKey: 'teacherComposer.wb.color.purple' }, { value: '#ec407a', nameKey: 'teacherComposer.wb.color.pink' },
+  { value: '#8d6e63', nameKey: 'teacherComposer.wb.color.brown' },
 ];
 /** Grosores base (px lógicos) mostrados como puntos de tamaño creciente. */
 export const SIZES: number[] = [3, 6, 10, 16, 26];

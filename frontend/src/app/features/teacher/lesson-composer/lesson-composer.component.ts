@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output, ViewChild, inject, signal } from '@angular/core';
+import { Component, ElementRef, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
@@ -17,15 +17,17 @@ import { Story, Question, Vocabulary, Unit } from '../../../core/models/course.m
 import { storyTextFromBlocks } from './tprs-checklist';
 import { scrollBehavior } from './scroll-sync';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
+import { I18nService } from '../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
+import { Failure, failureText } from './failure';
 
 const TUTORIAL_VERSION = '1';
 const PHASES: LessonPhase[] = ['before', 'during', 'after', 'later'];
-const PHASE_LABEL: Record<LessonPhase, string> = { before: 'Antes', during: 'Durante', after: 'Después', later: 'Más adelante' };
 
 @Component({
   selector: 'app-lesson-composer',
   standalone: true,
-  imports: [CommonModule, FormsModule, KeyframeExtrasComponent, KeyframeIllustrationComponent, WhiteboardComponent, ComposerSidePanelComponent, InlineQuestionFormComponent, InlineVocabularyFormComponent, IconComponent],
+  imports: [CommonModule, FormsModule, KeyframeExtrasComponent, KeyframeIllustrationComponent, WhiteboardComponent, ComposerSidePanelComponent, InlineQuestionFormComponent, InlineVocabularyFormComponent, IconComponent, TranslatePipe],
   templateUrl: './lesson-composer.component.html',
   styleUrls: ['./lesson-composer.component.scss', './lesson-composer-tutorial.scss', './lesson-composer-flow.scss']
 })
@@ -44,6 +46,7 @@ export class LessonComposerComponent implements OnInit, OnDestroy {
   private questionsApi = inject(QuestionService);
   private vocabApi = inject(VocabularyService);
   private host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private i18n = inject(I18nService);
   whiteboard = inject(WhiteboardService);
   plan = signal<LessonPlan | null>(null);
   blocks = signal<LessonBlock[]>([]);
@@ -54,8 +57,11 @@ export class LessonComposerComponent implements OnInit, OnDestroy {
   saving = signal(false);
   publishing = signal(false);
   dirty = signal(false);
-  error = signal('');
-  notice = signal('');
+  /** Mensajes pendientes de traducir: se guarda la clave y se traduce al leer (siguen el idioma activo). */
+  private errorState = signal<Failure | null>(null);
+  private noticeState = signal<Failure | null>(null);
+  error = computed(() => failureText(this.i18n, this.errorState()));
+  notice = computed(() => failureText(this.i18n, this.noticeState()));
   showTutorial = signal(false);
   exampleMode = signal(false);
   sideTab = signal<SidePanelTab>('story');
@@ -68,7 +74,11 @@ export class LessonComposerComponent implements OnInit, OnDestroy {
   private keyframeSelection = signal<{ blockKey: string; snippet: string } | null>(null);
   markTarget = signal<{ blockKey: string; word: string } | null>(null);
   reordering = signal(false);
-  reorderAnnouncement = signal('');
+  private reorderMoved = signal<{ type: LessonBlockType; phase: LessonPhase; position: number } | null>(null);
+  reorderAnnouncement = computed(() => {
+    const moved = this.reorderMoved();
+    return moved ? this.i18n.t('teacherComposer.composer.reorderAnnounce', { type: this.typeLabel(moved.type), position: moved.position, phase: this.phaseLabel(moved.phase) }) : '';
+  });
   private draggedBlockKey: string | null = null;
   private returnFocus: HTMLElement | null = null;
   private seenKey = '';
@@ -91,7 +101,7 @@ export class LessonComposerComponent implements OnInit, OnDestroy {
       this.vocabulary.set(vocabulary);
       if (!localStorage.getItem(this.seenKey)) this.openTutorial();
     } catch (error: any) {
-      this.error.set(error?.error?.error || 'No se pudo cargar el borrador. Comprueba la conexión e inténtalo de nuevo.');
+      this.errorState.set({ key: 'teacherComposer.composer.loadError', error });
     } finally {
       this.loading.set(false);
       if (!this.showTutorial()) setTimeout(() => this.closeButton?.nativeElement.focus(), 0);
@@ -120,7 +130,7 @@ export class LessonComposerComponent implements OnInit, OnDestroy {
     else if (!event.shiftKey && current === last) { event.preventDefault(); first.focus(); }
   }
 
-  phaseLabel(phase: LessonPhase): string { return PHASE_LABEL[phase]; }
+  phaseLabel(phase: LessonPhase): string { return this.i18n.t('teacherComposer.phase.' + phase); }
   phaseBlocks(phase: LessonPhase): LessonBlock[] { return this.blocks().filter(block => block.phase === phase); }
   keyframesBefore(block: LessonBlock): LessonBlock[] {
     const index = this.blocks().findIndex(item => item.blockKey === block.blockKey);
@@ -239,7 +249,7 @@ export class LessonComposerComponent implements OnInit, OnDestroy {
       this.insertByPhase({ blockKey: crypto.randomUUID(), type: 'expression', phase: 'before', active: true, required: false, vocabularyRole: 'target', vocabularyId: word.id });
       this.changed();
     }
-    this.notice.set(`«${word.word}» añadida como expresión objetivo en Antes.`);
+    this.noticeState.set({ key: 'teacherComposer.composer.marked', params: { word: word.word } });
   }
 
   private insertByPhase(block: LessonBlock): void {
@@ -304,49 +314,50 @@ export class LessonComposerComponent implements OnInit, OnDestroy {
       this.plan.set(updated);
       this.blocks.set(updated.blocks.map(block => ({ ...block })));
       this.dirty.set(false);
-      this.reorderAnnouncement.set(`${this.typeLabel(moved.type)} movido a la posición ${phasePosition + 1} de ${this.phaseLabel(moved.phase)}.`);
+      this.reorderMoved.set({ type: moved.type, phase: moved.phase, position: phasePosition + 1 });
     } catch (error: any) {
-      this.error.set(error?.error?.error || 'No se pudo guardar el nuevo orden.');
+      this.errorState.set({ key: 'teacherComposer.composer.reorderError', error });
     } finally {
       this.reordering.set(false);
     }
   }
-  private changed(): void { this.dirty.set(true); this.error.set(''); this.notice.set(''); }
+  private changed(): void { this.dirty.set(true); this.errorState.set(null); this.noticeState.set(null); }
 
   async save(): Promise<boolean> {
     const plan = this.plan(); if (!plan) return false;
-    if (!this.isPhaseValid()) { this.error.set('Revisa el orden de las fases antes de guardar.'); return false; }
-    this.saving.set(true); this.error.set('');
+    if (!this.isPhaseValid()) { this.errorState.set({ key: 'teacherComposer.composer.phaseOrderBeforeSave' }); return false; }
+    this.saving.set(true); this.errorState.set(null);
     try {
       const saved = await firstValueFrom(this.api.saveDraft(this.story.id, plan.revision, this.blocks()));
       this.plan.set(saved); this.blocks.set(saved.blocks.map(block => ({ ...block }))); this.dirty.set(false);
-      this.notice.set('Borrador guardado.'); return true;
+      this.noticeState.set({ key: 'teacherComposer.composer.saved' }); return true;
     } catch (error: any) {
-      this.error.set(error?.error?.error || 'No se pudo guardar el borrador.'); return false;
+      this.errorState.set({ key: 'teacherComposer.composer.saveError', error }); return false;
     } finally { this.saving.set(false); }
   }
 
   async publish(): Promise<void> {
     const valid = this.validatePublish();
-    if (valid) { this.error.set(valid); return; }
+    if (valid) { this.errorState.set({ key: valid }); return; }
     if (this.dirty() && !(await this.save())) return;
     const plan = this.plan(); if (!plan) return;
-    this.publishing.set(true); this.error.set('');
+    this.publishing.set(true); this.errorState.set(null);
     this.api.publish(this.story.id, plan.revision).subscribe({
-      next: published => { this.plan.set(published); this.blocks.set(published.blocks); this.dirty.set(false); this.notice.set(`Revisión ${published.revision} publicada.`); this.publishing.set(false); this.storyTextPublished.emit(storyTextFromBlocks(published.blocks)); },
-      error: error => { this.error.set(error?.error?.error || 'No se pudo publicar.'); this.publishing.set(false); }
+      next: published => { this.plan.set(published); this.blocks.set(published.blocks); this.dirty.set(false); this.noticeState.set({ key: 'teacherComposer.composer.published', params: { revision: published.revision } }); this.publishing.set(false); this.storyTextPublished.emit(storyTextFromBlocks(published.blocks)); },
+      error: error => { this.errorState.set({ key: 'teacherComposer.composer.publishError', error }); this.publishing.set(false); }
     });
   }
+  /** Clave I18N de la primera regla de publicación incumplida ('' si el borrador es publicable). */
   private validatePublish(): string {
     const active = this.blocks().filter(block => block.active);
-    if (!this.isPhaseValid()) return 'Las fases deben aparecer en este orden: Antes, Durante, Después y Más adelante.';
-    if (!active.some(block => block.type === 'keyframe' && block.text?.trim())) return 'Añade al menos un keyframe activo con texto.';
-    if (active.filter(block => block.type === 'full_story').length !== 1) return 'Debe haber exactamente un bloque de lectura completa activo.';
+    if (!this.isPhaseValid()) return 'teacherComposer.composer.valPhases';
+    if (!active.some(block => block.type === 'keyframe' && block.text?.trim())) return 'teacherComposer.composer.valKeyframe';
+    if (active.filter(block => block.type === 'full_story').length !== 1) return 'teacherComposer.composer.valFullStory';
     for (const block of active) {
-      if (block.type === 'question' && (!block.questionId || !block.contextBlockKey)) return 'Cada pregunta activa necesita una pregunta y el keyframe que le da contexto.';
-      if (block.type === 'question' && !this.keyframesBefore(block).some(frame => frame.blockKey === block.contextBlockKey)) return 'Cada pregunta debe ir después de su keyframe de contexto activo.';
-      if (block.type === 'expression' && !block.vocabularyId) return 'Selecciona una expresión para cada bloque de expresiones activo.';
-      if (block.type === 'expression' && block.phase === 'later' && !block.revisitStoryId) return 'Elige la historia futura para cada expresión de Más adelante.';
+      if (block.type === 'question' && (!block.questionId || !block.contextBlockKey)) return 'teacherComposer.composer.valQuestion';
+      if (block.type === 'question' && !this.keyframesBefore(block).some(frame => frame.blockKey === block.contextBlockKey)) return 'teacherComposer.composer.valQuestionOrder';
+      if (block.type === 'expression' && !block.vocabularyId) return 'teacherComposer.composer.valExpression';
+      if (block.type === 'expression' && block.phase === 'later' && !block.revisitStoryId) return 'teacherComposer.composer.valRevisit';
     }
     return '';
   }
@@ -383,9 +394,9 @@ export class LessonComposerComponent implements OnInit, OnDestroy {
   exitExample(): void { this.blocks.set(this.blocksBeforeExample); this.blocksBeforeExample = []; this.exampleMode.set(false); this.sideTab.set('story'); }
   close(): void { this.closed.emit(); this.restoreFocus(); }
   private restoreFocus(): void { if (this.returnFocus?.isConnected) this.returnFocus.focus(); }
-  typeLabel(type: LessonBlockType): string { return ({ expression: 'Expresión', keyframe: 'Keyframe', question: 'Pregunta', full_story: 'Lectura y audio completos', flashcards: 'Tarjetas', matching: 'Emparejar', listen_repeat: 'Repetición oral' })[type]; }
-  currentStoryTitle(storyId: number | null | undefined): string { return this.stories().find(story => story.id === storyId)?.title || 'Selecciona una historia'; }
+  typeLabel(type: LessonBlockType): string { return this.i18n.t('teacherComposer.type.' + type); }
+  currentStoryTitle(storyId: number | null | undefined): string { return this.stories().find(story => story.id === storyId)?.title || this.i18n.t('teacherComposer.selectStory'); }
   availableRevisitStories(): Story[] { return this.stories().filter(story => story.id !== this.story.id); }
-  contextText(block: LessonBlock): string { return this.blocks().find(item => item.blockKey === block.contextBlockKey)?.text || 'Keyframe sin texto'; }
+  contextText(block: LessonBlock): string { return this.blocks().find(item => item.blockKey === block.contextBlockKey)?.text || this.i18n.t('teacherComposer.noContext'); }
   toggleDemoMove(event: Event): void { (event.currentTarget as HTMLElement).closest('.move-demo')?.querySelector('.demo-track')?.classList.toggle('demo-moved'); }
 }

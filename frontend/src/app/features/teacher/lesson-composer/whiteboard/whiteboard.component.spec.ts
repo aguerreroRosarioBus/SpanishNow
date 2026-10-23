@@ -1,3 +1,4 @@
+import { I18nService } from '../../../../core/i18n/i18n.service';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { WhiteboardComponent } from './whiteboard.component';
 
@@ -17,6 +18,7 @@ describe('WhiteboardComponent', () => {
 
   function setup(backgroundUrl: string | null = null): void {
     TestBed.configureTestingModule({ imports: [WhiteboardComponent] });
+    TestBed.inject(I18nService).setLocale('es');
     fixture = TestBed.createComponent(WhiteboardComponent);
     component = fixture.componentInstance;
     done = []; cancelled = 0;
