@@ -46,8 +46,10 @@ export class PackageCatalogComponent implements OnInit {
     this.selected.set(t); this.saved.set(false); this.failure.set(null);
     const blank = Object.fromEntries(this.locales.map(l => [l, Object.fromEntries(this.fields.map(k => [k, '']))]));
     this.form.reset();
-    // Sin versión vigente solo se precarga la modalidad individual; nombre, importe y duración los completa el docente.
-    this.form.patchValue(t.current ? { ...t.current, expectations: t.current.expectations ?? blank }
+    // Sin versión vigente se parte de la última guardada, si la hay; si no, solo de la modalidad individual y el docente
+    // completa nombre, importe y duración.
+    const base = t.current ?? t.lastVersion;
+    this.form.patchValue(base ? { ...base, expectations: base.expectations ?? blank }
       : { modality:'individual', groupSize:1, billing:'per_buyer', seatsCovered:1, currency:'USD', expectations: blank });
   }
   save() {

@@ -135,3 +135,18 @@ test('plantilla sin versión vigente (FK SET NULL): el listado la devuelve con c
   expect(repaired.find(x => x.id === completable.id).current.priceAmount).toBe(1700);
   expect(await Template.count({ where: { teacherId: t.id } })).toBe(6);
 });
+
+test('plantilla creada fuera de la API sin currentVersionId (como el helper de pruebas): lastVersion permite completarla y la nueva versión continúa tras la última', async () => {
+  const t = await createUser('teacher', 'catalog-huerfana');
+  const original = (await as(t).post('/api/teacher/class-packages/import-initial')).body[0];
+  await Template.update({ currentVersionId: null }, { where: { id: original.id } });
+  const listed = (await as(t).get('/api/teacher/class-packages')).body.find(x => x.id === original.id);
+  expect(listed.current).toBeNull();
+  expect(listed.lastVersion).toMatchObject({ id: original.current.id, version: 1, templateId: original.id });
+  const done = await as(t).post(`/api/teacher/class-packages/${original.id}/versions`, { ...fields(listed.lastVersion), priceAmount: 1600, version: 0 });
+  expect(done.status).toBe(201);
+  expect(done.body.current).toMatchObject({ version: 2, priceAmount: 1600 });
+  expect(done.body.lastVersion).toBeUndefined();
+  expect(await Version.count({ where: { templateId: original.id } })).toBe(2);
+  expect((await Template.findByPk(original.id)).currentVersionId).toBe(done.body.current.id);
+});

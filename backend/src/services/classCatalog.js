@@ -76,7 +76,11 @@ async function present(row, { versions = false, publicView = false, transaction 
     const { createdById, hotmartProductId, hotmartOfferCode, hotmartCheckoutUrl, ...rest } = v.toJSON();
     return publicView ? rest : v.toJSON();
   };
+  // Plantilla sin versión vigente (current null: creada fuera de la API sin `currentVersionId`, o con la versión borrada a mano):
+  // si quedó alguna versión guardada se devuelve la última para precargar «completar datos».
+  const orphan = current ? null : await Version.findOne({ where: { templateId: row.id }, order: [['version', 'DESC']], transaction });
   return { id: row.id, teacherId: row.teacherId, templateKey: row.templateKey, status: row.status, current: visible(current), policy: currentPolicy ? { version: currentPolicy.version, rules: currentPolicy.rules } : null,
+    ...(orphan ? { lastVersion: visible(orphan) } : {}),
     ...(versions ? { versions: (await Version.findAll({ where: { templateId: row.id }, order: [['version', 'DESC']], transaction })).map(visible) } : {}) };
 }
 async function list(user, requested) {

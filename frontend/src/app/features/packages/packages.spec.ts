@@ -77,6 +77,12 @@ describe('Tanda B: catálogo con plantilla sin versión (current null)',()=>{
     expect(body).toMatchObject({version:0,nameEs:'Una clase',sessionsCount:1,currency:'USD',groupSize:1,billing:'per_buyer'});
     expect('policyVersionId' in body).toBe(false);
   });
+  it('si quedó una versión guardada (plantilla creada por script sin vínculo), «Completar datos» parte de ella y guarda con version 0',()=>{
+    const orphan: PackageTemplate = {...broken,lastVersion:item.current!};
+    const f=TestBed.createComponent(PackageCatalogComponent);f.detectChanges();const c=f.componentInstance;
+    c.edit(orphan);expect(c.form.get('nameEs')!.value).toBe('Cuatro clases');expect(c.form.get('priceAmount')!.value).toBe(9000);expect(c.form.valid).toBe(true);
+    c.save();expect(save.mock.calls[0][1]).toMatchObject({version:0,nameEs:'Cuatro clases',priceAmount:9000,policyVersionId:1});
+  });
   it('no intenta activar ni archivar una plantilla sin versión',()=>{
     const f=TestBed.createComponent(PackageCatalogComponent);f.detectChanges();
     f.componentInstance.status(broken,'active');
