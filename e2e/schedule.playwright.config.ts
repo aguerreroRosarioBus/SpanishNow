@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
-  testDir: './tests', testMatch: '08-schedule.spec.ts', globalSetup: './schedule.setup.ts',
+  testDir: './schedule-tests', testMatch: '08-schedule.spec.ts', globalSetup: './schedule.setup.ts',
   fullyParallel: false, workers: 1, retries: 0, timeout: 90000, expect: { timeout: 15000 },
   reporter: [['list']],
   use: { baseURL: 'http://localhost:4316', locale: 'es-ES', actionTimeout: 15000, trace: 'retain-on-failure', screenshot: 'only-on-failure' },

@@ -1,6 +1,6 @@
 # Contrato técnico W00: clases, chat, paquetes e integraciones
 
-Versión **1.2** · 22/10/2026 · Paquete W00 ([#13](https://github.com/aguerreroRosarioBus/SpanishNow/issues/13)) · Responsable: orquestador de turno.
+Versión **1.6** · 22/10/2026 · Paquete W00 ([#13](https://github.com/aguerreroRosarioBus/SpanishNow/issues/13)) · Responsable: orquestador de turno.
 
 Este documento convierte la [guía](SPEC.md) §13 en un contrato que los paquetes W01–W09 consumen sin renegociar. La guía manda sobre el *qué*; este contrato fija nombres, tablas, estados, invariantes, formatos y rutas. Cambiarlo exige un PR que suba la versión, actualice la tabla de cambios del final y avise en el issue «Orquestación» (#23) a los paquetes afectados.
 
@@ -300,7 +300,7 @@ Dentro del lock: validar versión vigente de la propuesta, permisos, compra acti
 
 - La cuenta de Hotmart es de la escuela. Cada **versión de plantilla** se vincula a un **producto** (`hotmartProductId`) y a una **oferta de Hotmart** (`hotmartOfferCode`, el código del parámetro `off=` del link de pago) cuyo precio en Hotmart es exactamente `priceAmount`/`currency`. La URL base `hotmartCheckoutUrl` valida igual que en cursos (`https://pay.hotmart.com/...`). Un mismo producto puede tener varias ofertas (1 clase, 4 clases, grupos).
 - No se puede enviar una oferta cuya versión de plantilla no tenga vínculo completo: `409 hotmart_mapping_missing`. Una «variante autorizada» con otro precio necesita su propio `hotmartOfferCode`.
-- Editan el vínculo el dueño de la plantilla y quien tenga `class_packages.manage_all`. Un `hotmartProductId` no puede estar a la vez en un curso y en un paquete (validación de servicio en ambos lados: el webhook necesita saber qué es).
+- Editan el vínculo el dueño de la plantilla y quien tenga `class_packages.manage_all`. Un `hotmartProductId` no puede estar a la vez en un curso y en un paquete. Ambos módulos adquieren el mismo cerrojo transaccional por producto (`hotmart_product_locks`) y validan el vínculo inmediatamente antes de escribir; las llamadas externas no mantienen ese lock. El webhook necesita saber qué es.
 
 ### 7.2 Checkout (PACK-12, PACK-15)
 
@@ -335,15 +335,24 @@ El job `offer.expire` (dedupe `offer.expire:<offerId>`, `runAt = expiresAt`) pas
 
 ### 7.5 A verificar en el sandbox de Hotmart (primer paso de W05)
 
-La documentación pública no confirma dónde llega el parámetro de seguimiento en el webhook 2.0.0. W05 debe hacer una compra de prueba en el sandbox con `sck` y `off` y registrar el payload real (sin datos personales) en `backend/tests/fixtures/`. Si `sck` no vuelve, usar `xcod`; si ninguno vuelve, la correlación pasa a ser **producto + `offer.code` + email del comprador + única orden `pending` de ese comprador para ese código**, y cualquier ambigüedad cae en `paid_needs_review`. El contrato de tablas no cambia en ningún caso.
+La [documentación oficial del webhook 2.0.0](https://developers.hotmart.com/docs/en/2.0.0/webhook/purchase-webhook/) enumera `purchase.origin.sck`, `purchase.origin.xcod` y `purchase.offer.code` (verificada el 22/10/2026). Aun falta una compra de prueba autorizada en sandbox con `sck`/`off` y guardar el payload real saneado en `backend/tests/fixtures/`; la fixture actual es explícitamente sintética. Si `sck` no vuelve, usar `xcod`; si ninguno vuelve, la correlación pasa a ser **producto + `offer.code` + email del comprador + única orden `pending` de ese comprador para ese código**, y cualquier ambigüedad cae en `paid_needs_review`. El contrato de tablas no cambia en ningún caso.
 
 ### 7.6 Modo fake (CONTRACT-05)
 
 Con `PAYMENTS_FAKE=1` (prohibido en producción por `config/payments.js`) el checkout devuelve una URL interna del frontend que llama a `POST /api/class-offers/:id/checkout/fake-complete`; esa ruta arma un cuerpo con la forma del webhook de Hotmart y lo pasa por **el mismo** manejador del 7.3. Así las pruebas recorren la conciliación real sin proveedor.
 
-### 7.7 Reembolsos iniciados por la escuela (PACK-08)
+### 7.7 Reembolsos iniciados por la escuela (PACK-08, P01 resuelta)
 
-Primero se registra la solicitud (`audit_logs` + outbox), después se ejecuta en Hotmart y solo el webhook de reembolso mueve saldo y estado (§7.3-5). Ver decisión pendiente **P01**: Hotmart reembolsa la transacción completa, y la regla de §4 pide prorratear.
+**Decisión comercial de 22/10/2026 por delegación expresa de Andrés al orquestador:** garantía inicial de paquetes de 15 días (`360` horas bajo la semántica temporal actual), con plazo configurado/contractual/legal más favorable. Antes de habilitar ventas reales hay que verificar cuenta/formato/producto/oferta y garantía compatible en Hotmart; un plazo interno calculado nunca se presenta como garantía del proveedor comprobada. El formato Servicio Online tiene restricciones: no presumir elegibilidad ni disfrazar un producto.
+
+- Voluntario estándar: devolución total sin créditos consumidos, solicitada en el plazo aplicable. Resolver reservas futuras de forma explícita; una reserva no equivale a consumo.
+- Uso previo, fuera de plazo o excepción: revisión individual según condiciones de compra, Hotmart y derechos aplicables; sin aprobación o rechazo automáticos por uso. No hay prorrateo automático inicial por elección comercial, no por incapacidad técnica afirmada de Hotmart.
+- Servicio no prestable por escuela/docente o grupo incompleto: soluciones/devoluciones y revisión humana auditada incluso fuera de garantía; no imponer otra fecha, vale o extensión sin aceptación.
+- Primero solicitud y confirmación interna auditadas; después trámite manual en Hotmart si falta capacidad de automatización validada. Solo un resultado verificable mueve saldo/estado. El ejecutor automatizado disponible en esta entrega es fake local.
+- Reembolso real posterior al uso: §7.3-5; cancelar compra, retirar disponibles, conservar consumo y revisar reservas. No nace deuda, recobro ni cargo adicional.
+- Nueva configuración versionada y nuevos snapshots; ninguna regla inmutable ni compra anterior se reinterpreta. Cursos digitales intactos. El `refundWindowHours=336` histórico no se transforma en 360 en registros ya guardados ni se trata como garantía Hotmart verificada.
+
+Fuentes verificadas el 22/10/2026: [garantías 7/15/21/30 y restricciones por formato](https://suportehotmart.zendesk.com/hc/en-us/articles/360034552751-How-to-adjust-the-guarantee-period-for-a-product-I-created), [Compra §3](https://hotmart.com/es/legal/plazo-de-compra), [Uso §5.11](https://hotmart.com/es/legal/terminos-de-uso). El [webhook](https://developers.hotmart.com/docs/en/2.0.0/webhook/purchase-webhook/) lista `PARTIALLY_REFUNDED`; no prueba que nuestra cuenta pueda iniciarlo. La decisión comercial está resuelta; las comprobaciones de integración no habilitan ventas por sí mismas.
 
 ---
 
@@ -397,6 +406,8 @@ Todas bajo autenticación salvo las marcadas *pública*/*callback*. Las rutas qu
 | `GET /api/admin/chat/reports/:conversationId/messages?beforeSeq=&limit=` | `chat.moderate`; solo conversaciones reportadas; cada lectura en `audit_logs` (`chat.report_read`) — *agregada en 1.1* |
 | `POST /api/admin/messages/:id/hide` | `chat.moderate`; `{ reason }`; solo mensajes de conversaciones reportadas |
 
+Metadata aditiva W05 (1.4): `canSendOffers` indica si el participante docente tiene la función de ofertas habilitada; no sustituye la autorización de la mutación. El catálogo agrega `policy: { version, rules }` para la vista previa.
+
 Notas de W04 (1.1): el contexto (`{ type: course|package|session, id }`) viaja en cada mensaje y debe pertenecer a la pareja; el de la conversación es el del último mensaje que lo tiene. Una sesión «ingresar como» (impersonación) recibe `403 forbidden` con `params.reason = impersonation` en todo `/api/conversations*`. W05/W06 crean `offer`/`session_proposal`/`system_event` con `chatService.appendSystemMessage(conversationId, { type, eventCode, eventParams, offerId, classSessionId, proposalVersion, dedupeKey }, { transaction })`, idempotente por `dedupeKey` y sin pasar por bloqueos ni límites.
 
 ### 9.3 Catálogo y configuración docente — W05 (W02 agrega `expectations`)
@@ -406,9 +417,10 @@ Notas de W04 (1.1): el contexto (`{ type: course|package|session, id }`) viaja e
 | `GET` / `PATCH /api/teacher/class-settings` | Pausa de ventas, consultas, buffer |
 | `GET /api/teacher/class-packages` | Plantillas propias (`?teacherId=` con `class_packages.manage_all`) |
 | `POST /api/teacher/class-packages` | Crear plantilla + versión 1 (`draft`) |
+| `POST /api/teacher/class-packages/import-initial` | Importar explícitamente las seis variantes como borradores; idempotente, no pisa las existentes; `?teacherId=` solo con capacidad global |
 | `GET /api/teacher/class-packages/:id` | Plantilla con versiones |
 | `POST /api/teacher/class-packages/:id/versions` | Nueva versión (= editar); `{ version }` actual para `409 version_conflict` |
-| `PATCH /api/teacher/class-packages/:id/status` | `{ status }` `active/paused/archived`; activar exige vínculo Hotmart |
+| `PATCH /api/teacher/class-packages/:id/status` | `{ status, version }` `active/paused/archived`; compara la versión comercial vista bajo lock (`409 version_conflict`); activar exige vínculo Hotmart |
 | `GET /api/public/teachers/:id/class-packages` | *Pública*: catálogo activo con instantánea vigente |
 | `GET /api/admin/class-teachers`, `PATCH /api/admin/class-teachers/:userId` | `class_teachers.manage`: activar docentes |
 | `GET` / `POST /api/admin/class-policies` | `class_packages.manage_all`: versiones de política |
@@ -419,6 +431,7 @@ Notas de W04 (1.1): el contexto (`{ type: course|package|session, id }`) viaja e
 | --- | --- |
 | `POST /api/teacher/class-cohorts` | Crear cohorte (`groupSize`, `tentativeStartsAt`, invitados) |
 | `GET /api/teacher/class-cohorts/:id` | Estado, miembros, `formingDeadlineAt` |
+| `GET /api/class-cohorts/:id` | Invitación propia autenticada; no revela identidades o pagos de otros miembros |
 | `POST /api/class-cohorts/:id/invitation/accept` · `/decline` | El invitado responde |
 
 ### 9.5 Ofertas y checkout — W05
@@ -443,24 +456,43 @@ Notas de W04 (1.1): el contexto (`{ type: course|package|session, id }`) viaja e
 | --- | --- |
 | `GET /api/me/class-packages` | Compras propias (comprador o beneficiario) con saldo por cubeta |
 | `GET /api/me/class-packages/:id` | Detalle, ledger y reglas compradas |
-| `POST /api/me/class-packages/:id/pause` · `/resume` · `/cancel` | `409 package_not_active`, `409 sessions_pending_resolution` (PACK-07) |
+| `POST /api/me/class-packages/:id/pause` · `/resume` · `/cancel` | `{ version, reason? }` (motivo obligatorio al cancelar); `409 package_not_active`, `409 sessions_pending_resolution` (PACK-07) |
 | `POST /api/me/class-packages/:id/refund-requests` | Solicitud con desglose (PACK-08) |
 | `GET /api/teacher/class-purchases?studentId=` | Compras de sus alumnos (para proponer) |
-| `POST /api/admin/class-purchases/:id/adjustments` | `class_credits.adjust`; `{ units, direction, reason }` |
+| `POST /api/admin/class-purchases/:id/adjustments` | `class_credits.adjust`; `Idempotency-Key`, `{ units, direction: add/remove/restore, reason, version? }`; no cambia `credits.apply` |
 
 ### 9.7 Agenda — W06
 
 | Método y ruta | Uso |
 | --- | --- |
-| `GET /api/class-sessions?from=&to=&role=` | Sesiones propias (docente o participante) |
+| `GET /api/class-sessions?from=&to=` | Sesiones propias (docente o participante); límites UTC explícitos, ventana máxima 366 días, hasta 200 resultados y `truncated` |
+| `GET /api/class-sessions/options?conversationId=` | Solo docente: alumnos de sus conversaciones/cohortes aceptadas, compras compatibles, cohortes y pizarras propias sin curso; no datos de pago |
+| `GET /api/class-sessions/reminders` | Recibos durables propios de recordatorios vigentes dentro de la app |
 | `POST /api/class-sessions` | Docente propone (`Idempotency-Key`): participantes, compras, intención local §1.3 |
 | `GET /api/class-sessions/:id` | Detalle con propuesta vigente y estado de sync por proveedor |
 | `POST /api/class-sessions/:id/proposals` | Reprogramar: nueva propuesta (`version`) |
 | `POST /api/class-sessions/:id/proposals/:version/accept` · `/decline` | Alumno; `409 proposal_stale`, `409 schedule_conflict`, `409 insufficient_credit` |
 | `POST /api/class-sessions/:id/cancel` | `{ version, reason }`; respuesta incluye `charge: 'none' \| 'consumed'` |
 | `POST /api/class-sessions/:id/attendance` | Docente marca asistencia por participante |
+| `POST /api/class-sessions/:id/requestExtension` | Participante afectado solicita y acepta una extensión concreta; `{ version, purchaseId, unavailableMinutes, reason }` |
+| `POST /api/class-sessions/:id/adjustment` | Docente dueño con `class_credits.adjust`; `{ version, purchaseId, kind: waive_charge/extend_validity, reason, unavailableMinutes? }`; corrección excepcional auditada |
 | `GET /api/class-sessions/:id/join` | Participante: `joinUrl`; docente: `hostUrl` pedido al proveedor al momento (nunca se guarda) |
 | `POST /api/class-sessions/:id/sync/retry` | Docente o `class_sessions.support` |
+
+Precisiones implementadas por W06 (1.6), sin migraciones ni cambios a §6:
+
+- Crear: `{ intent: { localStart, timeZone, offset, disambiguation?, minutes }, participants: [{ userId, purchaseId|null }], cohortId?, liveClassId?, leadTimeException?, reason? }`. El servidor recalcula UTC con §1.3; rechaza UTC u otros campos dentro de `intent`. La excepción a anticipación exige motivo y no elimina el límite de respuesta. `Idempotency-Key` repite el recurso si el cuerpo coincide y devuelve `409 operation_key_conflict` si difiere. `liveClassId` solo vincula una pizarra propia sin curso; nunca crea inscripción ni consume saldo al ingresar.
+- Propuestas siguientes: `{ version, intent, leadTimeException?, reason?, requestedByStudentId?, chargeWaivedReason? }`. Se pueden editar propuestas iniciales o reprogramar confirmadas. Cada propuesta incrementa la revisión; **una revisión pendiente no modifica los instantes confirmados ni mueve saldo**. El alumno responde a la versión exacta vista; aceptación de todos antes de reservar/confirmar. La baja de una plaza no la reincorpora a una reprogramación.
+- Cancelar exige motivo y versión. Alumno cancela su plaza; en grupo de dos afecta la compra compartida. Docente puede cancelar por sí mismo, registrar `requestedByStudentId` o dispensar con `chargeWaivedReason`. Cancelación tardía no dispensada exige `acknowledgeCharge:true`. Al aceptar reprogramación tardía se exige ese reconocimiento, se consume la original y se crea/reserva otra sesión atómicamente; el detalle enlaza `replacementSessionId`. Rechazo/expiración conserva original y crédito.
+- Grupo de tres con baja exige decisión docente: cancelar y liberar las reservas restantes, o `cancel { version, reason, keepGroup:true }` para dictar con menos personas al precio comprado. Sin recargo ni edición de beneficiarios históricos. Para reemplazar a alguien, resolver la sesión anterior y usar una cohorte/invitación/compra nueva según W05; no se sustituye una identidad dentro de una compra existente. Grupo incompleto conserva cohorte/compras; nueva fecha requiere aceptación, y las devoluciones se tramitan por W05 conforme GROUP-04/P01.
+- El plazo inicial de formación se aplica a la primera propuesta de una cohorte `forming`, no a sus clases sucesivas una vez `ready`. Una propuesta grupal `expired/declined` puede renovarse con motivo y compras completas: nuevo plazo de respuesta, nuevas aceptaciones y sin reservas hasta confirmación. No reabre ofertas/checkouts ni modifica `formingDeadlineAt`; un grupo que sigue sin compras completas requiere la resolución/devolución de W05.
+- Asistencia: `{ version, userId, attendance: attended/student_no_show/teacher_no_show/excused, reason }`. Impartida tras el final; ausencias tras tolerancia comprada. Se liquida por compra cuando todas sus plazas están resueltas. Corrección de un registro ya liquidado exige `class_credits.adjust`, motivo y auditoría; devolver un consumo usa `adjust consumed→available`, sin borrar ledger. Una corrección que introduciría un nuevo cargo devuelve `409 attendance_charge_review_required`, para revisión explícita, sin débito retroactivo automático.
+- Dispensa posterior `waive_charge`: solo un cargo real de esa sesión/compra, una devolución única y motivo. Vigencia `extend_validity`: solo por cancelación/ausencia docente de esa compra y con saldo utilizable; agrega minutos reales declarados de indisponibilidad al vencimiento guardado, sin tocar snapshot. Exige solicitud/aceptación de **cada beneficiario afectado por exactamente esa duración**; no impone extensión en lugar de devolución (P01). La capacidad excepcional no concede acceso al chat de un docente ajeno. Los recibos de extensión son auditados y una sesión/compra no se compensa dos veces.
+- Detalle muestra participantes, intención e instantes originales/propuestos, reglas compradas, `serverNow`, estado seguro de sync y saldos/vigencia **solo propios o del docente dueño**. `timeZoneRulesChanged` informa discrepancias con tzdb sin mover clases; confirmar recalcula la intención pendiente. El código de pizarra solo llega al participante confirmado y activo.
+- Locks: configuración docente → sesión → alumnos por ID → compras por ID; aislamiento READ COMMITTED y hasta tres intentos por deadlock/lock timeout. Las confirmaciones comprueban conflictos, compra, créditos y versión dentro de esa transacción. Los holds caducados no bloquean aunque el worker vaya atrasado.
+- `proposal.expire` y `reminder.session` usan outbox W00. Al cambiar revisión se invalidan recordatorios anteriores; conservar el horario original reencola sus avisos. Los recibos de recordatorio se guardan en `audit_logs` con actor destinatario y clave única lógica bajo lock del agregado; `/reminders` filtra versión/estado vigente. No son emails ni notificaciones externas.
+- W06 deja refs Calendar/Zoom en `needs_attention` sin conexión; encola `calendar.sync`/`zoom.sync` solo con flag y conexión. Adaptadores, free/busy y handlers son W07/W08: una conexión Google existente exige disponibilidad externa y bloquea confirmación con `503 provider_unavailable` hasta integrar W07; nunca confirma a ciegas. El enlace host devuelve 503 hasta W08, sin guardar ni exponer secretos. El participante solo recibe HTTPS `zoom.us` validado de una ref lista/manual. Un reintento sin conexión da `409 integration_not_connected`.
+- `FEATURE_CLASS_SCHEDULING=0` detiene propuestas/respuestas nuevas; lectura, cancelación, asistencia y correcciones de compromisos siguen disponibles. No autoriza cuentas suspendidas ni impersonación; todas las rutas bloquean «ingresar como».
 
 ### 9.8 Integraciones — W07 / W08
 
@@ -571,9 +603,9 @@ Ninguna capacidad da lectura general de mensajes privados ni el `start_url` de Z
 
 ## 15. Decisiones pendientes detectadas en W00
 
-Registradas en [COORDINACION.md](COORDINACION.md#decisiones). Ninguna bloquea el esquema; sí la implementación de reembolsos en W05.
+Registradas en [COORDINACION.md](COORDINACION.md#decisiones). P01 comercial fue resuelta; la comprobación de integración sigue siendo necesaria antes de habilitar ventas reales. No bloquea el esquema ni la implementación fake.
 
-- **P01 — Reembolso parcial con Hotmart.** §4 propone reembolsar la parte no usada prorrateada dentro de 14 días, pero Hotmart reembolsa la transacción completa y además el comprador puede pedir reembolso total dentro de la garantía del producto (mínimo 7 días). Falta decidir: cómo se devuelve una parte (fuera de Hotmart, registrada a mano; o solo reembolsos totales antes de usar clases) y qué pasa si el alumno pide el reembolso total en Hotmart después de usar clases.
+- **P01 — Resuelta por delegación expresa de Andrés (22/10/2026).** Garantía inicial 15 días y voluntario total sin consumo en plazo; demás casos a revisión individual, condiciones más favorables y excepciones preservadas. Sin prorrateo automático, deuda ni recobro. Implementar por nuevas versiones/snapshots; comprobar cuenta/formato/garantía/trámite antes de habilitar Hotmart real (§7.7).
 
 ---
 
@@ -581,6 +613,11 @@ Registradas en [COORDINACION.md](COORDINACION.md#decisiones). Ninguna bloquea el
 
 | Versión | Fecha | Cambio |
 | --- | --- | --- |
+| 1.6 | 22/10/2026 | W06: precisa §9.7 (intención, revisiones, grupos, asistencia, correcciones/compensación aceptada, recordatorios y límites W07/W08). Conserva 1.3–1.5 de W05 y P01; sin esquema ni API de saldo nuevos. |
+| 1.5 | 22/10/2026 | W05: checkout fake, conciliación/saldo/pausa; mutaciones de compra con versión y ajustes idempotentes. P01 comercial resuelta por delegación de Andrés: nuevas condiciones de 15 días y revisión individual; integración efectiva previa a ventas reales, sin cambios de ledger W06. |
+| 1.4 | 22/10/2026 | W05 (Codex): lectura propia de invitaciones, metadata de ofertas/política. Sin esquema ni cambios de saldo. |
+| 1.3.1 | 22/10/2026 | Correcciones de revisión W05: activación exige versión comercial vista; exclusividad Hotmart serializada entre curso y paquete. Sin cambios de saldo. |
+| 1.3 | 22/10/2026 | W05 (Codex): agrega importación explícita de catálogo en §9.3; sin cambio de esquema ni contrato de saldo. |
 | 1.0 | 22/10/2026 | Primera versión (W00, Claude). |
 | 1.2 | 22/10/2026 | W04 (Claude): `users.chatUnreadEmail BOOLEAN NOT NULL DEFAULT true` (migración `20261109000000-add-chat-unread-email-preference.js`) expuesto como `chatUnreadEmail` en §9.1 (CHAT-09). |
 | 1.1 | 22/10/2026 | W04 (Claude): §9.2 agrega `GET /api/conversations/unread` y la lectura auditada de conversaciones reportadas para `chat.moderate`; precisa respuestas, contexto, impersonación y `appendSystemMessage`. Sin cambios de esquema. |

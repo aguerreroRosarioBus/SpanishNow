@@ -1,4 +1,5 @@
 import { expect, test, Page } from '@playwright/test';
+// Suite aislada: no se descubre con el runner TPRS que usa otra base/puerto.
 import { login } from '../helpers/auth';
 import { balances, scheduleFixture } from '../helpers/schedule';
 

@@ -288,6 +288,12 @@ test('la API exige reconocimiento de cargo tardío antes de consumir crédito', 
   const c = await chain(); const s = await confirmed(c); const now = new Date(time.addElapsed(s.startsAt.toISOString(), { hours: -1 }));
   await expect(sessions.cancel(c.students[0], s.id, { version: s.version, reason: 'Cancelar tarde' }, { now })).rejects.toMatchObject({ code: 'validation_failed' });
   expect(await credits.balance(c.purchases[0].id)).toMatchObject({ reserved: 1, consumed: 0 });
+  const unconfirmed = await chain();
+  const near = new Date(time.addElapsed(time.resolveLocalIntent(unconfirmed.body.intent).startsAt, { hours: -10 }));
+  const proposed = await sessions.create(unconfirmed.teacher, { ...unconfirmed.body, leadTimeException: true, reason: 'Horario cercano acordado' }, uuid(), { now: near });
+  const cancelled = await sessions.cancel(unconfirmed.students[0], proposed.session.id, { version: 1, reason: 'Nunca acepté la propuesta' }, { now: near });
+  expect(cancelled.charge).toBe('none');
+  expect(await credits.balance(unconfirmed.purchases[0].id)).toMatchObject({ reserved: 0, consumed: 0, available: 4 });
 });
 
 test('PACK-20: corregir asistencia exige capacidad, devuelve un consumo y conserva auditoría', async () => {

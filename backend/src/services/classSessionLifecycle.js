@@ -197,7 +197,7 @@ module.exports = core => {
       const waived = body.chargeWaivedReason ? reason(body.chargeWaivedReason) : null;
       if (body.requestedByStudentId && (!isTeacher || !seats.some(s => s.userId === body.requestedByStudentId))) invalid(['requestedByStudentId']);
       const requestedByStudent = !isTeacher || Boolean(body.requestedByStudentId);
-      const late = requestedByStudent && !time.isAtLeastHoursBefore(session.startsAt.toISOString(), now.toISOString(), rules.freeCancelHours);
+      const late = session.status === 'confirmed' && requestedByStudent && !time.isAtLeastHoursBefore(session.startsAt.toISOString(), now.toISOString(), rules.freeCancelHours);
       if (late && !waived && body.acknowledgeCharge !== true) invalid(['acknowledgeCharge']);
       const group3 = session.kind === 'group' && seats.length === 3;
       const requestedSeat = body.requestedByStudentId ? seats.find(s => s.userId === body.requestedByStudentId) : me;
