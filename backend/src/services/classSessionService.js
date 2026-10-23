@@ -329,18 +329,45 @@ async function join(user, sessionId) {
   return { joinUrl: url.href, manual: Boolean(ref.manualJoinUrl) };
 }
 
+// W07 (CAL-05): archivo ICS de la versión vigente para el docente y los participantes activos; sin conectar cuenta.
+async function ics(user, sessionId) {
+  const { session, seats } = await load(user, sessionId);
+  // Quien ya tenía la clase en su calendario puede bajar la versión cancelada; si se bajó solo de un grupo, no recibe el evento.
+  if (session.teacherId !== user.id && !seats.some(s => s.userId === user.id && (s.status !== 'cancelled' || session.status === 'cancelled'))) fail('not_found', {}, 404);
+  if (!session.confirmedAt || !['confirmed', 'cancelled', 'completed'].includes(session.status)) fail('not_found', {}, 404);
+  const ref = await M.ExternalSyncRef.findOne({ where: { sessionId: session.id, provider: 'zoom' } });
+  let zoomJoinUrl = null;
+  try {
+    const url = new URL(ref?.manualJoinUrl || (ref?.status === 'ready' ? ref.joinUrl : '') || '');
+    if (url.protocol === 'https:' && (url.hostname === 'zoom.us' || url.hostname.endsWith('.zoom.us'))) zoomJoinUrl = url.href;
+  } catch { /* sin enlace de participante listo */ }
+  const frontend = (process.env.FRONTEND_URL || 'http://localhost:4200').replace(/\/$/, '');
+  const body = require('./calendarIcs').buildIcs({ session, locale: user.locale, host: new URL(frontend).hostname, url: `${frontend}/schedule`, zoomJoinUrl });
+  return { id: session.id, body };
+}
+
 async function retrySync(user, sessionId) {
   const { hasPermission } = require('../config/permissions');
   const support = hasPermission(user, 'class_sessions.support');
   return locked(support ? null : user, sessionId, async ({ session, transaction }) => {
     if (user.id !== session.teacherId && !support) fail('forbidden', {}, 403);
-    const refs = await M.ExternalSyncRef.findAll({ where: { sessionId: session.id }, transaction });
+    const all = await M.ExternalSyncRef.findAll({ where: { sessionId: session.id }, transaction });
+    // Se reintentan los proveedores conectados; fallar solo si ninguno lo está (Zoom sin conectar no frena a Calendar).
+    const refs = [];
+    for (const ref of all) {
+      if (await M.ExternalConnection.count({ where: { userId: session.teacherId, provider: ref.provider, status: 'connected' }, transaction })) refs.push(ref);
+    }
     if (!refs.length) fail('integration_not_connected');
     for (const ref of refs) {
-      if (!await M.ExternalConnection.count({ where: { userId: session.teacherId, provider: ref.provider, status: 'connected' }, transaction })) fail('integration_not_connected');
       const topic = ref.provider === 'zoom' ? 'zoom.sync' : 'calendar.sync';
       await M.OutboxJob.update({ status: 'pending', attempts: 0, runAt: new Date(), lastError: null }, {
         where: { aggregateType: 'class_sessions', aggregateId: session.id, aggregateVersion: session.version, topic, status: 'failed' }, transaction });
+      // W07: una divergencia o un fallo de Calendar se resuelve desde la app con un reintento que fuerza el estado vigente.
+      if (ref.provider === 'google_calendar' && ref.status === 'needs_attention' && session.status === 'confirmed') {
+        await ref.update({ status: 'pending', lastError: null, attempts: 0 }, { transaction });
+        await outbox.enqueue({ topic, aggregateType: 'class_sessions', aggregateId: session.id, aggregateVersion: session.version,
+          dedupeKey: `calendar.sync:${session.id}:v${session.version}:retry:${Date.now()}`, payload: { force: true } }, { transaction });
+      }
     }
     await audit(session, user.id, 'sync_retry', { version: session.version }, transaction);
     return user.id === session.teacherId ? detail(user, session.id, transaction) : { id: session.id, sync: refs.map(r => ({ provider: r.provider, status: r.status, syncedVersion: r.syncedVersion })) };
@@ -363,6 +390,6 @@ outbox.register('proposal.expire', async job => {
   if (await M.ClassSession.count({ where: { id: job.aggregateId } })) await expire(job.aggregateId, job.aggregateVersion);
 });
 
-module.exports = { create, detail, list, options, remindersFeed, join, retrySync, expire, ScheduleError,
+module.exports = { create, detail, list, options, remindersFeed, join, ics, retrySync, expire, ScheduleError,
   _internal: { fail, invalid, id, tx, locked, teacherOnly, version, zoneConfirmed, purchasesFor, conflicts, proposal, notify, audit, scheduleOf, normalizeRequest, active } };
 Object.assign(module.exports, require('./classSessionLifecycle')(module.exports));

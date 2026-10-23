@@ -89,6 +89,7 @@ app.use('/api/tooltips', require('./routes/tooltip.routes'));
 const chatRoutes = require('./routes/conversation.routes'); // W04: private chat (CONTRATO.md §9.2)
 app.use('/api/conversations', chatRoutes.conversations);
 app.use('/api/class-sessions', require('./routes/classSession.routes'));
+app.use('/api/integrations/google-calendar', require('./routes/googleCalendar.routes')); // W07
 app.use('/api/teachers', chatRoutes.teachers);
 app.use('/api/admin', chatRoutes.moderation);
 

@@ -14,6 +14,10 @@ router.post('/', requireFeature('class_scheduling'), handle(async (req, res) => 
   res.status(result.created ? 201 : 200).json(result.session);
 }));
 router.get('/:id', handle(async (req, res) => res.json(await sessions.detail(req.user, req.params.id))));
+router.get('/:id/calendar.ics', handle(async (req, res) => { // W07: ICS para quien no conecta Google
+  const ics = await sessions.ics(req.user, req.params.id);
+  res.set('Content-Disposition', `attachment; filename="clase-${ics.id}.ics"`).type('text/calendar; charset=utf-8').send(ics.body);
+}));
 router.get('/:id/join', handle(async (req, res) => res.json(await sessions.join(req.user, req.params.id))));
 router.post('/:id/sync/retry', handle(async (req, res) => res.json(await sessions.retrySync(req.user, req.params.id))));
 router.post('/:id/proposals', requireFeature('class_scheduling'), handle(async (req, res) => res.json(await sessions.reschedule(req.user, req.params.id, req.body))));

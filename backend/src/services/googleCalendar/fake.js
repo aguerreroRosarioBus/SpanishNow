@@ -21,7 +21,11 @@ async function enter(op, { auth } = {}) {
   store.calls[op] = (store.calls[op] || 0) + 1;
   if (store.delayMs) await new Promise(resolve => setTimeout(resolve, store.delayMs));
   const i = store.failures.findIndex(f => f.op === op);
-  if (i >= 0) { const [f] = store.failures.splice(i, 1); throw f.error; }
+  if (i >= 0) {
+    const [f] = store.failures.splice(i, 1);
+    if (!f.after) throw f.error;
+    return () => { throw f.error; };
+  }
   if (auth !== undefined) {
     if (store.revoked) throw err(401, 'authorization_revoked', { needsAttention: true });
     if (!store.validTokens.has(auth)) throw err(401, 'authorization_revoked', { needsAttention: true });
@@ -36,6 +40,8 @@ module.exports = {
   // ---- ganchos de prueba
   reset,
   failNext: (op, error) => store.failures.push({ op, error }),
+  /** El efecto SÍ ocurre en «Google» pero la respuesta se pierde (timeout): el caso que no debe duplicar. */
+  loseResponseNext: (op, error) => store.failures.push({ op, error, after: true }),
   setBusy: (calendarId, intervals) => { store.busy[calendarId] = intervals; },
   setDelay: ms => { store.delayMs = ms; },
   revokeAuthorization: (value = true) => { store.revoked = value; },
@@ -76,20 +82,25 @@ module.exports = {
     return clone(store.events.get(keyOf(calendarId, id)) || null);
   },
   async insertEvent(token, calendarId, event) {
-    await enter('insertEvent', { auth: token });
+    const lost = await enter('insertEvent', { auth: token });
     if (store.events.has(keyOf(calendarId, event.id))) throw err(409, 'event_exists');
-    return clone(touch(calendarId, { ...structuredClone(event), cancelled: false }));
+    const created = clone(touch(calendarId, { ...structuredClone(event), cancelled: false }));
+    if (lost) lost();
+    return created;
   },
   async patchEvent(token, calendarId, id, event) {
-    await enter('patchEvent', { auth: token });
+    const lost = await enter('patchEvent', { auth: token });
     const current = store.events.get(keyOf(calendarId, id));
     if (!current) throw err(404, 'event_gone');
-    return clone(touch(calendarId, Object.assign(current, structuredClone(event), { id, cancelled: false })));
+    const patched = clone(touch(calendarId, Object.assign(current, structuredClone(event), { id, cancelled: false })));
+    if (lost) lost();
+    return patched;
   },
   async deleteEvent(token, calendarId, id) {
-    await enter('deleteEvent', { auth: token });
+    const lost = await enter('deleteEvent', { auth: token });
     const current = store.events.get(keyOf(calendarId, id));
     if (current && !current.cancelled) touch(calendarId, Object.assign(current, { cancelled: true }));
+    if (lost) lost();
   },
   async listChanges(token, calendarId, syncToken) {
     await enter('listChanges', { auth: token });
