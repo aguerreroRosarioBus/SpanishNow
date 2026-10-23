@@ -20,13 +20,15 @@
     "db:rebuild": "bash scripts/db-rebuild.sh",
     "db:seed": "node src/utils/seedData.js",
     "db:migrate:tprs:test": "node src/utils/migrateLessonPlansTest.js",
-    "test": "jest --runInBand"
+    "test": "jest --runInBand",
+    "test:time": "jest --config jest.time.config.js --runInBand"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@js-temporal/polyfill": "0.5.1",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.8.0",
     "cors": "^2.8.5",

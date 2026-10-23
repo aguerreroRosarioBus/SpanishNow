@@ -79,6 +79,8 @@ export class SidebarNavComponent {
 
   /** Ítem del chat (W04), al final del primer grupo. */
   private withChat(groups: NavGroup[]): NavGroup[] {
+    // El acceso de lectura permanece disponible al apagar nuevas propuestas.
+    if (groups.length) groups = [{ ...groups[0], items: [...groups[0].items, { label: 'schedule.nav', icon: 'rectangle', link: '/schedule' }] }, ...groups.slice(1)];
     if (!this.features.enabled('chat') || !groups.length) return groups;
     const chat: NavItem = { label: 'chat.nav', icon: 'message-square', link: '/messages', badge: 'chat' };
     return [{ ...groups[0], items: [...groups[0].items, chat] }, ...groups.slice(1)];

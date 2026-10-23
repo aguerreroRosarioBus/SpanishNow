@@ -1,0 +1,58 @@
+<div class="page-container schedule-page">
+  <h1>{{ 'schedule.title' | t }}</h1>
+  <section class="zone-box">
+    <p>{{ 'schedule.zoneHint' | t }}</p>
+    @if (deviceZone && deviceZone !== preferences.preferences()?.timeZone) { <p class="small">{{ 'schedule.deviceZone' | t:{ zone: deviceZone } }}</p> }
+    <label for="scheduleZone">{{ 'schedule.zone' | t }}</label>
+    <div class="d-flex gap-2 flex-wrap"><input id="scheduleZone" class="form-control w-auto" [ngModel]="zoneInput()" (ngModelChange)="zoneInput.set($event)" maxlength="64" />
+      <button type="button" class="btn btn-secondary btn-sm" (click)="confirmZone()" [disabled]="preferences.saving()">{{ 'schedule.confirmZone' | t }}</button></div>
+    @if (preferences.errorMessage()) { <p class="text-danger" role="alert">{{ preferences.errorMessage() }}</p><button class="btn btn-ghost btn-sm" (click)="preferences.retry()">{{ 'schedule.retry' | t }}</button> }
+  </section>
+  @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }} <button class="btn btn-ghost btn-sm" (click)="reload()">{{ 'schedule.retry' | t }}</button></div> }
+  @if (teacher() && features.enabled('class_scheduling')) {
+    <form class="schedule-form" (ngSubmit)="submit()" data-testid="schedule-form">
+      <h2>{{ (editing() ? 'schedule.reschedule' : 'schedule.new') | t }}</h2>
+      @if (options(); as opts) {
+        @if (!editing()) {
+          <label>{{ 'schedule.group' | t }}<select class="form-select" name="cohort" [ngModel]="cohortId()" (ngModelChange)="selectCohort(+$event)"><option [ngValue]="0">{{ 'schedule.individual' | t }}</option>@for (g of opts.cohorts; track g.id) { <option [ngValue]="g.id">{{ 'schedule.group' | t }} · {{ g.groupSize }} · {{ cohortNames(g.memberIds) }}</option> }</select></label>
+          @if (!cohortId()) {
+            <label>{{ 'schedule.student' | t }}<select class="form-select" name="student" [ngModel]="studentId()" (ngModelChange)="studentId.set(+$event); purchaseId.set(0)"><option [ngValue]="0">{{ 'schedule.choose' | t }}</option>@for (s of opts.students; track s.id) { <option [ngValue]="s.id">{{ s.name }}</option> }</select></label>
+            <label>{{ 'schedule.purchase' | t }}<select class="form-select" name="purchase" [ngModel]="purchaseId()" (ngModelChange)="selectPurchase(+$event)"><option [ngValue]="0">{{ 'schedule.choose' | t }}</option>@for (p of purchasesForStudent(); track p.id) { <option [ngValue]="p.id" [disabled]="p.status !== 'active'">{{ p.minutesPerSession }} min · {{ 'schedule.available' | t:{ count: p.available } }} · {{ ('schedule.status.' + p.status) | t }}</option> }</select></label>
+          } @else if (selectedCohort(); as g) {
+            <p>{{ 'schedule.expires' | t }}: {{ i18n.formatInstant(g.formingDeadlineAt, zone()) }}</p>
+          }
+        }
+      }
+      <div class="fields">
+        <label>{{ 'schedule.localStart' | t }}<input type="datetime-local" class="form-control" name="localStart" [ngModel]="draft().localStart" (ngModelChange)="patch({ localStart: $event })" required /></label>
+        <label>{{ 'schedule.programmingZone' | t }}<input class="form-control" name="programmingZone" [ngModel]="draft().timeZone" (ngModelChange)="patch({ timeZone: $event })" maxlength="64" required /></label>
+        <label>{{ 'schedule.minutes' | t }}<input type="number" class="form-control" name="minutes" [ngModel]="draft().minutes" (ngModelChange)="patch({ minutes: +$event })" min="1" max="65535" required /></label>
+      </div>
+      @if (!editing() && options()?.whiteboards?.length) { <label>{{ 'schedule.whiteboard' | t }}<select class="form-select" name="whiteboard" [(ngModel)]="whiteboardId"><option [ngValue]="0">{{ 'schedule.optional' | t }}</option>@for (b of options()?.whiteboards; track b.id) { <option [ngValue]="b.id">{{ b.title }}</option> }</select></label> }
+      @if (timeError()) { <p class="text-danger" role="alert">{{ timeError() }}</p> }
+      @if (choices().options.length) { <fieldset><legend class="h6">{{ 'schedule.offset' | t }}</legend>@for (o of choices().options; track o.offset; let index = $index) { <label><input type="radio" name="occurrence" (change)="choose(o.offset, index)" /> UTC{{ o.offset }} · {{ o.startsAt }}</label> }</fieldset> }
+      @for (a of choices().alternatives; track a.startsAt) { <button type="button" class="btn btn-secondary btn-sm me-2" (click)="useAlternative(a.localStart, a.timeZone, a.offset)">{{ 'schedule.alternative' | t }}: {{ a.localStart }} · {{ a.timeZone }} · UTC{{ a.offset }}</button> }
+      @if (choices().value; as resolved) { <div class="preview"><strong>{{ 'schedule.preview' | t }}</strong><app-session-time [interval]="resolved" [recipientZone]="zone()" [teacherZone]="draft().timeZone" /></div> }
+      <label><input type="checkbox" name="exception" [(ngModel)]="exception" /> {{ 'schedule.exception' | t }}</label>
+      @if (exception || (editing() && ['expired','declined'].includes(editing()!.status))) { <label>{{ 'schedule.reason' | t }}<input class="form-control" name="reason" [(ngModel)]="reason" maxlength="500" required /></label> }
+      @if (editing(); as edited) {
+        <label>{{ 'schedule.requestedBy' | t }}<select class="form-select" name="requestedBy" [(ngModel)]="requestedBy"><option [ngValue]="0">{{ 'schedule.teacherRequest' | t }}</option>@for (p of edited.participants; track p.userId) { <option [ngValue]="p.userId">{{ p.name }}</option> }</select></label>
+        <label>{{ 'schedule.waive' | t }}<input class="form-control" name="waiver" [(ngModel)]="waiver" maxlength="500" /></label>
+        <p class="small">{{ 'schedule.original' | t }}</p>
+      }
+      <button type="submit" class="btn btn-primary btn-sm" [disabled]="busy() || !zoneReady() || !choices().value || (!editing() && !cohortId() && (!studentId() || !purchaseId()))">{{ (editing() ? 'schedule.reschedule' : 'schedule.new') | t }}</button>
+      @if (editing()) { <button type="button" class="btn btn-ghost btn-sm ms-2" (click)="stopEditing()">{{ 'schedule.back' | t }}</button> }
+    </form>
+  }
+  @if (notices().length) { <section class="zone-box"><h2>{{ 'schedule.reminders' | t }}</h2>@for (notice of notices(); track notice.id) { <p><a routerLink="/schedule" [queryParams]="{ sessionId: notice.sessionId }">{{ i18n.formatInstant(notice.startsAt, zone()) }}</a></p> }</section> }
+  @if (selected(); as selected) { <app-class-session-card [sessionId]="selected.id" (changed)="updated($event)" /> }
+  <form class="filters mb-3" (ngSubmit)="reload()">
+    <label>{{ 'schedule.from' | t }} (UTC)<input type="date" class="form-control" name="from" [(ngModel)]="fromDate" /></label>
+    <label>{{ 'schedule.to' | t }} (UTC)<input type="date" class="form-control" name="to" [(ngModel)]="toDate" /></label>
+    <button type="submit" class="btn btn-secondary btn-sm">{{ 'schedule.apply' | t }}</button>
+  </form>
+  @if (loading()) { <p role="status">{{ 'schedule.loading' | t }}</p> }
+  @if (truncated()) { <p>{{ 'schedule.truncated' | t }}</p> }
+  @for (s of sessions(); track s.id) { @if (s.id !== selected()?.id) { <app-class-session-card [sessionId]="s.id" (changed)="updated($event)" /> } }
+  @if (!loading() && !sessions().length) { <p>{{ 'schedule.empty' | t }}</p> }
+</div>
