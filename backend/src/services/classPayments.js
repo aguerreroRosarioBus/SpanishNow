@@ -39,6 +39,14 @@ async function markReview(order,offer,n,reason,transaction){
   await reviewJob(order,reason,transaction);
   await chat.appendSystemMessage(offer.conversationId,{eventCode:'package_payment_review',offerId:offer.id,eventParams:{offerId:offer.id},dedupeKey:`order:${order.id}:review`},{transaction});
 }
+// Reembolso que no se puede validar: la orden pasa a revisión y la compra deja de ser usable (no reserva ni consume más).
+async function freezeForReview(order,offer,n,reason,transaction){
+  await markReview(order,offer,n,reason,transaction);
+  const purchase=await Purchase.findOne({where:{orderId:order.id},transaction,lock:transaction.LOCK.UPDATE});
+  if(!purchase)return;
+  if(purchase.status!=='cancelled')await purchase.update({status:'cancelled',cancelledAt:persistedSecond(new Date()),version:purchase.version+1},{transaction});
+  if(purchase.unitsReserved)await outbox.enqueue({topic:'review.refunded_with_reservations',aggregateType:'class_package_purchases',aggregateId:purchase.id,dedupeKey:`review:purchase:${purchase.id}:reserved-refund`,payload:{orderId:order.id},runAt:new Date()},{transaction});
+}
 async function grant(order,offer,transaction){
   const existing=await Purchase.findOne({where:{offerId:offer.id},transaction});
   if(existing)return existing;
@@ -99,9 +107,7 @@ async function handleEvent(body,{provider='hotmart'}={}){
     }
     if(n.payload.status==='PARTIALLY_REFUNDED'){
       if(order.status==='refunded')return finish('ignored',{replayed:true});
-      await markReview(order,offer,n,'partial_refund_pending_validation',transaction);
-      const purchase=await Purchase.findOne({where:{orderId:order.id},transaction,lock:transaction.LOCK.UPDATE});
-      if(purchase)await purchase.update({status:'cancelled',cancelledAt:persistedSecond(new Date()),version:purchase.version+1},{transaction});
+      await freezeForReview(order,offer,n,'partial_refund_pending_validation',transaction);
       await lockedEvent.update({error:'partial_refund_pending_validation'},{transaction});
       return finish('needs_review',{needsReview:true});
     }
@@ -118,8 +124,9 @@ async function handleEvent(body,{provider='hotmart'}={}){
     }
     if(REFUNDED.has(n.eventType)){
       if(order.status==='refunded')return finish('ignored',{replayed:true});
-      if(n.productId!==offer.hotmartProductId||n.offerCode&&n.offerCode!==offer.hotmartOfferCode){await reviewJob(order,'refund_mapping_mismatch',transaction);return finish('needs_review',{needsReview:true});}
-      if(n.reported&&(n.reported.amount!==order.amount||n.reported.currency!==order.currency)){await reviewJob(order,'refund_amount_review',transaction);return finish('needs_review',{needsReview:true});}
+      const mismatch=n.productId!==offer.hotmartProductId||n.offerCode&&n.offerCode!==offer.hotmartOfferCode?'refund_mapping_mismatch':
+        n.reported&&(n.reported.amount!==order.amount||n.reported.currency!==order.currency)?'refund_amount_review':null;
+      if(mismatch){await freezeForReview(order,offer,n,mismatch,transaction);return finish('needs_review',{needsReview:true});}
       await order.update({status:'refunded',refundedAmount:order.amount,refundedAt:persistedSecond(new Date())},{transaction});
       await Event.update({outcome:'applied',processedAt:new Date()},{where:{orderId:order.id,providerTransactionId:order.providerTransactionId,outcome:'needs_review'},transaction});
       const purchase=await Purchase.findOne({where:{orderId:order.id},transaction,lock:transaction.LOCK.UPDATE});

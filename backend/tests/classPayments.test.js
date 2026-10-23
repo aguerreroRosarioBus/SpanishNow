@@ -118,3 +118,12 @@ test('P2-1: un pago real después de un intento fallido pasa a revisión y se pu
   const r=await as(admin).post(`/api/admin/class-payments/${order.id}/resolve`,{action:'credit',reason:'Pago real confirmado ficticio'});expect(r.status).toBe(200);
   expect(await Purchase.count({where:{orderId:order.id}})).toBe(1);
 });
+test.each(['amount','product'])('P2-2: reembolso con datos que no cuadran (%s) congela la compra y la deja en revisión',async kind=>{
+  const w=await world();const {order,body}=await pending(w);await apply(body);const p=await Purchase.findOne({where:{orderId:order.id}});
+  const refund={...JSON.parse(JSON.stringify(body)),id:randomUUID(),event:'PURCHASE_REFUNDED'};
+  if(kind==='amount')refund.data.purchase.price.value=1;else refund.data.product.id='other-product';
+  expect((await apply(refund)).needsReview).toBe(true);
+  expect((await order.reload()).status).toBe('paid_needs_review');expect((await p.reload()).status).toBe('cancelled');
+  const credits=require('../src/services/classCredits');const db=require('../src/config/database');
+  await expect(db.transaction(t=>credits.apply({purchaseId:p.id,operation:'reserve',units:1,operationKey:`reserve:p22:${p.id}`},{transaction:t}))).rejects.toMatchObject({code:'package_not_active'});
+});
