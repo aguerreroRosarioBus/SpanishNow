@@ -2,7 +2,7 @@
 const request = require('supertest');
 const { app, as, createWorld, createStory, createUser } = require('./helpers/fixtures');
 const certificateService = require('../src/services/certificateService');
-const { LessonPlan, LessonProgress, Story, Unit, Enrollment, Certificate, UnitQuiz } = require('../src/models');
+const { LessonPlan, LessonProgress, Story, Unit, Enrollment, Certificate, UnitQuiz, User } = require('../src/models');
 
 const quizBody = (extra = {}) => ({ title: 'Quiz', passingScore: 70, isPublished: true, questions: [{ prompt: 'P', options: ['a', 'b'], correctIndex: 0 }, { prompt: 'Q', options: ['a', 'b'], correctIndex: 1 }], ...extra });
 const CODE = /^[A-HJKMNP-Z2-9]{4}-[A-HJKMNP-Z2-9]{4}-[A-HJKMNP-Z2-9]{4}$/;
@@ -195,6 +195,52 @@ describe('certificates', () => {
       expect(certificateService.pdfSafe('李雷')).toBe('??');
       const pdf = await certificateService.renderPdf({ ...certificate.toJSON(), studentName: '李雷 Łukasz', courseTitle: 'x'.repeat(300) });
       expect(pdf.subarray(0, 5).toString('latin1')).toBe('%PDF-');
+    });
+
+    const shownText = pdf => {
+      const text = pdf.toString('latin1');
+      return [...text.matchAll(/\[([^\]]*)\] TJ/g)].map(m => [...m[1].matchAll(/<([0-9a-f]*)>/g)].map(h => Buffer.from(h[1], 'hex').toString('latin1')).join('')).join('\n');
+    };
+    const pdfOf = async (query = '', headers = {}) => {
+      const res = await request(app).get(`/api/public/certificates/${certificate.code}/pdf${query}`).set(headers).buffer(true).parse((r, cb) => {
+        const chunks = []; r.on('data', c => chunks.push(c)); r.on('end', () => cb(null, Buffer.concat(chunks)));
+      });
+      return res;
+    };
+
+    test('the PDF is rendered in Spanish with a localized date, and in English by default', async () => {
+      const es = shownText(await certificateService.renderPdf(certificate, { compress: false, locale: 'es' }));
+      expect(es).toContain('Certificado de finalización');
+      expect(es).toContain('Se certifica que');
+      expect(es).toContain('a cargo de Solange');
+      expect(es).toContain('21 de octubre de 2026');
+      expect(es).not.toContain('Certificate of Completion');
+      const en = shownText(await certificateService.renderPdf(certificate, { compress: false }));
+      expect(en).toContain('Certificate of Completion');
+      expect(en).toContain('October 21, 2026');
+      expect(shownText(await certificateService.renderPdf(certificate, { compress: false, locale: 'fr' }))).toContain('Certificate of Completion');
+    });
+
+    test('the PDF language follows: ?lang= -> account preference -> Accept-Language -> English', async () => {
+      const holder = await User.findByPk((await Enrollment.findByPk(certificate.enrollmentId)).studentId);
+      await holder.update({ locale: null });
+      expect(await certificateService.pdfLocale(certificate, {})).toBe('en');
+      expect(await certificateService.pdfLocale(certificate, { acceptLanguage: 'fr-FR, es;q=0.8, en;q=0.5' })).toBe('es');
+      await holder.update({ locale: 'en' });
+      expect(await certificateService.pdfLocale(certificate, { acceptLanguage: 'es-AR' })).toBe('en'); // account beats the browser
+      await holder.update({ locale: 'es' });
+      expect(await certificateService.pdfLocale(certificate, { acceptLanguage: 'en-US' })).toBe('es');
+      expect(await certificateService.pdfLocale(certificate, { lang: 'en' })).toBe('en'); // explicit choice beats the account
+      expect(await certificateService.pdfLocale(certificate, { lang: 'xx' })).toBe('es'); // unsupported: ignored
+      const render = jest.spyOn(certificateService, 'renderPdf');
+      const res = await pdfOf('?lang=en', { 'Accept-Language': 'es' });
+      expect(res.status).toBe(200);
+      expect(render).toHaveBeenLastCalledWith(expect.anything(), { locale: 'en' });
+      expect(res.headers.vary).toContain('Accept-Language');
+      expect((await pdfOf('', { 'Accept-Language': 'en' })).status).toBe(200);
+      expect(render).toHaveBeenLastCalledWith(expect.anything(), { locale: 'es' }); // the holder's account is Spanish
+      render.mockRestore();
+      await holder.update({ locale: null });
     });
   });
 

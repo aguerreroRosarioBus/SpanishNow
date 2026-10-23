@@ -97,12 +97,14 @@ router.get('/certificates/:code/pdf', async (req, res) => {
   try {
     const certificate = await findCertificate(req, res);
     if (!certificate) return;
-    const pdf = await certificates.renderPdf(certificate);
+    const locale = await certificates.pdfLocale(certificate, { lang: req.query.lang, acceptLanguage: req.get('Accept-Language') });
+    const pdf = await certificates.renderPdf(certificate, { locale });
     res.set({
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="certificate-${certificate.code}.pdf"`,
       'Content-Length': pdf.length,
-      'Cache-Control': 'private, max-age=300'
+      'Cache-Control': 'private, max-age=300',
+      Vary: 'Accept-Language'
     });
     res.end(pdf);
   } catch (error) {

@@ -4,7 +4,7 @@
 const { randomInt } = require('crypto');
 const { Op, UniqueConstraintError } = require('sequelize');
 const PDFDocument = require('pdfkit');
-const { Story, Unit, LessonPlan, LessonProgress, UnitQuiz, Certificate, Course, User } = require('../models');
+const { Story, Unit, LessonPlan, LessonProgress, UnitQuiz, Certificate, Course, User, Enrollment } = require('../models');
 const { bestScores } = require('./quizService');
 
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O, 1/I/L
@@ -142,14 +142,43 @@ function pdfSafe(text) {
 }
 
 const verifyUrl = code => `${(process.env.FRONTEND_URL || 'http://localhost:4200').replace(/\/+$/, '')}/certificates/${code}`;
-const longDate = date => new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
+const PDF_TEXT = {
+  en: { heading: 'Certificate of Completion', certifies: 'This certifies that', completed: 'has successfully completed the course', taughtBy: 'taught by', issuedOn: 'Issued on', code: 'Certificate code', verifyAt: 'Verify at', intl: 'en-US' },
+  es: { heading: 'Certificado de finalización', certifies: 'Se certifica que', completed: 'ha completado con éxito el curso', taughtBy: 'a cargo de', issuedOn: 'Emitido el', code: 'Código del certificado', verifyAt: 'Verificar en', intl: 'es-ES' }
+};
+const PDF_LOCALES = Object.keys(PDF_TEXT);
+/** The date is a calendar day (UTC), as the certificate stores seconds: it does not shift with the reader's zone. */
+const longDate = (date, locale) => new Date(date).toLocaleDateString(PDF_TEXT[locale].intl, { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
 
-/** A4 landscape certificate in English, brand colors. Resolves a Buffer. `compress: false` is for tests. */
-function renderPdf(certificate, { compress = true } = {}) {
+/** First supported language of an Accept-Language header, or null. */
+function fromAcceptLanguage(header) {
+  for (const part of String(header || '').split(',')) {
+    const tag = part.split(';')[0].trim().toLowerCase().slice(0, 2);
+    if (PDF_LOCALES.includes(tag)) return tag;
+  }
+  return null;
+}
+
+/**
+ * Language of the PDF, with the W01 order: explicit choice (`?lang=`) -> account preference of the certificate holder ->
+ * browser language (Accept-Language) -> English. The route is public, so there is no session to read the account from.
+ */
+async function pdfLocale(certificate, { lang, acceptLanguage } = {}) {
+  if (PDF_LOCALES.includes(lang)) return lang;
+  const enrollment = await Enrollment.findByPk(certificate.enrollmentId, { attributes: ['studentId'] });
+  const student = enrollment ? await User.findByPk(enrollment.studentId, { attributes: ['locale'] }) : null;
+  if (student && PDF_LOCALES.includes(student.locale)) return student.locale;
+  return fromAcceptLanguage(acceptLanguage) || 'en';
+}
+
+/** A4 landscape certificate in English or Spanish (`locale`), brand colors. Resolves a Buffer. `compress: false` is for tests. */
+function renderPdf(certificate, { compress = true, locale = 'en' } = {}) {
+  const lang = PDF_LOCALES.includes(locale) ? locale : 'en';
+  const tx = PDF_TEXT[lang];
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({
       size: 'A4', layout: 'landscape', margin: 0, compress,
-      info: { Title: `Certificate of Completion - ${pdfSafe(certificate.courseTitle)}`, Author: 'SpanishNow' }
+      info: { Title: `${tx.heading} - ${pdfSafe(certificate.courseTitle)}`, Author: 'SpanishNow' }
     });
     const chunks = [];
     doc.on('data', chunk => chunks.push(chunk));
@@ -174,33 +203,33 @@ function renderPdf(certificate, { compress = true } = {}) {
     doc.lineWidth(1.2).strokeColor(COLORS.coral).rect(36, 36, W - 72, H - 72).stroke();
 
     centered('SPANISHNOW', 70, 'Helvetica-Bold', 13, COLORS.coral, { characterSpacing: 5 });
-    centered('Certificate of Completion', 98, 'Times-Bold', 44, COLORS.wine);
+    centered(tx.heading, 98, 'Times-Bold', 44, COLORS.wine);
     doc.rect(W / 2 - 40, 160, 80, 3).fill(COLORS.coral);
 
-    centered('This certifies that', 190, 'Helvetica', 15, COLORS.muted);
+    centered(tx.certifies, 190, 'Helvetica', 15, COLORS.muted);
     const name = pdfSafe(certificate.studentName);
     centered(name, 218, 'Times-Italic', fitSize(name, 'Times-Italic', 48, 22, 1), COLORS.wine, { lineBreak: false });
     doc.lineWidth(0.8).strokeColor(COLORS.coral).moveTo(W / 2 - 200, 285).lineTo(W / 2 + 200, 285).stroke();
 
-    centered('has successfully completed the course', 305, 'Helvetica', 15, COLORS.muted);
+    centered(tx.completed, 305, 'Helvetica', 15, COLORS.muted);
     const title = pdfSafe(certificate.courseTitle);
     centered(title, 335, 'Helvetica-Bold', fitSize(title, 'Helvetica-Bold', 28, 16, 2), COLORS.wine);
-    centered(`taught by ${pdfSafe(certificate.teacherName)}`, 410, 'Helvetica', 16, COLORS.muted);
+    centered(`${tx.taughtBy} ${pdfSafe(certificate.teacherName)}`, 410, 'Helvetica', 16, COLORS.muted);
 
     doc.lineWidth(0.8).strokeColor(COLORS.wine).moveTo(left, 470).lineTo(W - left, 470).stroke();
     doc.font('Helvetica').fontSize(11).fillColor(COLORS.muted)
-      .text('Issued on', left, 482, { width: 200, lineBreak: false });
+      .text(tx.issuedOn, left, 482, { width: 200, lineBreak: false });
     doc.font('Helvetica-Bold').fontSize(13).fillColor(COLORS.wine)
-      .text(longDate(certificate.issuedAt), left, 497, { width: 260, lineBreak: false });
+      .text(longDate(certificate.issuedAt, lang), left, 497, { width: 260, lineBreak: false });
     doc.font('Helvetica').fontSize(11).fillColor(COLORS.muted)
-      .text('Certificate code', W - left - 300, 482, { width: 300, align: 'right', lineBreak: false });
+      .text(tx.code, W - left - 300, 482, { width: 300, align: 'right', lineBreak: false });
     doc.font('Helvetica-Bold').fontSize(13).fillColor(COLORS.wine)
       .text(certificate.code, W - left - 300, 497, { width: 300, align: 'right', lineBreak: false });
     doc.font('Helvetica').fontSize(10).fillColor(COLORS.muted)
-      .text(`Verify at ${verifyUrl(certificate.code)}`, left, 530, { width: inner, align: 'center', lineBreak: false });
+      .text(`${tx.verifyAt} ${verifyUrl(certificate.code)}`, left, 530, { width: inner, align: 'center', lineBreak: false });
 
     doc.end();
   });
 }
 
-module.exports = { generateCode, normalizeCode, completionOf, statusOf, cleanName, publicShape, issue, renderPdf, pdfSafe, verifyUrl, MAX_NAME };
+module.exports = { generateCode, normalizeCode, completionOf, statusOf, cleanName, publicShape, issue, renderPdf, pdfLocale, fromAcceptLanguage, pdfSafe, verifyUrl, MAX_NAME };
