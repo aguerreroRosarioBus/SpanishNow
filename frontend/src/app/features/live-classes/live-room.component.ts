@@ -4,6 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { NgbDropdownModule } from '@ng-bootstrap/ng-bootstrap';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
+import { I18nService } from '../../core/i18n/i18n.service';
 import { LiveClassService } from '../../core/services/live-class.service';
 import { BoardElement, BoardOperation, BoardPage, BoardTool, ClassroomCourse, DriveBoardFile, GoogleStatus, LiveBoard, LiveClass, LiveSnapshot, LiveStatus } from '../../core/models/live-class.model';
 import { IconComponent } from '../../shared/components/icon/icon.component';
@@ -25,6 +26,7 @@ type Confirmation = 'clear' | 'delete-page' | 'restore' | 'end' | 'discard';
 })
 export class LiveRoomComponent implements OnInit, OnDestroy {
   private api = inject(LiveClassService);
+  private i18n = inject(I18nService);
   private route = inject(ActivatedRoute);
   private element: ElementRef<HTMLElement> = inject(ElementRef);
   readonly user = inject(AuthService).currentUser;
@@ -164,7 +166,7 @@ export class LiveRoomComponent implements OnInit, OnDestroy {
   @HostListener('window:beforeunload', ['$event']) beforeUnload(event: BeforeUnloadEvent): void {
     if (this.pending().length || this.busy()) { event.preventDefault(); event.returnValue = ''; }
   }
-  canLeave(): boolean { return !(this.pending().length || this.busy()) || window.confirm('Hay cambios o archivos pendientes de guardar. ¿Quieres salir de la clase?'); }
+  canLeave(): boolean { return !(this.pending().length || this.busy()) || window.confirm(this.i18n.t('teacherDashboard.live.leavePrompt')); }
   async refresh(force = false): Promise<void> {
     if (!this.alive || this.polling || (!force && (this.sending() || this.pending().length || this.busy()))) return;
     this.polling = true; this.lastPoll = Date.now();
@@ -219,17 +221,23 @@ export class LiveRoomComponent implements OnInit, OnDestroy {
   retry(): void { this.syncError.set(''); void this.flush(); }
   ask(action: Confirmation): void { this.confirmationPage = this.currentPage(); this.confirm.set(action); }
   get confirmationTitle(): string {
-    return ({ clear: 'Vaciar página', 'delete-page': 'Eliminar página', restore: 'Restaurar pizarra de Drive', end: 'Finalizar clase', discard: 'Descartar cambios pendientes' } as const)[this.confirm() || 'clear'];
+    const keys = { clear: 'clearTitle', 'delete-page': 'deletePageTitle', restore: 'restoreTitle', end: 'endTitle', discard: 'discardTitle' } as const;
+    return this.i18n.t(`teacherDashboard.live.${keys[this.confirm() || 'clear']}`);
   }
   get confirmationMessage(): string {
-    const page = this.confirmationPage?.title || 'la página';
+    const page = this.confirmationPage?.title || this.i18n.t('teacherDashboard.live.thisPage');
     switch (this.confirm()) {
-      case 'clear': return `Se borrarán todos los elementos de «${page}», incluidos los de los alumnos.`;
-      case 'delete-page': return `Se eliminará «${page}» con todos sus elementos.`;
-      case 'restore': return `«${this.selectedDriveFile()?.name}» reemplazará todas las páginas de esta clase. Puedes descargar una copia antes de continuar.`;
-      case 'end': return `Se finalizará «${this.room()?.title}». Los alumnos podrán seguir consultando la pizarra en modo lectura.`;
-      default: return 'Se descartarán los cambios que todavía no se guardaron. Puedes descargar una copia de la pizarra antes de continuar.';
+      case 'clear': return this.i18n.t('teacherDashboard.live.clearMessage', { page });
+      case 'delete-page': return this.i18n.t('teacherDashboard.live.deletePageMessage', { page });
+      case 'restore': return this.i18n.t('teacherDashboard.live.restoreMessage', { name: this.selectedDriveFile()?.name ?? '' });
+      case 'end': return this.i18n.t('teacherDashboard.live.endMessage', { title: this.room()?.title ?? '' });
+      default: return this.i18n.t('teacherDashboard.live.discardMessage');
     }
+  }
+  get confirmationAction(): string {
+    const keys = { end: 'endAction', restore: 'restoreAction', discard: 'discardAction' } as const;
+    const action = this.confirm();
+    return this.i18n.t(`teacherDashboard.live.${action && action in keys ? keys[action as keyof typeof keys] : 'deleteAction'}`);
   }
   async confirmAction(): Promise<void> {
     const action = this.confirm(); this.confirm.set(null);

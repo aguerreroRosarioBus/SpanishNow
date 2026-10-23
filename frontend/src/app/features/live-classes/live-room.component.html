@@ -111,4 +111,4 @@
     </div>
   }
 </div>
-@if (confirm()) { <app-confirm-dialog [show]="true" [title]="confirmationTitle" [message]="confirmationMessage" [type]="confirm() === 'end' ? 'warning' : 'danger'" [confirmText]="confirm() === 'end' ? 'Finalizar clase' : confirm() === 'restore' ? 'Restaurar' : confirm() === 'discard' ? 'Descartar' : 'Eliminar'" (confirmed)="confirmAction()" (cancelled)="confirm.set(null)" /> }
+@if (confirm()) { <app-confirm-dialog [show]="true" [title]="confirmationTitle" [message]="confirmationMessage" [type]="confirm() === 'end' ? 'warning' : 'danger'" [confirmText]="confirmationAction" (confirmed)="confirmAction()" (cancelled)="confirm.set(null)" /> }

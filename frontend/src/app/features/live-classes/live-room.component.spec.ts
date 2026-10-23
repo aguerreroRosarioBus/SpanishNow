@@ -7,6 +7,7 @@ import { LiveClassService } from '../../core/services/live-class.service';
 import { AuthService } from '../../core/services/auth.service';
 import { BoardOperation, GoogleStatus, LiveBoard, LiveSnapshot } from '../../core/models/live-class.model';
 import { previewBoard } from './board/board.logic';
+import { I18nService } from '../../core/i18n/i18n.service';
 
 const board = (): LiveBoard => ({ pages: [{ id: 'page_0001', title: 'Página 1', elements: [], background: 'plain' }], activePageId: 'page_0001' });
 const snapshot = (owner = true): LiveSnapshot => ({ id: 1, teacherId: 7, courseId: null, title: 'Mi clase', status: 'live', allowStudentEdit: true,
@@ -21,6 +22,7 @@ describe('LiveRoomComponent collaboration', () => {
       { provide: ActivatedRoute, useValue: { snapshot: { paramMap: new Map([['id', '1']]) } } },
       { provide: AuthService, useValue: { currentUser: signal({ id: owner ? 7 : 8, role: owner ? 'teacher' : 'student' }) } },
       { provide: LiveClassService, useValue: api }] });
+    TestBed.inject(I18nService).setLocale('es');
     const fixture = TestBed.createComponent(LiveRoomComponent); const c = fixture.componentInstance;
     await c.refresh();
     return { fixture, c, api, data };

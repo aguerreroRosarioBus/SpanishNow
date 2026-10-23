@@ -1,6 +1,6 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { AbstractControl, FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { CourseService } from '../../../core/services/course.service';
@@ -8,14 +8,15 @@ import { ToastService } from '../../../core/services/toast.service';
 import { Course } from '../../../core/models/course.model';
 import { CourseCardComponent } from '../../../shared/components/course-card/course-card.component';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
-import { validateImageFile, IMAGE_ACCEPT } from '../lesson-composer/image-file';
+import { imageFileErrorKey, IMAGE_ACCEPT } from '../lesson-composer/image-file';
 import { ImageSearchComponent } from '../../../shared/components/image-search/image-search.component';
-import { PluralPipe } from '../../../shared/pipes/plural.pipe';
+import { I18nService } from '../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 
 @Component({
   selector: 'app-teacher-dashboard',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, CourseCardComponent, IconComponent, PluralPipe, ImageSearchComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, CourseCardComponent, IconComponent, TranslatePipe, ImageSearchComponent],
   templateUrl: './teacher-dashboard.component.html',
   styleUrl: './teacher-dashboard.component.scss'
 })
@@ -25,11 +26,17 @@ export class TeacherDashboardComponent implements OnInit {
   private toastService = inject(ToastService);
   private router = inject(Router);
   private fb = inject(FormBuilder);
+  private i18n = inject(I18nService);
 
   currentUser = this.authService.currentUser;
   courses = signal<Course[]>([]);
   isLoading = signal<boolean>(false);
-  errorMessage = signal<string>('');
+  /** Se guarda la clave (y el error con su código), no el texto: así cambia con el idioma sin repetir peticiones. */
+  private failure = signal<{ key: string; error?: unknown } | null>(null);
+  errorMessage = computed(() => {
+    const f = this.failure();
+    return f ? this.i18n.errorMessage(f.error, f.key) : '';
+  });
   showCreateModal = signal<boolean>(false);
   isCreating = signal<boolean>(false);
 
@@ -73,7 +80,7 @@ export class TeacherDashboardComponent implements OnInit {
 
   loadCourses(): void {
     this.isLoading.set(true);
-    this.errorMessage.set('');
+    this.failure.set(null);
 
     this.courseService.getCourses().subscribe({
       next: (courses) => {
@@ -86,7 +93,7 @@ export class TeacherDashboardComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error loading courses:', error);
-        this.errorMessage.set('Error al cargar los cursos');
+        this.failure.set({ key: 'teacherDashboard.loadError', error });
         this.isLoading.set(false);
       }
     });
@@ -112,8 +119,8 @@ export class TeacherDashboardComponent implements OnInit {
   }
 
   selectSearchImage(file: File, editing = false): void {
-    const invalid = validateImageFile(file);
-    if (invalid) { this.toastService.warning(invalid); return; }
+    const invalid = imageFileErrorKey(file);
+    if (invalid) { this.toastService.warning(this.i18n.t(invalid)); return; }
     if (editing) this.selectedEditImageFile = file;
     else this.selectedImageFile = file;
     const reader = new FileReader();
@@ -131,7 +138,7 @@ export class TeacherDashboardComponent implements OnInit {
     }
 
     this.isCreating.set(true);
-    this.errorMessage.set('');
+    this.failure.set(null);
 
     // Crear FormData para enviar al backend
     const formData = new FormData();
@@ -151,7 +158,7 @@ export class TeacherDashboardComponent implements OnInit {
         this.courses.update(current => [...current, newCourse]);
 
         // Mostrar toast de éxito
-        this.toastService.success('Curso creado exitosamente');
+        this.toastService.success(this.i18n.t('teacherDashboard.created'));
 
         // Cerrar modal y resetear
         this.closeCreateModal();
@@ -162,14 +169,14 @@ export class TeacherDashboardComponent implements OnInit {
 
         // Manejar errores de autenticación
         if (error.status === 401 || error.status === 403) {
-          this.toastService.error('Tu sesión ha expirado. Por favor, inicia sesión de nuevo.');
+          this.toastService.error(this.i18n.t('teacherDashboard.sessionExpired'));
           this.authService.logout();
           this.router.navigate(['/auth/login']);
           return;
         }
 
-        this.errorMessage.set(error?.error?.error || 'Error al crear el curso. Intenta de nuevo.');
-        this.toastService.error('Error al crear el curso');
+        this.failure.set({ key: 'teacherDashboard.createError', error });
+        this.toastService.error(this.i18n.t('teacherDashboard.createErrorToast'));
         this.isCreating.set(false);
       }
     });
@@ -181,20 +188,21 @@ export class TeacherDashboardComponent implements OnInit {
   }
 
   getErrorMessage(field: string): string {
-    const control = this.courseForm.get(field);
+    return this.fieldError(this.courseForm.get(field), field);
+  }
 
+  private fieldError(control: AbstractControl | null, field: string): string {
     if (control?.hasError('required')) {
-      const fieldNames: { [key: string]: string } = {
-        title: 'El título',
-        description: 'La descripción',
-        level: 'El nivel'
+      const keys: Record<string, string> = {
+        title: 'teacherDashboard.requiredTitle',
+        description: 'teacherDashboard.requiredDescription',
+        level: 'teacherDashboard.requiredLevel'
       };
-      return `${fieldNames[field]} es requerido`;
+      return this.i18n.t(keys[field]);
     }
 
     if (control?.hasError('minlength')) {
-      const minLength = control.errors?.['minlength'].requiredLength;
-      return `Debe tener al menos ${minLength} caracteres`;
+      return this.i18n.t('teacherDashboard.minLength', { min: control.errors?.['minlength'].requiredLength });
     }
 
     return '';
@@ -233,7 +241,7 @@ export class TeacherDashboardComponent implements OnInit {
     }
 
     this.isUpdating.set(true);
-    this.errorMessage.set('');
+    this.failure.set(null);
 
     // Crear FormData para enviar al backend
     const formData = new FormData();
@@ -257,7 +265,7 @@ export class TeacherDashboardComponent implements OnInit {
         );
 
         // Mostrar toast de éxito
-        this.toastService.success('Curso actualizado exitosamente');
+        this.toastService.success(this.i18n.t('teacherDashboard.updated'));
 
         // Cerrar modal y resetear
         this.closeEditModal();
@@ -268,14 +276,14 @@ export class TeacherDashboardComponent implements OnInit {
 
         // Manejar errores de autenticación
         if (error.status === 401 || error.status === 403) {
-          this.toastService.error('Tu sesión ha expirado. Por favor, inicia sesión de nuevo.');
+          this.toastService.error(this.i18n.t('teacherDashboard.sessionExpired'));
           this.authService.logout();
           this.router.navigate(['/auth/login']);
           return;
         }
 
-        this.errorMessage.set(error?.error?.error || 'Error al actualizar el curso. Intenta de nuevo.');
-        this.toastService.error('Error al actualizar el curso');
+        this.failure.set({ key: 'teacherDashboard.updateError', error });
+        this.toastService.error(this.i18n.t('teacherDashboard.updateErrorToast'));
         this.isUpdating.set(false);
       }
     });
@@ -287,23 +295,7 @@ export class TeacherDashboardComponent implements OnInit {
   }
 
   getEditErrorMessage(field: string): string {
-    const control = this.editCourseForm.get(field);
-
-    if (control?.hasError('required')) {
-      const fieldNames: { [key: string]: string } = {
-        title: 'El título',
-        description: 'La descripción',
-        level: 'El nivel'
-      };
-      return `${fieldNames[field]} es requerido`;
-    }
-
-    if (control?.hasError('minlength')) {
-      const minLength = control.errors?.['minlength'].requiredLength;
-      return `Debe tener al menos ${minLength} caracteres`;
-    }
-
-    return '';
+    return this.fieldError(this.editCourseForm.get(field), field);
   }
 
   logout(): void {

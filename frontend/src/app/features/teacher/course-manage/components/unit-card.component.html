@@ -7,44 +7,44 @@
     (dragover)="onDragOver($event)"
     (drop)="onUnitDrop($event)"
   >
-    <span class="btn-icon unit__grip" aria-hidden="true" title="Arrastrar para reordenar"><app-icon name="grip" [size]="16" /></span>
+    <span class="btn-icon unit__grip" aria-hidden="true" [attr.title]="'teacherDashboard.unit.dragToReorder' | t"><app-icon name="grip" [size]="16" /></span>
     <button type="button" class="btn-icon" (click)="store.toggleUnit(unit().id)"
-            [attr.aria-label]="open() ? 'Colapsar unidad' : 'Expandir unidad'" [attr.aria-expanded]="open()">
+            [attr.aria-label]="(open() ? 'teacherDashboard.unit.collapse' : 'teacherDashboard.unit.expand') | t" [attr.aria-expanded]="open()">
       <app-icon name="chevron-right" [size]="18" class="unit__chevron" [class.is-open]="open()" />
     </button>
     <div class="unit__text">
-      <span class="eyebrow">Unidad {{ number() }}</span>
+      <span class="eyebrow">{{ 'teacherDashboard.unit.label' | t:{ number: number() } }}</span>
       <div class="unit__title-row">
         <h3 class="unit__title" [attr.title]="title()">{{ title() }}</h3>
-        <span class="unit__meta">{{ storyCount() | plural:'historia':'historias' }} · {{ publishedCount() | plural:'publicada':'publicadas' }}</span>
+        <span class="unit__meta">{{ 'teacherDashboard.unit.stories' | t:{ count: storyCount() } }} · {{ 'teacherDashboard.unit.published' | t:{ count: publishedCount() } }}</span>
         @if (pdfCount() > 0) {
-          <span class="unit__meta unit__flag" [attr.title]="pdfCount() + ' PDF(s) en esta unidad'"><app-icon name="file-text" [size]="13" />{{ pdfCount() }} PDF</span>
+          <span class="unit__meta unit__flag" [attr.title]="'teacherDashboard.unit.pdfTitle' | t:{ count: pdfCount() }"><app-icon name="file-text" [size]="13" />{{ 'teacherDashboard.unit.pdfCount' | t:{ count: pdfCount() } }}</span>
         }
         @if (dripLabel(); as drip) {
           <span class="unit__meta unit__flag" [attr.title]="drip"><app-icon name="clock" [size]="13" />{{ drip }}</span>
         }
         @if (quiz(); as q) {
           <span class="badge-status unit__quiz" [class.badge-status--published]="q.isPublished" [class.badge-status--draft]="!q.isPublished">
-            Quiz {{ q.isPublished ? 'publicado' : 'borrador' }}
+            {{ (q.isPublished ? 'teacherDashboard.unit.quizPublished' : 'teacherDashboard.unit.quizDraft') | t }}
           </span>
         }
       </div>
     </div>
     <div class="unit__actions">
-      <button type="button" class="btn btn-ghost btn-sm" (click)="store.open({ kind: 'vocabulary', unit: unit() })" aria-label="Vocabulario">
-        <app-icon name="book" [size]="15" /><span class="unit__vocab-label">Vocabulario</span>
+      <button type="button" class="btn btn-ghost btn-sm" (click)="store.open({ kind: 'vocabulary', unit: unit() })" [attr.aria-label]="'teacherDashboard.unit.vocabulary' | t">
+        <app-icon name="book" [size]="15" /><span class="unit__vocab-label">{{ 'teacherDashboard.unit.vocabulary' | t }}</span>
       </button>
       <div ngbDropdown container="body" placement="bottom-end">
-        <button type="button" ngbDropdownToggle class="btn-icon" aria-label="Más acciones de la unidad">
+        <button type="button" ngbDropdownToggle class="btn-icon" [attr.aria-label]="'teacherDashboard.unit.moreActions' | t">
           <app-icon name="more" [size]="18" />
         </button>
         <div ngbDropdownMenu role="menu">
-          <button type="button" ngbDropdownItem role="menuitem" (click)="store.open({ kind: 'unit-edit', unit: unit() })">Editar unidad</button>
-          <button type="button" ngbDropdownItem role="menuitem" (click)="store.open({ kind: 'materials', unit: unit() })">Materiales</button>
-          <button type="button" ngbDropdownItem role="menuitem" (click)="store.open({ kind: 'quiz', unit: unit() })">Quiz de la unidad</button>
+          <button type="button" ngbDropdownItem role="menuitem" (click)="store.open({ kind: 'unit-edit', unit: unit() })">{{ 'teacherDashboard.unit.editUnit' | t }}</button>
+          <button type="button" ngbDropdownItem role="menuitem" (click)="store.open({ kind: 'materials', unit: unit() })">{{ 'teacherDashboard.unit.materials' | t }}</button>
+          <button type="button" ngbDropdownItem role="menuitem" (click)="store.open({ kind: 'quiz', unit: unit() })">{{ 'teacherDashboard.unit.quiz' | t }}</button>
           <div class="dropdown-divider"></div>
           <button type="button" ngbDropdownItem role="menuitem" class="dropdown-item--danger" (click)="store.deleteUnit(unit().id)">
-            <app-icon name="trash" [size]="15" />Eliminar unidad
+            <app-icon name="trash" [size]="15" />{{ 'teacherDashboard.unit.deleteUnit' | t }}
           </button>
         </div>
       </div>
@@ -67,11 +67,11 @@
           <app-story-card [story]="story" [unit]="unit()" [number]="i + 1" />
         </div>
       } @empty {
-        <p class="unit__empty">Esta unidad todavía no tiene historias.</p>
+        <p class="unit__empty">{{ 'teacherDashboard.unit.noStories' | t }}</p>
       }
       <button type="button" class="btn btn-ghost btn-ghost--accent btn-sm unit__add"
               (click)="store.open({ kind: 'story-create', unitId: unit().id })">
-        <app-icon name="plus" [size]="15" />Agregar historia
+        <app-icon name="plus" [size]="15" />{{ 'teacherDashboard.unit.addStory' | t }}
       </button>
     </div>
   }

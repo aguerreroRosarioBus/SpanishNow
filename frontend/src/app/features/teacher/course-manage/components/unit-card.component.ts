@@ -3,7 +3,8 @@ import { NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem } from
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { unitDisplayTitle } from '../../../../shared/utils/unit-title';
 import { formatAvailableDate } from '../../../../shared/utils/release-date';
-import { PluralPipe } from '../../../../shared/pipes/plural.pipe';
+import { I18nService } from '../../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { Story, Unit } from '../../../../core/models/course.model';
 import { CourseManageStore } from '../course-manage.store';
 import { CourseContentStore } from '../course-content.store';
@@ -16,13 +17,14 @@ let draggedUnit: Unit | null = null;
 @Component({
   selector: 'app-unit-card',
   standalone: true,
-  imports: [NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem, IconComponent, PluralPipe, StoryCardComponent],
+  imports: [NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem, IconComponent, TranslatePipe, StoryCardComponent],
   templateUrl: './unit-card.component.html',
   styleUrl: './unit-card.component.scss'
 })
 export class UnitCardComponent {
   store = inject(CourseManageStore);
   content = inject(CourseContentStore);
+  private i18n = inject(I18nService);
   unit = input.required<Unit>();
   /** Número visible de la unidad (posición en el curso) */
   number = input.required<number>();
@@ -37,11 +39,10 @@ export class UnitCardComponent {
   /** Resumen corto de la liberación por fechas (vacío si la unidad está abierta desde el primer día). */
   dripLabel = computed(() => {
     const { releaseAfterDays: days, releaseAt } = this.unit();
-    const parts: string[] = [];
-    if (days) parts.push(`Día ${days}`);
-    const date = formatAvailableDate(releaseAt, 'es', 'short');
-    if (date) parts.push(`desde ${date}`);
-    return parts.join(' y ');
+    const day = days ? this.i18n.t('teacherDashboard.unit.dripDay', { days }) : '';
+    const date = formatAvailableDate(releaseAt, this.i18n.intlLocale(), 'short');
+    const from = date ? this.i18n.t('teacherDashboard.unit.dripFrom', { date }) : '';
+    return day && from ? this.i18n.t('teacherDashboard.unit.dripJoin', { first: day, second: from }) : day || from;
   });
   quiz = computed(() => this.content.quiz(this.unit().id));
   private draggedStory: Story | null = null;

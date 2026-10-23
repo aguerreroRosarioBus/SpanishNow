@@ -1,12 +1,13 @@
 import { Component, inject } from '@angular/core';
 import { CourseManageStore } from '../course-manage.store';
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { UnitCardComponent } from './unit-card.component';
 
 /** Lista de unidades del curso con controles de expandir/colapsar. */
 @Component({
   selector: 'app-unit-list',
   standalone: true,
-  imports: [UnitCardComponent],
+  imports: [UnitCardComponent, TranslatePipe],
   templateUrl: './unit-list.component.html',
   styles: [`
     .list-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding-top: 4px; border-top: 1px solid var(--color-border); }

@@ -1,30 +1,30 @@
-<section class="students-panel" aria-label="Alumnos del curso">
+<section class="students-panel" [attr.aria-label]="'teacherDashboard.students.panelLabel' | t">
   <!-- Agregar alumno -->
   <div class="panel-block">
-    <h2 class="panel-block__title">Agregar alumno</h2>
+    <h2 class="panel-block__title">{{ 'teacherDashboard.students.addTitle' | t }}</h2>
     <form [formGroup]="addForm" (ngSubmit)="addStudent()" class="add-form" novalidate>
       <div class="add-form__field">
-        <label for="studentEmail" class="form-label">Email *</label>
+        <label for="studentEmail" class="form-label">{{ 'teacherDashboard.students.emailLabel' | t }}</label>
         <input type="email" id="studentEmail" class="form-control" formControlName="email" autocomplete="off"
-               [class.is-invalid]="addForm.controls.email.invalid && addForm.controls.email.touched" placeholder="alumno@email.com">
+               [class.is-invalid]="addForm.controls.email.invalid && addForm.controls.email.touched" [placeholder]="'teacherDashboard.students.emailPlaceholder' | t">
       </div>
       <div class="add-form__field">
-        <label for="studentName" class="form-label">Nombre (opcional)</label>
-        <input type="text" id="studentName" class="form-control" formControlName="name" autocomplete="off" placeholder="Si es un alumno nuevo">
+        <label for="studentName" class="form-label">{{ 'teacherDashboard.students.nameLabel' | t }}</label>
+        <input type="text" id="studentName" class="form-control" formControlName="name" autocomplete="off" [placeholder]="'teacherDashboard.students.namePlaceholder' | t">
       </div>
       <button type="submit" class="btn btn-primary" [disabled]="isAdding()">
         @if (isAdding()) { <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> }
-        Agregar
+        {{ 'teacherDashboard.students.add' | t }}
       </button>
     </form>
-    <p class="form-text mb-0">Si el email no tiene cuenta, se crea y se le envía un email para elegir su contraseña.</p>
+    <p class="form-text mb-0">{{ 'teacherDashboard.students.addHint' | t }}</p>
   </div>
 
   <!-- Importar CSV de Hotmart -->
   <div class="panel-block">
-    <h2 class="panel-block__title">Importar compradores de Hotmart</h2>
-    <p class="form-text mt-0">Sube el CSV exportado desde Hotmart (máx. 2 MB, 5.000 filas). Vas a ver una vista previa antes de aplicar nada.</p>
-    <input #csvInput type="file" class="form-control" accept=".csv,text/csv" aria-label="Archivo CSV de Hotmart"
+    <h2 class="panel-block__title">{{ 'teacherDashboard.students.importTitle' | t }}</h2>
+    <p class="form-text mt-0">{{ 'teacherDashboard.students.importHint' | t }}</p>
+    <input #csvInput type="file" class="form-control" accept=".csv,text/csv" [attr.aria-label]="'teacherDashboard.students.csvLabel' | t"
            (change)="onFileSelected($event)" [disabled]="isPreviewing() || isImporting()">
 
     @if (importError()) {
@@ -34,25 +34,25 @@
     @if (isPreviewing()) {
       <div class="text-center py-3" role="status">
         <div class="spinner-border spinner-border-sm text-primary" aria-hidden="true"></div>
-        <span class="ms-2 text-muted">Analizando archivo…</span>
+        <span class="ms-2 text-muted">{{ 'teacherDashboard.students.analyzing' | t }}</span>
       </div>
     }
 
     @if (preview(); as p) {
       <div class="import-summary" role="status">
-        <span><strong>{{ p.summary.total }}</strong> filas</span>
-        <span class="badge-status badge-status--published">{{ p.summary.new }} nuevos</span>
-        <span class="badge-status badge-status--draft">{{ p.summary.existingUser }} con cuenta</span>
-        <span class="badge-status badge-status--draft">{{ p.summary.alreadyEnrolled }} ya inscriptos</span>
+        <span><strong>{{ p.summary.total }}</strong> {{ 'teacherDashboard.students.rows' | t }}</span>
+        <span class="badge-status badge-status--published">{{ 'teacherDashboard.students.rowsNew' | t:{ count: p.summary.new } }}</span>
+        <span class="badge-status badge-status--draft">{{ 'teacherDashboard.students.rowsExisting' | t:{ count: p.summary.existingUser } }}</span>
+        <span class="badge-status badge-status--draft">{{ 'teacherDashboard.students.rowsEnrolled' | t:{ count: p.summary.alreadyEnrolled } }}</span>
         @if (p.summary.invalid > 0) {
-          <span class="badge-status badge-status--invalid">{{ p.summary.invalid }} inválidas</span>
+          <span class="badge-status badge-status--invalid">{{ 'teacherDashboard.students.rowsInvalid' | t:{ count: p.summary.invalid } }}</span>
         }
       </div>
 
       <div class="table-wrap">
         <table class="data-table">
           <thead>
-            <tr><th scope="col">Línea</th><th scope="col">Nombre</th><th scope="col">Email</th><th scope="col">Estado</th></tr>
+            <tr><th scope="col">{{ 'teacherDashboard.students.colLine' | t }}</th><th scope="col">{{ 'teacherDashboard.students.colName' | t }}</th><th scope="col">{{ 'teacherDashboard.students.colEmail' | t }}</th><th scope="col">{{ 'teacherDashboard.students.colStatus' | t }}</th></tr>
           </thead>
           <tbody>
             @for (row of p.rows; track row.line) {
@@ -73,25 +73,24 @@
       <div class="form-check mt-3">
         <input class="form-check-input" type="checkbox" id="sendInvites" [checked]="sendInvites()"
                (change)="sendInvites.set($any($event.target).checked)">
-        <label class="form-check-label" for="sendInvites">Enviar invitación por email</label>
+        <label class="form-check-label" for="sendInvites">{{ 'teacherDashboard.students.sendInvites' | t }}</label>
       </div>
 
       <div class="d-flex gap-2 mt-3">
         <button type="button" class="btn btn-primary" (click)="confirmImport()" [disabled]="isImporting() || importable() === 0">
           @if (isImporting()) { <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> }
-          Confirmar importación ({{ importable() }})
+          {{ 'teacherDashboard.students.confirmImport' | t:{ count: importable() } }}
         </button>
-        <button type="button" class="btn btn-secondary" (click)="cancelImport(csvInput)" [disabled]="isImporting()">Cancelar</button>
+        <button type="button" class="btn btn-secondary" (click)="cancelImport(csvInput)" [disabled]="isImporting()">{{ 'teacherDashboard.cancel' | t }}</button>
       </div>
       @if (importable() === 0) {
-        <p class="form-text">No hay filas nuevas para importar.</p>
+        <p class="form-text">{{ 'teacherDashboard.students.noNewRows' | t }}</p>
       }
     }
 
     @if (importDone(); as done) {
       <div class="alert alert-success mt-3 mb-0" role="status">
-        Importación lista: {{ done.summary.new }} nuevos, {{ done.summary.existingUser }} con cuenta existente,
-        {{ done.summary.alreadyEnrolled }} ya inscriptos, {{ done.summary.invalid }} inválidas.
+        {{ 'teacherDashboard.students.importDone' | t:{ added: done.summary.new, existing: done.summary.existingUser, enrolled: done.summary.alreadyEnrolled, invalid: done.summary.invalid } }}
       </div>
     }
   </div>
@@ -99,8 +98,8 @@
   <!-- Lista de alumnos -->
   <div class="panel-block">
     <h2 class="panel-block__title">
-      Alumnos inscritos
-      <span class="text-secondary-ui fw-normal">({{ students().length | plural:'alumno':'alumnos':'ninguno' }})</span>
+      {{ 'teacherDashboard.students.enrolledTitle' | t }}
+      <span class="text-secondary-ui fw-normal">({{ 'teacherDashboard.students.enrolledCount' | t:{ count: students().length } }})</span>
     </h2>
 
     @if (errorMessage()) {
@@ -110,20 +109,20 @@
     @if (isLoading()) {
       <div class="text-center py-4" role="status">
         <div class="spinner-border text-primary" aria-hidden="true"></div>
-        <p class="text-muted mt-2 mb-0">Cargando alumnos…</p>
+        <p class="text-muted mt-2 mb-0">{{ 'teacherDashboard.students.loading' | t }}</p>
       </div>
     } @else if (students().length === 0 && !errorMessage()) {
       <div class="state-box">
-        <strong>Todavía no hay alumnos</strong>
-        <span>Se inscriben al comprar el curso, o puedes agregarlos o importarlos arriba.</span>
+        <strong>{{ 'teacherDashboard.students.emptyTitle' | t }}</strong>
+        <span>{{ 'teacherDashboard.students.emptyHint' | t }}</span>
       </div>
     } @else if (students().length > 0) {
       <div class="table-wrap">
         <table class="data-table">
           <thead>
             <tr>
-              <th scope="col">Nombre</th><th scope="col">Email</th><th scope="col">Origen</th>
-              <th scope="col">Fecha</th><th scope="col">Progreso</th><th scope="col"><span class="visually-hidden">Acciones</span></th>
+              <th scope="col">{{ 'teacherDashboard.students.colName' | t }}</th><th scope="col">{{ 'teacherDashboard.students.colEmail' | t }}</th><th scope="col">{{ 'teacherDashboard.students.colSource' | t }}</th>
+              <th scope="col">{{ 'teacherDashboard.students.colDate' | t }}</th><th scope="col">{{ 'teacherDashboard.students.colProgress' | t }}</th><th scope="col"><span class="visually-hidden">{{ 'teacherDashboard.students.colActions' | t }}</span></th>
             </tr>
           </thead>
           <tbody>
@@ -132,18 +131,18 @@
                 <td>{{ s.user.name }}</td>
                 <td>{{ s.user.email }}</td>
                 <td><span class="badge-status badge-status--draft">{{ sourceLabel(s.source) }}</span></td>
-                <td>{{ s.enrolledAt | date:'d MMM y' }}</td>
+                <td>{{ enrolledDate(s.enrolledAt) }}</td>
                 <td>
                   <div class="progress-cell">
                     <div class="progress" role="progressbar" [attr.aria-valuenow]="progressPercent(s)" aria-valuemin="0" aria-valuemax="100"
-                         [attr.aria-label]="'Progreso de ' + s.user.name">
+                         [attr.aria-label]="'teacherDashboard.students.progressOf' | t:{ name: s.user.name }">
                       <div class="progress-bar" [style.width.%]="progressPercent(s)"></div>
                     </div>
                     <small>{{ s.progress.completedStories }}/{{ s.progress.totalStories }}</small>
                   </div>
                 </td>
                 <td class="text-end">
-                  <button type="button" class="btn btn-ghost btn-sm" (click)="askRemove(s)" [attr.aria-label]="'Quitar acceso a ' + s.user.name">Quitar acceso</button>
+                  <button type="button" class="btn btn-ghost btn-sm" (click)="askRemove(s)" [attr.aria-label]="'teacherDashboard.students.removeAccessFor' | t:{ name: s.user.name }">{{ 'teacherDashboard.students.removeAccess' | t }}</button>
                 </td>
               </tr>
             }
@@ -157,9 +156,9 @@
 @if (studentToRemove(); as target) {
   <app-confirm-dialog
     [show]="true"
-    title="Quitar acceso"
-    [message]="'¿Quitar el acceso de ' + target.user.name + ' (' + target.user.email + ') a este curso? Se borrará también su progreso. Esta acción no se puede deshacer.'"
-    confirmText="Quitar acceso"
+    [title]="'teacherDashboard.students.removeAccess' | t"
+    [message]="removeMessage(target)"
+    [confirmText]="'teacherDashboard.students.removeAccess' | t"
     type="danger"
     (confirmed)="confirmRemove()"
     (cancelled)="cancelRemove()"

@@ -1,17 +1,17 @@
 <div class="list-bar">
-  <h2 class="list-bar__title">Contenido del curso</h2>
+  <h2 class="list-bar__title">{{ 'teacherDashboard.units.title' | t }}</h2>
   @if (store.units().length > 0) {
     <div class="list-bar__actions">
-      <button type="button" class="btn btn-ghost btn-sm" (click)="store.expandAllUnits()">Expandir todo</button>
-      <button type="button" class="btn btn-ghost btn-sm" (click)="store.collapseAllUnits()">Colapsar todo</button>
+      <button type="button" class="btn btn-ghost btn-sm" (click)="store.expandAllUnits()">{{ 'teacherDashboard.units.expandAll' | t }}</button>
+      <button type="button" class="btn btn-ghost btn-sm" (click)="store.collapseAllUnits()">{{ 'teacherDashboard.units.collapseAll' | t }}</button>
     </div>
   }
 </div>
 
 @if (store.units().length === 0) {
   <div class="state-box">
-    <strong>Aún no hay unidades</strong>
-    <span>Crea la primera con «Nueva unidad» para empezar a agregar historias.</span>
+    <strong>{{ 'teacherDashboard.units.emptyTitle' | t }}</strong>
+    <span>{{ 'teacherDashboard.units.emptyHint' | t }}</span>
   </div>
 }
 
