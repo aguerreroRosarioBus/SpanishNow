@@ -11,7 +11,18 @@ const { adapter } = require('./googleCalendar');
 const PROVIDER = 'google_calendar';
 const { IntegrationError } = connections;
 const redirectUri = () => process.env.GOOGLE_CALENDAR_REDIRECT_URI || 'http://localhost:3000/api/integrations/google-calendar/callback';
-const frontendUrl = () => (process.env.FRONTEND_URL || 'http://localhost:4200').replace(/\/$/, '');
+// Mismas reglas que liveGoogleService: https, o http de localhost solo fuera de producción; nunca credenciales en la URL.
+function config() {
+  const unconfigured = () => new IntegrationError(503, 'provider_unavailable', { reason: 'not_configured' });
+  let redirect, frontend;
+  try { redirect = new URL(redirectUri()); frontend = new URL(process.env.FRONTEND_URL || 'http://localhost:4200'); } catch { throw unconfigured(); }
+  for (const url of [redirect, frontend]) {
+    const local = process.env.NODE_ENV !== 'production' && ['localhost', '127.0.0.1'].includes(url.hostname) && url.protocol === 'http:';
+    if ((!local && url.protocol !== 'https:') || url.username || url.password) throw unconfigured();
+  }
+  return { redirect: redirect.href, frontend: frontend.origin };
+}
+const frontendUrl = () => config().frontend;
 // Estados en los que existe una autorización que ya no vale o está en riesgo: no se confirma sin leer la ocupación.
 const REQUIRES_CHECK = ['connected', 'needs_attention', 'revoked'];
 const TICK_MS = () => (process.env.GOOGLE_CALENDAR_NOTIFICATIONS_URL ? 30 : 5) * 60000;
@@ -51,6 +62,7 @@ async function status(user) {
 /** /connect devuelve una URL de primera parte (/start): allí se fija la cookie que ata el callback a este navegador. */
 async function connect(user) {
   if (user.role !== 'teacher') throw new IntegrationError(403, 'forbidden');
+  config();
   const { state } = await connections.beginOAuth(user.id, PROVIDER);
   const start = new URL('start', redirectUri());
   start.searchParams.set('state', state);
@@ -61,6 +73,7 @@ const cookiePath = () => new URL('.', redirectUri()).pathname.replace(/\/$/, '')
 
 /** GET /start: sin sesión (navegación del navegador); devuelve la URL del proveedor y la cookie de enlace. */
 async function start(state) {
+  config();
   const challenge = await connections.pendingChallenge(PROVIDER, state);
   return { location: adapter().authUrl({ state, challenge, redirectUri: redirectUri() }),
     cookie: connections.bindingCookie(PROVIDER, state, { path: cookiePath(), secure: new URL(redirectUri()).protocol === 'https:' }) };
@@ -70,6 +83,7 @@ async function start(state) {
 const done = outcome => `${frontendUrl()}/teacher/integrations?calendar=${encodeURIComponent(outcome)}`;
 
 async function callback(query, cookieHeader) {
+  config();
   let pending;
   // Sin la cookie de /start de este navegador el state no se consume: otra persona no puede ni vincular ni quemar la conexión.
   if (!connections.matchesBinding(PROVIDER, query.state, cookieHeader)) return done('error');

@@ -112,6 +112,31 @@ describe('rutas y conexión (CAL-01, CAL-08)', () => {
     await expect(calendar.start('x'.repeat(43))).rejects.toMatchObject({ code: 'oauth_state_invalid' });
   });
 
+  test('P2: redirect y FRONTEND_URL deben ser https (o http de localhost fuera de producción), sin credenciales', async () => {
+    const teacher = await createUser('teacher', 'cal-https');
+    const saved = { frontend: process.env.FRONTEND_URL, redirect: process.env.GOOGLE_CALENDAR_REDIRECT_URI, env: process.env.NODE_ENV };
+    const unconfigured = { code: 'provider_unavailable', statusCode: 503, params: { reason: 'not_configured' } };
+    try {
+      process.env.FRONTEND_URL = 'http://app.example.com';
+      await expect(calendar.connect(teacher)).rejects.toMatchObject(unconfigured);
+      process.env.FRONTEND_URL = 'https://app.example.com';
+      process.env.GOOGLE_CALENDAR_REDIRECT_URI = 'http://api.example.com/api/integrations/google-calendar/callback';
+      await expect(calendar.connect(teacher)).rejects.toMatchObject(unconfigured);
+      process.env.GOOGLE_CALENDAR_REDIRECT_URI = 'https://user:pw@api.example.com/api/integrations/google-calendar/callback';
+      await expect(calendar.connect(teacher)).rejects.toMatchObject(unconfigured);
+      // En producción ni siquiera localhost vale (y el valor por defecto no se usa en silencio).
+      process.env.NODE_ENV = 'production';
+      delete process.env.GOOGLE_CALENDAR_REDIRECT_URI; delete process.env.FRONTEND_URL;
+      await expect(calendar.connect(teacher)).rejects.toMatchObject(unconfigured);
+      process.env.FRONTEND_URL = 'https://app.example.com';
+      process.env.GOOGLE_CALENDAR_REDIRECT_URI = 'https://api.example.com/api/integrations/google-calendar/callback';
+      expect((await calendar.connect(teacher)).url).toMatch(/^https:\/\/api\.example\.com\/api\/integrations\/google-calendar\/start\?state=/);
+      expect(calendar.frontendUrl()).toBe('https://app.example.com');
+    } finally {
+      for (const [k, v] of [['FRONTEND_URL', saved.frontend], ['GOOGLE_CALENDAR_REDIRECT_URI', saved.redirect], ['NODE_ENV', saved.env]]) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+    }
+  });
+
   test('solo docentes, sin impersonación y con flag apagado la superficie no existe', async () => {
     const student = await createUser('student', 'cal-alumno');
     expect((await as(student).get('/api/integrations/google-calendar')).status).toBe(403);

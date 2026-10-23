@@ -341,7 +341,7 @@ async function ics(user, sessionId) {
     const url = new URL(ref?.manualJoinUrl || (ref?.status === 'ready' ? ref.joinUrl : '') || '');
     if (url.protocol === 'https:' && (url.hostname === 'zoom.us' || url.hostname.endsWith('.zoom.us'))) zoomJoinUrl = url.href;
   } catch { /* sin enlace de participante listo */ }
-  const frontend = (process.env.FRONTEND_URL || 'http://localhost:4200').replace(/\/$/, '');
+  const frontend = require('./googleCalendarService').frontendUrl(); // validado: https fuera de desarrollo
   const body = require('./calendarIcs').buildIcs({ session, locale: user.locale, host: new URL(frontend).hostname, url: `${frontend}/schedule`, zoomJoinUrl });
   return { id: session.id, body };
 }
