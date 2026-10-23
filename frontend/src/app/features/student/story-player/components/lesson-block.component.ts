@@ -1,3 +1,5 @@
+import { I18nService } from '../../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { Component, computed, inject, input } from '@angular/core';
 import { StudentLessonBlock } from '../../../../core/services/student-lesson.service';
 import { DisplayTooltip } from '../../../../core/services/tooltip.service';
@@ -10,11 +12,12 @@ import { LessonIllustrationComponent } from './lesson-illustration.component';
 @Component({
   selector: 'app-lesson-block',
   standalone: true,
-  imports: [LessonAudioControlsComponent, TooltipDisplayComponent, LessonIllustrationComponent],
+  imports: [TranslatePipe, LessonAudioControlsComponent, TooltipDisplayComponent, LessonIllustrationComponent],
   templateUrl: './lesson-block.component.html',
   styleUrl: './lesson-block.component.scss'
 })
 export class LessonBlockComponent {
+  i18n = inject(I18nService);
   session = inject(LessonSessionStore);
   block = input.required<StudentLessonBlock>();
 

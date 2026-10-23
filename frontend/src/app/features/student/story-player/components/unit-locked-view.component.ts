@@ -1,3 +1,5 @@
+import { I18nService } from '../../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { Component, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
@@ -8,19 +10,19 @@ import { LessonNavigationStore } from '../lesson-navigation.store';
 @Component({
   selector: 'app-unit-locked-view',
   standalone: true,
-  imports: [IconComponent],
+  imports: [TranslatePipe, IconComponent],
   template: `
     <article class="locked-card" role="status">
       <span class="locked-card__icon" aria-hidden="true"><app-icon name="lock" [size]="28" /></span>
-      <span class="eyebrow">Unidad {{ nav.unitNumber() }} de {{ nav.unitCount() }}</span>
+      <span class="eyebrow">{{ 'player.unitCount' | t: {number: nav.unitNumber(), total: nav.unitCount()} }}</span>
       <h1 class="locked-card__title">{{ unitTitle() }}</h1>
       <p class="locked-card__when">{{ nav.currentUnitAvailableText() }}</p>
-      <p class="locked-card__hint">El contenido se libera de a poco. Mientras tanto puedes seguir con las unidades que ya están abiertas.</p>
+      <p class="locked-card__hint">{{ 'player.driptip' | t }}</p>
       <div class="locked-card__actions">
         @if (nav.canGoPreviousUnit()) {
-          <button type="button" class="btn btn-primary" (click)="nav.goToPreviousUnit()"><app-icon name="chevron-left" [size]="16" />Ir a la unidad anterior</button>
+          <button type="button" class="btn btn-primary" (click)="nav.goToPreviousUnit()"><app-icon name="chevron-left" [size]="16" />{{ 'player.goPreviousUnit' | t }}</button>
         } @else {
-          <button type="button" class="btn btn-primary" (click)="back()">Volver a mis cursos</button>
+          <button type="button" class="btn btn-primary" (click)="back()">{{ 'player.backCourses' | t }}</button>
         }
       </div>
     </article>
@@ -36,10 +38,11 @@ import { LessonNavigationStore } from '../lesson-navigation.store';
   `]
 })
 export class UnitLockedViewComponent {
+  i18n = inject(I18nService);
   nav = inject(LessonNavigationStore);
   private router = inject(Router);
 
-  unitTitle = computed(() => unitDisplayTitle(this.nav.currentUnit()?.title) || 'Unidad');
+  unitTitle = computed(() => unitDisplayTitle(this.nav.currentUnit()?.title) || this.i18n.t('player.unitFallback'));
 
   back(): void { this.router.navigate(['/student/dashboard']); }
 }

@@ -12,6 +12,7 @@ import { AUDIO_MESSAGES, LESSON_AUDIO_LOCALE } from './features/student/story-pl
 import { LEGAL_SALES_MESSAGES } from './features/legal/legal-messages';
 import { CHAT_MESSAGES } from './features/chat/chat.i18n';
 import { PACKAGE_MESSAGES } from './features/packages/packages.i18n';
+import { SCHEDULE_MESSAGES } from './features/schedule/schedule.messages';
 
 // Fechas y números en español (21 oct 2026)
 registerLocaleData(localeEs);
@@ -29,6 +30,7 @@ export const appConfig: ApplicationConfig = {
     // W04: textos chat.* del chat privado
     { provide: I18N_CATALOGS, multi: true, useValue: CHAT_MESSAGES },
     { provide: I18N_CATALOGS, multi: true, useValue: PACKAGE_MESSAGES },
+    { provide: I18N_CATALOGS, multi: true, useValue: SCHEDULE_MESSAGES },
     // Service worker solo en el build de producción (en desarrollo no se registra: cachearía el código viejo)
     provideServiceWorker('ngsw-worker.js', {
       enabled: environment.production,

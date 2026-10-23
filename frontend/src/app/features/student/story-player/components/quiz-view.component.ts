@@ -1,3 +1,5 @@
+import { I18nService } from '../../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { Router } from '@angular/router';
 import { QuizAttemptResult, StudentQuiz } from '../../../../core/models/content.model';
@@ -14,11 +16,12 @@ import {
 @Component({
   selector: 'app-quiz-view',
   standalone: true,
-  imports: [IconComponent, NextCourseCardComponent],
+  imports: [TranslatePipe, IconComponent, NextCourseCardComponent],
   templateUrl: './quiz-view.component.html',
   styleUrls: ['./lesson-view.component.scss', './quiz-view.component.scss']
 })
 export class QuizViewComponent {
+  i18n = inject(I18nService);
   nav = inject(LessonNavigationStore);
   private api = inject(QuizService);
   private router = inject(Router);
@@ -28,15 +31,17 @@ export class QuizViewComponent {
   result = signal<QuizAttemptResult | null>(null);
   loading = signal(false);
   submitting = signal(false);
-  error = signal('');
-  submitError = signal('');
+  private errorFailure = signal<{key: string; error?: unknown} | null>(null);
+  error = computed(() => { const f = this.errorFailure(); return f ? (f.error ? this.i18n.errorMessage(f.error, f.key) : this.i18n.t(f.key)) : ''; });
+  private submitErrorFailure = signal<{key: string; error?: unknown} | null>(null);
+  submitError = computed(() => { const f = this.submitErrorFailure(); return f ? (f.error ? this.i18n.errorMessage(f.error, f.key) : this.i18n.t(f.key)) : ''; });
   showMissing = signal(false);
 
   unitId = computed(() => this.nav.currentItem()?.unit?.id ?? null);
   unitTitle = computed(() => unitDisplayTitle(this.nav.currentUnit()?.title));
   pending = computed(() => unansweredCount(this.answers()));
   correct = computed(() => correctCount(this.result()?.results ?? []));
-  nextLabel = computed(() => this.nav.canGoNextUnit() ? 'Siguiente unidad' : 'Volver a mis cursos');
+  nextLabel = computed(() => this.nav.canGoNextUnit() ? this.i18n.t('player.nextUnitButton') : this.i18n.t('player.backCourses'));
   /** Resultado más reciente si hay uno; si no, el mejor intento previo. */
   best = computed(() => this.result()?.bestScore ?? this.quiz()?.bestAttempt?.score ?? null);
 
@@ -49,7 +54,7 @@ export class QuizViewComponent {
 
   private load(unitId: number): void {
     this.loading.set(true);
-    this.error.set('');
+    this.errorFailure.set(null);
     this.result.set(null);
     this.showMissing.set(false);
     this.api.getForStudent(unitId).subscribe({
@@ -62,7 +67,7 @@ export class QuizViewComponent {
         this.quiz.set(null);
         this.loading.set(false);
         if (this.nav.handleLocked(error)) return;
-        this.error.set(error?.status === 404 ? 'Este quiz ya no está disponible.' : 'No se pudo cargar el quiz. Intenta nuevamente.');
+        this.errorFailure.set({key: error?.status === 404 ? 'player.quizUnavailable' : 'player.quizError', error});
       }
     });
   }
@@ -82,7 +87,7 @@ export class QuizViewComponent {
     if (unitId === null) return;
     if (!submission) { this.showMissing.set(true); return; }
     this.submitting.set(true);
-    this.submitError.set('');
+    this.submitErrorFailure.set(null);
     this.api.submitAttempt(unitId, submission).subscribe({
       next: result => {
         this.result.set(result);
@@ -93,7 +98,7 @@ export class QuizViewComponent {
       error: error => {
         this.submitting.set(false);
         if (this.nav.handleLocked(error)) return;
-        this.submitError.set(error?.error?.error || 'No se pudo enviar tus respuestas. Intenta nuevamente.');
+        this.submitErrorFailure.set({key: 'player.quizSubmitError', error});
       }
     });
   }

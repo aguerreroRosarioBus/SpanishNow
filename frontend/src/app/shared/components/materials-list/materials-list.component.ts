@@ -1,3 +1,5 @@
+import { I18nService } from '../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { Material } from '../../../core/models/course.model';
 import { MaterialService, formatFileSize } from '../../../core/services/material.service';
@@ -7,11 +9,11 @@ import { IconComponent } from '../icon/icon.component';
 @Component({
   selector: 'app-materials-list',
   standalone: true,
-  imports: [IconComponent],
+  imports: [TranslatePipe, IconComponent],
   template: `
     @if (list().length) {
-      <section class="materials" [attr.aria-label]="heading()">
-        <h3 class="materials__title">{{ heading() }}</h3>
+      <section class="materials" [attr.aria-label]="displayHeading()">
+        <h3 class="materials__title">{{ displayHeading() }}</h3>
         <ul class="materials__list">
           @for (m of list(); track m.id) {
             <li class="materials__item">
@@ -19,10 +21,10 @@ import { IconComponent } from '../icon/icon.component';
               <span class="materials__name">{{ m.title }}</span>
               @if (m.sizeBytes) { <span class="materials__size">{{ size(m.sizeBytes) }}</span> }
               <button type="button" class="btn btn-secondary btn-sm" (click)="download(m)" [disabled]="busyId() === m.id"
-                      [attr.aria-label]="'Descargar ' + m.title">
+                      [attr.aria-label]="'lessonComments.downloadNamed' | t: {title: m.title}">
                 @if (busyId() === m.id) { <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> }
                 @else { <app-icon name="download" [size]="15" /> }
-                Descargar
+                {{ 'lessonComments.download' | t }}
               </button>
             </li>
           }
@@ -42,13 +44,15 @@ import { IconComponent } from '../icon/icon.component';
   `]
 })
 export class MaterialsListComponent {
+  i18n = inject(I18nService);
   private api = inject(MaterialService);
 
   materials = input<Material[] | null | undefined>([]);
   list = computed(() => this.materials() ?? []);
-  heading = input('Materiales');
+  heading = input('');
+  displayHeading = computed(() => this.heading() || this.i18n.t('lessonComments.materials'));
   busyId = signal<number | null>(null);
-  readonly size = formatFileSize;
+  size(bytes: number): string { return formatFileSize(bytes, this.i18n.intlLocale()); }
 
   download(material: Material): void {
     if (this.busyId() !== null) return;

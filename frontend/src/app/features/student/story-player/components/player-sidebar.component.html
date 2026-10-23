@@ -1,13 +1,13 @@
-<aside class="index" aria-label="Índice del curso">
+<aside class="index" [attr.aria-label]="'player.index' | t">
   <div class="index__head">
-    <a class="index__back" routerLink="/student/dashboard"><app-icon name="chevron-left" [size]="14" />Mis cursos</a>
+    <a class="index__back" routerLink="/student/dashboard"><app-icon name="chevron-left" [size]="14" />{{ 'player.myCourses' | t }}</a>
     <div class="index__course">{{ nav.course()?.title }}</div>
     <div class="index__progress">
       <div class="index__progress-label">
-        <span>Progreso del curso</span>
-        <span>{{ nav.courseProgress().done }} de {{ nav.courseProgress().total }} historias</span>
+        <span>{{ 'player.progress' | t }}</span>
+        <span>{{ 'player.progressCount' | t: {done: nav.courseProgress().done, total: nav.courseProgress().total} }}</span>
       </div>
-      <div class="progress" role="progressbar" aria-label="Progreso del curso"
+      <div class="progress" role="progressbar" [attr.aria-label]="'player.progress' | t"
            [attr.aria-valuenow]="progressPercent()" aria-valuemin="0" aria-valuemax="100">
         <div class="progress-bar" [style.width.%]="progressPercent()"></div>
       </div>
@@ -17,24 +17,24 @@
   @if (nav.isLoading()) {
     <div class="p-3 text-center" role="status">
       <div class="spinner-border spinner-border-sm" aria-hidden="true"></div>
-      <p class="small text-muted mt-2 mb-0">Cargando…</p>
+      <p class="small text-muted mt-2 mb-0">{{ 'player.loading' | t }}</p>
     </div>
   }
 
   @if (!nav.isLoading() && nav.currentUnit()) {
     <div class="index__unit">
       <div class="index__unit-text">
-        <span class="eyebrow">Unidad {{ nav.unitNumber() }} de {{ nav.unitCount() }}</span>
+        <span class="eyebrow">{{ 'player.unitCount' | t: {number: nav.unitNumber(), total: nav.unitCount()} }}</span>
         <span class="index__unit-title">{{ unitTitle() }}</span>
         @if (nav.currentUnitLocked()) {
           <span class="index__unit-lock"><app-icon name="lock" [size]="12" />{{ nav.currentUnitAvailableText() }}</span>
         }
       </div>
       <div class="index__unit-nav">
-        <button type="button" class="btn-icon" aria-label="Unidad anterior" [disabled]="!nav.canGoPreviousUnit()" (click)="nav.goToPreviousUnit()">
+        <button type="button" class="btn-icon" [attr.aria-label]="'player.previousUnit' | t" [disabled]="!nav.canGoPreviousUnit()" (click)="nav.goToPreviousUnit()">
           <app-icon name="chevron-left" [size]="16" />
         </button>
-        <button type="button" class="btn-icon" aria-label="Unidad siguiente" [disabled]="!nav.canGoNextUnit()" (click)="nav.goToNextUnit()">
+        <button type="button" class="btn-icon" [attr.aria-label]="'player.nextUnit' | t" [disabled]="!nav.canGoNextUnit()" (click)="nav.goToNextUnit()">
           <app-icon name="chevron-right" [size]="16" />
         </button>
       </div>
@@ -48,22 +48,22 @@
                   [class.is-locked]="!item.canAccess"
                   [attr.aria-current]="currentId() === item.id ? 'page' : null"
                   [attr.aria-disabled]="!item.canAccess"
-                  [attr.title]="item.locked ? nav.currentUnitAvailableText() : item.canAccess ? null : item.kind === 'quiz' ? 'Completa todas las historias de la unidad para desbloquear el quiz' : 'Completa la historia anterior para desbloquearla'"
+                  [attr.title]="item.locked ? nav.currentUnitAvailableText() : item.canAccess ? null : i18n.t(item.kind === 'quiz' ? 'player.quizUnlock' : 'player.storyUnlock')"
                   (click)="nav.selectItem(item)">
             @if (item.completed) {
-              <span class="state state--done" aria-label="Completada"><app-icon name="check" [size]="12" /></span>
+              <span class="state state--done" [attr.aria-label]="'player.completed' | t"><app-icon name="check" [size]="12" /></span>
             } @else if (currentId() === item.id) {
-              <span class="state state--current" aria-label="En curso"><span class="state__dot"></span></span>
+              <span class="state state--current" [attr.aria-label]="'player.inProgress' | t"><span class="state__dot"></span></span>
             } @else if (!item.canAccess) {
-              <span class="state state--locked" aria-label="Bloqueada"><app-icon name="lock" [size]="13" /></span>
+              <span class="state state--locked" [attr.aria-label]="'player.locked' | t"><app-icon name="lock" [size]="13" /></span>
             } @else {
-              <span class="state state--todo" aria-label="Pendiente"></span>
+              <span class="state state--todo" [attr.aria-label]="'player.pending' | t"></span>
             }
-            <span class="story-link__title">{{ item.title }}</span>
+            <span class="story-link__title">{{ item.kind === 'intro' ? i18n.t('player.welcome') : item.kind === 'quiz' && !item.unit?.quiz?.title ? i18n.t('player.unitQuiz') : item.title }}</span>
             @if (item.kind === 'intro') {
               <app-icon name="video" [size]="14" class="story-link__kind" />
             } @else if (item.kind === 'quiz') {
-              <span class="story-link__tag">Quiz</span>
+              <span class="story-link__tag">{{ 'player.quiz' | t }}</span>
             } @else if (item.story?.videoUrl) {
               <app-icon name="video" [size]="14" class="story-link__kind" />
             }

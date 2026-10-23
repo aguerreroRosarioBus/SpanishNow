@@ -1,3 +1,5 @@
+import { I18nService } from '../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ListenRepeatComponent } from '../listen-repeat/listen-repeat.component';
@@ -6,18 +8,18 @@ import { ToastService } from '../../../core/services/toast.service';
 @Component({
   selector: 'app-listen-repeat-modal',
   standalone: true,
-  imports: [CommonModule, ListenRepeatComponent],
+  imports: [TranslatePipe, CommonModule, ListenRepeatComponent],
   template: `
     <div class="modal fade" [class.show]="show" [style.display]="show ? 'block' : 'none'" tabindex="-1" (click)="onBackdropClick($event)">
       <div class="modal-dialog modal-xl" (click)="$event.stopPropagation()">
         <div class="modal-content">
           <div class="modal-header bg-warning text-dark">
-            <h5 class="modal-title">Listen & Repeat</h5>
-            <button type="button" class="btn-close btn-close-white" (click)="onClose()" aria-label="Close"></button>
+            <h5 class="modal-title">{{ 'activities.repeatModal' | t }}</h5>
+            <button type="button" class="btn-close btn-close-white" (click)="onClose()" [attr.aria-label]="'activities.close' | t"></button>
           </div>
           <div class="modal-body">
             <div class="alert alert-info mb-3">
-              <strong>Objetivo:</strong> Debes obtener 3+ estrellas en al menos 80% de las frases para completar esta actividad.
+              <strong>{{ 'activities.objective' | t }}</strong> {{ 'activities.repeatGoal' | t }}
             </div>
             <app-listen-repeat
               *ngIf="storyId"
@@ -25,12 +27,12 @@ import { ToastService } from '../../../core/services/toast.service';
               (completed)="onListenRepeatCompleted($event)">
             </app-listen-repeat>
             <div *ngIf="!storyId" class="alert alert-warning">
-              No se encontraron actividades de escuchar y repetir para esta unidad.
+              {{ 'activities.noRepeatUnit' | t }}
             </div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" (click)="onClose()">
-              Cerrar
+              {{ 'activities.close' | t }}
             </button>
           </div>
         </div>
@@ -45,6 +47,7 @@ import { ToastService } from '../../../core/services/toast.service';
   `]
 })
 export class ListenRepeatModalComponent {
+  i18n = inject(I18nService);
   @Input() storyId?: number;
   @Input() show = false;
   @Output() completed = new EventEmitter<void>();
@@ -64,10 +67,10 @@ export class ListenRepeatModalComponent {
     const accuracyPercentage = (result.goodPerformance / result.totalPhrases) * 100;
 
     if (accuracyPercentage >= 80) {
-      this.toastService.success(`¡Completado con ${Math.round(accuracyPercentage)}% de frases exitosas!`);
+      this.toastService.success(this.i18n.t('activities.repeatSuccess', {accuracy: this.i18n.formatNumber(Math.round(accuracyPercentage))}));
       this.completed.emit();
     } else {
-      this.toastService.warning('Necesitas 3+ estrellas en al menos 80% de las frases. Inténtalo de nuevo.');
+      this.toastService.warning(this.i18n.t('activities.repeatRetry'));
     }
   }
 }

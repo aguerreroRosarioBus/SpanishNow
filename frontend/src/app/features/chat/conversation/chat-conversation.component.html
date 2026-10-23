@@ -25,6 +25,7 @@
           </span>
         </div>
         <div class="chat__actions" role="group" [attr.aria-label]="'chat.actions.menu' | t">
+          <a routerLink="/schedule" [queryParams]="c.role === 'teacher' ? { conversationId: c.id } : {}" class="btn btn-secondary btn-sm">{{ 'schedule.open' | t }}</a>
           @if (c.blockedByMe) {
             <button type="button" class="btn btn-ghost btn-sm" (click)="unblock()" [disabled]="isActing()">{{ 'chat.actions.unblock' | t }}</button>
           } @else {
@@ -64,6 +65,8 @@
                 }
                 <time [attr.datetime]="m.createdAt">{{ fmt.instant(m.createdAt) }}</time>
               </li>
+            } @else if (m.type === 'session_proposal' && m.classSessionId) {
+              <li data-kind="system"><app-class-session-card [sessionId]="m.classSessionId" [proposalVersion]="m.proposalVersion" /></li>
             } @else if (m.type === 'offer' || m.type === 'session_proposal') {
               <li class="card-msg" data-kind="system">
                 <strong>{{ m.type === 'offer' ? ('chat.conv.offerCard' | t:{ id: m.offerId ?? '' }) : ('chat.conv.proposalCard' | t) }}</strong>

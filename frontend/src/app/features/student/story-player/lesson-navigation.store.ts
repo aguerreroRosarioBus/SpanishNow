@@ -1,3 +1,5 @@
+import { I18nService } from '../../../core/i18n/i18n.service';
+import { UserPreferencesService } from '../../../core/services/user-preferences.service';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { CourseService } from '../../../core/services/course.service';
 import { EnrollmentService } from '../../../core/services/enrollment.service';
@@ -5,11 +7,13 @@ import { ToastService } from '../../../core/services/toast.service';
 import { Course, Enrollment, QuizProgress, Unit } from '../../../core/models/course.model';
 import { NextCourseOffer } from '../../../core/models/sales.model';
 import { NavigationItem } from './navigation-item.model';
-import { availableOnLabel, contentLockedFrom } from '../../../shared/utils/release-date';
+import { contentLockedFrom } from '../../../shared/utils/release-date';
 
 /** Estado de navegación del reproductor: curso, unidad, historias del menú y regla de acceso. */
 @Injectable()
 export class LessonNavigationStore {
+  private i18n = inject(I18nService);
+  private preferences = inject(UserPreferencesService);
   private courseService = inject(CourseService);
   private enrollmentService = inject(EnrollmentService);
   private toastService = inject(ToastService);
@@ -18,7 +22,8 @@ export class LessonNavigationStore {
   currentUnit = signal<Unit | null>(null);
   enrollment = signal<Enrollment | null>(null);
   isLoading = signal(false);
-  errorMessage = signal('');
+  private failure = signal<{key: string; error?: unknown} | null>(null);
+  errorMessage = computed(() => { const f = this.failure(); return f ? (f.error ? this.i18n.errorMessage(f.error, f.key) : this.i18n.t(f.key)) : ''; });
   completedStories = signal<Set<number>>(new Set());
   /** Mejor resultado de quiz por unidad (viene del progreso y se actualiza al enviar un intento). */
   quizResults = signal<Record<number, { bestScore: number | null; passed: boolean }>>({});
@@ -45,7 +50,12 @@ export class LessonNavigationStore {
   });
   /** La unidad abierta todavía no se liberó (contenido por fechas). */
   currentUnitLocked = computed(() => !!this.currentUnit()?.locked);
-  currentUnitAvailableText = computed(() => availableOnLabel(this.currentUnit()?.availableAt));
+  currentUnitAvailableText = computed(() => {
+    const value = this.currentUnit()?.availableAt;
+    if (!value) return this.i18n.t('player.availableSoon');
+    const date = this.i18n.formatInstant(value, this.preferences.preferences()?.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', {dateStyle: 'long'});
+    return this.i18n.t('player.availableOn', {date});
+  });
   currentStoryId = computed(() => this.currentItem()?.story?.id ?? null);
   completedCount = computed(() => this.items().filter(item => item.kind === 'story' && item.completed).length);
   /** Historias de la unidad abierta (sin bienvenida ni quiz). */
@@ -66,8 +76,8 @@ export class LessonNavigationStore {
     const next = this.nextItem();
     if (!next || next.canAccess) return '';
     return next.kind === 'quiz'
-      ? 'Completa todas las historias de la unidad para desbloquear el quiz.'
-      : 'Completa esta lectura para desbloquear la siguiente historia.';
+      ? this.i18n.t('player.quizBlocked')
+      : this.i18n.t('player.readingBlocked');
   });
 
   private unitIndex = computed(() => {
@@ -93,12 +103,12 @@ export class LessonNavigationStore {
   load(courseId: number, requestedStoryId: number | null = null): void {
     this.requestedStoryId = requestedStoryId;
     this.isLoading.set(true);
-    this.errorMessage.set('');
+    this.failure.set(null);
     this.enrollmentService.getMyCourses().subscribe({
       next: enrollments => {
         const enrollment = enrollments.find(e => e.courseId === courseId);
         if (!enrollment) {
-          this.errorMessage.set('No estás inscrito en este curso');
+          this.failure.set({key: 'player.notEnrolled'});
           this.isLoading.set(false);
           return;
         }
@@ -111,7 +121,7 @@ export class LessonNavigationStore {
       },
       error: error => {
         console.error('Error loading enrollment:', error);
-        this.errorMessage.set('Error al cargar la inscripción');
+        this.failure.set({key: 'player.enrollmentError', error});
         this.isLoading.set(false);
       }
     });
@@ -162,7 +172,7 @@ export class LessonNavigationStore {
       },
       error: error => {
         console.error('Error loading course:', error);
-        this.errorMessage.set('Error al cargar el curso');
+        this.failure.set({key: 'player.courseError', error});
         this.isLoading.set(false);
       }
     });
@@ -288,7 +298,7 @@ export class LessonNavigationStore {
       if (index >= 0) this.currentIndex.set(index);
       return;
     }
-    if (!this.navigateTo(item)) this.toastService.warning('Este contenido aún no está disponible');
+    if (!this.navigateTo(item)) this.toastService.warning(this.i18n.t('player.notAvailable'));
   }
 
   /**

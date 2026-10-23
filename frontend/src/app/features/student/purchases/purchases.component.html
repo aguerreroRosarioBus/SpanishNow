@@ -1,8 +1,8 @@
 <div class="page-container">
   <div class="page-header">
     <div class="page-header__main">
-      <h1 class="page-title">Mis compras</h1>
-      <p class="page-summary">Historial de tus compras y recibos</p>
+      <h1 class="page-title">{{ 'student.purchases' | t }}</h1>
+      <p class="page-summary">{{ 'student.purchasesHelp' | t }}</p>
     </div>
   </div>
 
@@ -13,28 +13,28 @@
   @if (isLoading()) {
     <div class="text-center py-5" role="status">
       <div class="spinner-border text-primary" aria-hidden="true"></div>
-      <p class="text-muted mt-2 mb-0">Cargando tus compras…</p>
+      <p class="text-muted mt-2 mb-0">{{ 'student.loadingPurchases' | t }}</p>
     </div>
   } @else if (orders().length === 0 && !errorMessage()) {
     <div class="state-box">
-      <strong>Todavía no tienes compras</strong>
-      <span>Cuando compres un curso vas a ver acá el detalle y el recibo.</span>
-      <a [routerLink]="['/student/dashboard']" [queryParams]="{ view: 'catalog' }" class="btn btn-primary mt-2">Explorar cursos</a>
+      <strong>{{ 'student.purchasesEmpty' | t }}</strong>
+      <span>{{ 'student.purchasesEmptyHelp' | t }}</span>
+      <a [routerLink]="['/student/dashboard']" [queryParams]="{ view: 'catalog' }" class="btn btn-primary mt-2">{{ 'student.explore' | t }}</a>
     </div>
   } @else if (orders().length > 0) {
     <div class="table-wrap">
       <table class="data-table">
         <thead>
           <tr>
-            <th scope="col">Fecha</th><th scope="col">Curso</th><th scope="col" class="num">Monto</th>
-            <th scope="col">Estado</th><th scope="col">Recibo</th>
+            <th scope="col">{{ 'student.date' | t }}</th><th scope="col">{{ 'student.course' | t }}</th><th scope="col" class="num">{{ 'student.amount' | t }}</th>
+            <th scope="col">{{ 'student.status' | t }}</th><th scope="col">{{ 'student.receipt' | t }}</th>
           </tr>
         </thead>
         <tbody>
           @for (o of orders(); track o.id) {
             <tr>
-              <td data-label="Fecha">{{ o.paidAt | date:'d MMM y' }}</td>
-              <td data-label="Curso">
+              <td [attr.data-label]="'student.date' | t">@if (o.paidAt; as paidAt) { {{ paidAt | localeDate : timeZone() : { dateStyle: 'medium' } }} } @else { — }</td>
+              <td [attr.data-label]="'student.course' | t">
                 <a [routerLink]="['/courses', o.course.slug]">{{ o.course.title }}</a>
                 @if (o.commercial; as c) {
                   <details class="purchase-terms">
@@ -54,16 +54,16 @@
                   </details>
                 }
               </td>
-              <td data-label="Monto" class="num">
+              <td [attr.data-label]="'student.amount' | t" class="num">
                 {{ money(o.amount, o.currency) }}
-                @if (o.refundedAmount > 0) { <small class="d-block text-secondary-ui">Devuelto {{ money(o.refundedAmount, o.currency) }}</small> }
+                @if (o.refundedAmount > 0) { <small class="d-block text-secondary-ui">{{ 'student.refundedAmount' | t : { amount: money(o.refundedAmount, o.currency) } }}</small> }
               </td>
-              <td data-label="Estado">
+              <td [attr.data-label]="'student.status' | t">
                 <span class="badge-status" [class.badge-status--published]="badge(o) === 'paid'" [class.badge-status--warn]="badge(o) === 'partial'"
                       [class.badge-status--danger]="badge(o) === 'refunded'" [class.badge-status--draft]="badge(o) === 'pending' || badge(o) === 'failed'">{{ badgeLabel(o) }}</span>
               </td>
-              <td data-label="Recibo">
-                @if (o.receiptUrl) { <a [href]="o.receiptUrl" target="_blank" rel="noopener">Recibo</a> } @else { <span class="text-secondary-ui" aria-label="Sin recibo">—</span> }
+              <td [attr.data-label]="'student.receipt' | t">
+                @if (o.receiptUrl) { <a [href]="o.receiptUrl" target="_blank" rel="noopener">{{ 'student.receipt' | t }}</a> } @else { <span class="text-secondary-ui" [attr.aria-label]="'student.noReceipt' | t">—</span> }
               </td>
             </tr>
           }

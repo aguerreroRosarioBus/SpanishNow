@@ -2,14 +2,14 @@
   <!-- Loading -->
   <div *ngIf="isLoading()" class="text-center py-5">
     <div class="spinner-border text-primary" role="status"></div>
-    <p class="text-muted mt-2">Cargando vocabulario...</p>
+    <p class="text-muted mt-2">{{ 'activities.loadingVocabulary' | t }}</p>
   </div>
 
   <!-- Error -->
   <div *ngIf="errorMessage()" class="alert alert-warning">
     {{ errorMessage() }}
     <button class="btn btn-secondary mt-3" (click)="goBack()">
-      <app-icon name="chevron-left" [size]="16" />Volver
+      <app-icon name="chevron-left" [size]="16" />{{ 'activities.back' | t }}
     </button>
   </div>
 
@@ -18,9 +18,9 @@
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
       <button class="btn btn-ghost" (click)="goBack()">
-        <app-icon name="chevron-left" [size]="16" />Volver
+        <app-icon name="chevron-left" [size]="16" />{{ 'activities.back' | t }}
       </button>
-      <h2 class="mb-0">Tarjetas de Vocabulario</h2>
+      <h2 class="mb-0">{{ 'activities.flashcardTitle' | t }}</h2>
       <div class="btn-group">
         <button
           class="btn btn-sm"
@@ -28,10 +28,10 @@
           [class.btn-outline-primary]="!isRandomMode()"
           (click)="toggleRandomMode()"
         >
-          <app-icon name="shuffle" [size]="16" />{{ isRandomMode() ? 'Aleatorio' : 'Secuencial' }}
+          <app-icon name="shuffle" [size]="16" />{{ (isRandomMode() ? 'activities.random' : 'activities.sequential') | t }}
         </button>
         <button class="btn btn-sm btn-outline-secondary" (click)="restart()">
-          <app-icon name="rotate-ccw" [size]="16" />Reiniciar
+          <app-icon name="rotate-ccw" [size]="16" />{{ 'activities.restart' | t }}
         </button>
       </div>
     </div>
@@ -40,10 +40,10 @@
     <div class="mb-4">
       <div class="d-flex justify-content-between mb-2">
         <small class="text-muted">
-          Tarjeta {{ currentIndex() + 1 }} de {{ totalCards }}
+          {{ 'activities.cardCount' | t: {number: currentIndex() + 1, total: totalCards} }}
         </small>
         <small class="text-muted">
-          {{ progress }}% completado
+          {{ 'activities.percent' | t: {percent: progress} }}
         </small>
       </div>
       <div class="progress" style="height: 8px;">
@@ -71,7 +71,7 @@
             <div *ngIf="currentCard?.imageUrl" class="image-container mb-3">
               <img
                 [src]="currentCard?.imageUrl"
-                [alt]="'Imagen ilustrativa de la palabra en español: ' + (currentCard?.word || 'palabra') + (currentCard?.translation ? ' (' + currentCard?.translation + ')' : '')"
+                [alt]="'activities.image' | t: {word: currentCard?.word || i18n.t('activities.word')}"
                 class="img-fluid rounded">
             </div>
 
@@ -80,11 +80,11 @@
               class="btn btn-outline-primary btn-lg"
               (click)="playAudio(); $event.stopPropagation()"
             >
-              <app-icon name="volume" [size]="16" />Escuchar pronunciación
+              <app-icon name="volume" [size]="16" />{{ 'activities.pronunciation' | t }}
             </button>
 
             <p class="mt-4 text-muted">
-              <small>Haz clic para ver la traducción</small>
+              <small>{{ 'activities.showTranslation' | t }}</small>
             </p>
           </div>
         </div>
@@ -96,13 +96,13 @@
               <h1 class="mb-3">{{ currentCard?.translation }}</h1>
 
               <div *ngIf="currentCard?.example" class="example-box">
-                <strong>Ejemplo:</strong>
+                <strong>{{ 'activities.example' | t }}</strong>
                 <p class="mb-0">{{ currentCard?.example }}</p>
               </div>
             </div>
 
             <p class="mt-4 text-muted">
-              <small>Haz clic para ver la palabra en español</small>
+              <small>{{ 'activities.showWord' | t }}</small>
             </p>
           </div>
         </div>
@@ -117,7 +117,7 @@
         [disabled]="currentIndex() === 0"
         (click)="previousCard()"
       >
-        <app-icon name="chevron-left" [size]="16" />Anterior
+        <app-icon name="chevron-left" [size]="16" />{{ 'activities.previous' | t }}
       </button>
 
       <button
@@ -125,14 +125,14 @@
         [disabled]="!isRandomMode() && currentIndex() >= totalCards - 1"
         (click)="nextCard()"
       >
-        {{ isRandomMode() ? 'Siguiente aleatoria' : 'Siguiente' }}<app-icon name="chevron-right" [size]="16" />
+        {{ (isRandomMode() ? 'activities.nextRandom' : 'activities.next') | t }}<app-icon name="chevron-right" [size]="16" />
       </button>
     </div>
 
     <!-- Stats -->
     <div *ngIf="isRandomMode()" class="text-center mt-4">
       <p class="text-muted">
-        Has revisado {{ playedIndices().size }} de {{ totalCards }} tarjetas
+        {{ 'activities.reviewed' | t: {count: playedIndices().size, total: totalCards} }}
       </p>
     </div>
   </div>

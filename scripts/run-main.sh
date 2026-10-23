@@ -12,13 +12,16 @@
 #
 # Env: RUN_MAIN_INTERVAL (seconds, default 60), RUN_MAIN_FRONT_PORT (default 4200),
 #      RUN_MAIN_FRONTEND_URL (default https://<LAN IP>:<front port>, overrides FRONTEND_URL for the backend
-#      so checkout, email and certificate links open on phones too).
+#      so checkout, email and certificate links open on phones too),
+#      RUN_MAIN_CERT_DIR (default ~/.spanishnow/certs: if lan.pem and lan-key.pem exist there, ng serve uses them
+#      instead of its self-signed certificate, so the browser trusts the site and saves passwords; see DEVELOPMENT.md).
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RUN="$ROOT/.run"
 INTERVAL="${RUN_MAIN_INTERVAL:-60}"
 FRONT_PORT="${RUN_MAIN_FRONT_PORT:-4200}"
+CERT_DIR="${RUN_MAIN_CERT_DIR:-$HOME/.spanishnow/certs}"
 BACK_PID=""
 FRONT_PID=""
 mkdir -p "$RUN"
@@ -86,7 +89,13 @@ start_backend() {
   BACK_PID=$!
 }
 start_frontend() {
-  (cd frontend && exec node node_modules/@angular/cli/bin/ng.js serve --configuration lan --port "$FRONT_PORT") >>"$RUN/frontend.log" 2>&1 &
+  local ssl=()
+  if [ -f "$CERT_DIR/lan.pem" ] && [ -f "$CERT_DIR/lan-key.pem" ]; then
+    ssl=(--ssl-cert "$CERT_DIR/lan.pem" --ssl-key "$CERT_DIR/lan-key.pem")
+  else
+    log "Sin certificado de confianza en $CERT_DIR: el navegador va a avisar (DEVELOPMENT.md, «Certificado de confianza»)."
+  fi
+  (cd frontend && exec node node_modules/@angular/cli/bin/ng.js serve --configuration lan --port "$FRONT_PORT" ${ssl[@]+"${ssl[@]}"}) >>"$RUN/frontend.log" 2>&1 &
   FRONT_PID=$!
 }
 # Each background job has its own process group (set -m), so this also stops nodemon's and ng's children.

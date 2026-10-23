@@ -12,6 +12,7 @@ import { legalManageGuard } from './features/legal/legal-manage.guard';
  * - canActivate: guards que protegen la ruta (opcional)
  */
 export const routes: Routes = [
+  { path: 'schedule', canActivate: [authGuard], loadComponent: () => import('./features/schedule/schedule.component').then(m => m.ScheduleComponent) },
   // Ruta raíz - redirige a login por ahora
   {
     path: '',

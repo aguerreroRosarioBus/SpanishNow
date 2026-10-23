@@ -1,10 +1,11 @@
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-confirm-dialog',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslatePipe],
   template: `
     <div class="modal fade" [class.show]="show" [style.display]="show ? 'block' : 'none'" tabindex="-1">
       <div class="modal-dialog modal-dialog-centered">
@@ -17,7 +18,7 @@ import { CommonModule } from '@angular/common';
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" (click)="onCancel()">
-              Cancelar
+              {{ 'common.cancel' | t }}
             </button>
             <button
               type="button"

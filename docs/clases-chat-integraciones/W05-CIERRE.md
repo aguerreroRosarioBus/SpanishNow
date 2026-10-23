@@ -18,7 +18,7 @@ Este cierre cubre **PACK-01–19** en su superficie comercial y **GROUP-01–05/
 
 ## Cambios y compatibilidad
 
-CONTRATO **1.6**, rutas aditivas documentadas en §7.7. Sin migraciones nuevas en este corte. Se reutilizan políticas, auditoría y outbox W00. **Sin cambios a `credits.apply`, esquema de saldo, reglas TZ ni APIs de W06.** El único mutex nuevo de toda W05 es la migración técnica de #32 que protege producto Hotmart curso/paquete durante validación y escritura.
+CONTRATO **1.7** (1.6 es de W06), rutas aditivas documentadas en §7.7. Sin migraciones nuevas en este corte. Se reutilizan políticas, auditoría y outbox W00. **Sin cambios a `credits.apply`, esquema de saldo, reglas TZ ni APIs de W06.** El único mutex nuevo de toda W05 es la migración técnica de #32 que protege producto Hotmart curso/paquete durante validación y escritura.
 
 Servicios/rutas/tests comerciales W05 y UI `features/packages` propios. Superficies compartidas mínimas: rutas frontend, entrada comercial del sidebar; en cortes anteriores registros de app/backend, bundle `packages.*` y tarjetas de chat. No se edita el catálogo global EN/ES ni se reescribe trabajo ajeno. Cursos digitales conservan su política y conciliación.
 

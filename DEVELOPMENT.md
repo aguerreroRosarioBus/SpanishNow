@@ -60,6 +60,22 @@ ln -sf /Users/andresguerrero/Repos/SpanishNow-run/scripts/spanishnow /opt/homebr
 - Logs en `.run/`. `scripts/run-main.sh sync` actualiza una vez sin levantar nada.
 - Las sesiones no deben editar, cambiar de rama ni levantar servidores en `SpanishNow-run`, ni migrar `spanishnow_main`.
 
+#### Certificado de confianza (sin aviso del navegador)
+Sin certificado propio, `ng serve` usa uno autofirmado: el navegador avisa y el gestor de contraseñas de Chrome no guarda ni completa. Con [mkcert](https://github.com/FiloSottile/mkcert) se crea una autoridad local de confianza y un certificado para esta Mac. Una vez:
+
+```bash
+brew install mkcert
+mkcert -install
+mkdir -p ~/.spanishnow/certs
+mkcert -cert-file ~/.spanishnow/certs/lan.pem -key-file ~/.spanishnow/certs/lan-key.pem localhost 127.0.0.1 ::1 "$(ipconfig getifaddr en0)"
+spanishnow off && spanishnow on
+```
+
+- `mkcert -install` pide la contraseña de la Mac: agrega la autoridad local al llavero del sistema. Cerrar y abrir Chrome después.
+- `run-main.sh` usa `~/.spanishnow/certs/lan.pem` y `lan-key.pem` si existen (otra carpeta con `RUN_MAIN_CERT_DIR`); si no, sigue con el autofirmado y lo avisa en el log. Los archivos quedan fuera del repo: la clave nunca se commitea.
+- El certificado incluye la IP LAN del momento. Si el router le da otra IP a la Mac, repetir el último `mkcert` con la nueva.
+- Celular: instalar y marcar como confiable `rootCA.pem` de `mkcert -CAROOT` (iOS: Ajustes › General › Información › Confianza de certificados). Nunca compartir esa carpeta: con su clave se pueden firmar sitios que esta Mac aceptaría.
+
 ---
 
 ## Estructura del Proyecto

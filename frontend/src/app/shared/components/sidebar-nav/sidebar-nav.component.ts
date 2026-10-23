@@ -85,6 +85,8 @@ export class SidebarNavComponent {
     if (this.features.enabled('class_packages') && this.currentUser()?.role === 'teacher' && groups.length) {
       groups = [{ ...groups[0], items: [...groups[0].items, { label: 'packages.nav', icon: 'shopping-bag', link: '/teacher/class-packages' }, {label:'packages.group.manage',icon:'users',link:'/teacher/class-cohorts'}] }, ...groups.slice(1)];
     }
+    // El acceso de lectura permanece disponible al apagar nuevas propuestas.
+    if (groups.length) groups = [{ ...groups[0], items: [...groups[0].items, { label: 'schedule.nav', icon: 'rectangle', link: '/schedule' }] }, ...groups.slice(1)];
     if (!this.features.enabled('chat') || !groups.length) return groups;
     const chat: NavItem = { label: 'chat.nav', icon: 'message-square', link: '/messages', badge: 'chat' };
     return [{ ...groups[0], items: [...groups[0].items, chat] }, ...groups.slice(1)];

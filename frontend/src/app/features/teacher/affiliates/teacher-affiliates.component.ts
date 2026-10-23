@@ -1,5 +1,4 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem } from '@ng-bootstrap/ng-bootstrap';
 import { AffiliateService } from '../../../core/services/affiliate.service';
@@ -10,7 +9,9 @@ import { Affiliate, AffiliateOrder, AffiliatePayout, AffiliateStat } from '../..
 import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { copyText } from '../../../shared/utils/clipboard';
-import { formatPrice } from '../../../shared/utils/money';
+import { UserPreferencesService } from '../../../core/services/user-preferences.service';
+import { I18nService } from '../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 
 const CURRENCIES = [
   { code: 'usd', label: 'USD' },
@@ -22,7 +23,7 @@ const CURRENCIES = [
 @Component({
   selector: 'app-teacher-affiliates',
   standalone: true,
-  imports: [DatePipe, ReactiveFormsModule, NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem, IconComponent, ConfirmDialogComponent],
+  imports: [ReactiveFormsModule, TranslatePipe, NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem, IconComponent, ConfirmDialogComponent],
   templateUrl: './teacher-affiliates.component.html',
   styleUrl: './teacher-affiliates.component.scss'
 })
@@ -30,6 +31,8 @@ export class TeacherAffiliatesComponent implements OnInit {
   private service = inject(AffiliateService);
   private courseService = inject(CourseService);
   private toast = inject(ToastService);
+  private i18n = inject(I18nService);
+  private preferences = inject(UserPreferencesService);
   private fb = inject(FormBuilder);
 
   readonly currencies = CURRENCIES;
@@ -37,13 +40,15 @@ export class TeacherAffiliatesComponent implements OnInit {
   affiliates = signal<Affiliate[]>([]);
   courses = signal<Course[]>([]);
   isLoading = signal(true);
-  errorMessage = signal('');
+  private loadFailed = signal(false);
+  errorMessage = computed(() => this.loadFailed() ? this.i18n.t('teacherPromotions.affiliatesError') : '');
 
   // Alta / edición
   showForm = signal(false);
   editing = signal<Affiliate | null>(null);
   isSaving = signal(false);
-  formError = signal('');
+  private formFailure = signal<{key: string; error?: unknown} | null>(null);
+  formError = computed(() => { const f = this.formFailure(); return f ? this.i18n.errorMessage(f.error, f.key) : ''; });
   form = this.fb.group({
     name: ['', [Validators.required, Validators.maxLength(120)]],
     email: ['', [Validators.required, Validators.email]],
@@ -78,12 +83,14 @@ export class TeacherAffiliatesComponent implements OnInit {
   // Detalle
   detail = signal<Affiliate | null>(null);
   detailLoading = signal(false);
-  detailError = signal('');
+  private detailFailed = signal(false);
+  detailError = computed(() => this.detailFailed() ? this.i18n.t('teacherPromotions.detailError') : '');
   orders = signal<AffiliateOrder[]>([]);
   payouts = signal<AffiliatePayout[]>([]);
   payoutToDelete = signal<AffiliatePayout | null>(null);
   isPaying = signal(false);
-  payoutError = signal('');
+  private payoutFailure = signal<{key: string; error?: unknown} | null>(null);
+  payoutError = computed(() => { const f = this.payoutFailure(); return f ? this.i18n.errorMessage(f.error, f.key) : ''; });
   payoutForm = this.fb.group({
     amount: [null as number | null, [Validators.required, Validators.min(0.01)]],
     currency: ['usd'],
@@ -98,7 +105,7 @@ export class TeacherAffiliatesComponent implements OnInit {
 
   load(): void {
     this.isLoading.set(true);
-    this.errorMessage.set('');
+    this.loadFailed.set(false);
     this.service.list().subscribe({
       next: list => {
         this.affiliates.set(list);
@@ -107,19 +114,25 @@ export class TeacherAffiliatesComponent implements OnInit {
         if (open) this.detail.set(list.find(a => a.id === open.id) ?? open);
         this.isLoading.set(false);
       },
-      error: () => { this.errorMessage.set('No se pudieron cargar los afiliados.'); this.isLoading.set(false); }
+      error: () => { this.loadFailed.set(true); this.isLoading.set(false); }
     });
   }
 
   // ===== Presentación =====
 
-  money(cents: number, currency: string): string { return formatPrice(cents, currency, 'es'); }
+  money(cents: number, currency: string): string { return this.i18n.formatMoney(cents, currency); }
+  percent(value: number): string { return this.i18n.formatNumber(value / 100, {style: 'percent'}); }
+  orderDate(o: AffiliateOrder): string { return this.i18n.formatInstant(o.paidAt ?? o.createdAt, this.displayZone(), {dateStyle: 'medium'}); }
+  private displayZone(): string { return this.preferences.preferences()?.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; }
+  number(value: number): string { return this.i18n.formatNumber(value); }
+  /** Los pagos se registran como día de calendario (00:00 UTC): se muestran en UTC para no correr el día. */
+  date(value: string): string { return this.i18n.formatInstant(value, 'UTC', {dateStyle: 'medium'}); }
   /** Cifras de una columna, una línea por moneda. */
   hasStats(a: Affiliate): boolean { return (a.stats ?? []).length > 0; }
   statValue(s: AffiliateStat, field: 'sales' | 'commission' | 'paid' | 'owed'): string { return this.money(s[field], s.currency); }
   commissionLabel(o: AffiliateOrder): string {
-    if (o.commissionStatus === 'void') return 'Anulada';
-    return o.commissionStatus === 'pending' ? 'Pendiente' : 'Sin comisión';
+    if (o.commissionStatus === 'void') return this.i18n.t('teacherPromotions.void');
+    return this.i18n.t(o.commissionStatus === 'pending' ? 'teacherPromotions.pending' : 'teacherPromotions.noCommission');
   }
 
   // ===== Alta / edición =====
@@ -127,14 +140,14 @@ export class TeacherAffiliatesComponent implements OnInit {
   openCreate(): void {
     this.editing.set(null);
     this.form.reset({ name: '', email: '', commissionPercent: 20, notes: '', active: true });
-    this.formError.set('');
+    this.formFailure.set(null);
     this.showForm.set(true);
   }
 
   openEdit(a: Affiliate): void {
     this.editing.set(a);
     this.form.reset({ name: a.name, email: a.email, commissionPercent: a.commissionPercent, notes: a.notes ?? '', active: a.active });
-    this.formError.set('');
+    this.formFailure.set(null);
     this.showForm.set(true);
   }
 
@@ -143,24 +156,24 @@ export class TeacherAffiliatesComponent implements OnInit {
   save(): void {
     const v = this.form.getRawValue();
     const percent = Number(v.commissionPercent);
-    if (this.form.controls.name.invalid || !v.name?.trim()) { this.formError.set('Ingresá el nombre del afiliado.'); return; }
-    if (this.form.controls.email.invalid) { this.formError.set('Ingresá un email válido.'); return; }
-    if (!Number.isInteger(percent) || percent < 1 || percent > 90) { this.formError.set('La comisión debe ser un número entero entre 1 y 90.'); return; }
+    if (this.form.controls.name.invalid || !v.name?.trim()) { this.formFailure.set({key: 'teacherPromotions.nameError'}); return; }
+    if (this.form.controls.email.invalid) { this.formFailure.set({key: 'teacherPromotions.emailError'}); return; }
+    if (!Number.isInteger(percent) || percent < 1 || percent > 90) { this.formFailure.set({key: 'teacherPromotions.commissionError'}); return; }
     const editing = this.editing();
     const input = { name: v.name.trim(), email: v.email!.trim(), commissionPercent: percent, notes: v.notes?.trim() || null };
 
     this.isSaving.set(true);
-    this.formError.set('');
+    this.formFailure.set(null);
     const request = editing ? this.service.update(editing.id, { ...input, active: !!v.active }) : this.service.create(input);
     request.subscribe({
       next: created => {
         this.isSaving.set(false);
         this.showForm.set(false);
         if (!editing && created?.id) this.rememberToken(created);
-        this.toast.success(editing ? 'Afiliado actualizado' : 'Afiliado creado');
+        this.toast.success(this.i18n.t(editing ? 'teacherPromotions.affiliateUpdated' : 'teacherPromotions.affiliateCreated'));
         this.load();
       },
-      error: err => { this.isSaving.set(false); this.formError.set(err?.error?.error || 'No se pudo guardar el afiliado.'); }
+      error: err => { this.isSaving.set(false); this.formFailure.set({key: 'teacherPromotions.affiliateSaveError', error: err}); }
     });
   }
 
@@ -170,8 +183,8 @@ export class TeacherAffiliatesComponent implements OnInit {
 
   toggleActive(a: Affiliate): void {
     this.service.update(a.id, { active: !a.active }).subscribe({
-      next: () => { this.toast.success(a.active ? 'Afiliado desactivado' : 'Afiliado activado'); this.load(); },
-      error: err => this.toast.error(err?.error?.error || 'No se pudo cambiar el estado del afiliado')
+      next: () => { this.toast.success(this.i18n.t(a.active ? 'teacherPromotions.affiliateDeactivated' : 'teacherPromotions.affiliateActivated')); this.load(); },
+      error: err => this.toast.error(this.i18n.errorMessage(err, 'teacherPromotions.affiliateStatusError'))
     });
   }
 
@@ -187,7 +200,7 @@ export class TeacherAffiliatesComponent implements OnInit {
 
   async copyLink(link: string): Promise<void> {
     if (!link) return;
-    if (await copyText(link)) { this.manualLink.set(''); this.toast.success('Link copiado'); }
+    if (await copyText(link)) { this.manualLink.set(''); this.toast.success(this.i18n.t('teacherPromotions.linkCopied')); }
     else this.manualLink.set(link);
   }
 
@@ -200,10 +213,10 @@ export class TeacherAffiliatesComponent implements OnInit {
     this.service.regenerateToken(a.id).subscribe({
       next: ({ dashboardToken }) => {
         this.tokens.update(m => ({ ...m, [a.id]: dashboardToken }));
-        this.toast.success('Link del panel regenerado. El anterior ya no funciona.');
+        this.toast.success(this.i18n.t('teacherPromotions.panelRegenerated'));
         if (!this.linksFor()) this.openLinks(a);
       },
-      error: err => this.toast.error(err?.error?.error || 'No se pudo regenerar el link del panel')
+      error: err => this.toast.error(this.i18n.errorMessage(err, 'teacherPromotions.regenerateError'))
     });
   }
 
@@ -216,11 +229,11 @@ export class TeacherAffiliatesComponent implements OnInit {
     this.toDelete.set(null);
     if (!a) return;
     this.service.remove(a.id).subscribe({
-      next: () => { this.toast.success('Afiliado eliminado'); this.load(); },
+      next: () => { this.toast.success(this.i18n.t('teacherPromotions.affiliateDeleted')); this.load(); },
       error: err => {
         // 409: tiene ventas; el servidor lo desactiva en su lugar
-        if (err?.status === 409) { this.toast.warning(err?.error?.error || 'El afiliado tiene ventas: se desactivó en lugar de eliminarse.'); this.load(); }
-        else this.toast.error(err?.error?.error || 'No se pudo eliminar el afiliado');
+        if (err?.status === 409) { this.toast.warning(this.i18n.t('teacherPromotions.affiliateUsed')); this.load(); }
+        else this.toast.error(this.i18n.errorMessage(err, 'teacherPromotions.affiliateDeleteError'));
       }
     });
   }
@@ -231,13 +244,13 @@ export class TeacherAffiliatesComponent implements OnInit {
     this.detail.set(a);
     this.orders.set([]);
     this.payouts.set([]);
-    this.detailError.set('');
-    this.payoutError.set('');
+    this.detailFailed.set(false);
+    this.payoutFailure.set(null);
     this.payoutForm.reset({ amount: null, currency: a.stats?.[0]?.currency ?? 'usd', paidAt: new Date().toISOString().slice(0, 10), note: '' });
     this.detailLoading.set(true);
     let pending = 2;
     const done = () => { if (--pending === 0) this.detailLoading.set(false); };
-    const fail = () => { this.detailError.set('No se pudo cargar todo el detalle del afiliado.'); done(); };
+    const fail = () => { this.detailFailed.set(true); done(); };
     this.service.orders(a.id).subscribe({ next: rows => { this.orders.set(rows); done(); }, error: fail });
     this.service.payouts(a.id).subscribe({ next: rows => { this.payouts.set(rows); done(); }, error: fail });
   }
@@ -248,19 +261,19 @@ export class TeacherAffiliatesComponent implements OnInit {
     if (!a || this.isPaying()) return;
     const v = this.payoutForm.getRawValue();
     const amount = Math.round(Number(v.amount) * 100);
-    if (!(amount > 0)) { this.payoutError.set('Ingresá un monto mayor que 0.'); return; }
-    if (!v.paidAt) { this.payoutError.set('Elige la fecha del pago.'); return; }
+    if (!(amount > 0)) { this.payoutFailure.set({key: 'teacherPromotions.paymentAmountError'}); return; }
+    if (!v.paidAt) { this.payoutFailure.set({key: 'teacherPromotions.paymentDateError'}); return; }
     this.isPaying.set(true);
-    this.payoutError.set('');
+    this.payoutFailure.set(null);
     this.service.addPayout(a.id, { amount, currency: v.currency || 'usd', paidAt: v.paidAt, note: v.note?.trim() || null }).subscribe({
       next: () => {
         this.isPaying.set(false);
         this.payoutForm.patchValue({ amount: null, note: '' });
-        this.toast.success('Pago registrado');
+        this.toast.success(this.i18n.t('teacherPromotions.paymentSaved'));
         this.service.payouts(a.id).subscribe({ next: rows => this.payouts.set(rows) });
         this.load();
       },
-      error: err => { this.isPaying.set(false); this.payoutError.set(err?.error?.error || 'No se pudo registrar el pago.'); }
+      error: err => { this.isPaying.set(false); this.payoutFailure.set({key: 'teacherPromotions.paymentSaveError', error: err}); }
     });
   }
 
@@ -274,10 +287,10 @@ export class TeacherAffiliatesComponent implements OnInit {
     this.service.removePayout(a.id, p.id).subscribe({
       next: () => {
         this.payouts.update(list => list.filter(x => x.id !== p.id));
-        this.toast.success('Pago eliminado');
+        this.toast.success(this.i18n.t('teacherPromotions.paymentDeleted'));
         this.load();
       },
-      error: err => this.toast.error(err?.error?.error || 'No se pudo eliminar el pago')
+      error: err => this.toast.error(this.i18n.errorMessage(err, 'teacherPromotions.paymentDeleteError'))
     });
   }
 

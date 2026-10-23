@@ -1,4 +1,6 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { I18nService } from '../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
+import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { catchError, forkJoin, of, switchMap } from 'rxjs';
@@ -9,9 +11,7 @@ import { CertificateStatus, Enrollment, EnrollmentProgress, QuizProgress, StoryP
 import { AuthService } from '../../../core/services/auth.service';
 import { CertificateService } from '../../../core/services/certificate.service';
 import { ToastService } from '../../../core/services/toast.service';
-import { pluralize } from '../../../shared/pipes/plural.pipe';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
-import { PluralPipe } from '../../../shared/pipes/plural.pipe';
 import { unitDisplayTitle } from '../../../shared/utils/unit-title';
 
 export interface CourseProgress {
@@ -26,11 +26,12 @@ export interface CourseProgress {
 @Component({
   selector: 'app-progress',
   standalone: true,
-  imports: [CommonModule, RouterLink, PluralPipe, IconComponent, NextCourseCardComponent],
+  imports: [TranslatePipe, CommonModule, RouterLink, IconComponent, NextCourseCardComponent],
   templateUrl: './progress.component.html',
   styleUrl: './progress.component.scss'
 })
 export class ProgressComponent implements OnInit {
+  readonly i18n = inject(I18nService);
   private enrollmentService = inject(EnrollmentService);
   private certificateService = inject(CertificateService);
   private auth = inject(AuthService);
@@ -40,7 +41,10 @@ export class ProgressComponent implements OnInit {
   claimingId = signal<number | null>(null);
   claimName = signal('');
   isIssuing = signal(false);
-  claimError = signal('');
+  private claimFailure = signal<unknown>(null);
+  claimError = computed(() => this.claimFailure() ? this.i18n.errorMessage(this.claimFailure(), 'student.certificateError') : '');
+  private failure = signal<unknown>(null);
+  errorMessage = computed(() => this.failure() ? this.i18n.errorMessage(this.failure(), 'student.progressError') : '');
 
   courses = signal<CourseProgress[]>([]);
   isLoading = signal<boolean>(false);
@@ -51,6 +55,7 @@ export class ProgressComponent implements OnInit {
 
   loadProgress(): void {
     this.isLoading.set(true);
+    this.failure.set(null);
     this.enrollmentService.getMyCourses().pipe(
       switchMap(enrollments => enrollments.length === 0 ? of([]) : forkJoin(
         enrollments.map(enrollment => this.enrollmentService.getProgressSummary(enrollment.id).pipe(
@@ -69,7 +74,7 @@ export class ProgressComponent implements OnInit {
         this.isLoading.set(false);
       },
       error: error => {
-        console.error('Error loading progress:', error);
+        this.failure.set(error);
         this.isLoading.set(false);
       }
     });
@@ -103,17 +108,19 @@ export class ProgressComponent implements OnInit {
 
   /** «Faltan 2 lecciones y 1 quiz» (o solo la parte que falta). */
   missingText(cert: CertificateStatus): string {
-    const parts: string[] = [];
-    if (cert.missing.stories > 0) parts.push(pluralize(cert.missing.stories, 'lección', 'lecciones'));
-    if (cert.missing.quizzes > 0) parts.push(pluralize(cert.missing.quizzes, 'quiz', 'quizzes'));
-    return parts.length ? `Faltan ${parts.join(' y ')} para obtener tu certificado.` : 'Completa el curso para obtener tu certificado.';
+    const stories = this.i18n.t('student.missingStoryCount', { count: cert.missing.stories });
+    const quizzes = this.i18n.t('student.missingQuizCount', { count: cert.missing.quizzes });
+    if (cert.missing.stories > 0 && cert.missing.quizzes > 0) return this.i18n.t('student.missingBoth', { stories, quizzes });
+    if (cert.missing.stories > 0) return this.i18n.t('student.missingStories', { stories });
+    if (cert.missing.quizzes > 0) return this.i18n.t('student.missingQuizzes', { quizzes });
+    return this.i18n.t('student.completeForCertificate');
   }
 
   pdfUrl(code: string): string { return this.certificateService.pdfUrl(code); }
   verificationUrl(code: string): string { return this.certificateService.verificationUrl(code); }
 
   startClaim(course: CourseProgress): void {
-    this.claimError.set('');
+    this.claimFailure.set(null);
     this.claimName.set(this.auth.currentUser()?.name ?? '');
     this.claimingId.set(course.enrollment.id);
   }
@@ -124,13 +131,13 @@ export class ProgressComponent implements OnInit {
     const name = this.claimName().trim();
     if (!name || name.length > 100 || this.isIssuing()) return;
     this.isIssuing.set(true);
-    this.claimError.set('');
+    this.claimFailure.set(null);
     this.certificateService.issue(course.enrollment.id, name).subscribe({
       next: issued => {
         this.setCertificate(course.enrollment.id, { eligible: true, code: issued.code, missing: { stories: 0, quizzes: 0 } });
         this.isIssuing.set(false);
         this.claimingId.set(null);
-        this.toast.success('¡Certificado emitido!');
+        this.toast.success(this.i18n.t('student.certificateIssued'));
       },
       error: error => {
         this.isIssuing.set(false);
@@ -138,7 +145,7 @@ export class ProgressComponent implements OnInit {
           this.setCertificate(course.enrollment.id, { eligible: false, code: null, missing: error.error.missing });
           this.claimingId.set(null);
         } else {
-          this.claimError.set(error?.error?.error || 'No se pudo emitir el certificado. Intenta nuevamente.');
+          this.claimFailure.set(error);
         }
       }
     });
