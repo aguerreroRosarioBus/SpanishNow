@@ -95,7 +95,7 @@ describe('W06: interfaz conectada por contratos de agenda', () => {
     fixture.destroy();
   });
 
-  const confirmed = (sync: { provider: string; status: string; syncedVersion: number }[]) => ({ ...session(), status: 'confirmed', sync });
+  const confirmed = (sync: { provider: string; status: string; syncedVersion: number }[]) => ({ ...session(), status: 'confirmed', sync, proposal: null });
   it('el aviso de integraciones pendientes se oculta si todo está ready y aparece si no', () => {
     for (const [sync, shown] of [[[{ provider: 'zoom', status: 'ready', syncedVersion: 1 }, { provider: 'google_calendar', status: 'ready', syncedVersion: 1 }], false],
       [[{ provider: 'zoom', status: 'ready', syncedVersion: 1 }, { provider: 'google_calendar', status: 'needs_attention', syncedVersion: 1 }], true], [[], true]] as const) {
@@ -112,13 +112,14 @@ describe('W06: interfaz conectada por contratos de agenda', () => {
     api.get.mockReturnValue(of(confirmed(sync)));
     auth.currentUser.set({ id: 2, role: 'teacher' });
     let fixture = TestBed.createComponent(ClassSessionCardComponent); fixture.componentRef.setInput('sessionId', 10); fixture.detectChanges();
-    const button = () => [...fixture.nativeElement.querySelectorAll('.sync button')].find((b: HTMLElement) => b.textContent?.includes('Iniciar reunión')) as HTMLButtonElement | undefined;
+    const button = () => fixture.nativeElement.querySelector('[data-testid="join-button"]') as HTMLButtonElement | null;
+    expect(button()?.textContent).toContain('Iniciar reunión');
     expect(button()).toBeTruthy(); button()!.click(); fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.sync a[href*="zak=x"]')).toBeTruthy(); fixture.destroy();
+    expect(fixture.nativeElement.querySelector('a[data-testid="meeting-link"][href*="zak=x"]')).toBeTruthy(); fixture.destroy();
     api2.join.mockReturnValue(of({ hostUrl: 'https://evil.example/s/1', manual: false }));
     fixture = TestBed.createComponent(ClassSessionCardComponent); fixture.componentRef.setInput('sessionId', 10); fixture.detectChanges();
     button()!.click(); fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.sync a')).toBeNull(); fixture.destroy();
+    expect(fixture.nativeElement.querySelector('a[data-testid="meeting-link"]')).toBeNull(); fixture.destroy();
     auth.currentUser.set({ id: 1, role: 'student' });
     fixture = TestBed.createComponent(ClassSessionCardComponent); fixture.componentRef.setInput('sessionId', 10); fixture.detectChanges();
     expect(fixture.nativeElement.textContent).not.toContain('Iniciar reunión'); fixture.destroy();
@@ -130,16 +131,77 @@ describe('W06: interfaz conectada por contratos de agenda', () => {
     api2.join = vi.fn(() => throwError(() => ({ status: 409, error: { code: 'integration_not_connected' } })));
     api.get.mockReturnValue(of(confirmed(sync)));
     const click = (fixture: { nativeElement: HTMLElement; detectChanges(): void }, label: string) => {
-      ([...fixture.nativeElement.querySelectorAll('.sync button')] as HTMLButtonElement[]).find(b => b.textContent?.includes(label))!.click(); fixture.detectChanges();
+      ([...fixture.nativeElement.querySelectorAll('[data-testid="join-button"]')] as HTMLButtonElement[]).find(b => b.textContent?.includes(label))!.click(); fixture.detectChanges();
     };
     let fixture = TestBed.createComponent(ClassSessionCardComponent); fixture.componentRef.setInput('sessionId', 10); fixture.detectChanges();
-    click(fixture, 'Abrir enlace de participante');
+    click(fixture, 'Entrar a la clase');
     expect(fixture.nativeElement.textContent).toContain('La reunión todavía no está lista');
     expect(fixture.nativeElement.textContent).not.toContain('Conecta el servicio'); expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeNull(); fixture.destroy();
     auth.currentUser.set({ id: 2, role: 'teacher' });
     fixture = TestBed.createComponent(ClassSessionCardComponent); fixture.componentRef.setInput('sessionId', 10); fixture.detectChanges();
     click(fixture, 'Iniciar reunión');
     expect(fixture.nativeElement.textContent).not.toContain('La reunión todavía no está lista'); expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeTruthy();
+  });
+
+  describe('Tanda C: tarjeta de clase', () => {
+    const render = (s: ClassSession) => {
+      api.get.mockReturnValue(of(s));
+      const fixture = TestBed.createComponent(ClassSessionCardComponent); fixture.componentRef.setInput('sessionId', 10); fixture.detectChanges();
+      return fixture;
+    };
+    const text = (f: { nativeElement: HTMLElement }) => f.nativeElement.textContent || '';
+    const ready = [{ provider: 'zoom', status: 'ready', syncedVersion: 1 }, { provider: 'google_calendar', status: 'ready', syncedVersion: 1 }];
+
+    it('muestra la fecha una sola vez y en formato compacto, con la zona como texto secundario', () => {
+      const fixture = render(confirmed(ready));
+      const main = fixture.nativeElement.querySelector('.when-main') as HTMLElement;
+      expect(main.textContent).toMatch(/\d{2}:\d{2}–\d{2}:\d{2}/);
+      expect(main.textContent).not.toContain('2027');
+      expect(text(fixture)).toContain('America/Argentina/Cordoba'); fixture.destroy();
+    });
+    it('el horario del docente solo aparece cuando difiere del de quien mira', () => {
+      let fixture = render(confirmed(ready));
+      expect(fixture.nativeElement.querySelector('[data-testid="teacher-time"]')).toBeTruthy(); fixture.destroy();
+      const same = { ...confirmed(ready), teacher: { id: 2, name: 'Docente', timeZone: 'America/Argentina/Cordoba' }, timeZone: 'America/Argentina/Cordoba' };
+      fixture = render(same);
+      expect(fixture.nativeElement.querySelector('[data-testid="teacher-time"]')).toBeNull();
+      expect(text(fixture)).not.toContain('Horario del docente'); fixture.destroy();
+    });
+    it('el botón principal depende del rol y del estado', () => {
+      let fixture = render(confirmed(ready));
+      expect(fixture.nativeElement.querySelector('[data-testid="join-button"]')?.textContent).toContain('Entrar a la clase'); fixture.destroy();
+      auth.currentUser.set({ id: 2, role: 'teacher' });
+      fixture = render(confirmed(ready));
+      expect(fixture.nativeElement.querySelector('[data-testid="join-button"]')?.textContent).toContain('Iniciar reunión'); fixture.destroy();
+      auth.currentUser.set({ id: 1, role: 'student' });
+      fixture = render(session());
+      expect(fixture.nativeElement.querySelector('[data-testid="join-button"]')).toBeNull();
+      expect(fixture.nativeElement.querySelector('.card-actions .btn-primary')?.textContent).toContain('Aceptar esta propuesta'); fixture.destroy();
+    });
+    it('«Reintentar sincronización» solo aparece si falta sincronizar algo, y solo para la docente', () => {
+      auth.currentUser.set({ id: 2, role: 'teacher' });
+      let fixture = render(confirmed(ready));
+      expect(fixture.nativeElement.querySelector('[data-testid="retry-sync"]')).toBeNull(); fixture.destroy();
+      fixture = render(confirmed([ready[0], { provider: 'google_calendar', status: 'needs_attention', syncedVersion: 1 }]));
+      expect(fixture.nativeElement.querySelector('[data-testid="retry-sync"]')).toBeTruthy(); fixture.destroy();
+      auth.currentUser.set({ id: 1, role: 'student' });
+      fixture = render(confirmed([{ provider: 'zoom', status: 'needs_attention', syncedVersion: 1 }]));
+      expect(fixture.nativeElement.querySelector('[data-testid="retry-sync"]')).toBeNull(); fixture.destroy();
+    });
+    it('el estado es una etiqueta y la clase cancelada se muestra atenuada, sin acción de reunión', () => {
+      let fixture = render(confirmed(ready));
+      expect(fixture.nativeElement.querySelector('[data-testid="session-status"]')?.classList).toContain('status-success');
+      expect(fixture.nativeElement.querySelector('.schedule-card').classList).not.toContain('is-inactive'); fixture.destroy();
+      fixture = render({ ...session(), status: 'cancelled' });
+      expect(fixture.nativeElement.querySelector('[data-testid="session-status"]')?.textContent).toContain('Cancelada');
+      expect(fixture.nativeElement.querySelector('.schedule-card').classList).toContain('is-inactive');
+      expect(fixture.nativeElement.querySelector('[data-testid="join-button"]')).toBeNull(); fixture.destroy();
+    });
+    it('conserva la condición de cancelación y no ofrece «Actualizar» salvo ante un error', () => {
+      const fixture = render(confirmed(ready));
+      expect(text(fixture)).toContain('Sin cargo al cancelar con al menos 24 horas');
+      expect(text(fixture)).not.toContain('Actualizar'); fixture.destroy();
+    });
   });
 
   it('el campo de zona IANA usa el ancho disponible (sin w-auto) para leerse completo en pantallas angostas', () => {

@@ -14,7 +14,7 @@ import { SessionTimeComponent } from './session-time.component';
 
 @Component({ selector: 'app-class-session-card', standalone: true, imports: [FormsModule, RouterLink, TranslatePipe, SessionTimeComponent],
   templateUrl: './class-session-card.component.html',
-  styles: [`:host{display:block}.schedule-card{padding:1rem;border:1px solid var(--color-border,#ddd);border-radius:var(--radius-md,10px);background:var(--color-surface,#fff);margin:.75rem 0}.actions{display:flex;gap:.5rem;flex-wrap:wrap}.participants{list-style:none;padding:0;font-size:.9em}fieldset{margin-top:1rem;padding:.75rem;border:1px solid var(--color-border,#ddd);border-radius:8px}label{display:block;margin:.5rem 0}.notice{font-size:.9em;color:var(--color-text-muted,#625e59)}.sync{font-size:.85em}legend{font-size:1rem}h2{font-size:1.1rem}`]
+  styleUrl: './class-session-card.component.scss'
 })
 export class ClassSessionCardComponent {
   sessionId = input.required<number>();
@@ -61,7 +61,28 @@ export class ClassSessionCardComponent {
     const p = this.selectedProposal(), s = this.session();
     return p?.status === 'pending' ? p : s;
   });
+  /** Clase que ya no se va a dictar: se muestra atenuada. */
+  inactive = computed(() => ['cancelled', 'declined', 'expired'].includes(this.session()?.status || ''));
+  statusTone = computed(() => {
+    switch (this.session()?.status) {
+      case 'confirmed': return 'success';
+      case 'draft': case 'forming': case 'proposed': return 'warning';
+      case 'declined': case 'teacher_no_show': case 'student_no_show': return 'danger';
+      case 'completed': return 'info';
+      default: return 'neutral';
+    }
+  });
+  /** Quién da la clase para la alumna; con quién la dicta, para la docente. */
+  title = computed(() => {
+    const s = this.session(); if (!s) return '';
+    return this.teacher() ? (s.participants.map(p => p.name).join(', ') || s.teacher.name) : s.teacher.name;
+  });
   hasPendingSync = computed(() => (this.session()?.sync || []).some(r => r.status !== 'ready'));
+  /** El botón principal de la reunión: solo en una clase confirmada que todavía no terminó. */
+  canJoin(): boolean {
+    const s = this.session(); if (!s || s.status !== 'confirmed') return false;
+    return Date.parse(s.endsAt) > Date.now() + this.clockOffset;
+  }
   lateCancel(): boolean {
     const s = this.session(); if (!s || (this.teacher() && (!this.requestedBy || this.waiver.trim())) || s.status !== 'confirmed') return false;
     return !isAtLeastHoursBefore(s.startsAt, new Date(Date.now() + this.clockOffset).toISOString(), s.rules?.freeCancelHours ?? 24);
