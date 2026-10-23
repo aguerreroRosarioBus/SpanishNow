@@ -137,6 +137,51 @@ describe('rutas y conexión (CAL-01, CAL-08)', () => {
     }
   });
 
+  test('P2: Calendar y Classroom/Drive comparten el grant de Google: desconectar uno no revoca al otro', async () => {
+    const liveGoogle = require('../src/services/liveGoogleService');
+    // Calendar se desconecta teniendo Drive/Classroom activo: solo se borran los tokens locales, sin revoke.
+    const both = await createUser('teacher', 'cal-comparte');
+    await connect(both);
+    await M.GoogleConnection.create({ userId: both.id, credentials: liveGoogle.encrypt({ refreshToken: 'drive-r', accessToken: 'a', expiresAt: 0 }), email: 'd@example.test' });
+    await calendar.disconnect(both);
+    expect(fake.calls().revoke || 0).toBe(0);
+    expect(await M.GoogleConnection.count({ where: { userId: both.id } })).toBe(1);
+    // Sin Drive/Classroom sí se revoca el grant.
+    const only = await createUser('teacher', 'cal-solo');
+    await connect(only);
+    await calendar.disconnect(only);
+    expect(fake.calls().revoke).toBe(1);
+    // Al revés: desconectar Classroom/Drive con Calendar conectado no llama a Google revoke.
+    const reverse = await createUser('teacher', 'cal-inverso');
+    await connect(reverse);
+    await M.GoogleConnection.create({ userId: reverse.id, credentials: liveGoogle.encrypt({ refreshToken: 'drive-r', accessToken: 'a', expiresAt: 0 }), email: 'd@example.test' });
+    global.fetch = jest.fn(async () => ({ ok: true, status: 200, json: async () => ({}) }));
+    try {
+      await liveGoogle.disconnect(reverse.id);
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(await M.GoogleConnection.count({ where: { userId: reverse.id } })).toBe(0);
+      expect((await M.ExternalConnection.findOne({ where: { userId: reverse.id } })).status).toBe('connected');
+      // Sin Calendar conectado, Classroom/Drive sigue revocando como antes.
+      const alone = await createUser('teacher', 'cal-drive-solo');
+      await M.GoogleConnection.create({ userId: alone.id, credentials: liveGoogle.encrypt({ refreshToken: 'drive-r', accessToken: 'a', expiresAt: 0 }), email: 'd@example.test' });
+      await liveGoogle.disconnect(alone.id);
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(String(global.fetch.mock.calls[0][0])).toContain('oauth2.googleapis.com/revoke');
+    } finally { delete global.fetch; }
+  });
+
+  test('P2: si Classroom/Drive revoca el grant, Calendar cae en revoked con aviso y sin perder sesiones', async () => {
+    const { c, connection } = await withConnection();
+    const s = await confirmed(c);
+    await drain();
+    fake.revokeAuthorization(); // revocar el grant compartido deja inválido también el refresh token de Calendar
+    const { encrypt, decrypt } = require('../src/services/liveGoogleService');
+    const row = await M.ExternalConnection.findByPk(connection.id);
+    await row.update({ credentials: encrypt({ ...decrypt(row.credentials), expiresAt: 0 }) });
+    await expect(calendar.status(c.teacher)).resolves.toMatchObject({ status: 'revoked', connected: false, lastError: 'authorization_revoked' });
+    expect((await M.ClassSession.findByPk(s.id)).status).toBe('confirmed');
+  });
+
   test('solo docentes, sin impersonación y con flag apagado la superficie no existe', async () => {
     const student = await createUser('student', 'cal-alumno');
     expect((await as(student).get('/api/integrations/google-calendar')).status).toBe(403);

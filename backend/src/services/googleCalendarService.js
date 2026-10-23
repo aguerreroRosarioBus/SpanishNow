@@ -160,7 +160,10 @@ async function disconnect(user) {
     // Mejor esfuerzo: parar canales y revocar. Si Google no responde, igual se desconecta localmente.
     for (const channel of channels.filter(c => c.channelId)) await call(row, (api, t) => api.stopChannel(t, channel)).catch(() => {});
   }
-  if (token) await adapter().revoke(token).catch(() => {});
+  // Calendar y Drive/Classroom usan el mismo cliente OAuth: revocar el token revoca el grant completo de Google para
+  // esa persona. Con Drive/Classroom conectado solo se borran los tokens locales (CAL-08).
+  const sharesGrant = await M.GoogleConnection.count({ where: { userId: row.userId, credentials: { [Op.ne]: null } } });
+  if (token && !sharesGrant) await adapter().revoke(token).catch(() => {});
   await M.ExternalCalendarChannel.destroy({ where: { connectionId: row.id } });
   await connections.disconnect(row);
   await M.ExternalSyncRef.update({ status: 'needs_attention', lastError: 'integration_not_connected' },
