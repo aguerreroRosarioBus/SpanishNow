@@ -2,7 +2,6 @@ import { Component, computed, effect, inject, OnInit, signal, untracked } from '
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
-import { PluralPipe } from '../../../shared/pipes/plural.pipe';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { LessonComposerComponent } from '../lesson-composer/lesson-composer.component';
 import { CourseManageStore } from './course-manage.store';
@@ -26,7 +25,7 @@ import { TranslatePipe } from '../../../core/i18n/translate.pipe';
   selector: 'app-course-manage',
   standalone: true,
   imports: [
-    CommonModule, RouterLink, IconComponent, PluralPipe, ConfirmDialogComponent, LessonComposerComponent, UnitListComponent,
+    CommonModule, RouterLink, IconComponent, ConfirmDialogComponent, LessonComposerComponent, UnitListComponent,
     CourseEditModalComponent, UnitFormModalComponent, StoryCreateModalComponent, StoryEditModalComponent,
     QuestionModalComponent, VocabularyModalComponent, RepetitionModalComponent, TooltipModalComponent,
     StudentsPanelComponent, MaterialsModalComponent, QuizModalComponent, TranslatePipe

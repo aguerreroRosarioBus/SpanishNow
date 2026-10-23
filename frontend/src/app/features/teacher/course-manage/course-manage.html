@@ -2,17 +2,17 @@
   @if (store.isLoading()) {
     <div class="text-center py-5" role="status">
       <div class="spinner-border text-primary" aria-hidden="true"></div>
-      <p class="text-muted mt-2 mb-0">Cargando curso…</p>
+      <p class="text-muted mt-2 mb-0">{{ 'teacherManage.page.loading' | t }}</p>
     </div>
   }
 
   @if (store.errorMessage()) {
-    <div class="alert alert-danger" role="alert">{{ store.errorMessage() }}</div>
+    <div class="alert alert-danger" role="alert">{{ store.errorMessage() | t }}</div>
   }
 
   @if (!store.isLoading() && store.course(); as course) {
-    <nav class="breadcrumb-nav" aria-label="Ruta">
-      <a routerLink="/teacher/dashboard">Mis cursos</a>
+    <nav class="breadcrumb-nav" [attr.aria-label]="'teacherManage.page.path' | t">
+      <a routerLink="/teacher/dashboard">{{ 'teacherManage.page.myCourses' | t }}</a>
       <app-icon name="chevron-right" [size]="14" />
       <span class="current" aria-current="page">{{ course.title }}</span>
     </nav>
@@ -23,36 +23,36 @@
           <h1 class="page-title">{{ course.title }}</h1>
           <span class="badge-level">{{ course.level }}</span>
           <span class="badge-status badge-status--dot" [class.badge-status--published]="publishedCount() > 0" [class.badge-status--draft]="publishedCount() === 0">
-            {{ publishedCount() > 0 ? 'Publicado' : 'Borrador' }}
+            {{ (publishedCount() > 0 ? 'teacherManage.page.published' : 'teacherManage.page.draft') | t }}
           </span>
         </div>
         <p class="page-summary">
-          {{ store.units().length | plural:'unidad':'unidades' }} ·
-          {{ storyCount() | plural:'historia':'historias' }} ·
-          {{ (course.enrollmentCount ?? 0) | plural:'estudiante inscrito':'estudiantes inscritos':'Sin estudiantes inscritos' }}
+          {{ 'teacherManage.page.units' | t:{ count: store.units().length } }} ·
+          {{ 'teacherManage.page.stories' | t:{ count: storyCount() } }} ·
+          {{ 'teacherManage.page.enrolled' | t:{ count: course.enrollmentCount ?? 0 } }}
         </p>
       </div>
       <div class="page-actions">
         <button type="button" class="btn btn-secondary" (click)="store.open({ kind: 'course-edit' })">
-          <app-icon name="pencil" [size]="16" />Editar curso
+          <app-icon name="pencil" [size]="16" />{{ 'teacherManage.page.editCourse' | t }}
         </button>
         <a class="btn btn-secondary" [routerLink]="['/teacher/course', course.id, 'expectations']">
           <app-icon name="file-text" [size]="16" />{{ 'sales.editor.open' | t }}
         </a>
         @if (tab() === 'content') {
           <button type="button" class="btn btn-secondary" (click)="store.open({ kind: 'materials', unit: null })">
-            <app-icon name="file-text" [size]="16" />Materiales
+            <app-icon name="file-text" [size]="16" />{{ 'teacherManage.page.materials' | t }}
           </button>
           <button type="button" class="btn btn-primary" (click)="store.open({ kind: 'unit-create' })">
-            <app-icon name="plus" [size]="16" />Nueva unidad
+            <app-icon name="plus" [size]="16" />{{ 'teacherManage.page.newUnit' | t }}
           </button>
         }
       </div>
     </div>
 
-    <nav class="filter-chips mb-3" aria-label="Secciones del curso">
-      <button type="button" class="filter-chip" [class.is-active]="tab() === 'content'" [attr.aria-pressed]="tab() === 'content'" (click)="tab.set('content')">Contenido</button>
-      <button type="button" class="filter-chip" [class.is-active]="tab() === 'students'" [attr.aria-pressed]="tab() === 'students'" (click)="tab.set('students')">Alumnos</button>
+    <nav class="filter-chips mb-3" [attr.aria-label]="'teacherManage.page.sections' | t">
+      <button type="button" class="filter-chip" [class.is-active]="tab() === 'content'" [attr.aria-pressed]="tab() === 'content'" (click)="tab.set('content')">{{ 'teacherManage.page.tabContent' | t }}</button>
+      <button type="button" class="filter-chip" [class.is-active]="tab() === 'students'" [attr.aria-pressed]="tab() === 'students'" (click)="tab.set('students')">{{ 'teacherManage.page.tabStudents' | t }}</button>
     </nav>
 
     @if (tab() === 'content') {
@@ -106,9 +106,9 @@
 <app-confirm-dialog
   *ngIf="store.confirmData() as confirm"
   [show]="store.showConfirmDialog()"
-  [title]="confirm.title"
-  [message]="confirm.message"
-  [confirmText]="confirm.confirmText"
+  [title]="confirm.titleKey | t:confirm.params"
+  [message]="confirm.messageKey | t:confirm.params"
+  [confirmText]="confirm.confirmKey | t:confirm.params"
   [type]="confirm.type"
   (confirmed)="store.acceptConfirm()"
   (cancelled)="store.cancelConfirm()"

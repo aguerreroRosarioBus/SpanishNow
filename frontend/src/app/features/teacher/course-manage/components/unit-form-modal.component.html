@@ -2,39 +2,39 @@
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">{{ unit() ? 'Editar Unidad' : 'Nueva Unidad' }}</h5>
-        <button type="button" class="btn-close" (click)="close()"></button>
+        <h5 class="modal-title">{{ (unit() ? 'teacherManage.unitForm.editTitle' : 'teacherManage.unitForm.newTitle') | t }}</h5>
+        <button type="button" class="btn-close" (click)="close()" [attr.aria-label]="'teacherManage.common.close' | t"></button>
       </div>
       <form [formGroup]="form" (ngSubmit)="save()">
         <div class="modal-body">
           <div class="mb-3">
-            <label for="unitTitle" class="form-label">Título *</label>
+            <label for="unitTitle" class="form-label">{{ 'teacherManage.common.titleRequired' | t }}</label>
             <input type="text" class="form-control" id="unitTitle" formControlName="title"
-              [placeholder]="unit() ? 'Ej: Unidad 1: Saludos' : 'Ej: Saludos y Presentaciones'">
+              [placeholder]="(unit() ? 'teacherManage.unitForm.titlePlaceholderEdit' : 'teacherManage.unitForm.titlePlaceholderNew') | t">
             <div *ngIf="!unit() && form.get('title')?.invalid && form.get('title')?.touched" class="text-danger small mt-1">
-              El título debe tener al menos 3 caracteres
+              {{ 'teacherManage.common.titleMin3' | t }}
             </div>
           </div>
 
           <div class="mb-3">
-            <label for="unitDescription" class="form-label">Descripción *</label>
+            <label for="unitDescription" class="form-label">{{ 'teacherManage.unitForm.description' | t }}</label>
             <textarea class="form-control" id="unitDescription" rows="3" formControlName="description"
-              [placeholder]="unit() ? 'Descripción de la unidad' : 'Describe el contenido de esta unidad'"></textarea>
+              [placeholder]="(unit() ? 'teacherManage.unitForm.descriptionPlaceholderEdit' : 'teacherManage.unitForm.descriptionPlaceholderNew') | t"></textarea>
             <div *ngIf="!unit() && form.get('description')?.invalid && form.get('description')?.touched" class="text-danger small mt-1">
-              La descripción debe tener al menos 10 caracteres
+              {{ 'teacherManage.unitForm.descriptionMin10' | t }}
             </div>
           </div>
 
           <fieldset class="mb-0">
-            <legend class="form-label float-none">Liberación por fechas (opcional)</legend>
-            <p class="form-text mt-0">Por defecto la unidad está disponible desde el primer día. Si completas los dos campos, se libera cuando se cumplen ambos. Vos siempre ves todo.</p>
+            <legend class="form-label float-none">{{ 'teacherManage.unitForm.dripLegend' | t }}</legend>
+            <p class="form-text mt-0">{{ 'teacherManage.unitForm.dripHelp' | t }}</p>
             <div class="row g-3">
               <div class="col-sm-6">
-                <label for="unitReleaseDays" class="form-label">Liberar a los N días de la inscripción</label>
-                <input type="number" class="form-control" id="unitReleaseDays" formControlName="releaseAfterDays" min="0" max="3650" step="1" placeholder="Ej: 7">
+                <label for="unitReleaseDays" class="form-label">{{ 'teacherManage.unitForm.releaseDays' | t }}</label>
+                <input type="number" class="form-control" id="unitReleaseDays" formControlName="releaseAfterDays" min="0" max="3650" step="1" [attr.placeholder]="'teacherManage.unitForm.releaseDaysPlaceholder' | t">
               </div>
               <div class="col-sm-6">
-                <label for="unitReleaseAt" class="form-label">Liberar el día</label>
+                <label for="unitReleaseAt" class="form-label">{{ 'teacherManage.unitForm.releaseAt' | t }}</label>
                 <input type="date" class="form-control" id="unitReleaseAt" formControlName="releaseAt">
               </div>
             </div>
@@ -42,9 +42,9 @@
           </fieldset>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" (click)="close()">Cancelar</button>
+          <button type="button" class="btn btn-secondary" (click)="close()">{{ 'teacherManage.common.cancel' | t }}</button>
           <button type="submit" class="btn btn-primary" [disabled]="form.invalid">
-            {{ unit() ? 'Guardar Cambios' : 'Crear Unidad' }}
+            {{ (unit() ? 'teacherManage.storyEdit.save' : 'teacherManage.unitForm.create') | t }}
           </button>
         </div>
       </form>

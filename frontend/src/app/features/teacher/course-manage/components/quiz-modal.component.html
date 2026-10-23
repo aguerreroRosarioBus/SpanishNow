@@ -3,32 +3,32 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="quizTitle">{{ heading() }}</h5>
-        <button type="button" class="btn-close" (click)="close()" aria-label="Cerrar"></button>
+        <button type="button" class="btn-close" (click)="close()" [attr.aria-label]="'teacherManage.common.close' | t"></button>
       </div>
       <div class="modal-body">
         @if (isLoading()) {
           <div class="text-center py-4" role="status"><div class="spinner-border text-primary" aria-hidden="true"></div></div>
         } @else if (loadError()) {
-          <div class="alert alert-danger" role="alert">{{ loadError() }}</div>
+          <div class="alert alert-danger" role="alert">{{ loadError() | t }}</div>
         } @else {
           @if (errorMessage()) {
             <div class="alert alert-danger" role="alert">{{ errorMessage() }}</div>
           }
           @if (showErrors() && validation().general.length) {
             <ul class="text-danger small ps-3">
-              @for (e of validation().general; track e) { <li>{{ e }}</li> }
+              @for (e of validation().general; track e) { <li>{{ e | t:{ max: limits.maxQuestions } }}</li> }
             </ul>
           }
 
           <div class="row g-3 mb-4">
             <div class="col-md-7">
-              <label for="quizName" class="form-label">Título *</label>
+              <label for="quizName" class="form-label">{{ 'teacherManage.common.titleRequired' | t }}</label>
               <input type="text" class="form-control" id="quizName" maxlength="200" [value]="quiz().title"
-                     (input)="setField('title', $any($event.target).value)" placeholder="Ej: Quiz de la unidad 1"
+                     (input)="setField('title', $any($event.target).value)" [attr.placeholder]="'teacherManage.quiz.titlePlaceholder' | t"
                      [class.is-invalid]="showErrors() && !quiz().title.trim()" />
             </div>
             <div class="col-md-3 col-6">
-              <label for="quizScore" class="form-label">Puntaje para aprobar (%)</label>
+              <label for="quizScore" class="form-label">{{ 'teacherManage.quiz.passingScore' | t }}</label>
               <input type="number" class="form-control" id="quizScore" min="1" max="100" step="1"
                      [value]="quiz().passingScore" (input)="setScore($any($event.target).value)" />
             </div>
@@ -36,55 +36,55 @@
               <div class="form-check form-switch mb-2">
                 <input class="form-check-input" type="checkbox" role="switch" id="quizPublished"
                        [checked]="quiz().isPublished" (change)="setPublished($any($event.target).checked)" />
-                <label class="form-check-label" for="quizPublished">Publicado</label>
+                <label class="form-check-label" for="quizPublished">{{ 'teacherManage.quiz.published' | t }}</label>
               </div>
             </div>
           </div>
 
           <div class="d-flex flex-column gap-3">
             @for (q of quiz().questions; track $index; let qi = $index) {
-              <section class="border rounded p-3" [attr.aria-label]="'Pregunta ' + (qi + 1)">
+              <section class="border rounded p-3" [attr.aria-label]="'teacherManage.quiz.questionN' | t:{ number: qi + 1 }">
                 <div class="d-flex align-items-center gap-2 mb-2">
-                  <strong class="flex-grow-1">Pregunta {{ qi + 1 }}</strong>
-                  <button type="button" class="btn-icon" (click)="move(qi, -1)" [disabled]="qi === 0" aria-label="Subir pregunta" title="Subir"><app-icon name="chevron-up" [size]="16" /></button>
-                  <button type="button" class="btn-icon" (click)="move(qi, 1)" [disabled]="qi === quiz().questions.length - 1" aria-label="Bajar pregunta" title="Bajar"><app-icon name="chevron-down" [size]="16" /></button>
-                  <button type="button" class="btn-icon" (click)="removeQuestion(qi)" aria-label="Quitar pregunta" title="Quitar"><app-icon name="trash" [size]="16" /></button>
+                  <strong class="flex-grow-1">{{ 'teacherManage.quiz.questionN' | t:{ number: qi + 1 } }}</strong>
+                  <button type="button" class="btn-icon" (click)="move(qi, -1)" [disabled]="qi === 0" [attr.aria-label]="'teacherManage.quiz.moveUpAria' | t" [attr.title]="'teacherManage.quiz.moveUp' | t"><app-icon name="chevron-up" [size]="16" /></button>
+                  <button type="button" class="btn-icon" (click)="move(qi, 1)" [disabled]="qi === quiz().questions.length - 1" [attr.aria-label]="'teacherManage.quiz.moveDownAria' | t" [attr.title]="'teacherManage.quiz.moveDown' | t"><app-icon name="chevron-down" [size]="16" /></button>
+                  <button type="button" class="btn-icon" (click)="removeQuestion(qi)" [attr.aria-label]="'teacherManage.quiz.removeQuestionAria' | t" [attr.title]="'teacherManage.quiz.removeQuestion' | t"><app-icon name="trash" [size]="16" /></button>
                 </div>
-                <label class="form-label" [attr.for]="'qPrompt' + qi">Enunciado *</label>
+                <label class="form-label" [attr.for]="'qPrompt' + qi">{{ 'teacherManage.quiz.prompt' | t }}</label>
                 <textarea class="form-control mb-3" [id]="'qPrompt' + qi" rows="2" [value]="q.prompt"
                           (input)="setPrompt(qi, $any($event.target).value)"
                           [class.is-invalid]="showErrors() && !q.prompt.trim()"></textarea>
 
                 <fieldset class="mb-2">
-                  <legend class="form-label">Opciones (marca la correcta) *</legend>
+                  <legend class="form-label">{{ 'teacherManage.quiz.options' | t }}</legend>
                   @for (o of q.options; track $index; let oi = $index) {
                     <div class="input-group mb-2">
                       <div class="input-group-text">
                         <input class="form-check-input mt-0" type="radio" [name]="'correct' + qi" [checked]="q.correctIndex === oi"
-                               (change)="setCorrect(qi, oi)" [attr.aria-label]="'Opción ' + letter(oi) + ' es la correcta'" />
+                               (change)="setCorrect(qi, oi)" [attr.aria-label]="'teacherManage.quiz.optionCorrect' | t:{ letter: letter(oi) }" />
                       </div>
                       <span class="input-group-text">{{ letter(oi) }}</span>
                       <input type="text" class="form-control" [value]="o" (input)="setOption(qi, oi, $any($event.target).value)"
-                             [attr.aria-label]="'Texto de la opción ' + letter(oi)"
+                             [attr.aria-label]="'teacherManage.quiz.optionText' | t:{ letter: letter(oi) }"
                              [class.is-invalid]="showErrors() && !o.trim()" />
                       <button type="button" class="btn btn-secondary" (click)="removeOption(qi, oi)"
-                              [disabled]="q.options.length <= limits.minOptions" [attr.aria-label]="'Quitar opción ' + letter(oi)">
+                              [disabled]="q.options.length <= limits.minOptions" [attr.aria-label]="'teacherManage.quiz.removeOption' | t:{ letter: letter(oi) }">
                         <app-icon name="close" [size]="14" />
                       </button>
                     </div>
                   }
                   <button type="button" class="btn btn-ghost btn-sm" (click)="addOption(qi)" [disabled]="q.options.length >= limits.maxOptions">
-                    <app-icon name="plus" [size]="14" />Agregar opción
+                    <app-icon name="plus" [size]="14" />{{ 'teacherManage.quiz.addOption' | t }}
                   </button>
                 </fieldset>
 
-                <label class="form-label" [attr.for]="'qExplain' + qi">Explicación (opcional, se muestra después de responder)</label>
+                <label class="form-label" [attr.for]="'qExplain' + qi">{{ 'teacherManage.quiz.explanation' | t }}</label>
                 <textarea class="form-control" [id]="'qExplain' + qi" rows="2" [value]="q.explanation ?? ''"
                           (input)="setExplanation(qi, $any($event.target).value)"></textarea>
 
                 @if (showErrors() && validation().questions[qi]; as errors) {
                   <ul class="text-danger small ps-3 mt-2 mb-0">
-                    @for (e of errors; track e) { <li>{{ e }}</li> }
+                    @for (e of errors; track e) { <li>{{ e | t }}</li> }
                   </ul>
                 }
               </section>
@@ -93,19 +93,19 @@
 
           <button type="button" class="btn btn-ghost btn-ghost--accent btn-sm mt-3" (click)="addQuestion()"
                   [disabled]="quiz().questions.length >= limits.maxQuestions">
-            <app-icon name="plus" [size]="15" />Agregar pregunta
+            <app-icon name="plus" [size]="15" />{{ 'teacherManage.quiz.addQuestion' | t }}
           </button>
-          <small class="text-secondary-ui d-block mt-1">{{ quiz().questions.length }} de {{ limits.maxQuestions }} preguntas.</small>
+          <small class="text-secondary-ui d-block mt-1">{{ 'teacherManage.quiz.questionCount' | t:{ count: quiz().questions.length, max: limits.maxQuestions } }}</small>
         }
       </div>
       <div class="modal-footer">
         @if (exists()) {
-          <button type="button" class="btn btn-outline-danger me-auto" (click)="deleteQuiz()"><app-icon name="trash" [size]="15" />Eliminar quiz</button>
+          <button type="button" class="btn btn-outline-danger me-auto" (click)="deleteQuiz()"><app-icon name="trash" [size]="15" />{{ 'teacherManage.quiz.deleteQuiz' | t }}</button>
         }
-        <button type="button" class="btn btn-secondary" (click)="close()">Cancelar</button>
+        <button type="button" class="btn btn-secondary" (click)="close()">{{ 'teacherManage.common.cancel' | t }}</button>
         <button type="button" class="btn btn-primary" (click)="save()" [disabled]="isLoading() || !!loadError() || isSaving()">
           @if (isSaving()) { <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> }
-          Guardar quiz
+          {{ 'teacherManage.quiz.saveQuiz' | t }}
         </button>
       </div>
     </div>

@@ -4,6 +4,8 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { StoryService } from '../../../../core/services/story.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { Story } from '../../../../core/models/course.model';
+import { I18nService } from '../../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { AudioInputComponent } from '../audio/audio-input.component';
 import { CourseManageStore } from '../course-manage.store';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
@@ -13,13 +15,14 @@ import { VideoEmbedComponent } from '../../../../shared/components/video-embed/v
 @Component({
   selector: 'app-story-edit-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, AudioInputComponent, IconComponent, VideoEmbedComponent],
+  imports: [CommonModule, ReactiveFormsModule, AudioInputComponent, IconComponent, VideoEmbedComponent, TranslatePipe],
   templateUrl: './story-edit-modal.component.html'
 })
 export class StoryEditModalComponent {
   private store = inject(CourseManageStore);
   private storyService = inject(StoryService);
   private toast = inject(ToastService);
+  private i18n = inject(I18nService);
 
   story = input.required<Story>();
   slow = viewChild.required<AudioInputComponent>('slow');
@@ -66,7 +69,7 @@ export class StoryEditModalComponent {
       next: updated => {
         this.store.patchStory(updated.id, s => ({ ...s, ...updated }));
         this.close();
-        this.toast.success('Historia actualizada exitosamente');
+        this.toast.success(this.i18n.t('teacherManage.storyEdit.updated'));
       },
       error: error => {
         console.error('Error updating story:', error);
@@ -75,8 +78,8 @@ export class StoryEditModalComponent {
           this.store.patchStory(story.id, s => ({ ...s, hasLessonPlan: true }));
           this.textLocked.set(true);
           this.form.patchValue({ text: story.text });
-          this.toast.error('El texto se genera desde la lección. Editalo en el compositor.');
-        } else this.toast.error(error?.error?.error || 'Error al actualizar la historia');
+          this.toast.error(this.i18n.t('teacherManage.storyEdit.textLockedToast'));
+        } else this.toast.error(this.i18n.errorMessage(error, 'teacherManage.storyEdit.updateError'));
       }
     });
   }

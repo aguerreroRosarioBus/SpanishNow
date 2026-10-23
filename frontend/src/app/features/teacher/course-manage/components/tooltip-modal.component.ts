@@ -1,11 +1,12 @@
 import { Component, input, output } from '@angular/core';
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { TooltipEditorComponent } from '../../../../shared/components/tooltip-editor/tooltip-editor.component';
 
 /** Gestión de tooltips de una historia o de una pregunta. */
 @Component({
   selector: 'app-tooltip-modal',
   standalone: true,
-  imports: [TooltipEditorComponent],
+  imports: [TooltipEditorComponent, TranslatePipe],
   templateUrl: './tooltip-modal.component.html'
 })
 export class TooltipModalComponent {

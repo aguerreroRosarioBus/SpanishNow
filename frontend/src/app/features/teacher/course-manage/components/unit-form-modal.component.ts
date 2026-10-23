@@ -4,20 +4,23 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { UnitService } from '../../../../core/services/unit.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { Unit } from '../../../../core/models/course.model';
-import { releaseRuleLabel } from '../../../../shared/utils/release-date';
+import { formatAvailableDate } from '../../../../shared/utils/release-date';
+import { I18nService } from '../../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { CourseManageStore } from '../course-manage.store';
 
 /** Crear o editar una unidad (modo según `unit`: sin valor crea, con valor edita). */
 @Component({
   selector: 'app-unit-form-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, TranslatePipe],
   templateUrl: './unit-form-modal.component.html'
 })
 export class UnitFormModalComponent {
   private store = inject(CourseManageStore);
   private unitService = inject(UnitService);
   private toast = inject(ToastService);
+  private i18n = inject(I18nService);
 
   unit = input<Unit | null>(null);
 
@@ -32,7 +35,15 @@ export class UnitFormModalComponent {
   /** Vista previa de la regla, en el mismo texto que ve el docente en la lista de unidades. */
   rulePreview(): string {
     const { releaseAfterDays, releaseAt } = this.form.getRawValue();
-    return releaseRuleLabel(this.cleanDays(releaseAfterDays), releaseAt || null);
+    const afterDays = this.cleanDays(releaseAfterDays);
+    const days = afterDays != null && afterDays > 0
+      ? (afterDays === 1 ? this.i18n.t('teacherManage.unitForm.ruleOnEnrollmentDay') : this.i18n.t('teacherManage.unitForm.ruleAfterDays', { days: afterDays }))
+      : '';
+    const date = formatAvailableDate(releaseAt || null, this.i18n.intlLocale());
+    if (days && date) return this.i18n.t('teacherManage.unitForm.ruleBoth', { days, date });
+    if (days) return this.i18n.t('teacherManage.unitForm.ruleDays', { days });
+    if (date) return this.i18n.t('teacherManage.unitForm.ruleDate', { date });
+    return '';
   }
 
   private cleanDays(value: number | string | null | undefined): number | null {
@@ -65,11 +76,11 @@ export class UnitFormModalComponent {
         next: updated => {
           this.store.patchUnit(updated);
           this.close();
-          this.toast.success('Unidad actualizada exitosamente');
+          this.toast.success(this.i18n.t('teacherManage.unitForm.updated'));
         },
         error: error => {
           console.error('Error updating unit:', error);
-          this.toast.error('Error al actualizar la unidad');
+          this.toast.error(this.i18n.t('teacherManage.unitForm.updateError'));
         }
       });
     } else {
@@ -82,13 +93,13 @@ export class UnitFormModalComponent {
             error: () => {
               this.store.addUnit(created);
               this.close();
-              this.toast.warning('La unidad se creó, pero no se pudo guardar cuándo se libera. Editala para volver a intentarlo.');
+              this.toast.warning(this.i18n.t('teacherManage.unitForm.dripSaveWarning'));
             }
           });
         },
         error: error => {
           console.error('Error creating unit:', error);
-          this.toast.error('Error al crear la unidad');
+          this.toast.error(this.i18n.t('teacherManage.unitForm.createError'));
         }
       });
     }

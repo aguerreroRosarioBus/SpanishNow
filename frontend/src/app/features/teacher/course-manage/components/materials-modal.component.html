@@ -3,11 +3,11 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="materialsTitle">{{ heading() }}</h5>
-        <button type="button" class="btn-close" (click)="close()" aria-label="Cerrar"></button>
+        <button type="button" class="btn-close" (click)="close()" [attr.aria-label]="'teacherManage.common.close' | t"></button>
       </div>
       <div class="modal-body">
         @if (items().length === 0) {
-          <p class="text-secondary-ui">Todavía no hay materiales{{ unit() ? ' en esta unidad' : '' }}. Sube el primer PDF abajo.</p>
+          <p class="text-secondary-ui">{{ (unit() ? 'teacherManage.materials.emptyUnit' : 'teacherManage.materials.emptyCourse') | t }}</p>
         } @else {
           <ul class="list-group mb-4">
             @for (item of items(); track item.material.id) {
@@ -18,9 +18,9 @@
                     <form class="d-flex gap-2" (submit)="$event.preventDefault(); saveRename(item.material)">
                       <input type="text" class="form-control form-control-sm" name="rename" maxlength="200"
                              [ngModel]="editingTitle()" (ngModelChange)="editingTitle.set($event)"
-                             aria-label="Nuevo título del material" />
-                      <button type="submit" class="btn btn-primary btn-sm" [disabled]="!editingTitle().trim()">Guardar</button>
-                      <button type="button" class="btn btn-secondary btn-sm" (click)="cancelRename()">Cancelar</button>
+                             [attr.aria-label]="'teacherManage.materials.newTitle' | t" />
+                      <button type="submit" class="btn btn-primary btn-sm" [disabled]="!editingTitle().trim()">{{ 'teacherManage.common.save' | t }}</button>
+                      <button type="button" class="btn btn-secondary btn-sm" (click)="cancelRename()">{{ 'teacherManage.common.cancel' | t }}</button>
                     </form>
                   } @else {
                     <div class="fw-semibold text-truncate">{{ item.material.title }}</div>
@@ -28,35 +28,35 @@
                   }
                 </div>
                 @if (editingId() !== item.material.id) {
-                  <button type="button" class="btn-icon" (click)="preview(item.material)" aria-label="Ver PDF" title="Ver PDF"><app-icon name="eye" [size]="16" /></button>
-                  <button type="button" class="btn-icon" (click)="startRename(item.material)" aria-label="Renombrar" title="Renombrar"><app-icon name="pencil" [size]="16" /></button>
-                  <button type="button" class="btn-icon" (click)="remove(item.material)" aria-label="Eliminar" title="Eliminar"><app-icon name="trash" [size]="16" /></button>
+                  <button type="button" class="btn-icon" (click)="preview(item.material)" [attr.aria-label]="'teacherManage.materials.viewPdf' | t" [attr.title]="'teacherManage.materials.viewPdf' | t"><app-icon name="eye" [size]="16" /></button>
+                  <button type="button" class="btn-icon" (click)="startRename(item.material)" [attr.aria-label]="'teacherManage.materials.rename' | t" [attr.title]="'teacherManage.materials.rename' | t"><app-icon name="pencil" [size]="16" /></button>
+                  <button type="button" class="btn-icon" (click)="remove(item.material)" [attr.aria-label]="'teacherManage.common.delete' | t" [attr.title]="'teacherManage.common.delete' | t"><app-icon name="trash" [size]="16" /></button>
                 }
               </li>
             }
           </ul>
         }
 
-        <h6 class="eyebrow mb-3">Subir PDF</h6>
+        <h6 class="eyebrow mb-3">{{ 'teacherManage.materials.uploadHeading' | t }}</h6>
         @if (errorMessage()) {
           <div class="alert alert-danger" role="alert">{{ errorMessage() }}</div>
         }
         <div class="mb-3">
-          <label for="materialFile" class="form-label">Archivo (PDF, máx. 20 MB) *</label>
+          <label for="materialFile" class="form-label">{{ 'teacherManage.materials.file' | t }}</label>
           @for (k of [fileInputKey()]; track k) {
             <input type="file" class="form-control" id="materialFile" accept="application/pdf,.pdf"
                    (change)="onFile($event)" [class.is-invalid]="!!fileError()" />
           }
-          @if (fileError()) { <div class="invalid-feedback d-block">{{ fileError() }}</div> }
+          @if (fileError()) { <div class="invalid-feedback d-block">{{ fileError() | t }}</div> }
         </div>
         <div class="row g-3">
           <div class="col-md-6">
-            <label for="materialTitle" class="form-label">Título *</label>
+            <label for="materialTitle" class="form-label">{{ 'teacherManage.materials.titleLabel' | t }}</label>
             <input type="text" class="form-control" id="materialTitle" name="title" maxlength="200"
-                   [ngModel]="title()" (ngModelChange)="title.set($event)" placeholder="Ej: Guía de vocabulario" />
+                   [ngModel]="title()" (ngModelChange)="title.set($event)" [attr.placeholder]="'teacherManage.materials.titlePlaceholder' | t" />
           </div>
           <div class="col-md-6">
-            <label for="materialDestination" class="form-label">Pertenece a</label>
+            <label for="materialDestination" class="form-label">{{ 'teacherManage.materials.belongsTo' | t }}</label>
             <select class="form-select" id="materialDestination" name="destination"
                     [ngModel]="destination()" (ngModelChange)="destination.set($event)">
               @for (d of destinations(); track d.value) {
@@ -67,10 +67,10 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" (click)="close()">Cerrar</button>
+        <button type="button" class="btn btn-secondary" (click)="close()">{{ 'teacherManage.common.close' | t }}</button>
         <button type="button" class="btn btn-primary" (click)="upload()" [disabled]="!canUpload()">
           @if (isUploading()) { <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> }
-          <app-icon name="upload" [size]="16" />Subir PDF
+          <app-icon name="upload" [size]="16" />{{ 'teacherManage.materials.upload' | t }}
         </button>
       </div>
     </div>

@@ -5,6 +5,8 @@ import { firstValueFrom } from 'rxjs';
 import { RepetitionActivityService } from '../../../../core/services/repetition-activity.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { RepetitionActivity, Story } from '../../../../core/models/course.model';
+import { I18nService } from '../../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { AudioInputComponent } from '../audio/audio-input.component';
 import { CourseManageStore } from '../course-manage.store';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
@@ -13,13 +15,14 @@ import { IconComponent } from '../../../../shared/components/icon/icon.component
 @Component({
   selector: 'app-repetition-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, AudioInputComponent, IconComponent],
+  imports: [CommonModule, ReactiveFormsModule, AudioInputComponent, IconComponent, TranslatePipe],
   templateUrl: './repetition-modal.component.html'
 })
 export class RepetitionModalComponent implements OnInit {
   private store = inject(CourseManageStore);
   private service = inject(RepetitionActivityService);
   private toast = inject(ToastService);
+  private i18n = inject(I18nService);
 
   story = input.required<Story>();
   audio = viewChild.required<AudioInputComponent>('audio');
@@ -58,26 +61,26 @@ export class RepetitionModalComponent implements OnInit {
         this.form.reset();
         this.audio().reset();
         this.isSubmitting.set(false);
-        this.toast.success('Actividad de repetición creada exitosamente');
+        this.toast.success(this.i18n.t('teacherManage.repetition.created'));
       },
       error: error => {
         console.error('Error creating repetition activity:', error);
-        this.toast.error('Error al crear actividad de repetición');
+        this.toast.error(this.i18n.t('teacherManage.repetition.createError'));
         this.isSubmitting.set(false);
       }
     });
   }
 
   remove(id: number): void {
-    this.store.confirm('Eliminar Actividad', '¿Estás seguro de eliminar esta actividad de repetición?', 'Eliminar', () => {
+    this.store.confirm('teacherManage.repetition.deleteTitle', 'teacherManage.repetition.deleteMessage', 'teacherManage.common.delete', () => {
       this.service.deleteActivity(id).subscribe({
         next: () => {
           this.repetitions.update(list => list.filter(r => r.id !== id));
-          this.toast.success('Actividad de repetición eliminada exitosamente');
+          this.toast.success(this.i18n.t('teacherManage.repetition.deleted'));
         },
         error: error => {
           console.error('Error deleting repetition activity:', error);
-          this.toast.error('Error al eliminar actividad de repetición');
+          this.toast.error(this.i18n.t('teacherManage.repetition.deleteError'));
         }
       });
     }, 'danger');
@@ -112,7 +115,7 @@ export class RepetitionModalComponent implements OnInit {
     Promise.all(ordered.map(r => firstValueFrom(this.service.updateActivity(r.id, { order: r.order }))))
       .catch(error => {
         console.error('Error reordering repetition activities:', error);
-        this.toast.error('Error al reordenar actividades');
+        this.toast.error(this.i18n.t('teacherManage.repetition.reorderError'));
         this.load();
       });
   }

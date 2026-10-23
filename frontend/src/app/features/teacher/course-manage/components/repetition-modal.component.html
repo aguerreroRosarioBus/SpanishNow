@@ -3,25 +3,25 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">
-          Listen & Repeat · {{ story().title }}
+          {{ 'teacherManage.repetition.title' | t:{ title: story().title } }}
         </h5>
-        <button type="button" class="btn-close" (click)="close()" aria-label="Cerrar"></button>
+        <button type="button" class="btn-close" (click)="close()" [attr.aria-label]="'teacherManage.common.close' | t"></button>
       </div>
       <div class="modal-body">
         <!-- Form to create repetition activity -->
         <form [formGroup]="form" (ngSubmit)="create()">
           <div class="row g-3">
             <div class="col-12">
-              <label class="form-label">Frase para repetir *</label>
+              <label class="form-label">{{ 'teacherManage.repetition.phrase' | t }}</label>
               <input type="text" class="form-control" formControlName="phrase" placeholder="¿Cómo te llamas?">
-              <small class="text-muted">Frase en español que el estudiante debe repetir</small>
+              <small class="text-muted">{{ 'teacherManage.repetition.phraseHelp' | t }}</small>
             </div>
             <div class="col-12">
-              <label class="form-label">Audio modelo *</label>
+              <label class="form-label">{{ 'teacherManage.repetition.modelAudio' | t }}</label>
               <app-audio-input #audio name="audio" recordedFileName="recording.webm"
-                uploadHint="Sube un archivo de audio con la pronunciación correcta"
-                recordHint="Graba tu pronunciación usando el micrófono"
-                micErrorMessage="No se pudo acceder al micrófono. Por favor, permite el acceso." />
+                uploadHint="teacherManage.repetition.uploadHint"
+                recordHint="teacherManage.repetition.recordHint"
+                micErrorMessage="teacherManage.repetition.micError" />
             </div>
             <div class="col-12">
               <button
@@ -29,8 +29,8 @@
                 class="btn btn-primary"
                 [disabled]="form.invalid || isSubmitting()"
               >
-                <span *ngIf="!isSubmitting()">Agregar Actividad</span>
-                <span *ngIf="isSubmitting()">Creando...</span>
+                <span *ngIf="!isSubmitting()">{{ 'teacherManage.repetition.add' | t }}</span>
+                <span *ngIf="isSubmitting()">{{ 'teacherManage.common.creating' | t }}</span>
               </button>
             </div>
           </div>
@@ -39,9 +39,9 @@
         <hr class="my-4">
 
         <!-- List of existing repetition activities -->
-        <h6>Actividades Existentes ({{ repetitions().length }})</h6>
+        <h6>{{ 'teacherManage.repetition.existing' | t:{ count: repetitions().length } }}</h6>
         <div *ngIf="repetitions().length === 0" class="alert alert-info">
-          No hay actividades de repetición para esta historia.
+          {{ 'teacherManage.repetition.empty' | t }}
         </div>
         <div class="list-group">
           <div
@@ -58,13 +58,13 @@
                 <app-icon class="me-2 text-muted" name="grip" [size]="14" />
                 <strong>{{ activity.phrase }}</strong>
                 <br>
-                <small class="text-success d-inline-flex align-items-center gap-1" *ngIf="activity.audioUrl"><app-icon name="volume" [size]="14" />Tiene audio modelo</small>
+                <small class="text-success d-inline-flex align-items-center gap-1" *ngIf="activity.audioUrl"><app-icon name="volume" [size]="14" />{{ 'teacherManage.repetition.hasAudio' | t }}</small>
               </div>
               <button
                 class="btn btn-sm btn-outline-danger"
                 (click)="remove(activity.id)"
               >
-                Eliminar
+                {{ 'teacherManage.common.delete' | t }}
               </button>
             </div>
           </div>
@@ -72,7 +72,7 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" (click)="close()">
-          Cerrar
+          {{ 'teacherManage.common.close' | t }}
         </button>
       </div>
     </div>

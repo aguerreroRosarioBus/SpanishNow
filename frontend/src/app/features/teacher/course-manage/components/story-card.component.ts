@@ -4,13 +4,13 @@ import { Story, Unit } from '../../../../core/models/course.model';
 import { CourseManageStore } from '../course-manage.store';
 import { CourseContentStore } from '../course-content.store';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
-import { PluralPipe } from '../../../../shared/pipes/plural.pipe';
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 
 /** Fila de una historia dentro de una unidad: estado, preguntas y acciones (editar y menú «⋯»). */
 @Component({
   selector: 'app-story-card',
   standalone: true,
-  imports: [NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem, IconComponent, PluralPipe],
+  imports: [NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem, IconComponent, TranslatePipe],
   templateUrl: './story-card.component.html',
   styleUrl: './story-card.component.scss'
 })

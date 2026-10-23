@@ -5,6 +5,8 @@ import { UnitService } from '../../../core/services/unit.service';
 import { StoryService } from '../../../core/services/story.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { Course, Question, Story, Unit } from '../../../core/models/course.model';
+import { I18nService } from '../../../core/i18n/i18n.service';
+import { TranslationParams } from '../../../core/i18n/i18n.types';
 
 /** Diálogo abierto en la pantalla (solo uno a la vez; los tooltips de pregunta anidan dentro de «questions»). */
 export type ManageModal =
@@ -21,10 +23,12 @@ export type ManageModal =
   | { kind: 'quiz'; unit: Unit }
   | { kind: 'composer'; story: Story; unit: Unit };
 
+/** Los textos del diálogo son claves I18N (con parámetros): se traducen al pintar y siguen el idioma activo. */
 export interface ConfirmData {
-  title: string;
-  message: string;
-  confirmText: string;
+  titleKey: string;
+  messageKey: string;
+  confirmKey: string;
+  params: TranslationParams;
   type: 'danger' | 'warning';
   onConfirm: () => void;
 }
@@ -36,11 +40,13 @@ export class CourseManageStore {
   private unitService = inject(UnitService);
   private storyService = inject(StoryService);
   private toast = inject(ToastService);
+  private i18n = inject(I18nService);
 
   courseId = signal(0);
   course = signal<Course | null>(null);
   units = signal<Unit[]>([]);
   isLoading = signal(false);
+  /** Clave I18N del error de carga ('' = sin error). */
   errorMessage = signal('');
   expandedUnits = signal<Set<number>>(new Set());
   /** Historia resaltada al llegar desde el link de un email (`?story=`). */
@@ -68,7 +74,7 @@ export class CourseManageStore {
       },
       error: error => {
         console.error('Error loading course:', error);
-        this.errorMessage.set('Error al cargar el curso');
+        this.errorMessage.set('teacherManage.page.loadError');
         this.isLoading.set(false);
       }
     });
@@ -86,8 +92,9 @@ export class CourseManageStore {
   }
   close(): void { this.modal.set(null); }
 
-  confirm(title: string, message: string, confirmText: string, onConfirm: () => void, type: 'danger' | 'warning' = 'danger'): void {
-    this.confirmData.set({ title, message, confirmText, type, onConfirm });
+  /** Pide confirmación; título, mensaje y botón son claves I18N y `params` los valores del mensaje. */
+  confirm(titleKey: string, messageKey: string, confirmKey: string, onConfirm: () => void, type: 'danger' | 'warning' = 'danger', params: TranslationParams = {}): void {
+    this.confirmData.set({ titleKey, messageKey, confirmKey, params, type, onConfirm });
     this.showConfirmDialog.set(true);
   }
 
@@ -139,34 +146,34 @@ export class CourseManageStore {
 
   deleteUnit(unitId: number): void {
     const title = this.units().find(u => u.id === unitId)?.title;
-    this.confirm('Eliminar unidad', `¿Eliminar la unidad «${title ?? 'sin título'}»? También se eliminarán todas sus historias. Esta acción no se puede deshacer.`, 'Eliminar unidad', () => {
+    this.confirm('teacherManage.store.deleteUnitTitle', title ? 'teacherManage.store.deleteUnitMessage' : 'teacherManage.store.deleteUnitUntitled', 'teacherManage.store.deleteUnitConfirm', () => {
       this.unitService.deleteUnit(unitId).subscribe({
         next: () => {
           this.units.update(list => list.filter(u => u.id !== unitId));
-          this.toast.success('Unidad eliminada exitosamente');
+          this.toast.success(this.i18n.t('teacherManage.store.unitDeleted'));
         },
         error: error => {
           console.error('Error deleting unit:', error);
-          this.toast.error('Error al eliminar la unidad');
+          this.toast.error(this.i18n.t('teacherManage.store.unitDeleteError'));
         }
       });
-    }, 'danger');
+    }, 'danger', { title: title ?? '' });
   }
 
   deleteStory(unitId: number, storyId: number): void {
     const title = this.units().find(u => u.id === unitId)?.stories?.find(s => s.id === storyId)?.title;
-    this.confirm('Eliminar historia', `¿Eliminar la historia «${title ?? 'sin título'}»? Esta acción no se puede deshacer.`, 'Eliminar historia', () => {
+    this.confirm('teacherManage.store.deleteStoryTitle', title ? 'teacherManage.store.deleteStoryMessage' : 'teacherManage.store.deleteStoryUntitled', 'teacherManage.store.deleteStoryConfirm', () => {
       this.storyService.deleteStory(storyId).subscribe({
         next: () => {
           this.units.update(list => list.map(u => u.id === unitId ? { ...u, stories: (u.stories || []).filter(s => s.id !== storyId) } : u));
-          this.toast.success('Historia eliminada exitosamente');
+          this.toast.success(this.i18n.t('teacherManage.store.storyDeleted'));
         },
         error: error => {
           console.error('Error deleting story:', error);
-          this.toast.error('Error al eliminar la historia');
+          this.toast.error(this.i18n.t('teacherManage.store.storyDeleteError'));
         }
       });
-    }, 'danger');
+    }, 'danger', { title: title ?? '' });
   }
 
   // ===== Reordenamiento (drag & drop) =====
@@ -182,7 +189,7 @@ export class CourseManageStore {
     Promise.all(ordered.map(u => firstValueFrom(this.unitService.updateUnit(u.id, { order: u.order }))))
       .catch(error => {
         console.error('Error reordering units:', error);
-        this.toast.error('Error al reordenar unidades');
+        this.toast.error(this.i18n.t('teacherManage.store.reorderUnitsError'));
         this.load();
       });
   }
@@ -200,7 +207,7 @@ export class CourseManageStore {
     Promise.all(ordered.map(s => firstValueFrom(this.storyService.updateStoryOrder(s.id, s.order))))
       .catch(error => {
         console.error('Error reordering stories:', error);
-        this.toast.error('Error al reordenar historias');
+        this.toast.error(this.i18n.t('teacherManage.store.reorderStoriesError'));
         this.load();
       });
   }
