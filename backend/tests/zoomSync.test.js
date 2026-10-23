@@ -230,3 +230,34 @@ test('P2: cambio de cuenta durante create reencola y reconcilia sin exponer la r
   await sync(c.session.id);
   expect((await refFor(c.session.id)).status).toBe('ready');
 });
+
+test.each(['absent', 'disconnected', 'needs_attention', 'refresh'])('P2: agenda/oferta/checkout continúan con Zoom %s y permiten contingencia', async state => {
+  process.env.FEATURE_CHAT = '1'; process.env.PAYMENTS_FAKE = '1';
+  try {
+    const w = await require('./helpers/classPackages').packageWorld();
+    const c = await chain({ teacher: w.teacher, students: [w.buyer] });
+    if (state !== 'absent') {
+      await connected(c.teacher);
+      const row = await connection.rowFor(c.teacher.id);
+      await row.update(state === 'refresh' ? { tokenExpiresAt: new Date(0), refreshLockedUntil: new Date(Date.now() + 30000) } : { status: state, credentials: null });
+    }
+    const refresh = jest.spyOn(adapter, 'refresh');
+    const proposed = await as(c.teacher).post('/api/class-sessions').set('Idempotency-Key', uuid()).send(c.body);
+    expect(proposed.status).toBe(201); createdSessions.add(proposed.body.id);
+    const accept = await as(c.students[0]).post(`/api/class-sessions/${proposed.body.id}/proposals/1/accept`).send({});
+    expect(accept.status).toBe(200);
+    const offer = await as(c.teacher).post(`/api/conversations/${w.conversation.id}/offers`).set('Idempotency-Key', uuid()).send({ templateVersionId: w.version.id });
+    expect(offer.status).toBe(201);
+    const checkout = await as(w.buyer).post(`/api/class-offers/${offer.body.id}/checkout`).set('Idempotency-Key', uuid()).send({});
+    expect(checkout.status).toBe(200); expect(checkout.body.order.provider).toBe('fake');
+    expect(refresh).not.toHaveBeenCalled();
+    const ref = await refFor(proposed.body.id);
+    if (state !== 'refresh') expect(ref.status).toBe('needs_attention');
+    else {
+      await expect(sync(proposed.body.id)).rejects.toMatchObject({ code: 'zoom_busy' });
+      expect((await refFor(proposed.body.id)).status).toBe('needs_attention');
+    }
+    await zoom.manual(c.teacher, proposed.body.id, { version: accept.body.version, joinUrl: 'https://zoom.us/j/123456789?pwd=manual' });
+    expect(await zoom.join(w.buyer, proposed.body.id)).toMatchObject({ manual: true });
+  } finally { delete process.env.FEATURE_CHAT; delete process.env.PAYMENTS_FAKE; }
+});

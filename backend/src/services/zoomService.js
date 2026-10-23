@@ -42,9 +42,18 @@ async function exclusive(sessionId, fn) {
     finally { await db.connectionManager.releaseConnection(raw); }
   }
 }
-async function assertCapacity(teacherId, minutes, participants = 1) {
-  const { tokens } = await connection.credentials(teacherId);
-  const capability = await adapter.capabilities(tokens);
+async function assertCapacity(teacherId, minutes, participants = 1, { preflight = false } = {}) {
+  let tokens;
+  if (preflight) {
+    const row = await connection.rowFor(teacherId);
+    if (row?.status !== 'connected') return;
+    // Capacidad conocida del grant: no rotar tokens en una oferta/checkout ni competir por el lease.
+    try { tokens = await connection.readTokens(row); }
+    catch (error) { if (error.code === 'zoom_authorization_lost') return; throw error; }
+  } else ({ tokens } = await connection.credentials(teacherId));
+  let capability;
+  try { capability = await adapter.capabilities(tokens); }
+  catch (error) { if (preflight && error.code === 'zoom_busy') return; throw error; }
   if (!capability || !Number.isFinite(capability.maxMinutes) || !Number.isFinite(capability.maxParticipants)
     || capability.concurrentMeetings < 1 || !capability.waitingRoom || !capability.passcodeRequired) fail('zoom_capacity_unknown');
   if (minutes > capability.maxMinutes || participants + 1 > capability.maxParticipants) fail('zoom_capacity_exceeded', 409,
