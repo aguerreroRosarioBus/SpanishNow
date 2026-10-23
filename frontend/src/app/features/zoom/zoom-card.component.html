@@ -9,9 +9,10 @@
       @if (s.capabilities; as c) { <p>{{ 'zoom.capacity' | t:{ minutes: c.maxMinutes, participants: c.maxParticipants } }}</p><p>{{ 'zoom.protection' | t }}</p> }
       @else if (s.status === 'connected') { <p>{{ 'zoom.unknownCapacity' | t }}</p> }
       <div class="zoom-actions">
-        @if (features.enabled('zoom')) { <button type="button" class="btn btn-primary" (click)="connect()" [disabled]="busy()">{{ 'zoom.connect' | t }}</button> }
+        <!-- La acción principal depende del estado: conectada → Actualizar; sin conectar → Conectar; con problema → Reconectar. -->
+        @if (features.enabled('zoom')) { <button type="button" class="btn" [class.btn-primary]="!isConnected(s)" [class.btn-secondary]="isConnected(s)" (click)="connect()" [disabled]="busy()">{{ (hasAccount(s) ? 'zoom.reconnect' : 'zoom.connect') | t }}</button> }
         @if (s.status !== 'disconnected') { <button type="button" class="btn btn-secondary" (click)="disconnecting.set(true)" [disabled]="busy()">{{ 'zoom.disconnect' | t }}</button> }
-        <button type="button" class="btn btn-secondary" (click)="refresh()" [disabled]="busy()">{{ 'zoom.refresh' | t }}</button>
+        <button type="button" class="btn" [class.btn-primary]="isConnected(s)" [class.btn-secondary]="!isConnected(s)" (click)="refresh()" [disabled]="busy()">{{ 'zoom.refresh' | t }}</button>
       </div>
       @if (disconnecting()) { <fieldset><legend>{{ 'zoom.disconnect' | t }}</legend><p>{{ 'zoom.disconnectConfirm' | t }}</p><div class="zoom-actions"><button type="button" class="btn btn-secondary" (click)="disconnect()" [disabled]="busy()">{{ 'zoom.confirm' | t }}</button><button type="button" class="btn btn-ghost" (click)="disconnecting.set(false)" [disabled]="busy()">{{ 'zoom.back' | t }}</button></div></fieldset> }
     </div>
