@@ -4,7 +4,7 @@
     <p>{{ 'schedule.zoneHint' | t }}</p>
     @if (deviceZone && deviceZone !== preferences.preferences()?.timeZone) { <p class="small">{{ 'schedule.deviceZone' | t:{ zone: deviceZone } }}</p> }
     <label for="scheduleZone">{{ 'schedule.zone' | t }}</label>
-    <div class="d-flex gap-2 flex-wrap"><input id="scheduleZone" class="form-control w-auto" [ngModel]="zoneInput()" (ngModelChange)="zoneInput.set($event)" maxlength="64" />
+    <div class="d-flex gap-2 flex-wrap"><input id="scheduleZone" class="form-control zone-input" autocomplete="off" spellcheck="false" [ngModel]="zoneInput()" (ngModelChange)="zoneInput.set($event)" maxlength="64" />
       <button type="button" class="btn btn-secondary btn-sm" (click)="confirmZone()" [disabled]="preferences.saving()">{{ 'schedule.confirmZone' | t }}</button></div>
     @if (preferences.errorMessage()) { <p class="text-danger" role="alert">{{ preferences.errorMessage() }}</p><button class="btn btn-ghost btn-sm" (click)="preferences.retry()">{{ 'schedule.retry' | t }}</button> }
   </section>

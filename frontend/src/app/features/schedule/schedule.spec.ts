@@ -142,6 +142,13 @@ describe('W06: interfaz conectada por contratos de agenda', () => {
     expect(fixture.nativeElement.textContent).not.toContain('La reunión todavía no está lista'); expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeTruthy();
   });
 
+  it('el campo de zona IANA usa el ancho disponible (sin w-auto) para leerse completo en pantallas angostas', () => {
+    const fixture = TestBed.createComponent(ScheduleComponent); fixture.detectChanges();
+    const input = fixture.nativeElement.querySelector('#scheduleZone') as HTMLInputElement;
+    expect(input.classList.contains('zone-input')).toBe(true); expect(input.classList.contains('w-auto')).toBe(false);
+    fixture.destroy();
+  });
+
   it('catálogo de agenda conserva paridad EN/ES y claves propias', () => {
     expect(Object.keys(SCHEDULE_MESSAGES.en).sort()).toEqual(Object.keys(SCHEDULE_MESSAGES.es).sort());
     expect(Object.keys(SCHEDULE_MESSAGES.en).every(key => key.startsWith('schedule.') || key.startsWith('errors.'))).toBe(true);
