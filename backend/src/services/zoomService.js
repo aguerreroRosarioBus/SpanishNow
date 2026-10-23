@@ -43,19 +43,16 @@ async function exclusive(sessionId, fn) {
   }
 }
 async function assertCapacity(teacherId, minutes, participants = 1, { preflight = false } = {}) {
-  let tokens;
-  if (preflight) {
-    const row = await connection.rowFor(teacherId);
-    if (row?.status !== 'connected') return;
-    // Capacidad conocida del grant: no rotar tokens en una oferta/checkout ni competir por el lease.
-    try { tokens = await connection.readTokens(row); }
-    catch (error) { if (error.code === 'zoom_authorization_lost') return; throw error; }
-  } else ({ tokens } = await connection.credentials(teacherId));
-  let capability;
-  try { capability = await adapter.capabilities(tokens); }
-  catch (error) { if (preflight && error.code === 'zoom_busy') return; throw error; }
+  const row = await connection.rowFor(teacherId);
+  if (row?.status !== 'connected') {
+    if (preflight) return;
+    fail('integration_not_connected');
+  }
+  // El preflight siempre usa la copia persistida. No descifra ni refresca tokens y no hace llamadas a Zoom.
+  const capability = row.capabilities;
   if (!capability || !Number.isFinite(capability.maxMinutes) || !Number.isFinite(capability.maxParticipants)
-    || capability.concurrentMeetings < 1 || !capability.waitingRoom || !capability.passcodeRequired) fail('zoom_capacity_unknown');
+    || !Number.isFinite(capability.concurrentMeetings) || capability.concurrentMeetings < 1
+    || !capability.waitingRoom || !capability.passcodeRequired || capability.plan === 'unknown') fail('zoom_capacity_unknown');
   if (minutes > capability.maxMinutes || participants + 1 > capability.maxParticipants) fail('zoom_capacity_exceeded', 409,
     { maxMinutes: capability.maxMinutes, maxParticipants: capability.maxParticipants });
 }
@@ -64,7 +61,7 @@ async function enqueue(session, transaction, reason = 'retry') {
     dedupeKey: `zoom:${reason}:${session.id}:v${session.version}:${crypto.randomUUID()}` }, { transaction });
 }
 function safeError(error) {
-  return ['zoom_revoked', 'zoom_authorization_lost', 'zoom_busy', 'zoom_capacity_unknown', 'zoom_capacity_exceeded', 'zoom_meeting_missing', 'integration_not_connected', 'zoom_fake_required', 'zoom_rate_limited'].includes(error.code)
+  return ['provider_unavailable', 'zoom_provider_unavailable', 'zoom_revoked', 'zoom_authorization_lost', 'zoom_busy', 'zoom_capacity_unknown', 'zoom_capacity_exceeded', 'zoom_meeting_missing', 'integration_not_connected', 'zoom_rate_limited'].includes(error.code)
     ? error.code : 'zoom_provider_unavailable';
 }
 async function sync(job, ctx = { stillOwned: async () => true }) {
@@ -74,11 +71,12 @@ async function sync(job, ctx = { stillOwned: async () => true }) {
     if (!session || !['confirmed', ...terminal].includes(session.status)) return;
     let ref;
     try {
-      adapter.assertFake();
+      adapter.assertConfigured();
       const [found] = await M.ExternalSyncRef.findOrCreate({ where: { sessionId, provider: 'zoom' }, defaults: { correlationKey: `zoom:session:${sessionId}` } });
       ref = found;
       const c = await connection.credentials(session.teacherId);
-      const { row, tokens } = c;
+      const row = c.row;
+      let tokens = c.tokens;
       // Un cambio de cuenta no reutiliza una reunión del docente en su grant anterior.
       if (ref.connectionId && ref.connectionId !== row.id) fail('zoom_revoked');
       const seats = await M.ClassSessionParticipant.count({ where: { sessionId, status: { [Op.ne]: 'cancelled' } } });
@@ -86,14 +84,19 @@ async function sync(job, ctx = { stillOwned: async () => true }) {
       if (!await ctx.stillOwned()) fail('zoom_busy', 503);
       const before = `${session.version}:${session.status}:${session.startsAt?.getTime()}`;
       // Se reconcilia SIEMPRE por correlación antes de crear; el endpoint create no promete idempotencia.
-      const existing = await adapter.find(tokens, ref.correlationKey);
+      const providerCall = async (method, ...args) => {
+        const result = await connection.withCredentials(session.teacherId, tokens, currentTokens => adapter[method](currentTokens, ...args));
+        tokens = result.tokens;
+        return result.value;
+      };
+      const existing = await providerCall('find', ref.correlationKey);
       let meeting = existing;
       if (terminal.includes(session.status)) {
-        if (existing) await adapter.remove(tokens, existing.id);
+        if (existing) await providerCall('remove', existing.id);
       } else {
         const wanted = { correlationKey: ref.correlationKey, startsAt: session.startsAt.toISOString(), timeZone: 'UTC',
           minutes: session.minutes, sessionVersion: session.version, settings: { waitingRoom: true, passcodeRequired: true, autoRecording: 'none', joinBeforeHost: false } };
-        meeting = existing ? await adapter.update(tokens, existing.id, wanted) : await adapter.create(tokens, wanted);
+        meeting = existing ? await providerCall('update', existing.id, wanted) : await providerCall('create', wanted);
       }
       if (!await ctx.stillOwned()) fail('zoom_busy', 503);
       // Una cancelación/reprogramación que llegó durante el efecto se corrige con la verdad interna vigente.
@@ -135,7 +138,7 @@ async function join(user, sessionId) {
   if (!isOwner) return { joinUrl: participantUrl(ref.joinUrl, !ref.externalId), manual: false };
   const { tokens } = await connection.credentials(session.teacherId);
   let hostUrl;
-  try { hostUrl = await adapter.host(tokens, ref.externalId); }
+  try { hostUrl = (await connection.withCredentials(session.teacherId, tokens, currentTokens => adapter.host(currentTokens, ref.externalId))).value; }
   catch (error) { fail(safeError(error), error.statusCode || 503); }
   const current = await M.ClassSession.findByPk(session.id);
   const grant = await connection.rowFor(session.teacherId);
@@ -188,7 +191,7 @@ async function sessions(user) {
 async function sessionStatus(user, sessionId) {
   const { session } = await visible(user, sessionId);
   const ref = await M.ExternalSyncRef.findOne({ where: { sessionId: session.id, provider: 'zoom' } });
-  return { fake: process.env.INTEGRATIONS_FAKE === '1', status: ref?.status || 'needs_attention', manual: Boolean(ref?.manualJoinUrl), lastError: ref?.lastError || null };
+  return { fake: adapter.isFake(), status: ref?.status || 'needs_attention', manual: Boolean(ref?.manualJoinUrl), lastError: ref?.lastError || null };
 }
 outbox.register('zoom.sync', sync);
 module.exports = { participantUrl, visible, exclusive, assertCapacity, sync, join, retry, manual, sessions, sessionStatus };

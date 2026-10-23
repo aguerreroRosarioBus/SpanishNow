@@ -247,17 +247,19 @@ Si no querés usar túnel para el flujo OAuth, probá `https://localhost:4200/ap
 
 ### 4.3 Scopes mínimos
 
-Fuente: [Scopes granulares de Zoom](https://developers.zoom.us/docs/integrations/oauth-scopes-granular/). En **Scopes** → **Add Scopes** → **Meeting**:
+Fuente: [Scopes granulares de Zoom](https://developers.zoom.us/docs/integrations/oauth-scopes-granular/). En **Scopes** → **Add Scopes**, elegí estos siete permisos de usuario, sin variantes `:admin` ni `:master`:
 
-| Scope | Para qué (ZOOM-xx) |
+| Scope | Para qué |
 |---|---|
-| `meeting:write:meeting` | Crear la reunión de una sesión confirmada (ZOOM-02/04) |
-| `meeting:update:meeting` | Reprogramar la misma reunión (ZOOM-04) |
-| `meeting:delete:meeting` | Borrar al cancelar (ZOOM-04) |
-| `meeting:read:meeting` | Leer una reunión para reconciliar (ZOOM-04/07) |
-| `user:read:settings` (o el equivalente de lectura de configuración del usuario) | Leer la configuración y capacidades de la cuenta (ZOOM-05, ZOOM-06) **(lo define W08)** |
+| `meeting:write:meeting` | Crear la reunión confirmada (ZOOM-02/04) |
+| `meeting:update:meeting` | Reprogramar esa reunión (ZOOM-04) |
+| `meeting:delete:meeting` | Borrarla al cancelar (ZOOM-04) |
+| `meeting:read:meeting` | Leerla y obtener `start_url` bajo demanda, solo para el docente dueño (ZOOM-03/04) |
+| `meeting:read:list_meetings` | Buscar la `correlationKey` después de un timeout sin crear otra reunión (ZOOM-04) |
+| `user:read:user` | Leer el ID, correo y tipo de licencia del docente (`Basic` o `Licensed`, ZOOM-01/05) |
+| `user:read:settings` | Leer ajustes efectivos de reunión, incluida sala de espera (ZOOM-05/06) |
 
-No pidas scopes de grabación, chat ni admin: Zoom revisa que cada scope sea necesario. **Verificá el nombre exacto de los scopes de configuración de usuario en la pantalla de Zoom**: la página oficial consultada no lista `user:read:settings`, por lo que W08 debe confirmar cuál es el correcto y anotarlo aquí. Para correo/cuenta del usuario Zoom puede exigir además un scope de lectura de usuario **(lo define W08)**.
+Zoom publica `user:read:settings` como scope granular para **Get user settings**. `GET /users/me` requiere `user:read:user`; `GET /users/me/settings` requiere `user:read:settings`. El adaptador revisa el plan y los ajustes al conectar y guarda la capacidad resultante en la conexión. El preflight consulta esa caché, sin leer tokens ni llamar a Zoom. No pidas scopes de grabación, chat, ZAK ni administración: no los usa este flujo.
 
 ### 4.4 Event Subscriptions y Secret Token
 
@@ -269,7 +271,7 @@ Fuente: [Webhooks de Zoom](https://developers.zoom.us/docs/api/webhooks/).
    ```
    https://platform.spanishnow.ar/api/integrations/zoom/webhook
    ```
-4. Eventos a suscribir (Zoom agrega solos los scopes necesarios) **(lo define W08)**: los de reunión actualizada/borrada y el de **desautorización de la app**.
+4. Eventos a suscribir: **Meeting Deleted**, **Meeting Updated** y **App Deauthorized** (nombres de API: `meeting.deleted`, `meeting.updated`, `app_deauthorized`).
 5. **Validate**. Para que funcione, el backend ya tiene que estar encendido con `ZOOM_WEBHOOK_SECRET_TOKEN` cargado y con el túnel abierto. Zoom manda un evento `endpoint.url_validation` y espera en menos de 3 segundos la respuesta firmada con HMAC-SHA-256. Se ve un tilde verde «Validated». Zoom revalida el endpoint cada 72 horas.
 6. **Save**.
 
@@ -286,14 +288,16 @@ FEATURE_ZOOM=1
 FEATURE_CLASS_SCHEDULING=1
 ```
 
-(`INTEGRATIONS_FAKE` ausente.) Después: `spanishnow off` y `spanishnow on`. La dirección es fija, así que esto se configura una sola vez; solo recordá abrir el túnel (`spanishnow public on`) **antes de pulsar Validate** en Zoom.
+El cifrado reutiliza `GOOGLE_TOKEN_ENCRYPTION_KEY`, que debe contener la clave de 32 bytes ya configurada. `ZOOM_CLIENT_ID`, `ZOOM_CLIENT_SECRET`, `ZOOM_REDIRECT_URI` y `ZOOM_WEBHOOK_SECRET_TOKEN` son obligatorias para el adaptador real. Con `INTEGRATIONS_FAKE=1` se conserva el fake; sin esa variable se elige el adaptador real, y una variable faltante responde `503 provider_unavailable` (`reason: not_configured`).
+
+El OAuth de servidor usa PKCE S256; el intercambio, refresh y revoke autentican con HTTP Basic `ZOOM_CLIENT_ID:ZOOM_CLIENT_SECRET`. `ZOOM_REDIRECT_URI` debe coincidir exactamente con el redirect y allow list de Zoom y ser HTTPS público. Después: `spanishnow off` y `spanishnow on`. La dirección es fija, así que esto se configura una sola vez; abrí el túnel (`spanishnow public on`) **antes de pulsar Validate** en Zoom.
 
 ### 4.6 Qué permite una cuenta gratuita
 
-Fuente: [Zoom: límites del plan Basic](https://support.zoom.com/hc/en/article?id=zm_kb&sysparm_article=KB0063110).
+Fuente: [Zoom: límites del plan Basic](https://support.zoom.com/hc/en/article?id=zm_kb&sysparm_article=KB0067966) y [capacidad de participantes](https://support.zoom.com/hc/en/article?id=zm_kb&sysparm_article=KB0068002).
 
-- Cada reunión del anfitrión con plan gratuito dura como máximo **40 minutos**, incluso entre dos personas, y hasta 100 participantes.
-- Para ZOOM-05 (no suponer licencias ni duración máxima): programá una sesión de **60 minutos** con la cuenta gratuita y comprobá que SpanishNow **avisa antes de confirmar** que la cuenta no soporta esa duración (o que lo marca como problema accionable) **(lo define W08)**. Una sesión de 30 minutos debe confirmarse sin aviso.
+- La API devuelve `type=1` para Basic y `type=2` para una licencia paga. SpanishNow guarda el plan y la capacidad de participantes que devuelve `GET /users/me`; Basic admite hasta **40 minutos y 100 participantes** y Licensed hasta **30 horas** (el número de participantes usa `feature.meeting_capacity`, incluidos add-ons asignados).
+- Para ZOOM-05, programá una sesión de **60 minutos** con la cuenta gratuita y comprobá que SpanishNow **avisa antes de confirmar** que la cuenta no soporta esa duración. Una sesión de 30 minutos debe confirmarse sin aviso.
 - Los límites de reuniones simultáneas no se prueban con una sola cuenta; la regla de SpanishNow ya impide que un docente dicte dos clases a la vez.
 
 ---
@@ -381,14 +385,14 @@ Hallazgos que pueden requerir cambios en los nombres fijados o en el CONTRATO. L
 5. **Testing**: *refresh tokens* de 7 días; W07 debe pasar a «requiere atención» en `invalid_grant`, no a error genérico (CAL-08).
 6. **Puerto**: la copia fija usa backend 3001, el `.env.example` de Classroom sugiere 3000. El ejemplo de `GOOGLE_CALENDAR_REDIRECT_URI` en `.env.example` debería aclararlo.
 
-**W08 (Zoom)**
-1. **`http://localhost` no sirve como redirección de Zoom**: las apps OAuth sin PKCE público exigen HTTPS, y Zoom recomienda no usar `localhost`. Para la prueba real hace falta un túnel HTTPS; `ZOOM_REDIRECT_URI` apunta al túnel. Hay un riesgo de que `https://localhost:4200/api/...` (mkcert) falle con 403; si W08 lo verifica y funciona, se puede simplificar la guía.
-2. **Webhook**: solo con URL pública HTTPS con CA reconocida; hay que responder `endpoint.url_validation` en menos de 3 s con HMAC-SHA-256 del `plainToken` y el Secret Token, verificar `x-zm-signature` (`v0:{timestamp}:{cuerpo crudo}`) con el cuerpo **sin parsear** y manejar reintentos a 5/20/60 min. Zoom revalida cada 72 h.
-3. **Sin túnel no hay eventos de Zoom**: W08 debería tener un sondeo de respaldo (reconciliación periódica por `GET meeting`) o aclarar que no lo tiene.
-4. **Scope de configuración de usuario**: la página oficial de scopes granulares no mostró `user:read:settings`; W08 debe fijar el nombre correcto y documentarlo aquí.
-5. **Rotación de refresh token**: Zoom entrega un refresh token nuevo en cada refresh y vence a los 90 días: guardar siempre el último (ZOOM-08).
-6. **Cuenta gratuita**: 40 minutos por reunión. ZOOM-05 debe resolverse antes de proponer sesiones más largas; hoy la API no garantiza por sí sola ese dato (**lo define W08** si lo lee de la configuración de la cuenta).
-7. **Nombres de variables**: no hay conflicto con `ZOOM_CLIENT_ID`, `ZOOM_CLIENT_SECRET`, `ZOOM_REDIRECT_URI`, `ZOOM_WEBHOOK_SECRET_TOKEN`.
+**W08 (Zoom, resuelto en #52)**
+1. El callback real usa HTTPS público (`ZOOM_REDIRECT_URI`) y PKCE S256; el canje y refresh usan Basic. Para probar `platform.spanishnow.ar`, mantené abierto el túnel durante el OAuth.
+2. El webhook valida `endpoint.url_validation` y la firma v0 sobre el cuerpo crudo. Procesa `meeting.deleted`, `meeting.updated` y `app_deauthorized`; no marca asistencia ni modifica saldo.
+3. No hay sondeo periódico de Zoom: cuando llega `meeting.updated`, la sincronización durable restaura los datos de SpanishNow; `meeting.deleted` marca la referencia para reintento.
+4. Los scopes granulares están fijados en §4.3, incluidos `user:read:settings` y `meeting:read:list_meetings` para configuración y reconciliación.
+5. Cada refresh persiste el nuevo refresh token bajo un lease propio. `invalid_grant` y la revocación pasan la conexión a «requiere atención».
+6. El plan, la duración máxima y los participantes se consultan al conectar y quedan cacheados; Basic se limita a 40 minutos. El preflight no lee tokens ni llama a Zoom.
+7. Las cuatro variables obligatorias del adaptador real y el modo fake están documentados en §4.5.
 
 ---
 
