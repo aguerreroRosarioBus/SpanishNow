@@ -1,0 +1,69 @@
+<article class="schedule-card" data-testid="session-card">
+  @if (loading() && !session()) { <p role="status">{{ 'schedule.loading' | t }}</p> }
+  @if (error()) { <p class="alert alert-danger" role="alert">{{ error() }}</p> }
+  @if (session(); as s) {
+    <div class="d-flex justify-content-between gap-2"><h2>{{ s.teacher.name }} · {{ ('schedule.' + s.kind) | t }}</h2>
+      <span>{{ ('schedule.status.' + s.status) | t }}</span></div>
+    @if (proposalView(); as p) { <app-session-time [interval]="p" [recipientZone]="zone()" [teacherZone]="s.teacher.timeZone || s.timeZone" /> }
+    @if (s.proposal?.status === 'pending' && s.proposal?.kind === 'reschedule') {
+      <p class="notice">{{ 'schedule.original' | t }}</p>
+      <details><summary>{{ 'schedule.current' | t }}</summary><app-session-time [interval]="s" [recipientZone]="zone()" [teacherZone]="s.teacher.timeZone || s.timeZone" /></details>
+    }
+    @if (selectedProposal(); as p) {
+      @if (p.status === 'pending') { <p class="small">{{ 'schedule.expires' | t }}: {{ displayProposal(p) }}</p> }
+      @if (p.version !== s.version) { <p class="notice">{{ 'schedule.stale' | t }}</p> }
+    }
+    @if (s.proposal?.charge === 'consumed_and_new_credit') { <p class="alert alert-warning">{{ 'schedule.lateCharge' | t }}</p> }
+    @if (s.timeZoneRulesChanged) { <p class="alert alert-warning">{{ 'schedule.rulesChanged' | t }}</p> }
+    @if (s.rules) { <p class="notice">{{ 'schedule.freeCancel' | t:{ hours: s.rules.freeCancelHours } }}</p> }
+    <ul class="participants">@for (p of s.participants; track p.userId) { <li>{{ p.name }} · {{ ('schedule.status.' + p.status) | t }} · {{ ('schedule.status.' + p.attendance) | t }}</li> }</ul>
+    @if (!zoneReady()) { <p class="notice">{{ 'schedule.zoneHint' | t }} <a routerLink="/schedule">{{ 'schedule.confirmZone' | t }}</a></p> }
+    @if (s.replacementSessionId) { <p>{{ 'schedule.replaced' | t }} <a routerLink="/schedule" [queryParams]="{ sessionId: s.replacementSessionId }">{{ 'schedule.open' | t }}</a></p> }
+    @if (s.groupResolutionRequired) { <p class="alert alert-warning">{{ 'schedule.groupDecision' | t }}</p> }
+    <div class="actions">
+      @if (canRespond()) {
+        <button type="button" class="btn btn-primary btn-sm" (click)="startDecision('accept')" [disabled]="busy() || !zoneReady()">{{ 'schedule.accept' | t }}</button>
+        <button type="button" class="btn btn-secondary btn-sm" (click)="startDecision('decline')" [disabled]="busy()">{{ 'schedule.decline' | t }}</button>
+      }
+      @if (teacher() && ['forming','proposed','confirmed'].includes(s.status) && features.enabled('class_scheduling')) { <a routerLink="/schedule" [queryParams]="{ reschedule: s.id }" class="btn btn-secondary btn-sm">{{ 'schedule.reschedule' | t }}</a> }
+      @if (['forming','proposed','confirmed'].includes(s.status)) { <button type="button" class="btn btn-ghost btn-sm" (click)="startDecision('cancel')" [disabled]="busy()">{{ 'schedule.cancel' | t }}</button> }
+      <button type="button" class="btn btn-ghost btn-sm" (click)="refresh()" [disabled]="busy()">{{ 'schedule.retry' | t }}</button>
+    </div>
+    @if (decision(); as action) {
+      <fieldset data-testid="session-confirmation"><legend>{{ ('schedule.' + action) | t }}</legend>
+      @if (action === 'accept' || action === 'decline') {
+        @if (selectedProposal(); as p) { <app-session-time [interval]="p" [recipientZone]="zone()" [teacherZone]="s.teacher.timeZone || s.timeZone" /> }
+        @if (action === 'accept') { <label><input type="checkbox" [(ngModel)]="acknowledge" /> {{ 'schedule.acknowledge' | t }}</label> }
+        <button type="button" class="btn btn-primary btn-sm" (click)="respond()" [disabled]="busy() || (action === 'accept' && !acknowledge)">{{ 'schedule.confirm' | t }}</button>
+      } @else {
+        <p>{{ (lateCancel() ? 'schedule.lateCancel' : 'schedule.freeCancellation') | t }}</p>
+        @if (lateCancel()) { <label><input type="checkbox" [(ngModel)]="acknowledge" /> {{ 'schedule.acknowledge' | t }}</label> }
+        <label>{{ 'schedule.reason' | t }}<textarea class="form-control" [(ngModel)]="reason" maxlength="500"></textarea></label>
+        @if (teacher()) {
+          <label>{{ 'schedule.requestedBy' | t }}<select class="form-select" [(ngModel)]="requestedBy"><option [ngValue]="0">{{ 'schedule.teacherRequest' | t }}</option>@for (p of s.participants; track p.userId) { <option [ngValue]="p.userId">{{ p.name }}</option> }</select></label>
+          <label>{{ 'schedule.waive' | t }}<input class="form-control" [(ngModel)]="waiver" maxlength="500" /></label>
+          @if (s.groupResolutionRequired) { <button type="button" class="btn btn-secondary btn-sm me-2" (click)="keepGroup()" [disabled]="busy() || reason.trim().length < 3">{{ 'schedule.keepGroup' | t }}</button> }
+        }
+        <button type="button" class="btn btn-secondary btn-sm" (click)="cancel()" [disabled]="busy() || reason.trim().length < 3 || (lateCancel() && !acknowledge)">{{ 'schedule.confirm' | t }}</button>
+      }
+      <button type="button" class="btn btn-ghost btn-sm ms-2" (click)="decision.set(null)" [disabled]="busy()">{{ 'schedule.back' | t }}</button></fieldset>
+    }
+    @if (teacher() && s.status === 'confirmed') {
+      <details class="mt-3"><summary>{{ 'schedule.attendance' | t }}</summary>
+        <label>{{ 'schedule.participant' | t }}<select class="form-select" [(ngModel)]="attendanceUser"><option [ngValue]="0">{{ 'schedule.choose' | t }}</option>@for (p of s.participants; track p.userId) { @if (p.status !== 'cancelled' && p.attendance === 'pending') { <option [ngValue]="p.userId">{{ p.name }}</option> } }</select></label>
+        <label>{{ 'schedule.attendance' | t }}<select class="form-select" [(ngModel)]="attendanceStatus">@for (v of ['attended','student_no_show','teacher_no_show','excused']; track v) { <option [value]="v">{{ ('schedule.status.' + v) | t }}</option> }</select></label>
+        <label>{{ 'schedule.reason' | t }}<input class="form-control" [(ngModel)]="attendanceReason" maxlength="500" /></label>
+        <button type="button" class="btn btn-secondary btn-sm" (click)="markAttendance()" [disabled]="busy() || !attendanceUser || attendanceReason.trim().length < 3">{{ 'schedule.attendance' | t }}</button>
+      </details>
+    }
+    @if (s.status === 'confirmed') {
+      <details class="sync mt-3"><summary>{{ 'schedule.sync' | t }}</summary>
+        @for (ref of s.sync; track ref.provider) { <p>{{ ref.provider === 'zoom' ? 'Zoom' : 'Google Calendar' }} · {{ ('schedule.status.' + ref.status) | t }}</p> }
+        <p class="notice">{{ 'schedule.syncPending' | t }}</p>
+        @if (teacher()) { <button class="btn btn-ghost btn-sm" (click)="retrySync()" [disabled]="busy()">{{ 'schedule.syncRetry' | t }}</button> }
+        @if (!teacher()) { <button class="btn btn-ghost btn-sm" (click)="join()">{{ 'schedule.join' | t }}</button> }
+        @if (meeting(); as link) { <a [href]="link" target="_blank" rel="noopener noreferrer">{{ 'schedule.join' | t }}</a> }
+      </details>
+    }
+  }
+</article>

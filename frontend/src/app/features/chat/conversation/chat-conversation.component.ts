@@ -13,6 +13,7 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { ChatFormat } from '../chat-format';
+import { ClassSessionCardComponent } from '../../schedule/class-session-card.component';
 
 const POLL_MS = 5_000;
 const IDLE_POLL_MS = 20_000;
@@ -48,7 +49,7 @@ const newClientMessageId = (): string =>
 @Component({
   selector: 'app-chat-conversation',
   standalone: true,
-  imports: [FormsModule, RouterLink, IconComponent, ConfirmDialogComponent, TranslatePipe],
+  imports: [FormsModule, RouterLink, IconComponent, ConfirmDialogComponent, TranslatePipe, ClassSessionCardComponent],
   templateUrl: './chat-conversation.component.html',
   styleUrl: './chat-conversation.component.scss'
 })
@@ -321,7 +322,7 @@ export class ChatConversationComponent implements OnInit {
    * (W05/W06 agregan los suyos) con sus parámetros estructurados; un código desconocido usa el genérico.
    */
   eventText(m: ChatMessage): string {
-    const key = `chat.event.${m.eventCode}`;
+    const key = m.eventCode?.startsWith('session_') ? `schedule.event.${m.eventCode}` : `chat.event.${m.eventCode}`;
     if (!m.eventCode || !this.i18n.has(key)) return this.i18n.t('chat.event.generic');
     const params: Record<string, string | number> = {};
     for (const [name, value] of Object.entries(m.eventParams ?? {})) {

@@ -38,7 +38,7 @@ async function audit(session, actorId, action, data, transaction, reason = null)
   return M.AuditLog.create({ actorId, action: `session.${action}`, entityType: 'class_sessions', entityId: session.id, data, reason }, { transaction });
 }
 async function zoneConfirmed(userId, transaction) {
-  const user = await M.User.findByPk(userId, { transaction });
+  const user = await M.User.findByPk(userId, { transaction, lock: transaction.LOCK.SHARE });
   if (!user || user.suspendedAt) fail('not_found', {}, 404);
   if (!user.timeZoneConfirmedAt || !time.isTimeZone(user.timeZone)) fail('time_zone_invalid', { reason: 'confirmation_required' }, 400);
   return user;
@@ -49,10 +49,10 @@ async function teacherLock(teacherId, transaction, enabled = false) {
   if (enabled && !settings.classesEnabledAt) fail('teacher_unavailable');
   return settings;
 }
-async function usersLock(userIds, transaction) {
+async function usersLock(userIds, transaction, requireActive = false) {
   for (const userId of uniqueIds(userIds)) {
     const user = await M.User.findByPk(userId, { transaction, lock: transaction.LOCK.UPDATE });
-    if (!user || user.role !== 'student' || user.suspendedAt) fail('not_found', {}, 404);
+    if (!user || user.role !== 'student' || (requireActive && user.suspendedAt)) fail('not_found', {}, 404);
   }
 }
 async function load(user, sessionId, transaction = undefined) {
@@ -87,35 +87,45 @@ async function detail(user, sessionId, transaction) {
   const purchase = purchased && await M.ClassPackagePurchase.findByPk(purchased.purchaseId, { transaction });
   const policy = purchase && await M.ClassPolicyVersion.findByPk(purchase.policyVersionId, { transaction });
   const decisions = await M.AuditLog.findAll({ where: { entityType: 'class_sessions', entityId: session.id, action: ['session.cancelled', 'session.group_continue'] }, order: [['id', 'DESC']], transaction });
-  const groupResolutionRequired = session.status === 'confirmed' && seats.length === 3 && seats.some(s => s.status === 'cancelled') && decisions[0]?.action !== 'session.group_continue';
+  const groupResolutionRequired = active.includes(session.status) && seats.length === 3 && seats.some(s => s.status === 'cancelled') && decisions[0]?.action !== 'session.group_continue';
   const terms = await M.AuditLog.findAll({ where: { entityType: 'class_sessions', entityId: session.id, action: 'session.reschedule_terms' }, order: [['id', 'DESC']], transaction });
   const replacement = await M.AuditLog.findOne({ where: { entityType: 'class_sessions', entityId: session.id, action: 'session.replaced' }, transaction });
   const currentProposal = proposals.find(p => p.status === 'pending') || proposals[0];
   const proposalTerms = terms.find(t => t.data?.version === currentProposal?.version)?.data;
+  let timeZoneRulesChanged = false;
+  try {
+    const expected = time.resolveLocalIntent({ localStart: session.localStart, timeZone: session.timeZone, offset: session.utcOffset,
+      disambiguation: session.disambiguation, minutes: session.minutes });
+    timeZoneRulesChanged = expected.startsAt !== session.startsAt.toISOString() || expected.endsAt !== session.endsAt.toISOString();
+  } catch { timeZoneRulesChanged = true; }
   return {
     ...session.toJSON(), teacher: person(session.teacherId),
     participants: seats.map(p => ({ userId: p.userId, name: person(p.userId)?.name, status: p.status, acceptedVersion: p.acceptedVersion,
       attendance: p.attendance, purchaseId: user?.id === session.teacherId || user?.id === p.userId ? p.purchaseId : undefined })),
     proposal: currentProposal ? { ...currentProposal.toJSON(), charge: proposalTerms?.late ? 'consumed_and_new_credit' : 'none' } : null,
     replacementSessionId: replacement?.data?.replacementSessionId || null,
-    proposals, sync: refs, rules: policy?.rules || null, groupResolutionRequired, serverNow: new Date().toISOString()
+    proposals, sync: refs, rules: policy?.rules || null, groupResolutionRequired, timeZoneRulesChanged, serverNow: new Date().toISOString()
   };
 }
 
-async function cohortFor(cohortId, teacherId, userIds, transaction) {
+async function cohortFor(cohortId, teacherId, userIds, transaction, allowReduced = false) {
   if (!cohortId) return null;
   const cohort = await M.ClassCohort.findByPk(id(cohortId), { transaction });
   if (!cohort || cohort.teacherId !== teacherId) fail('not_found', {}, 404);
   const members = await M.ClassCohortMember.findAll({ where: { cohortId: cohort.id, status: 'accepted' }, transaction });
-  if (!['forming', 'ready'].includes(cohort.status) || cohort.groupSize !== userIds.length
-    || members.length !== userIds.length || !members.every(m => userIds.includes(m.userId))) fail('group_incomplete');
+  if (!['forming', 'ready'].includes(cohort.status) || !userIds.length
+    || (!allowReduced && (cohort.groupSize !== userIds.length || members.length !== userIds.length))
+    || !userIds.every(userId => members.some(m => m.userId === userId))) fail('group_incomplete');
   return cohort;
 }
 
 /** Valida datos adquiridos, nunca toma condiciones/precio del cliente. No mueve saldo. */
 async function purchasesFor(session, seats, schedule, transaction, { requireAll = true } = {}) {
   const userIds = seats.map(p => p.userId);
-  const cohort = await cohortFor(session.cohortId, session.teacherId, userIds, transaction);
+  if (await M.User.count({ where: { id: userIds, suspendedAt: null }, transaction }) !== userIds.length) fail('not_found', {}, 404);
+  const decisions = session.id ? await M.AuditLog.findAll({ where: { entityType: 'class_sessions', entityId: session.id, action: ['session.cancelled', 'session.group_continue'] }, order: [['id', 'DESC']], transaction }) : [];
+  const allowReduced = decisions[0]?.action === 'session.group_continue';
+  const cohort = await cohortFor(session.cohortId, session.teacherId, userIds, transaction, allowReduced);
   let candidates = [];
   if (cohort && seats.some(p => !p.purchaseId)) {
     candidates = await M.ClassPackagePurchase.findAll({ where: { teacherId: session.teacherId, cohortId: cohort.id, status: 'active' }, transaction });
@@ -182,7 +192,7 @@ function normalizeRequest(body) {
   if (body.leadTimeException && !(typeof body.reason === 'string' && body.reason.trim().length >= 3 && body.reason.length <= 500)) invalid(['reason']);
   return desired;
 }
-async function proposal(session, seats, desired, body, settings, transaction, now, initial) {
+async function proposal(session, seats, desired, body, settings, transaction, now, initial, first = initial) {
   const acquired = await purchasesFor(session, seats, desired, transaction, { requireAll: !session.cohortId });
   await conflicts(session, seats, desired, settings, now, transaction);
   const minHours = Math.max(acquired.rules.proposalLeadHours, settings.minLeadTimeHours);
@@ -192,8 +202,8 @@ async function proposal(session, seats, desired, body, settings, transaction, no
     initial && acquired.cohort ? acquired.cohort.formingDeadlineAt.getTime() : Infinity);
   if (expiry <= now.getTime()) fail('proposal_stale');
   await M.ClassSessionProposal.update({ status: 'superseded', resolvedAt: now }, { where: { sessionId: session.id, status: 'pending' }, transaction });
-  const nextVersion = initial ? 1 : session.version + 1;
-  await session.update({ version: nextVersion, ...(initial ? { status: acquired.complete ? 'proposed' : 'forming' } : {}) }, { transaction });
+  const nextVersion = first ? 1 : session.version + 1;
+  await session.update({ version: nextVersion, ...(initial ? { ...desired, status: acquired.complete ? 'proposed' : 'forming' } : {}) }, { transaction });
   for (const seat of seats) {
     const resolved = acquired.resolved.find(p => p.userId === seat.userId);
     await seat.update({ purchaseId: resolved.purchaseId, acceptedVersion: null, acceptedAt: null, ...(initial ? { status: 'invited' } : {}) }, { transaction });
@@ -212,7 +222,10 @@ async function create(user, body, key, { now = new Date() } = {}) {
   if (typeof key !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(key)) invalid(['Idempotency-Key']);
   const desired = normalizeRequest(body);
   if (!Array.isArray(body.participants) || !body.participants.length || body.participants.length > 3) invalid(['participants']);
-  const seats = body.participants.map(p => ({ userId: id(p.userId), purchaseId: p.purchaseId ? id(p.purchaseId) : null }));
+  const seats = body.participants.map(p => {
+    if (!p || typeof p !== 'object' || Array.isArray(p) || Object.keys(p).some(k => !['userId', 'purchaseId'].includes(k))) invalid(['participants']);
+    return { userId: id(p.userId), purchaseId: p.purchaseId == null ? null : id(p.purchaseId) };
+  });
   if (uniqueIds(seats.map(p => p.userId)).length !== seats.length) invalid(['participants']);
   seats.sort((a, b) => a.userId - b.userId);
   const requestHash = digest({ desired, seats, cohortId: body.cohortId || null, liveClassId: body.liveClassId || null, leadTimeException: Boolean(body.leadTimeException), reason: body.reason || null });
@@ -224,10 +237,16 @@ async function create(user, body, key, { now = new Date() } = {}) {
       if (receipt?.data?.requestHash !== requestHash) fail('operation_key_conflict');
       return { session: await detail(user, existing.id, transaction), created: false };
     }
-    await usersLock(seats.map(p => p.userId), transaction);
+    await usersLock(seats.map(p => p.userId), transaction, true);
     await zoneConfirmed(user.id, transaction);
+    const cohort = await cohortFor(body.cohortId, user.id, seats.map(s => s.userId), transaction);
     for (const seat of seats) {
-      if (!await M.Conversation.count({ where: { teacherId: user.id, studentId: seat.userId }, transaction })) fail('not_found', {}, 404);
+      if (!await M.Conversation.count({ where: { teacherId: user.id, studentId: seat.userId }, transaction })) {
+        if (!cohort) fail('not_found', {}, 404);
+        const conversation = await M.Conversation.create({ teacherId: user.id, studentId: seat.userId, createdById: user.id }, { transaction });
+        await M.ConversationParticipant.bulkCreate([{ conversationId: conversation.id, userId: user.id, role: 'teacher' },
+          { conversationId: conversation.id, userId: seat.userId, role: 'student' }], { transaction });
+      }
     }
     if (body.liveClassId && !await M.LiveClass.count({ where: { id: id(body.liveClassId), teacherId: user.id }, transaction })) fail('not_found', {}, 404);
     const session = await M.ClassSession.create({ ...desired, teacherId: user.id, kind: body.cohortId ? 'group' : 'individual',
@@ -257,15 +276,17 @@ async function options(user, query = {}) {
   const conversation = query.conversationId && await M.Conversation.findOne({ where: { id: id(query.conversationId), teacherId: user.id } });
   if (query.conversationId && !conversation) fail('not_found', {}, 404);
   const conversations = await M.Conversation.findAll({ where: { teacherId: user.id }, attributes: ['studentId'] });
-  const students = await M.User.findAll({ where: { id: conversations.map(c => c.studentId), suspendedAt: null }, attributes: ['id', 'name'] });
   const purchases = await M.ClassPackagePurchase.findAll({ where: { teacherId: user.id }, order: [['paidAt', 'DESC']], limit: 500 });
   const beneficiaries = await M.ClassPackageBeneficiary.findAll({ where: { purchaseId: purchases.map(p => p.id) } });
   const cohorts = await M.ClassCohort.findAll({ where: { teacherId: user.id, status: ['forming', 'ready'] } });
   const members = await M.ClassCohortMember.findAll({ where: { cohortId: cohorts.map(c => c.id), status: 'accepted' } });
+  const students = await M.User.findAll({ where: { id: uniqueIds([...conversations.map(c => c.studentId), ...members.map(m => m.userId)]), suspendedAt: null }, attributes: ['id', 'name'] });
+  const cohortTerms = await M.ClassPackageTemplateVersion.findAll({ where: { id: cohorts.map(c => c.templateVersionId) }, attributes: ['id', 'minutesPerSession'] });
   return { studentId: conversation?.studentId || null, students, purchases: purchases.map(p => ({ id: p.id, cohortId: p.cohortId,
     minutesPerSession: p.minutesPerSession, seatsCovered: p.seatsCovered, status: p.status, expiresAt: p.expiresAt,
     available: p.unitsAvailable, beneficiaryIds: beneficiaries.filter(b => b.purchaseId === p.id).map(b => b.userId) })),
-    cohorts: cohorts.map(c => ({ id: c.id, groupSize: c.groupSize, formingDeadlineAt: c.formingDeadlineAt, memberIds: members.filter(m => m.cohortId === c.id).map(m => m.userId) })) };
+    cohorts: cohorts.map(c => ({ id: c.id, groupSize: c.groupSize, minutesPerSession: cohortTerms.find(t => t.id === c.templateVersionId)?.minutesPerSession,
+      formingDeadlineAt: c.formingDeadlineAt, memberIds: members.filter(m => m.cohortId === c.id).map(m => m.userId) })) };
 }
 
 async function remindersFeed(user) {

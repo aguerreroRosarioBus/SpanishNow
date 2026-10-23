@@ -137,7 +137,7 @@ test('AC08/TZ-T09: cancelación exactamente 24 h libera; un segundo después con
     const c = await chain();
     const s = await confirmed(c);
     const now = new Date(time.addElapsed(time.addElapsed(s.startsAt.toISOString(), { hours: -24 }), { seconds: late ? 1 : 0 }));
-    const r = await sessions.cancel(c.students[0], s.id, { version: s.version, reason: 'Cambio de planes' }, { now });
+    const r = await sessions.cancel(c.students[0], s.id, { version: s.version, reason: 'Cambio de planes', acknowledgeCharge: late }, { now });
     expect(r.charge).toBe(late ? 'consumed' : 'none');
     expect(await credits.balance(c.purchases[0].id)).toMatchObject({ reserved: 0, consumed: late ? 1 : 0, available: late ? 3 : 4 });
   }
@@ -238,4 +238,54 @@ test('opciones solo del docente dueño y enlace Zoom solo de participante, sin a
   expect((await as(c.students[0]).get(`/api/class-sessions/${s.id}/join`)).body).toEqual({ joinUrl: 'https://zoom.us/j/12345', manual: false });
   expect((await as(c.teacher).get(`/api/class-sessions/${s.id}/join`)).body.code).toBe('provider_unavailable');
   expect((await as(c.teacher).post(`/api/class-sessions/${s.id}/sync/retry`)).body.code).toBe('integration_not_connected');
+});
+
+test('grupo reducido: solo quienes siguen aceptan la reprogramación, sin otro descuento', async () => {
+  const c = await chain({ size: 3 }); const s = await confirmed(c);
+  let current = await sessions.cancel(c.students[0], s.id, { version: s.version, reason: 'No puedo continuar' });
+  current = await sessions.cancel(c.teacher, s.id, { version: current.version, keepGroup: true, reason: 'Dictaré con dos al mismo precio' });
+  current = await sessions.reschedule(c.teacher, s.id, { version: current.version, intent: { ...c.body.intent, localStart: c.body.intent.localStart.replace('09:00', '12:00') } });
+  for (const student of c.students.slice(1)) current = await sessions.accept(student, s.id, current.version);
+  expect(current.proposal.status).toBe('accepted');
+  expect(current.participants.find(p => p.userId === c.students[0].id).status).toBe('cancelled');
+  expect(await credits.balance(c.purchases[0].id)).toMatchObject({ available: 4, reserved: 0 });
+  for (const p of c.purchases.slice(1)) expect(await credits.balance(p.id)).toMatchObject({ available: 3, reserved: 1, consumed: 0 });
+});
+
+test('editar propuesta inicial invalida la aceptación vieja sin conservar un horario nunca confirmado', async () => {
+  const c = await chain(); const first = await sessions.create(c.teacher, c.body, uuid());
+  const updated = await sessions.reschedule(c.teacher, first.session.id, { version: 1, intent: { ...c.body.intent, localStart: c.body.intent.localStart.replace('09:00', '11:00') } });
+  expect(updated.proposal.kind).toBe('initial'); expect(updated.version).toBe(2);
+  await expect(sessions.accept(c.students[0], updated.id, 1)).rejects.toMatchObject({ code: 'proposal_stale' });
+  expect((await sessions.accept(c.students[0], updated.id, 2)).status).toBe('confirmed');
+});
+
+test('grupo incompleto queda forming y no confirma hasta identificar todas las compras', async () => {
+  const c = await chain({ size: 3 }); await c.purchases[2].update({ status: 'cancelled' });
+  const body = { ...c.body, participants: c.body.participants.map((p, i) => i === 2 ? { userId: p.userId, purchaseId: null } : p) };
+  const r = await sessions.create(c.teacher, body, uuid()); expect(r.session.status).toBe('forming');
+  await expect(sessions.accept(c.students[0], r.session.id, 1)).rejects.toMatchObject({ code: 'group_incomplete' });
+  await c.purchases[2].update({ status: 'active' });
+  for (const student of c.students) await sessions.accept(student, r.session.id, 1);
+  for (const p of c.purchases) expect(await credits.balance(p.id)).toMatchObject({ reserved: 1 });
+});
+
+test('concurrencia entre docentes también serializa la agenda del alumno', async () => {
+  const a = await chain(); const b = await chain({ students: a.students });
+  const result = await Promise.allSettled([sessions.create(a.teacher, a.body, uuid()), sessions.create(b.teacher, { ...b.body, intent: a.body.intent }, uuid())]);
+  expect(result.filter(r => r.status === 'fulfilled')).toHaveLength(1);
+  expect(result.find(r => r.status === 'rejected').reason.code).toBe('schedule_conflict');
+});
+
+test('suspender un alumno no impide al docente liberar compromisos ni permite confirmar', async () => {
+  const c = await chain(); const s = await confirmed(c);
+  await c.students[0].update({ suspendedAt: new Date() });
+  await sessions.cancel(c.teacher, s.id, { version: s.version, reason: 'Resolver compromiso de cuenta suspendida' });
+  expect(await credits.balance(c.purchases[0].id)).toMatchObject({ available: 4, reserved: 0 });
+});
+
+test('la API exige reconocimiento de cargo tardío antes de consumir crédito', async () => {
+  const c = await chain(); const s = await confirmed(c); const now = new Date(time.addElapsed(s.startsAt.toISOString(), { hours: -1 }));
+  await expect(sessions.cancel(c.students[0], s.id, { version: s.version, reason: 'Cancelar tarde' }, { now })).rejects.toMatchObject({ code: 'validation_failed' });
+  expect(await credits.balance(c.purchases[0].id)).toMatchObject({ reserved: 1, consumed: 0 });
 });

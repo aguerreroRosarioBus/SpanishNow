@@ -78,11 +78,14 @@ module.exports = core => {
       await pending(session, wanted, transaction, now);
       await zoneConfirmed(user.id, transaction);
       const desired = scheduleOf(p);
-      const acquired = await purchasesFor(session, seats, desired, transaction);
+      const recalculated = time.resolveLocalIntent({ localStart: p.localStart, timeZone: p.timeZone, offset: p.utcOffset, disambiguation: p.disambiguation, minutes: p.minutes });
+      if (recalculated.startsAt !== desired.startsAt || recalculated.endsAt !== desired.endsAt) fail('offset_mismatch', { reason: 'time_zone_rules_changed' }, 400);
+      const activeSeats = seats.filter(s => s.status !== 'cancelled');
+      const acquired = await purchasesFor(session, activeSeats, desired, transaction);
       const termsRows = await M.AuditLog.findAll({ where: { entityType: 'class_sessions', entityId: session.id, action: 'session.reschedule_terms' }, transaction });
       const terms = termsRows.find(r => r.data?.version === wanted)?.data;
       if (terms?.late && body.acknowledgeCharge !== true) invalid(['acknowledgeCharge']);
-      await conflicts(session, seats, desired, settings, now, transaction);
+      await conflicts(session, activeSeats, desired, settings, now, transaction);
       // Hasta W07 no se confirma a ciegas con una conexión externa que exigiría free/busy.
       if (await M.ExternalConnection.count({ where: { userId: session.teacherId, provider: 'google_calendar', status: 'connected' }, transaction })) {
         fail('provider_unavailable', { reason: 'availability_check_required' }, 503);
@@ -91,7 +94,7 @@ module.exports = core => {
         await me.update({ acceptedVersion: wanted, acceptedAt: now, ...(session.status === 'confirmed' ? {} : { status: 'accepted' }) }, { transaction });
         await audit(session, user.id, 'accepted', { version: wanted, acknowledgeCharge: body.acknowledgeCharge === true }, transaction);
       }
-      if (seats.every(s => s.acceptedVersion === wanted)) {
+      if (activeSeats.every(s => s.acceptedVersion === wanted)) {
         if (terms?.late) {
           const chargedPurchase = seats.find(s => s.userId === terms.requestedByStudentId)?.purchaseId;
           for (const purchase of acquired.purchases) {
@@ -100,7 +103,7 @@ module.exports = core => {
           for (const purchase of acquired.purchases) await move(session, purchase.id, purchase.id === chargedPurchase ? 'consume' : 'release', user.id, transaction, 'Reprogramación tardía aceptada');
           const next = await M.ClassSession.create({ ...desired, teacherId: session.teacherId, kind: session.kind, cohortId: session.cohortId,
             liveClassId: session.liveClassId, status: 'confirmed', version: 1, confirmedAt: now }, { transaction });
-          const nextSeats = await M.ClassSessionParticipant.bulkCreate(seats.map(s => ({ sessionId: next.id, userId: s.userId,
+          const nextSeats = await M.ClassSessionParticipant.bulkCreate(activeSeats.map(s => ({ sessionId: next.id, userId: s.userId,
             purchaseId: s.purchaseId, status: 'confirmed', acceptedVersion: 1, acceptedAt: now })), { transaction });
           await M.ClassSessionProposal.create({ ...desired, sessionId: next.id, version: 1, kind: 'initial', status: 'accepted',
             proposedById: session.teacherId, expiresAt: p.expiresAt, resolvedAt: now }, { transaction });
@@ -113,13 +116,14 @@ module.exports = core => {
           await syncIntents(session, transaction); await syncIntents(next, transaction);
           await audit(session, user.id, 'replaced', { proposalVersion: wanted, replacementSessionId: next.id }, transaction);
           await audit(next, user.id, 'confirmed', { replacesSessionId: session.id }, transaction);
+          if (activeSeats.length < seats.length) await audit(next, session.teacherId, 'group_continue', { version: 1 }, transaction, 'Conserva decisión docente de grupo reducido');
           await notify(next, nextSeats, 'session_confirmed', 1, transaction);
           return core.detail(user, next.id, transaction);
         }
         if (p.kind === 'initial') {
           for (const purchase of acquired.purchases) await move(session, purchase.id, 'reserve', user.id, transaction);
         }
-        for (const seat of seats) await seat.update({ status: 'confirmed', purchaseId: acquired.resolved.find(r => r.userId === seat.userId).purchaseId }, { transaction });
+        for (const seat of activeSeats) await seat.update({ status: 'confirmed', purchaseId: acquired.resolved.find(r => r.userId === seat.userId).purchaseId }, { transaction });
         await p.update({ status: 'accepted', resolvedAt: now }, { transaction });
         await session.update({ ...desired, status: 'confirmed', confirmedAt: session.confirmedAt || now }, { transaction });
         if (acquired.cohort) await acquired.cohort.update({ status: 'ready' }, { transaction });
@@ -154,14 +158,14 @@ module.exports = core => {
   async function reschedule(user, sessionId, body, { now = new Date() } = {}) {
     return locked(user, sessionId, async ({ session, seats, settings, transaction }) => {
       teacherOnly(user, session); version(session, body?.version);
-      if (session.status !== 'confirmed' || session.startsAt <= now) fail('proposal_stale');
+      if (!['confirmed', 'forming', 'proposed'].includes(session.status) || session.startsAt <= now) fail('proposal_stale');
       await zoneConfirmed(user.id, transaction);
       const desired = core._internal.normalizeRequest(body);
       const rules = await policy(seats, transaction);
-      const late = body.requestedByStudentId && !time.isAtLeastHoursBefore(session.startsAt.toISOString(), now.toISOString(), rules.freeCancelHours);
+      const late = session.status === 'confirmed' && body.requestedByStudentId && !time.isAtLeastHoursBefore(session.startsAt.toISOString(), now.toISOString(), rules.freeCancelHours);
       if (body.requestedByStudentId && !seats.some(s => s.userId === body.requestedByStudentId)) invalid(['requestedByStudentId']);
       if (body.chargeWaivedReason) await audit(session, user.id, 'charge_waived', { requestedByStudentId: body.requestedByStudentId }, transaction, reason(body.chargeWaivedReason));
-      await proposal(session, seats, desired, body, settings, transaction, now, false);
+      await proposal(session, seats.filter(s => s.status !== 'cancelled'), desired, body, settings, transaction, now, session.status !== 'confirmed', false);
       await audit(session, user.id, 'reschedule_terms', { version: session.version, late: Boolean(late && !body.chargeWaivedReason), requestedByStudentId: body.requestedByStudentId || null }, transaction);
       // La versión cambió pero el horario original sigue vigente y debe conservar avisos.
       await reminders(session, seats, rules, transaction, now);
@@ -181,7 +185,7 @@ module.exports = core => {
       const ids = await purchaseLocks(seats, transaction);
       if (body.keepGroup) {
         teacherOnly(user, session);
-        if (session.kind !== 'group' || session.status !== 'confirmed' || !seats.some(s => s.status === 'cancelled')) invalid(['keepGroup']);
+        if (session.kind !== 'group' || !seats.some(s => s.status === 'cancelled') || !seats.some(s => s.status !== 'cancelled')) invalid(['keepGroup']);
         await session.update({ version: session.version + 1 }, { transaction });
         await audit(session, user.id, 'group_continue', { version: session.version }, transaction, why);
         await reminders(session, seats, rules, transaction, now);
@@ -192,6 +196,7 @@ module.exports = core => {
       if (body.requestedByStudentId && (!isTeacher || !seats.some(s => s.userId === body.requestedByStudentId))) invalid(['requestedByStudentId']);
       const requestedByStudent = !isTeacher || Boolean(body.requestedByStudentId);
       const late = requestedByStudent && !time.isAtLeastHoursBefore(session.startsAt.toISOString(), now.toISOString(), rules.freeCancelHours);
+      if (late && !waived && body.acknowledgeCharge !== true) invalid(['acknowledgeCharge']);
       const group3 = session.kind === 'group' && seats.length === 3;
       const requestedSeat = body.requestedByStudentId ? seats.find(s => s.userId === body.requestedByStudentId) : me;
       const targets = !requestedByStudent || !group3 ? seats.filter(s => s.status !== 'cancelled' && s.attendance === 'pending') : [requestedSeat];
@@ -206,7 +211,7 @@ module.exports = core => {
       for (const seat of targets) await seat.update({ status: 'cancelled' }, { transaction });
       await session.update({ version: session.version + 1, ...(seats.every(s => s.status === 'cancelled') ? {
         status: 'cancelled', cancelledAt: now, cancelledById: user.id, cancelReason: why, chargeWaivedReason: waived
-      } : {}) }, { transaction });
+      } : session.status === 'confirmed' ? {} : { status: 'forming' }) }, { transaction });
       await M.ClassSessionProposal.update({ status: 'withdrawn', resolvedAt: now }, { where: { sessionId: session.id, status: 'pending' }, transaction });
       await reminders(session, seats, rules, transaction, now);
       await syncIntents(session, transaction);
