@@ -81,6 +81,15 @@ npx playwright test --config schedule.playwright.config.ts
 | E2E W06 aislado | 8/8 aprobadas |
 | TypeScript E2E, generador `--check`, `git diff --check` | Aprobados |
 
+### Revisión cruzada (Claude, 22/10/2026)
+
+Hallazgos publicados en #41. Corregidos en esta rama, con una prueba de regresión cada uno:
+
+- **P1-1** (`0795a6e`): aceptar una reprogramación dejaba los recordatorios a la hora original. La clave del aviso incluye el inicio, se anulan los de la versión vigente que ya no corresponden y el handler descarta entregas de otro inicio.
+- **P2-1** (`22496f1`): una reprogramación pendiente podía aceptarse tras dictarse la clase original. Ahora vence a más tardar al inicio original, `accept` lo rechaza y la asistencia retira propuestas pendientes.
+
+Tras las correcciones: backend completo **888/888** (48 suites, +2 regresiones), tiempo puro 56/56, `ng test` 390/390, build producción aprobado, E2E W06 **8/8**, generador `--check` y `git diff --check` aprobados.
+
 La suite de agenda contiene 33 casos HTTP/servicio con ledger real: concurrencia, versiones, autorización, holds, límites reales 24 h, compras, grupos, recordatorios, corrección/dispensa, consentimiento, pizarra y cohortes sucesivas. El cliente tiene 7 pruebas de agenda además de 12 de tiempo compartido. E2E: 8/8 en Chromium escritorio y móvil emulado (4 escenarios ×2), sin mocks de API: individual NY/Córdoba y reprogramación rechazada, DST explícito/idioma, grupo de dos, grupo de tres con baja y decisión docente. Se inspeccionan reservas reales después de cada aceptación grupal. La suite vive en `e2e/schedule-tests/` para que el runner TPRS no la ejecute con otra base/puerto; su descubrimiento se verificó por separado. Capturas escritorio/móvil verificadas visualmente; archivos en `e2e/test-results/` son artefactos locales ignorados.
 
 El build necesita descargar las fuentes públicas ya configuradas en la app; el primer intento sin red falló por DNS y se repitió con acceso autorizado. Persisten advertencias Sass previas y CommonJS `jsbi` del polyfill, sin error de compilación.
