@@ -6,6 +6,9 @@
     </div>
   </div>
 
+  @if (!allowed()) {
+    <div class="alert alert-warning" role="alert">{{ 'legal.admin.noPermission' | t }}</div>
+  } @else {
   <div class="legal-keys" role="tablist" [attr.aria-label]="'legal.admin.document' | t">
     @for (k of keys; track k) {
       <button type="button" role="tab" class="btn btn-sm" [class.btn-primary]="key() === k" [class.btn-outline-secondary]="key() !== k"
@@ -125,5 +128,6 @@
         <button type="submit" class="btn btn-primary mt-3" [disabled]="busy()">{{ 'legal.admin.saveDraft' | t }}</button>
       </form>
     </section>
+  }
   }
 </div>

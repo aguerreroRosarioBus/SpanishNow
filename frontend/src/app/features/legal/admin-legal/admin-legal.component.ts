@@ -1,5 +1,6 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AuthService } from '../../../core/services/auth.service';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { Locale } from '../../../core/i18n/i18n.types';
@@ -22,6 +23,9 @@ type VersionStatus = 'draft' | 'scheduled' | 'current' | 'published';
 export class AdminLegalComponent implements OnInit {
   private legal = inject(LegalService);
   private fb = inject(FormBuilder);
+  private auth = inject(AuthService);
+  /** Sin `legal.manage` se avisa en pantalla (el servidor igual rechaza las llamadas). */
+  readonly allowed = computed(() => this.auth.hasPermission('legal.manage'));
   readonly i18n = inject(I18nService);
   readonly keys = LEGAL_KEYS;
   readonly businessFields = BUSINESS_FIELDS;
@@ -56,7 +60,7 @@ export class AdminLegalComponent implements OnInit {
     })
   });
 
-  ngOnInit(): void { this.reload(); }
+  ngOnInit(): void { if (this.allowed()) this.reload(); }
 
   private reload(selectId?: number): void {
     this.legal.adminList().subscribe({
