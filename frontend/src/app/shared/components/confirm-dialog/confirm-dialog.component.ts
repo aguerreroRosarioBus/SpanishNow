@@ -11,10 +11,10 @@ import { CommonModule } from '@angular/common';
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">{{ title }}</h5>
+            <h5 class="modal-title">{{ title || ('common.confirm' | t) }}</h5>
           </div>
           <div class="modal-body">
-            <p class="mb-0">{{ message }}</p>
+            <p class="mb-0">{{ message || ('common.areYouSure' | t) }}</p>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" (click)="onCancel()">
@@ -26,7 +26,7 @@ import { CommonModule } from '@angular/common';
               [class.btn-danger]="type === 'danger'"
               [class.btn-warning]="type === 'warning'"
               (click)="onConfirm()">
-              {{ confirmText }}
+              {{ confirmText || ('common.confirm' | t) }}
             </button>
           </div>
         </div>
@@ -51,9 +51,9 @@ import { CommonModule } from '@angular/common';
 })
 export class ConfirmDialogComponent {
   @Input() show = false;
-  @Input() title = 'Confirmar';
-  @Input() message = '¿Estás seguro?';
-  @Input() confirmText = 'Confirmar';
+  @Input() title = '';
+  @Input() message = '';
+  @Input() confirmText = '';
   @Input() type: 'danger' | 'warning' = 'danger';
 
   @Output() confirmed = new EventEmitter<void>();

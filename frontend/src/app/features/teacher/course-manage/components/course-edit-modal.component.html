@@ -59,7 +59,7 @@
           </div>
           <div class="mb-3">
             <label for="courseSlug" class="form-label">{{ 'teacherManage.courseEdit.slug' | t }}</label>
-            <input type="text" class="form-control" id="courseSlug" formControlName="slug" placeholder="ej: learn-spanish-short-film"
+            <input type="text" class="form-control" id="courseSlug" formControlName="slug" [attr.placeholder]="'teacherManage.courseEdit.slugPlaceholder' | t"
                    [class.is-invalid]="form.controls.slug.invalid" />
             @if (form.controls.slug.invalid) {
               <div class="invalid-feedback">{{ 'teacherManage.courseEdit.slugInvalid' | t }}</div>

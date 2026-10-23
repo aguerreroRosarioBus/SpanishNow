@@ -68,6 +68,7 @@ const ENTRIES: readonly Entry[] = [
   ['courseEdit.titleLabel', 'Title *', 'Título *'],
   ['courseEdit.titlePlaceholder', 'E.g. Spanish A1', 'Ej: Español A1'],
   ['courseEdit.description', 'Description', 'Descripción'],
+  ['courseEdit.slugPlaceholder', 'e.g. learn-spanish-short-film', 'ej: learn-spanish-short-film'],
   ['courseEdit.descriptionPlaceholder', 'Course description', 'Descripción del curso'],
   ['courseEdit.cover', 'Cover image', 'Imagen de portada'],
   ['courseEdit.coverAlt', 'Preview of the course cover', 'Vista previa de la portada del curso'],

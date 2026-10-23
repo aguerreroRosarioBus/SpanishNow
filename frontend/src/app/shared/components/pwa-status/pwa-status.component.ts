@@ -1,22 +1,23 @@
 import { Component, inject } from '@angular/core';
 import { PwaService } from '../../../core/services/pwa.service';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { IconComponent } from '../icon/icon.component';
 
 /** Avisos discretos de la app instalable: sin conexión y versión nueva disponible. */
 @Component({
   selector: 'app-pwa-status',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, TranslatePipe],
   template: `
     @if (pwa.updateAvailable()) {
       <div class="pwa-bar pwa-bar--update" role="status">
-        <span>Hay una versión nueva</span>
-        <button type="button" class="btn btn-primary btn-sm" (click)="pwa.applyUpdate()">Actualizar</button>
-        <button type="button" class="btn btn-ghost btn-sm" (click)="pwa.dismissUpdate()">Después</button>
+        <span>{{ 'pwa.updateAvailable' | t }}</span>
+        <button type="button" class="btn btn-primary btn-sm" (click)="pwa.applyUpdate()">{{ 'pwa.update' | t }}</button>
+        <button type="button" class="btn btn-ghost btn-sm" (click)="pwa.dismissUpdate()">{{ 'pwa.later' | t }}</button>
       </div>
     }
     @if (pwa.offline()) {
-      <div class="pwa-bar pwa-bar--offline" role="status"><app-icon name="wifi-off" [size]="15" />Sin conexión</div>
+      <div class="pwa-bar pwa-bar--offline" role="status"><app-icon name="wifi-off" [size]="15" />{{ 'pwa.offline' | t }}</div>
     }
   `,
   styles: [`
