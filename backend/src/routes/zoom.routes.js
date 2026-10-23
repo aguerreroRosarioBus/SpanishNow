@@ -25,8 +25,5 @@ router.get('/integrations/zoom/sessions', ...secure, wrap(async (req, res) => re
 router.get('/integrations/zoom/sessions/:id', ...secure, wrap(async (req, res) => res.json(await zoom.sessionStatus(req.user, req.params.id))));
 router.post('/integrations/zoom/sessions/:id/retry', ...secure, wrap(async (req, res) => res.json(await zoom.retry(req.user, req.params.id))));
 router.put('/integrations/zoom/sessions/:id/manual-link', ...secure, wrap(async (req, res) => res.json(await zoom.manual(req.user, req.params.id, req.body))));
-router.get('/class-sessions/:id/join', ...secure, wrap(async (req, res) => {
-  const result = await zoom.join(req.user, req.params.id); res.set('Cache-Control', 'no-store'); res.json(result);
-}));
 router.use(require('./zoomPreflight'));
 module.exports = router;

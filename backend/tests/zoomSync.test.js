@@ -272,3 +272,21 @@ test('P3: meeting.deleted propio conserva la ref cancelled y no vuelve a needs_a
   expect(await refFor(c.session.id)).toMatchObject({ status: 'cancelled', lastError: null });
   expect((await c.purchases[0].reload()).unitsReserved).toBe(0);
 });
+
+test('P3: join canónico W06 respeta feature, autenticación, impersonación y pertenencia; conserva ICS', async () => {
+  const c = await fixture(); await sync(c.session.id);
+  process.env.FEATURE_ZOOM = '0';
+  try {
+    const denied = await as(c.teacher).get(`/api/class-sessions/${c.session.id}/join`);
+    expect(denied.status).toBe(404); expect(denied.body.code).toBe('feature_disabled');
+  } finally { process.env.FEATURE_ZOOM = '1'; }
+  expect((await request(app).get(`/api/class-sessions/${c.session.id}/join`)).status).toBe(401);
+  const token = require('jsonwebtoken').sign({ id: c.teacher.id, impersonatedBy: 999 }, process.env.JWT_SECRET);
+  expect((await request(app).get(`/api/class-sessions/${c.session.id}/join`).set('Authorization', `Bearer ${token}`)).status).toBe(403);
+  const teacher = await as(c.teacher).get(`/api/class-sessions/${c.session.id}/join`);
+  expect(teacher.status).toBe(200); expect(teacher.body.hostUrl).toContain('/s/'); expect(teacher.headers['cache-control']).toBe('no-store');
+  const student = await as(c.students[0]).get(`/api/class-sessions/${c.session.id}/join`);
+  expect(student.body.joinUrl).toContain('/j/'); expect(student.headers['cache-control']).toBe('no-store');
+  const ics = await as(c.students[0]).get(`/api/class-sessions/${c.session.id}/calendar.ics`);
+  expect(ics.status).toBe(200); expect(ics.text).toContain('/j/'); expect(ics.text).not.toMatch(/zak=|\/s\//);
+});

@@ -318,15 +318,8 @@ async function remindersFeed(user) {
 async function join(user, sessionId) {
   const { session, seats } = await load(user, sessionId);
   if (session.status !== 'confirmed' || (session.teacherId !== user.id && !seats.some(s => s.userId === user.id && s.status !== 'cancelled'))) fail('proposal_stale');
-  // El enlace de anfitrión se obtiene al momento en W08; no se usa joinUrl como sustituto.
-  if (session.teacherId === user.id) fail('provider_unavailable', { reason: 'host_integration_pending' }, 503);
-  const ref = await M.ExternalSyncRef.findOne({ where: { sessionId: session.id, provider: 'zoom' } });
-  const link = ref?.manualJoinUrl || (ref?.status === 'ready' ? ref.joinUrl : null);
-  if (!link) fail('integration_not_connected');
-  let url;
-  try { url = new URL(link); } catch { fail('provider_unavailable', {}, 503); }
-  if (url.protocol !== 'https:' || (url.hostname !== 'zoom.us' && !url.hostname.endsWith('.zoom.us'))) fail('provider_unavailable', {}, 503);
-  return { joinUrl: url.href, manual: Boolean(ref.manualJoinUrl) };
+  // W08: la ruta y pertenencia siguen en W06; Zoom obtiene host efímero o participante/manual validado.
+  return require('./zoomService').join(user, session.id);
 }
 
 // W07 (CAL-05): archivo ICS de la versión vigente para el docente y los participantes activos; sin conectar cuenta.

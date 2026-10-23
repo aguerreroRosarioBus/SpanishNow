@@ -235,8 +235,11 @@ test('opciones solo del docente dueño y enlace Zoom solo de participante, sin a
   const other = await createUser('teacher', 'otro-docente');
   expect((await as(other).get(`/api/class-sessions/options?conversationId=${c.conversations[0].id}`)).status).toBe(404);
   await M.ExternalSyncRef.update({ joinUrl: 'https://zoom.us/j/12345', status: 'ready' }, { where: { sessionId: s.id, provider: 'zoom' } });
-  expect((await as(c.students[0]).get(`/api/class-sessions/${s.id}/join`)).body).toEqual({ joinUrl: 'https://zoom.us/j/12345', manual: false });
-  expect((await as(c.teacher).get(`/api/class-sessions/${s.id}/join`)).body.code).toBe('provider_unavailable');
+  process.env.FEATURE_ZOOM = '1'; // W08 integra el join con su feature flag.
+  try {
+    expect((await as(c.students[0]).get(`/api/class-sessions/${s.id}/join`)).body).toEqual({ joinUrl: 'https://zoom.us/j/12345', manual: false });
+    expect((await as(c.teacher).get(`/api/class-sessions/${s.id}/join`)).body.code).toBe('provider_unavailable');
+  } finally { delete process.env.FEATURE_ZOOM; }
   expect((await as(c.teacher).post(`/api/class-sessions/${s.id}/sync/retry`)).body.code).toBe('integration_not_connected');
 });
 
