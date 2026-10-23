@@ -4,6 +4,7 @@ import { map, of, throwError } from 'rxjs';
 import { ProgressComponent } from './progress.component';
 import { EnrollmentService } from '../../../core/services/enrollment.service';
 import { StoryProgress } from '../../../core/models/course.model';
+import { I18nService, LOCALE_STORAGE_KEY } from '../../../core/i18n/i18n.service';
 
 const story = (storyId: number, extra: Partial<StoryProgress> = {}): StoryProgress => ({
   storyId, storyTitle: `Historia ${storyId}`, unitId: 1, unitTitle: 'Unidad 1', revision: 2, lastBlockKey: null,
@@ -12,6 +13,7 @@ const story = (storyId: number, extra: Partial<StoryProgress> = {}): StoryProgre
 });
 
 describe('ProgressComponent (avance por historia)', () => {
+  afterEach(() => localStorage.removeItem(LOCALE_STORAGE_KEY));
   async function create(getProgress: (id: number) => any) {
     await TestBed.configureTestingModule({
       imports: [ProgressComponent],
@@ -26,6 +28,7 @@ describe('ProgressComponent (avance por historia)', () => {
         } },
       ],
     }).compileComponents();
+    TestBed.inject(I18nService).setLocale('es');
     const fixture = TestBed.createComponent(ProgressComponent);
     fixture.detectChanges();
     await fixture.whenStable();
@@ -56,5 +59,25 @@ describe('ProgressComponent (avance por historia)', () => {
     const text = (fixture.nativeElement as HTMLElement).textContent!;
     expect(text).toContain('No se pudo cargar el avance de este curso.');
     expect(text).toContain('Historia 300');
+  });
+
+  it('conserva el nombre del certificado y el progreso al cambiar idioma', async () => {
+    const fixture = await create(() => of([story(300)]));
+    const component = fixture.componentInstance;
+    component.courses.update(list => list.map((course, index) => index === 0
+      ? { ...course, certificate: { eligible: true, code: null, missing: { stories: 0, quizzes: 0 } } } : course));
+    const courses = component.courses();
+    component.startClaim(courses[0]);
+    component.claimName.set('Ángela ficticia');
+    fixture.detectChanges();
+    const input = fixture.nativeElement.querySelector('input[name="certName"]');
+    TestBed.inject(I18nService).setLocale('en');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Confirm the name to print on your certificate');
+    expect(input.value).toBe('Ángela ficticia');
+    expect(input.isConnected).toBe(true);
+    expect(component.courses()).toBe(courses);
+    expect(component.missingText({ eligible: false, code: null, missing: { stories: 1, quizzes: 2 } }))
+      .toBe('Complete 1 lesson and 2 quizzes to get your certificate.');
   });
 });

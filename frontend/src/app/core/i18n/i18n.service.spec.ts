@@ -132,8 +132,9 @@ describe('I18N: idioma, catálogos y formatos', () => {
         expect(placeholders(enMessage), key).toEqual(placeholders(esMessage as string));
       } else {
         expect(typeof esMessage, key).toBe('object');
-        for (const variant of Object.values(esMessage)) {
-          if (variant !== undefined) expect(placeholders(variant), key).toEqual(placeholders(enMessage.other));
+        for (const [category, variant] of Object.entries(esMessage)) {
+          const counterpart = (enMessage as Readonly<Record<string, string | undefined>>)[category] ?? enMessage.other;
+          if (variant !== undefined) expect(placeholders(variant), key).toEqual(placeholders(counterpart));
         }
       }
     }
