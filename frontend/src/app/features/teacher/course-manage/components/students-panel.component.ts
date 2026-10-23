@@ -6,6 +6,8 @@ import { CourseStudent, EnrollmentSource, ImportResult, ImportRowStatus } from '
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { I18nService } from '../../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
+import { UserPreferencesService } from '../../../../core/services/user-preferences.service';
+import { presentationZone } from '../../../live-classes/live-notice';
 import { CourseManageStore } from '../course-manage.store';
 
 const SOURCE_KEYS: Record<EnrollmentSource, string> = {
@@ -42,6 +44,7 @@ export class StudentsPanelComponent implements OnInit {
   private service = inject(CourseStudentsService);
   private toast = inject(ToastService);
   private i18n = inject(I18nService);
+  private preferences = inject(UserPreferencesService);
 
   students = signal<CourseStudent[]>([]);
   isLoading = signal(false);
@@ -80,7 +83,8 @@ export class StudentsPanelComponent implements OnInit {
   sourceLabel(source: EnrollmentSource): string { return SOURCE_KEYS[source] ? this.i18n.t(SOURCE_KEYS[source]) : source; }
   statusLabel(status: ImportRowStatus): string { return STATUS_KEYS[status] ? this.i18n.t(STATUS_KEYS[status]) : status; }
   reasonLabel(reason: string): string { return this.i18n.t(REASON_KEYS[reason] ?? 'teacherDashboard.students.reasonOther'); }
-  enrolledDate(value: string): string { return this.i18n.formatInstant(value, 'UTC', { dateStyle: 'medium' }); }
+  /** Día de inscripción en la zona de las preferencias de la cuenta (no en UTC: un alta de la noche no cambia de día). */
+  enrolledDate(value: string): string { return this.i18n.formatInstant(value, presentationZone(this.preferences.preferences()?.timeZone), { dateStyle: 'medium' }); }
 
   progressPercent(student: CourseStudent): number {
     const { completedStories, totalStories } = student.progress;
