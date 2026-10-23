@@ -1,33 +1,33 @@
 <div class="story-row" [class.is-highlighted]="highlighted()">
-  <span class="btn-icon story-row__grip" aria-hidden="true" title="Arrastrar para reordenar"><app-icon name="grip" [size]="14" /></span>
+  <span class="btn-icon story-row__grip" aria-hidden="true" [attr.title]="'teacherManage.storyCard.dragToReorder' | t"><app-icon name="grip" [size]="14" /></span>
   <span class="story-row__order">{{ number() }}</span>
   <button type="button" class="story-row__title" (click)="compose()" [attr.title]="story().title">{{ story().title }}</button>
   <span class="story-row__flags">
-    @if (hasVideo()) { <span class="story-row__flag" title="Tiene video" aria-label="Tiene video"><app-icon name="video" [size]="14" /></span> }
-    @if (commentCount() > 0) { <span class="story-row__flag" [attr.title]="commentCount() + ' comentario(s)'" [attr.aria-label]="commentCount() + ' comentarios'"><app-icon name="message-square" [size]="14" />{{ commentCount() }}</span> }
-    @if (pdfCount() > 0) { <span class="story-row__flag" [attr.title]="pdfCount() + ' PDF(s)'" [attr.aria-label]="pdfCount() + ' PDF'"><app-icon name="file-text" [size]="14" />{{ pdfCount() }}</span> }
+    @if (hasVideo()) { <span class="story-row__flag" [attr.title]="'teacherManage.storyCard.hasVideo' | t" [attr.aria-label]="'teacherManage.storyCard.hasVideo' | t"><app-icon name="video" [size]="14" /></span> }
+    @if (commentCount() > 0) { <span class="story-row__flag" [attr.title]="'teacherManage.storyCard.commentsTitle' | t:{ count: commentCount() }" [attr.aria-label]="'teacherManage.storyCard.commentsTitle' | t:{ count: commentCount() }"><app-icon name="message-square" [size]="14" />{{ commentCount() }}</span> }
+    @if (pdfCount() > 0) { <span class="story-row__flag" [attr.title]="'teacherManage.storyCard.pdfTitle' | t:{ count: pdfCount() }" [attr.aria-label]="'teacherManage.storyCard.pdfAria' | t:{ count: pdfCount() }"><app-icon name="file-text" [size]="14" />{{ pdfCount() }}</span> }
   </span>
-  <span class="story-row__questions">{{ questionsCount() | plural:'pregunta':'preguntas':'Sin preguntas' }}</span>
+  <span class="story-row__questions">{{ 'teacherManage.storyCard.questions' | t:{ count: questionsCount() } }}</span>
   <span class="badge-status story-row__status" [class.badge-status--published]="published()" [class.badge-status--draft]="!published()">
-    {{ published() ? 'Publicada' : 'Borrador' }}
+    {{ (published() ? 'teacherManage.storyCard.published' : 'teacherManage.storyCard.draft') | t }}
   </span>
   <div class="story-row__actions">
-    <button type="button" class="btn-icon" aria-label="Componer lección" title="Componer lección" (click)="compose()">
+    <button type="button" class="btn-icon" [attr.aria-label]="'teacherManage.storyCard.compose' | t" [attr.title]="'teacherManage.storyCard.compose' | t" (click)="compose()">
       <app-icon name="pencil" [size]="16" />
     </button>
     <div ngbDropdown container="body" placement="bottom-end">
-      <button type="button" ngbDropdownToggle class="btn-icon" aria-label="Más acciones de la historia">
+      <button type="button" ngbDropdownToggle class="btn-icon" [attr.aria-label]="'teacherManage.storyCard.moreActions' | t">
         <app-icon name="more" [size]="18" />
       </button>
       <div ngbDropdownMenu role="menu">
-        <button type="button" ngbDropdownItem role="menuitem" (click)="store.open({ kind: 'story-edit', story: story(), unitId: unit().id })">Editar historia</button>
-        <button type="button" ngbDropdownItem role="menuitem" (click)="store.open({ kind: 'materials', unit: unit() })">Materiales de la unidad</button>
-        <button type="button" ngbDropdownItem role="menuitem" (click)="store.open({ kind: 'questions', story: story() })">Editar preguntas</button>
-        <button type="button" ngbDropdownItem role="menuitem" (click)="store.open({ kind: 'story-tooltips', story: story() })">Tooltips del texto</button>
-        <button type="button" ngbDropdownItem role="menuitem" (click)="store.open({ kind: 'repetitions', story: story() })">Audios de repetición</button>
+        <button type="button" ngbDropdownItem role="menuitem" (click)="store.open({ kind: 'story-edit', story: story(), unitId: unit().id })">{{ 'teacherManage.storyCard.edit' | t }}</button>
+        <button type="button" ngbDropdownItem role="menuitem" (click)="store.open({ kind: 'materials', unit: unit() })">{{ 'teacherManage.storyCard.unitMaterials' | t }}</button>
+        <button type="button" ngbDropdownItem role="menuitem" (click)="store.open({ kind: 'questions', story: story() })">{{ 'teacherManage.storyCard.editQuestions' | t }}</button>
+        <button type="button" ngbDropdownItem role="menuitem" (click)="store.open({ kind: 'story-tooltips', story: story() })">{{ 'teacherManage.storyCard.tooltips' | t }}</button>
+        <button type="button" ngbDropdownItem role="menuitem" (click)="store.open({ kind: 'repetitions', story: story() })">{{ 'teacherManage.storyCard.repetitions' | t }}</button>
         <div class="dropdown-divider"></div>
         <button type="button" ngbDropdownItem role="menuitem" class="dropdown-item--danger" (click)="store.deleteStory(unit().id, story().id)">
-          <app-icon name="trash" [size]="15" />Eliminar historia
+          <app-icon name="trash" [size]="15" />{{ 'teacherManage.storyCard.delete' | t }}
         </button>
       </div>
     </div>

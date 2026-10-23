@@ -1,28 +1,28 @@
-<form class="inline-form" (ngSubmit)="submit()" [attr.aria-label]="'Nueva pregunta'">
-  <p class="inline-help" *ngIf="contextText()">Se hará tras: «{{ contextText() | slice:0:70 }}»</p>
-  <label [attr.for]="uid() + '-text'">Pregunta</label>
-  <textarea [id]="uid() + '-text'" rows="2" name="text" maxlength="300" [ngModel]="text()" (ngModelChange)="text.set($event)" placeholder="Ej: ¿María está en la fiesta?"></textarea>
+<form class="inline-form" (ngSubmit)="submit()" [attr.aria-label]="'teacherComposer.qForm.aria' | t">
+  <p class="inline-help" *ngIf="contextText()">{{ 'teacherComposer.qForm.after' | t:{ text: (contextText() | slice:0:70) } }}</p>
+  <label [attr.for]="uid() + '-text'">{{ 'teacherComposer.qForm.question' | t }}</label>
+  <textarea [id]="uid() + '-text'" rows="2" name="text" maxlength="300" [ngModel]="text()" (ngModelChange)="text.set($event)" [placeholder]="'teacherComposer.qForm.placeholder' | t"></textarea>
   <fieldset>
-    <legend>Tipo</legend>
-    <label class="inline-radio"><input type="radio" [name]="uid() + '-type'" [checked]="type() === 'yes_no'" (change)="setType('yes_no')"> Sí / No</label>
-    <label class="inline-radio"><input type="radio" [name]="uid() + '-type'" [checked]="type() === 'choice'" (change)="setType('choice')"> Dos opciones</label>
+    <legend>{{ 'teacherComposer.qForm.type' | t }}</legend>
+    <label class="inline-radio"><input type="radio" [name]="uid() + '-type'" [checked]="type() === 'yes_no'" (change)="setType('yes_no')"> {{ 'teacherComposer.qForm.yesNo' | t }}</label>
+    <label class="inline-radio"><input type="radio" [name]="uid() + '-type'" [checked]="type() === 'choice'" (change)="setType('choice')"> {{ 'teacherComposer.qForm.twoOptions' | t }}</label>
   </fieldset>
   <div class="inline-row" *ngIf="type() === 'choice'">
-    <label [attr.for]="uid() + '-a'">Opción 1<input [id]="uid() + '-a'" name="a" maxlength="120" [ngModel]="optionA()" (ngModelChange)="optionA.set($event)"></label>
-    <label [attr.for]="uid() + '-b'">Opción 2<input [id]="uid() + '-b'" name="b" maxlength="120" [ngModel]="optionB()" (ngModelChange)="optionB.set($event)"></label>
+    <label [attr.for]="uid() + '-a'">{{ 'teacherComposer.qForm.option1' | t }}<input [id]="uid() + '-a'" name="a" maxlength="120" [ngModel]="optionA()" (ngModelChange)="optionA.set($event)"></label>
+    <label [attr.for]="uid() + '-b'">{{ 'teacherComposer.qForm.option2' | t }}<input [id]="uid() + '-b'" name="b" maxlength="120" [ngModel]="optionB()" (ngModelChange)="optionB.set($event)"></label>
   </div>
   <fieldset>
-    <legend>Respuesta correcta</legend>
+    <legend>{{ 'teacherComposer.qForm.correct' | t }}</legend>
     <ng-container *ngIf="type() === 'yes_no'">
-      <label class="inline-radio" *ngFor="let o of ['Sí','No']"><input type="radio" [name]="uid() + '-correct'" [checked]="correct() === o" (change)="correct.set(o)"> {{ o }}</label>
+      <label class="inline-radio" *ngFor="let o of ['Sí','No']"><input type="radio" [name]="uid() + '-correct'" [checked]="correct() === o" (change)="correct.set(o)"> {{ (o === 'Sí' ? 'teacherComposer.qForm.answerYes' : 'teacherComposer.qForm.answerNo') | t }}</label>
     </ng-container>
     <ng-container *ngIf="type() === 'choice'">
-      <label class="inline-radio" *ngFor="let i of [0,1]"><input type="radio" [name]="uid() + '-correct'" [checked]="correct() === '' + i" (change)="correct.set('' + i)"> {{ options()[i] || 'Opción ' + (i + 1) }}</label>
+      <label class="inline-radio" *ngFor="let i of [0,1]"><input type="radio" [name]="uid() + '-correct'" [checked]="correct() === '' + i" (change)="correct.set('' + i)"> {{ options()[i] || ('teacherComposer.qForm.optionN' | t:{ n: i + 1 }) }}</label>
     </ng-container>
   </fieldset>
   <p class="inline-error" role="alert" *ngIf="error()">{{ error() }}</p>
   <div class="inline-actions">
-    <button type="submit" class="small-button" [disabled]="busy() || !!validation()">{{ busy() ? 'Guardando…' : 'Guardar pregunta' }}</button>
-    <button type="button" class="text-button" (click)="cancelled.emit()">Cancelar</button>
+    <button type="submit" class="small-button" [disabled]="busy() || !!validation()">{{ (busy() ? 'teacherComposer.qForm.saving' : 'teacherComposer.qForm.save') | t }}</button>
+    <button type="button" class="text-button" (click)="cancelled.emit()">{{ 'teacherComposer.qForm.cancel' | t }}</button>
   </div>
 </form>

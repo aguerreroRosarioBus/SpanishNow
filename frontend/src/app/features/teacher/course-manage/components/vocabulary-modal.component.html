@@ -3,52 +3,52 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">
-          Vocabulario · {{ unit().title }}
+          {{ 'teacherManage.vocab.title' | t:{ title: unit().title } }}
         </h5>
-        <button type="button" class="btn-close" (click)="close()"></button>
+        <button type="button" class="btn-close" (click)="close()" [attr.aria-label]="'teacherManage.common.close' | t"></button>
       </div>
       <div class="modal-body">
         <!-- Form to create vocabulary -->
         <form [formGroup]="form" (ngSubmit)="create()">
           <div class="row g-3">
             <div class="col-md-6">
-              <label class="form-label">Palabra (Español) *</label>
+              <label class="form-label">{{ 'teacherManage.vocab.word' | t }}</label>
               <input type="text" class="form-control" formControlName="word" placeholder="casa">
             </div>
             <div class="col-md-6">
-              <label class="form-label">Traducción (Inglés) *</label>
+              <label class="form-label">{{ 'teacherManage.vocab.translation' | t }}</label>
               <input type="text" class="form-control" formControlName="translation" placeholder="house">
             </div>
             <div class="col-md-6">
-              <label class="form-label">Parte de la oración</label>
+              <label class="form-label">{{ 'teacherManage.vocab.partOfSpeech' | t }}</label>
               <select class="form-select" formControlName="partOfSpeech">
-                <option value="">Seleccionar...</option>
-                <option value="noun">Sustantivo (noun)</option>
-                <option value="verb">Verbo (verb)</option>
-                <option value="adjective">Adjetivo (adjective)</option>
-                <option value="adverb">Adverbio (adverb)</option>
-                <option value="pronoun">Pronombre (pronoun)</option>
-                <option value="preposition">Preposición (preposition)</option>
-                <option value="conjunction">Conjunción (conjunction)</option>
+                <option value="">{{ 'teacherManage.vocab.select' | t }}</option>
+                <option value="noun">{{ 'teacherManage.vocab.noun' | t }}</option>
+                <option value="verb">{{ 'teacherManage.vocab.verb' | t }}</option>
+                <option value="adjective">{{ 'teacherManage.vocab.adjective' | t }}</option>
+                <option value="adverb">{{ 'teacherManage.vocab.adverb' | t }}</option>
+                <option value="pronoun">{{ 'teacherManage.vocab.pronoun' | t }}</option>
+                <option value="preposition">{{ 'teacherManage.vocab.preposition' | t }}</option>
+                <option value="conjunction">{{ 'teacherManage.vocab.conjunction' | t }}</option>
               </select>
             </div>
             <div class="col-12">
-              <label class="form-label">Ejemplo de uso</label>
+              <label class="form-label">{{ 'teacherManage.vocab.example' | t }}</label>
               <input type="text" class="form-control" formControlName="example" placeholder="La casa es grande">
             </div>
             <div class="col-md-6">
-              <label class="form-label">Audio de pronunciación</label>
-              <app-audio-input #audio name="vocabAudio" layout="stacked" uploadHint="Archivo de audio con la pronunciación"
+              <label class="form-label">{{ 'teacherManage.vocab.audio' | t }}</label>
+              <app-audio-input #audio name="vocabAudio" layout="stacked" uploadHint="teacherManage.vocab.audioHint"
                 recordedFileName="vocab-audio.webm"
-                startedMessage="Grabación de audio iniciada" stoppedMessage="Grabación de audio detenida" />
+                startedMessage="teacherManage.audio.startedGeneric" stoppedMessage="teacherManage.audio.stoppedGeneric" />
             </div>
             <div class="col-md-6">
-              <label class="form-label">Imagen</label>
+              <label class="form-label">{{ 'teacherManage.vocab.image' | t }}</label>
               <input type="file" class="form-control" [accept]="imageAccept" (change)="onImageSelected($event)">
               <app-image-search [initialQuery]="form.controls.word.value || ''" [disabled]="isSubmitting()" (imageSelected)="selectImage($event)" />
               @if (imagePreview(); as preview) {
-                <img [src]="preview" alt="Vista previa de la imagen de la palabra" class="img-thumbnail mt-2" style="max-height: 120px">
-                <button type="button" class="btn btn-sm btn-link" (click)="selectImage(null)" [disabled]="isSubmitting()">Quitar imagen</button>
+                <img [src]="preview" [attr.alt]="'teacherManage.vocab.imageAlt' | t" class="img-thumbnail mt-2" style="max-height: 120px">
+                <button type="button" class="btn btn-sm btn-link" (click)="selectImage(null)" [disabled]="isSubmitting()">{{ 'teacherManage.vocab.removeImage' | t }}</button>
               }
             </div>
             <div class="col-12">
@@ -57,8 +57,8 @@
                 class="btn btn-primary"
                 [disabled]="form.invalid || isSubmitting()"
               >
-                <span *ngIf="!isSubmitting()">Agregar Vocabulario</span>
-                <span *ngIf="isSubmitting()">Creando...</span>
+                <span *ngIf="!isSubmitting()">{{ 'teacherManage.vocab.add' | t }}</span>
+                <span *ngIf="isSubmitting()">{{ 'teacherManage.common.creating' | t }}</span>
               </button>
             </div>
           </div>
@@ -67,9 +67,9 @@
         <hr class="my-4">
 
         <!-- List of existing vocabulary -->
-        <h6>Vocabulario Existente ({{ vocabulary().length }})</h6>
+        <h6>{{ 'teacherManage.vocab.existing' | t:{ count: vocabulary().length } }}</h6>
         <div *ngIf="vocabulary().length === 0" class="alert alert-info">
-          No hay vocabulario agregado para esta unidad.
+          {{ 'teacherManage.vocab.empty' | t }}
         </div>
         <div class="list-group">
           <div *ngFor="let vocab of vocabulary()" class="list-group-item">
@@ -78,16 +78,16 @@
                 <strong>{{ vocab.word }}</strong> · {{ vocab.translation }}
                 <span *ngIf="vocab.partOfSpeech" class="badge bg-secondary ms-2">{{ vocab.partOfSpeech }}</span>
                 <br>
-                <small class="text-muted" *ngIf="vocab.example">Ejemplo: {{ vocab.example }}</small>
+                <small class="text-muted" *ngIf="vocab.example">{{ 'teacherManage.vocab.examplePrefix' | t:{ text: vocab.example } }}</small>
                 <br>
-                <small class="text-success d-inline-flex align-items-center gap-1" *ngIf="vocab.audioUrl"><app-icon name="volume" [size]="14" />Tiene audio</small>
-                <small class="text-info ms-2 d-inline-flex align-items-center gap-1" *ngIf="vocab.imageUrl"><app-icon name="image" [size]="14" />Tiene imagen</small>
+                <small class="text-success d-inline-flex align-items-center gap-1" *ngIf="vocab.audioUrl"><app-icon name="volume" [size]="14" />{{ 'teacherManage.vocab.hasAudio' | t }}</small>
+                <small class="text-info ms-2 d-inline-flex align-items-center gap-1" *ngIf="vocab.imageUrl"><app-icon name="image" [size]="14" />{{ 'teacherManage.vocab.hasImage' | t }}</small>
               </div>
               <button
                 class="btn btn-sm btn-outline-danger"
                 (click)="remove(vocab.id)"
               >
-                Eliminar
+                {{ 'teacherManage.common.delete' | t }}
               </button>
             </div>
           </div>
@@ -95,7 +95,7 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" (click)="close()">
-          Cerrar
+          {{ 'teacherManage.common.close' | t }}
         </button>
       </div>
     </div>

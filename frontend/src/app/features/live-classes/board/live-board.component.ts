@@ -1,16 +1,19 @@
-import { Component, computed, input, output, signal } from '@angular/core';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { BoardElement, BoardOperation, BoardPage, BoardPoint, BoardTool } from '../../../core/models/live-class.model';
 import { bounds, clamp, editableElement, moveElement, newId, pathOf, point, resizeElement } from './board.logic';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { NgbDropdownModule } from '@ng-bootstrap/ng-bootstrap';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { I18nService } from '../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 
 interface Gesture { pointer: number; pageId: string; start: BoardPoint; original: BoardElement | null; element: BoardElement; mode: 'draw' | 'move'; }
 @Component({
-  selector: 'app-live-board', standalone: true, imports: [IconComponent, NgbDropdownModule, ConfirmDialogComponent],
+  selector: 'app-live-board', standalone: true, imports: [IconComponent, NgbDropdownModule, ConfirmDialogComponent, TranslatePipe],
   templateUrl: './live-board.component.html', styleUrl: './live-board.component.scss'
 })
 export class LiveBoardComponent {
+  private i18n = inject(I18nService);
   page = input.required<BoardPage>();
   editable = input(false);
   panning = input(false);
@@ -67,7 +70,7 @@ export class LiveBoardComponent {
     } else if (this.tool() === 'note' || this.tool() === 'text') {
       const note = this.tool() === 'note';
       const e: BoardElement = { id: newId(), type: note ? 'note' : 'text', x: clamp(p.x, 0, 1320), y: clamp(p.y, 0, 680), w: 280, h: 220,
-        color: note ? '#fff2a8' : this.color(), width: this.size(), text: note ? 'Tu nota' : 'Tu texto', authorId: this.userId(), version: 0 };
+        color: note ? '#fff2a8' : this.color(), width: this.size(), text: this.i18n.t(note ? 'liveBoard.board.defaultNote' : 'liveBoard.board.defaultText'), authorId: this.userId(), version: 0 };
       this.selectedId.set(e.id); this.put(e, 0); return;
     } else {
       this.selectedId.set(null);

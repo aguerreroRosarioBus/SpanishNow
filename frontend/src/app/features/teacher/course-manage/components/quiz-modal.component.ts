@@ -5,6 +5,8 @@ import { QuizService } from '../../../../core/services/quiz.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { unitDisplayTitle } from '../../../../shared/utils/unit-title';
+import { I18nService } from '../../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { CourseContentStore } from '../course-content.store';
 import { CourseManageStore } from '../course-manage.store';
 import {
@@ -15,7 +17,7 @@ import {
 @Component({
   selector: 'app-quiz-modal',
   standalone: true,
-  imports: [IconComponent],
+  imports: [IconComponent, TranslatePipe],
   templateUrl: './quiz-modal.component.html'
 })
 export class QuizModalComponent implements OnInit {
@@ -23,6 +25,7 @@ export class QuizModalComponent implements OnInit {
   private content = inject(CourseContentStore);
   private api = inject(QuizService);
   private toast = inject(ToastService);
+  private i18n = inject(I18nService);
 
   unit = input.required<Unit>();
 
@@ -32,11 +35,18 @@ export class QuizModalComponent implements OnInit {
   exists = signal(false);
   isLoading = signal(true);
   isSaving = signal(false);
+  /** Claves I18N de los avisos ('' = sin aviso); el error del servidor se guarda crudo y se traduce al leer. */
   loadError = signal('');
-  errorMessage = signal('');
+  private notice = signal('');
+  private saveFailure = signal<{ error: unknown } | null>(null);
+  errorMessage = computed(() => {
+    const failure = this.saveFailure();
+    if (failure) return this.i18n.errorMessage(failure.error, 'teacherManage.quiz.saveError');
+    return this.notice() ? this.i18n.t(this.notice()) : '';
+  });
   showErrors = signal(false);
 
-  heading = computed(() => `Quiz · ${unitDisplayTitle(this.unit().title)}`);
+  heading = computed(() => this.i18n.t('teacherManage.quiz.heading', { unit: unitDisplayTitle(this.unit().title) }));
   validation = computed(() => validateQuiz(this.quiz()));
 
   ngOnInit(): void {
@@ -48,7 +58,7 @@ export class QuizModalComponent implements OnInit {
       },
       error: error => {
         if (error?.status === 404) this.quiz.set(emptyQuiz());
-        else this.loadError.set('No se pudo cargar el quiz. Cierra el diálogo e intenta nuevamente.');
+        else this.loadError.set('teacherManage.quiz.loadError');
         this.isLoading.set(false);
       }
     });
@@ -89,10 +99,12 @@ export class QuizModalComponent implements OnInit {
   save(): void {
     this.showErrors.set(true);
     if (!this.validation().valid) {
-      this.errorMessage.set('Revisa los campos marcados antes de guardar.');
+      this.saveFailure.set(null);
+      this.notice.set('teacherManage.quiz.reviewFields');
       return;
     }
-    this.errorMessage.set('');
+    this.saveFailure.set(null);
+    this.notice.set('');
     this.isSaving.set(true);
     const unitId = this.unit().id;
     this.api.save(unitId, toPayload(this.quiz())).subscribe({
@@ -100,25 +112,26 @@ export class QuizModalComponent implements OnInit {
         this.content.setQuiz(unitId, saved);
         this.isSaving.set(false);
         this.close();
-        this.toast.success(saved.isPublished ? 'Quiz guardado y publicado' : 'Quiz guardado como borrador');
+        this.toast.success(this.i18n.t(saved.isPublished ? 'teacherManage.quiz.savedPublished' : 'teacherManage.quiz.savedDraft'));
       },
       error: error => {
         this.isSaving.set(false);
-        this.errorMessage.set(error?.error?.error || 'No se pudo guardar el quiz. Intenta nuevamente.');
+        this.notice.set('');
+        this.saveFailure.set({ error });
       }
     });
   }
 
   deleteQuiz(): void {
     const unitId = this.unit().id;
-    this.store.confirm('Eliminar quiz', '¿Eliminar el quiz de esta unidad? Se borran también los intentos de los alumnos. Esta acción no se puede deshacer.', 'Eliminar quiz', () => {
+    this.store.confirm('teacherManage.quiz.deleteTitle', 'teacherManage.quiz.deleteMessage', 'teacherManage.quiz.deleteTitle', () => {
       this.api.remove(unitId).subscribe({
         next: () => {
           this.content.setQuiz(unitId, null);
           this.close();
-          this.toast.success('Quiz eliminado');
+          this.toast.success(this.i18n.t('teacherManage.quiz.deleted'));
         },
-        error: () => this.toast.error('No se pudo eliminar el quiz')
+        error: () => this.toast.error(this.i18n.t('teacherManage.quiz.deleteError'))
       });
     }, 'danger');
   }

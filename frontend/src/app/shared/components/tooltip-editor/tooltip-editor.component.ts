@@ -4,23 +4,25 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { TooltipService, Tooltip, CreateTooltipDto } from '../../../core/services/tooltip.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { IconComponent } from '../icon/icon.component';
+import { I18nService } from '../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 
 @Component({
   selector: 'app-tooltip-editor',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, IconComponent],
+  imports: [CommonModule, ReactiveFormsModule, IconComponent, TranslatePipe],
   template: `
     <div class="tooltip-editor">
       <!-- Text Display Area with Selection -->
       <div class="card mb-3">
         <div class="card-header d-flex justify-content-between align-items-center">
-          <h6 class="mb-0">Contenido de Texto</h6>
+          <h6 class="mb-0">{{ 'teacherComposer.tooltipEditor.textContent' | t }}</h6>
           <button
             *ngIf="hasSelection()"
             class="btn btn-sm btn-primary"
             (click)="openTooltipModal()"
           >
-            <app-icon name="lightbulb" [size]="16" />Agregar tooltip a la selección
+            <app-icon name="lightbulb" [size]="16" />{{ 'teacherComposer.tooltipEditor.addToSelection' | t }}
           </button>
         </div>
         <div
@@ -39,11 +41,11 @@ import { IconComponent } from '../icon/icon.component';
       <!-- Existing Tooltips List -->
       <div class="card">
         <div class="card-header">
-          <h6 class="mb-0">Tooltips Existentes ({{ tooltips().length }})</h6>
+          <h6 class="mb-0">{{ 'teacherComposer.tooltipEditor.existing' | t:{ count: tooltips().length } }}</h6>
         </div>
         <div class="card-body">
           <div *ngIf="tooltips().length === 0" class="text-muted text-center py-3">
-            No hay tooltips creados aún. Selecciona texto arriba para crear uno.
+            {{ 'teacherComposer.tooltipEditor.none' | t }}
           </div>
 
           <div class="list-group">
@@ -62,14 +64,14 @@ import { IconComponent } from '../icon/icon.component';
                       {{ tooltip.selectedText }}
                     </span>
                     <small class="text-muted">
-                      (chars {{ tooltip.startOffset }}-{{ tooltip.endOffset }})
+                      {{ 'teacherComposer.tooltipEditor.chars' | t:{ start: tooltip.startOffset, end: tooltip.endOffset } }}
                     </small>
                   </div>
                   <div class="mb-1">
-                    <strong>Tooltip:</strong> {{ tooltip.tooltipContent }}
+                    <strong>{{ 'teacherComposer.tooltipEditor.tooltipLabel' | t }}</strong> {{ tooltip.tooltipContent }}
                   </div>
                   <small class="text-muted">
-                    Creado por {{ tooltip.creator?.name || 'Desconocido' }}
+                    {{ 'teacherComposer.tooltipEditor.createdBy' | t:{ name: tooltip.creator?.name || ('teacherComposer.tooltipEditor.unknown' | t) } }}
                   </small>
                 </div>
                 <div class="btn-group">
@@ -77,13 +79,13 @@ import { IconComponent } from '../icon/icon.component';
                     class="btn btn-sm btn-outline-primary"
                     (click)="editTooltip(tooltip)"
                   >
-                    Editar
+                    {{ 'teacherComposer.tooltipEditor.edit' | t }}
                   </button>
                   <button
                     class="btn btn-sm btn-outline-danger"
                     (click)="deleteTooltip(tooltip.id)"
                   >
-                    Eliminar
+                    {{ 'teacherComposer.tooltipEditor.delete' | t }}
                   </button>
                 </div>
               </div>
@@ -104,35 +106,35 @@ import { IconComponent } from '../icon/icon.component';
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title">
-              {{ editingTooltip() ? 'Editar Tooltip' : 'Agregar Tooltip' }}
+              {{ (editingTooltip() ? 'teacherComposer.tooltipEditor.editTitle' : 'teacherComposer.tooltipEditor.addTitle') | t }}
             </h5>
-            <button type="button" class="btn-close" (click)="closeModal()"></button>
+            <button type="button" class="btn-close" [attr.aria-label]="'teacherComposer.tooltipEditor.closeAria' | t" (click)="closeModal()"></button>
           </div>
           <form [formGroup]="tooltipForm" (ngSubmit)="saveTooltip()">
             <div class="modal-body">
               <div class="mb-3">
-                <label class="form-label">Texto Seleccionado</label>
+                <label class="form-label">{{ 'teacherComposer.tooltipEditor.selectedText' | t }}</label>
                 <div class="alert alert-info">
                   <strong>{{ currentSelection()?.text || editingTooltip()?.selectedText }}</strong>
                 </div>
               </div>
 
               <div class="mb-3">
-                <label for="tooltipContent" class="form-label">Contenido del Tooltip *</label>
+                <label for="tooltipContent" class="form-label">{{ 'teacherComposer.tooltipEditor.contentLabel' | t }}</label>
                 <textarea
                   id="tooltipContent"
                   class="form-control"
                   rows="4"
                   formControlName="tooltipContent"
-                  placeholder="Ingresa la explicación, traducción o nota de ayuda..."
+                  [placeholder]="'teacherComposer.tooltipEditor.placeholder' | t"
                 ></textarea>
                 <small class="text-muted">
-                  Esto aparecerá cuando los estudiantes hagan clic o pasen el cursor sobre el texto resaltado.
+                  {{ 'teacherComposer.tooltipEditor.contentHelp' | t }}
                 </small>
               </div>
 
               <div class="mb-3">
-                <label class="form-label">Color de Resaltado</label>
+                <label class="form-label">{{ 'teacherComposer.tooltipEditor.colorLabel' | t }}</label>
                 <div class="d-flex gap-2 flex-wrap">
                   <button
                     *ngFor="let color of availableColors"
@@ -147,14 +149,14 @@ import { IconComponent } from '../icon/icon.component';
                       [style.background-color]="getColorHex(color.value)"
                       style="width: 20px; height: 20px; border: 1px solid #ddd;"
                     ></span>
-                    <span class="ms-1">{{ color.label }}</span>
+                    <span class="ms-1">{{ color.labelKey | t }}</span>
                   </button>
                 </div>
               </div>
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" (click)="closeModal()">
-                Cancelar
+                {{ 'teacherComposer.tooltipEditor.cancel' | t }}
               </button>
               <button
                 type="submit"
@@ -162,11 +164,11 @@ import { IconComponent } from '../icon/icon.component';
                 [disabled]="tooltipForm.invalid || isSubmitting()"
               >
                 <span *ngIf="!isSubmitting()">
-                  {{ editingTooltip() ? 'Actualizar' : 'Crear' }} Tooltip
+                  {{ (editingTooltip() ? 'teacherComposer.tooltipEditor.update' : 'teacherComposer.tooltipEditor.create') | t }}
                 </span>
                 <span *ngIf="isSubmitting()">
                   <span class="spinner-border spinner-border-sm me-2"></span>
-                  Guardando...
+                  {{ 'teacherComposer.tooltipEditor.saving' | t }}
                 </span>
               </button>
             </div>
@@ -228,6 +230,7 @@ export class TooltipEditorComponent implements OnInit {
   private toastService = inject(ToastService);
   private fb = inject(FormBuilder);
   private cdr = inject(ChangeDetectorRef);
+  private i18n = inject(I18nService);
 
   tooltips = signal<Tooltip[]>([]);
   renderedText = signal<string>('');
@@ -240,10 +243,10 @@ export class TooltipEditorComponent implements OnInit {
   tooltipForm: FormGroup;
 
   availableColors = [
-    { value: 'yellow', label: 'Amarillo' },
-    { value: 'blue', label: 'Azul' },
-    { value: 'green', label: 'Verde' },
-    { value: 'pink', label: 'Rosa' }
+    { value: 'yellow', labelKey: 'teacherComposer.tooltipEditor.color.yellow' },
+    { value: 'blue', labelKey: 'teacherComposer.tooltipEditor.color.blue' },
+    { value: 'green', labelKey: 'teacherComposer.tooltipEditor.color.green' },
+    { value: 'pink', labelKey: 'teacherComposer.tooltipEditor.color.pink' }
   ];
 
   constructor() {
@@ -270,7 +273,7 @@ export class TooltipEditorComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error loading tooltips:', error);
-        this.toastService.error('Error al cargar tooltips');
+        this.toastService.error(this.i18n.errorMessage(error, 'teacherComposer.tooltipEditor.loadError'));
       }
     });
   }
@@ -379,14 +382,14 @@ export class TooltipEditorComponent implements OnInit {
             current.map(t => t.id === updatedTooltip.id ? updatedTooltip : t)
           );
           this.renderTextWithTooltips();
-          this.toastService.success('Tooltip actualizado exitosamente');
+          this.toastService.success(this.i18n.t('teacherComposer.tooltipEditor.updated'));
           this.closeModal();
           this.isSubmitting.set(false);
           this.tooltipsChanged.emit(this.tooltips());
         },
         error: (error) => {
           console.error('Error updating tooltip:', error);
-          this.toastService.error(error.error?.error || 'Error al actualizar tooltip');
+          this.toastService.error(this.i18n.errorMessage(error, 'teacherComposer.tooltipEditor.updateError'));
           this.isSubmitting.set(false);
         }
       });
@@ -394,7 +397,7 @@ export class TooltipEditorComponent implements OnInit {
       // Create new tooltip
       const selection = this.currentSelection();
       if (!selection) {
-        this.toastService.warning('No hay texto seleccionado');
+        this.toastService.warning(this.i18n.t('teacherComposer.tooltipEditor.noSelection'));
         this.isSubmitting.set(false);
         return;
       }
@@ -413,7 +416,7 @@ export class TooltipEditorComponent implements OnInit {
         next: (newTooltip) => {
           this.tooltips.update(current => [...current, newTooltip]);
           this.renderTextWithTooltips();
-          this.toastService.success('Tooltip creado exitosamente');
+          this.toastService.success(this.i18n.t('teacherComposer.tooltipEditor.created'));
           this.closeModal();
           this.hasSelection.set(false);
           this.currentSelection.set(null);
@@ -425,11 +428,10 @@ export class TooltipEditorComponent implements OnInit {
         },
         error: (error) => {
           console.error('Error creating tooltip:', error);
-          const errorMsg = error.error?.error || 'Error al crear tooltip';
           if (error.status === 409) {
-            this.toastService.error('Esta selección se solapa con un tooltip existente');
+            this.toastService.error(this.i18n.t('teacherComposer.tooltipEditor.overlap'));
           } else {
-            this.toastService.error(errorMsg);
+            this.toastService.error(this.i18n.errorMessage(error, 'teacherComposer.tooltipEditor.createError'));
           }
           this.isSubmitting.set(false);
         }
@@ -438,7 +440,7 @@ export class TooltipEditorComponent implements OnInit {
   }
 
   deleteTooltip(id: number): void {
-    if (!confirm('¿Estás seguro de que deseas eliminar este tooltip?')) {
+    if (!confirm(this.i18n.t('teacherComposer.tooltipEditor.confirmDelete'))) {
       return;
     }
 
@@ -446,12 +448,12 @@ export class TooltipEditorComponent implements OnInit {
       next: () => {
         this.tooltips.update(current => current.filter(t => t.id !== id));
         this.renderTextWithTooltips();
-        this.toastService.success('Tooltip eliminado exitosamente');
+        this.toastService.success(this.i18n.t('teacherComposer.tooltipEditor.deleted'));
         this.tooltipsChanged.emit(this.tooltips());
       },
       error: (error) => {
         console.error('Error deleting tooltip:', error);
-        this.toastService.error('Error al eliminar tooltip');
+        this.toastService.error(this.i18n.errorMessage(error, 'teacherComposer.tooltipEditor.deleteError'));
       }
     });
   }

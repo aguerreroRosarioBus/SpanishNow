@@ -5,6 +5,8 @@ const { authMiddleware, isTeacher } = require('../middlewares/auth.middleware');
 const pdfUpload = require('../middlewares/pdfUpload.middleware');
 const { Course, Unit, Story, Material } = require('../models');
 const materials = require('../services/materialService');
+const { MATERIAL, errorBody, withErrorCodes } = require('../services/errorCodes');
+router.use(withErrorCodes(MATERIAL));
 
 const validId = value => /^[1-9]\d{0,9}$/.test(String(value)) && Number(value) <= 2147483647;
 
@@ -71,7 +73,7 @@ router.post('/:id/materials', async (req, res, next) => {
     const material = await Material.create({ courseId: course.id, unitId, storyId, title, order: last === null || last === undefined ? 0 : last + 1, ...stored });
     res.status(201).json(materials.present(material));
   } catch (error) {
-    if (error instanceof materials.MaterialError) return res.status(error.status).json({ error: error.message });
+    if (error instanceof materials.MaterialError) return res.status(error.status).json(errorBody(MATERIAL, error.message, error.status));
     res.status(500).json({ error: error.message });
   }
 });

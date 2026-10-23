@@ -5,14 +5,17 @@ import { firstValueFrom } from 'rxjs';
 import { LessonBlock, LessonPlanService } from '../../../core/services/lesson-plan.service';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { ImageSearchComponent } from '../../../shared/components/image-search/image-search.component';
-import { IMAGE_ACCEPT, suggestAlt, validateImageFile } from './image-file';
+import { IMAGE_ACCEPT, imageFileErrorKey, suggestAlt } from './image-file';
+import { I18nService } from '../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
+import { Failure, failureText } from './failure';
 import { WhiteboardService } from './whiteboard/whiteboard.service';
 
 /** Ilustración de un keyframe: subir imagen o dibujarla en la pizarra. Mismo flujo de guardado previo que el audio. */
 @Component({
   selector: 'app-keyframe-illustration',
   standalone: true,
-  imports: [CommonModule, FormsModule, IconComponent, ImageSearchComponent],
+  imports: [CommonModule, FormsModule, IconComponent, ImageSearchComponent, TranslatePipe],
   templateUrl: './keyframe-illustration.component.html',
   styleUrl: './keyframe-illustration.component.scss'
 })
@@ -20,6 +23,7 @@ export class KeyframeIllustrationComponent {
   private lessonApi = inject(LessonPlanService);
   private whiteboard = inject(WhiteboardService);
   private host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private i18n = inject(I18nService);
 
   storyId = input.required<number>();
   block = input.required<LessonBlock>();
@@ -31,7 +35,8 @@ export class KeyframeIllustrationComponent {
 
   readonly accept = IMAGE_ACCEPT;
   busy = signal(false);
-  error = signal('');
+  private failure = signal<Failure | null>(null);
+  error = computed(() => failureText(this.i18n, this.failure()));
   confirmRemove = signal(false);
   enlarged = signal(false);
 
@@ -47,20 +52,20 @@ export class KeyframeIllustrationComponent {
 
   async draw(editCurrent: boolean): Promise<void> {
     if (this.locked()) return;
-    const file = await this.whiteboard.open({ backgroundUrl: editCurrent ? this.block().imageUrl ?? null : null, title: editCurrent ? 'Editar dibujo' : 'Dibujar ilustración' });
+    const file = await this.whiteboard.open({ backgroundUrl: editCurrent ? this.block().imageUrl ?? null : null, titleKey: editCurrent ? 'teacherComposer.wb.titleEdit' : 'teacherComposer.wb.titleIllustration' });
     if (file) await this.upload(file);
   }
 
   async upload(file: File): Promise<void> {
     if (this.locked()) return;
-    const invalid = validateImageFile(file);
-    if (invalid) { this.error.set(invalid); return; }
+    const invalid = imageFileErrorKey(file);
+    if (invalid) { this.failure.set({ key: invalid }); return; }
     await this.run(async () => {
       const key = this.block().blockKey;
       const result = await firstValueFrom(this.lessonApi.uploadKeyframeImage(this.storyId(), key, file));
       this.imageChange.emit({ blockKey: key, imageUrl: result.imageUrl });
       if (!this.block().imageAlt?.trim() && this.suggestion()) this.altChange.emit({ blockKey: key, imageAlt: this.suggestion() });
-    }, 'No se pudo subir la imagen. Inténtalo de nuevo.');
+    }, 'teacherComposer.ill.uploadError');
   }
 
   async remove(): Promise<void> {
@@ -68,20 +73,20 @@ export class KeyframeIllustrationComponent {
     await this.run(async () => {
       await firstValueFrom(this.lessonApi.deleteKeyframeImage(this.storyId(), this.block().blockKey));
       this.imageChange.emit({ blockKey: this.block().blockKey, imageUrl: null });
-    }, 'No se pudo quitar la imagen.');
+    }, 'teacherComposer.ill.removeError');
   }
 
-  private async run(action: () => Promise<void>, fallback: string): Promise<void> {
-    this.error.set('');
+  private async run(action: () => Promise<void>, fallbackKey: string): Promise<void> {
+    this.failure.set(null);
     this.busy.set(true);
     try {
       if (this.dirty() && !(await this.ensureSaved()())) {
-        this.error.set('Primero hay que guardar el borrador; revisa el mensaje de error del compositor.');
+        this.failure.set({ key: 'teacherComposer.ill.saveFirst' });
         return;
       }
       await action();
     } catch (error: any) {
-      this.error.set(error?.error?.error || fallback);
+      this.failure.set({ key: fallbackKey, error });
     } finally {
       this.busy.set(false);
     }

@@ -7,6 +7,10 @@ import { COMMENTS_ES } from './comments';
 import { TEACHER_COMMERCE_ES } from './teacher-commerce';
 import { EN } from './en';
 import { TEACHER_PROMOTIONS_ES } from './teacher-promotions';
+import { TEACHER_DASHBOARD_ES } from './teacher-dashboard';
+import { TEACHER_MANAGE_ES } from './teacher-manage';
+import { TEACHER_COMPOSER_ES } from './teacher-composer';
+import { LIVE_BOARD_ES } from './live-board';
 import { TranslationMessage } from '../i18n.types';
 
 export const ES = {
@@ -18,6 +22,10 @@ export const ES = {
   ...COMMENTS_ES,
   ...TEACHER_COMMERCE_ES,
   ...TEACHER_PROMOTIONS_ES,
+  ...TEACHER_DASHBOARD_ES,
+  ...TEACHER_MANAGE_ES,
+  ...TEACHER_COMPOSER_ES,
+  ...LIVE_BOARD_ES,
   'common.language': 'Idioma',
   'preferences.loadError': 'No pudimos cargar las preferencias de tu cuenta. Intenta de nuevo.',
   'preferences.saveError': 'No pudimos guardar las preferencias en tu cuenta. Intenta de nuevo.',
@@ -40,6 +48,12 @@ export const ES = {
   'preferences.securityHelp': 'Cambia tu contraseña con regularidad para mantener tu cuenta segura.',
   'preferences.changePassword': 'Cambiar contraseña',
   'common.close': 'Cerrar',
+  'common.confirm': 'Confirmar',
+  'common.areYouSure': '¿Estás seguro?',
+  'pwa.updateAvailable': 'Hay una versión nueva',
+  'pwa.update': 'Actualizar',
+  'pwa.later': 'Después',
+  'pwa.offline': 'Sin conexión',
   'common.cancel': 'Cancelar',
   'common.show': 'Mostrar',
   'common.hide': 'Ocultar',
@@ -215,5 +229,32 @@ export const ES = {
   'errors.operation_key_conflict': 'El identificador de esta solicitud ya se usó con otros datos.',
   'errors.rate_limited': 'Demasiadas solicitudes. Espera antes de intentar de nuevo.',
   'errors.payments_unavailable': 'Los pagos no están disponibles por el momento. Intenta más tarde.',
-  'errors.provider_unavailable': 'El servicio externo no está disponible por el momento. Intenta más tarde.'
+  'errors.provider_unavailable': 'El servicio externo no está disponible por el momento. Intenta más tarde.',
+  'errors.live_not_live': "La clase no está en vivo. Pide al docente que la inicie.",
+  'errors.live_editing_paused': "El docente pausó la edición de los alumnos.",
+  'errors.live_enrollment_required': "Necesitas estar inscrito en el curso para entrar.",
+  'errors.live_invite_required': "Ingresa con el enlace o código de invitación.",
+  'errors.live_invite_invalid': "Este código de invitación no es válido.",
+  'errors.live_ended': "La clase ya finalizó. Solo pueden consultarla sus participantes.",
+  'errors.live_finish_first': "Finaliza la clase antes de restaurar una pizarra.",
+  'errors.live_start_first': "Inicia la clase antes de publicarla en Classroom.",
+  'errors.live_already_published': "Esta clase ya se publicó en Classroom. Crea otra sala para otro grupo.",
+  'errors.live_board_changed': "La pizarra cambió. Actualiza antes de continuar.",
+  'errors.live_element_conflict': "Otro participante cambió este elemento. Actualiza e intenta otra vez.",
+  'errors.live_own_elements_only': "Solo puedes modificar tus propios elementos.",
+  'errors.live_teacher_only_pages': "Solo el docente puede administrar páginas.",
+  'errors.live_item_gone': "Esa página o elemento ya no existe. Actualiza la pizarra.",
+  'errors.live_page_full': "Esta página alcanzó los 500 elementos. Crea otra página.",
+  'errors.live_page_limit': "Una pizarra puede tener hasta 20 páginas.",
+  'errors.live_board_too_large': "La pizarra alcanzó su tamaño máximo.",
+  'errors.lesson_plan_revision_conflict': "El borrador cambió en otra pestaña o sesión. Recárgalo antes de continuar.",
+  'errors.lesson_plan_no_draft': "No hay un borrador para publicar.",
+  'errors.lesson_plan_incomplete': "La lección no está lista para publicar. Revisa los bloques obligatorios.",
+  'errors.not_a_pdf': "El archivo no es un PDF.",
+  'errors.file_too_large': "El archivo es demasiado grande.",
+  'errors.import_file_empty': "El archivo está vacío.",
+  'errors.import_file_invalid': "El archivo no es un CSV válido.",
+  'errors.import_email_column_missing': "No se encontró una columna de correo. Usa un encabezado como Email.",
+  'errors.import_too_many_rows': "El archivo tiene demasiadas filas.",
+  'errors.import_email_is_teacher': "Este correo pertenece a una cuenta docente."
 } as const satisfies Record<keyof typeof EN, TranslationMessage>;

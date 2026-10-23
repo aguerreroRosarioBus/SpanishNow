@@ -1,39 +1,41 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CourseStudentsService } from '../../../../core/services/course-students.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { CourseStudent, EnrollmentSource, ImportResult, ImportRowStatus } from '../../../../core/models/sales.model';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
-import { PluralPipe } from '../../../../shared/pipes/plural.pipe';
+import { I18nService } from '../../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
+import { UserPreferencesService } from '../../../../core/services/user-preferences.service';
+import { presentationZone } from '../../../live-classes/live-notice';
 import { CourseManageStore } from '../course-manage.store';
 
-const SOURCE_LABELS: Record<EnrollmentSource, string> = {
-  purchase: 'Compra',
-  manual: 'Manual',
-  hotmart_import: 'Hotmart',
-  free: 'Gratis'
+const SOURCE_KEYS: Record<EnrollmentSource, string> = {
+  purchase: 'teacherDashboard.students.sourcePurchase',
+  manual: 'teacherDashboard.students.sourceManual',
+  hotmart_import: 'teacherDashboard.students.sourceHotmart',
+  free: 'teacherDashboard.students.sourceFree'
 };
 
-const STATUS_LABELS: Record<ImportRowStatus, string> = {
-  new: 'Nuevo',
-  existing_user: 'Usuario existente',
-  already_enrolled: 'Ya inscripto',
-  invalid: 'Inválida'
+const STATUS_KEYS: Record<ImportRowStatus, string> = {
+  new: 'teacherDashboard.students.statusNew',
+  existing_user: 'teacherDashboard.students.statusExisting',
+  already_enrolled: 'teacherDashboard.students.statusEnrolled',
+  invalid: 'teacherDashboard.students.statusInvalid'
 };
 
-/** Motivos que manda el backend (en inglés) traducidos para la pantalla del docente. */
-const REASON_LABELS: Record<string, string> = {
-  'Missing email': 'Falta el email',
-  'Invalid email address': 'Email inválido',
-  'This email belongs to a teacher account': 'El email es de una cuenta de docente'
+/** Motivos conocidos que manda el backend (texto en inglés, sin código) mapeados a claves I18N. */
+const REASON_KEYS: Record<string, string> = {
+  'Missing email': 'teacherDashboard.students.reasonMissingEmail',
+  'Invalid email address': 'teacherDashboard.students.reasonInvalidEmail',
+  'This email belongs to a teacher account': 'teacherDashboard.students.reasonTeacher'
 };
 
 /** Pestaña «Alumnos» de la gestión del curso: lista, alta manual, baja e importación de Hotmart. */
 @Component({
   selector: 'app-students-panel',
   standalone: true,
-  imports: [DatePipe, ReactiveFormsModule, ConfirmDialogComponent, PluralPipe],
+  imports: [ReactiveFormsModule, ConfirmDialogComponent, TranslatePipe],
   templateUrl: './students-panel.component.html',
   styleUrl: './students-panel.component.scss'
 })
@@ -41,10 +43,14 @@ export class StudentsPanelComponent implements OnInit {
   private store = inject(CourseManageStore);
   private service = inject(CourseStudentsService);
   private toast = inject(ToastService);
+  private i18n = inject(I18nService);
+  private preferences = inject(UserPreferencesService);
 
   students = signal<CourseStudent[]>([]);
   isLoading = signal(false);
-  errorMessage = signal('');
+  // Se guardan clave y error (no el texto) para traducir al leer y no repetir peticiones al cambiar de idioma.
+  private loadFailure = signal<{ key: string; error?: unknown } | null>(null);
+  errorMessage = computed(() => { const f = this.loadFailure(); return f ? this.i18n.errorMessage(f.error, f.key) : ''; });
 
   addForm = inject(FormBuilder).group({
     email: ['', [Validators.required, Validators.email]],
@@ -60,7 +66,8 @@ export class StudentsPanelComponent implements OnInit {
   preview = signal<ImportResult | null>(null);
   isPreviewing = signal(false);
   isImporting = signal(false);
-  importError = signal('');
+  private importFailure = signal<{ key: string; error?: unknown } | null>(null);
+  importError = computed(() => { const f = this.importFailure(); return f ? this.i18n.errorMessage(f.error, f.key) : ''; });
   sendInvites = signal(true);
   importDone = signal<ImportResult | null>(null);
   /** Filas que realmente se aplicarán (nuevas o usuarios existentes sin inscripción). */
@@ -73,9 +80,11 @@ export class StudentsPanelComponent implements OnInit {
     this.load();
   }
 
-  sourceLabel(source: EnrollmentSource): string { return SOURCE_LABELS[source] ?? source; }
-  statusLabel(status: ImportRowStatus): string { return STATUS_LABELS[status] ?? status; }
-  reasonLabel(reason: string): string { return REASON_LABELS[reason] ?? reason; }
+  sourceLabel(source: EnrollmentSource): string { return SOURCE_KEYS[source] ? this.i18n.t(SOURCE_KEYS[source]) : source; }
+  statusLabel(status: ImportRowStatus): string { return STATUS_KEYS[status] ? this.i18n.t(STATUS_KEYS[status]) : status; }
+  reasonLabel(reason: string): string { return this.i18n.t(REASON_KEYS[reason] ?? 'teacherDashboard.students.reasonOther'); }
+  /** Día de inscripción en la zona de las preferencias de la cuenta (no en UTC: un alta de la noche no cambia de día). */
+  enrolledDate(value: string): string { return this.i18n.formatInstant(value, presentationZone(this.preferences.preferences()?.timeZone), { dateStyle: 'medium' }); }
 
   progressPercent(student: CourseStudent): number {
     const { completedStories, totalStories } = student.progress;
@@ -84,14 +93,14 @@ export class StudentsPanelComponent implements OnInit {
 
   load(): void {
     this.isLoading.set(true);
-    this.errorMessage.set('');
+    this.loadFailure.set(null);
     this.service.list(this.store.courseId()).subscribe({
       next: list => {
         this.students.set(list);
         this.isLoading.set(false);
       },
-      error: () => {
-        this.errorMessage.set('Error al cargar los alumnos');
+      error: error => {
+        this.loadFailure.set({ key: 'teacherDashboard.students.loadError', error });
         this.isLoading.set(false);
       }
     });
@@ -107,16 +116,20 @@ export class StudentsPanelComponent implements OnInit {
     this.isAdding.set(true);
     this.service.add(this.store.courseId(), email, name || undefined).subscribe({
       next: () => {
-        this.toast.success('Alumno agregado. Se le envió una invitación si es nuevo.');
+        this.toast.success(this.i18n.t('teacherDashboard.students.added'));
         this.addForm.reset({ email: '', name: '' });
         this.isAdding.set(false);
         this.load();
       },
       error: error => {
-        this.toast.error(error?.error?.error || 'Error al agregar el alumno');
+        this.toast.error(this.i18n.errorMessage(error, 'teacherDashboard.students.addError'));
         this.isAdding.set(false);
       }
     });
+  }
+
+  removeMessage(student: CourseStudent): string {
+    return this.i18n.t('teacherDashboard.students.removeMessage', { name: student.user.name, email: student.user.email });
   }
 
   askRemove(student: CourseStudent): void { this.studentToRemove.set(student); }
@@ -129,9 +142,9 @@ export class StudentsPanelComponent implements OnInit {
     this.service.remove(this.store.courseId(), student.enrollmentId).subscribe({
       next: () => {
         this.students.update(list => list.filter(s => s.enrollmentId !== student.enrollmentId));
-        this.toast.success('Acceso quitado');
+        this.toast.success(this.i18n.t('teacherDashboard.students.removed'));
       },
-      error: error => this.toast.error(error?.error?.error || 'Error al quitar el acceso')
+      error: error => this.toast.error(this.i18n.errorMessage(error, 'teacherDashboard.students.removeError'))
     });
   }
 
@@ -143,7 +156,7 @@ export class StudentsPanelComponent implements OnInit {
     this.resetImport();
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
-      this.importError.set('El archivo supera los 2 MB.');
+      this.importFailure.set({ key: 'teacherDashboard.students.fileTooLarge' });
       input.value = '';
       return;
     }
@@ -155,7 +168,7 @@ export class StudentsPanelComponent implements OnInit {
         this.isPreviewing.set(false);
       },
       error: error => {
-        this.importError.set(error?.error?.error || 'No se pudo leer el archivo CSV.');
+        this.importFailure.set({ key: 'teacherDashboard.students.previewError', error });
         this.importFile.set(null);
         this.isPreviewing.set(false);
       }
@@ -166,18 +179,18 @@ export class StudentsPanelComponent implements OnInit {
     const file = this.importFile();
     if (!file || this.isImporting()) return;
     this.isImporting.set(true);
-    this.importError.set('');
+    this.importFailure.set(null);
     this.service.import(this.store.courseId(), file, this.sendInvites()).subscribe({
       next: result => {
         this.importDone.set(result);
         this.preview.set(null);
         this.importFile.set(null);
         this.isImporting.set(false);
-        this.toast.success('Importación completada');
+        this.toast.success(this.i18n.t('teacherDashboard.students.importCompleted'));
         this.load();
       },
       error: error => {
-        this.importError.set(error?.error?.error || 'Error al importar los alumnos.');
+        this.importFailure.set({ key: 'teacherDashboard.students.importError', error });
         this.isImporting.set(false);
       }
     });
@@ -186,7 +199,7 @@ export class StudentsPanelComponent implements OnInit {
   resetImport(): void {
     this.importFile.set(null);
     this.preview.set(null);
-    this.importError.set('');
+    this.importFailure.set(null);
     this.importDone.set(null);
   }
 

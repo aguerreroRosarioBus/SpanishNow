@@ -10,6 +10,13 @@ export function validateImageFile(file: File): string {
   return '';
 }
 
+/** Igual que validateImageFile pero devuelve la clave I18N del error ('' si es válido). */
+export function imageFileErrorKey(file: File): string {
+  if (!TYPES.includes(file.type)) return 'teacherDashboard.imageTypeInvalid';
+  if (file.size > IMAGE_MAX_BYTES) return 'teacherDashboard.imageTooLarge';
+  return '';
+}
+
 /** Primera frase del fragmento recortada a ~120 caracteres: sugerencia de texto alternativo. */
 export function suggestAlt(text: string | null | undefined, max = 120): string {
   const clean = (text ?? '').replace(/\s+/g, ' ').trim();

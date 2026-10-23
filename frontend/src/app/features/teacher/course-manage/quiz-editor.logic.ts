@@ -11,7 +11,7 @@ export function emptyQuiz(): UnitQuiz {
   return { title: '', passingScore: QUIZ_LIMITS.defaultScore, isPublished: false, questions: [emptyQuestion()] };
 }
 
-/** Errores por pregunta (clave: índice) y generales. Vacío = válido. */
+/** Errores por pregunta (clave: índice) y generales, como claves I18N `teacherManage.quiz.err.*`. Vacío = válido. */
 export interface QuizValidation {
   general: string[];
   questions: Record<number, string[]>;
@@ -22,25 +22,25 @@ export function validateQuiz(quiz: UnitQuizPayload): QuizValidation {
   const general: string[] = [];
   const questions: Record<number, string[]> = {};
 
-  if (!quiz.title?.trim()) general.push('El quiz necesita un título.');
+  if (!quiz.title?.trim()) general.push('teacherManage.quiz.err.title');
   const score = Number(quiz.passingScore);
   if (!Number.isInteger(score) || score < QUIZ_LIMITS.minScore || score > QUIZ_LIMITS.maxScore) {
-    general.push('El puntaje para aprobar debe ser un entero entre 1 y 100.');
+    general.push('teacherManage.quiz.err.score');
   }
   const count = quiz.questions?.length ?? 0;
-  if (count < QUIZ_LIMITS.minQuestions) general.push('Agrega al menos una pregunta.');
-  if (count > QUIZ_LIMITS.maxQuestions) general.push(`Máximo ${QUIZ_LIMITS.maxQuestions} preguntas.`);
+  if (count < QUIZ_LIMITS.minQuestions) general.push('teacherManage.quiz.err.minQuestions');
+  if (count > QUIZ_LIMITS.maxQuestions) general.push('teacherManage.quiz.err.maxQuestions');
 
   (quiz.questions ?? []).forEach((q, index) => {
     const errors: string[] = [];
-    if (!q.prompt?.trim()) errors.push('Escribe el enunciado.');
+    if (!q.prompt?.trim()) errors.push('teacherManage.quiz.err.prompt');
     const options = q.options ?? [];
     if (options.length < QUIZ_LIMITS.minOptions || options.length > QUIZ_LIMITS.maxOptions) {
-      errors.push('Debe tener entre 2 y 6 opciones.');
+      errors.push('teacherManage.quiz.err.optionsRange');
     }
-    if (options.some(o => !o?.trim())) errors.push('Ninguna opción puede quedar vacía.');
+    if (options.some(o => !o?.trim())) errors.push('teacherManage.quiz.err.optionEmpty');
     if (!Number.isInteger(q.correctIndex) || q.correctIndex < 0 || q.correctIndex >= options.length) {
-      errors.push('Marca cuál es la opción correcta.');
+      errors.push('teacherManage.quiz.err.correct');
     }
     if (errors.length) questions[index] = errors;
   });

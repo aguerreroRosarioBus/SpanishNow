@@ -2,19 +2,19 @@
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">Gestionar Preguntas: {{ story().title }}</h5>
-        <button type="button" class="btn-close" (click)="close()"></button>
+        <h5 class="modal-title">{{ 'teacherManage.question.title' | t:{ title: story().title } }}</h5>
+        <button type="button" class="btn-close" (click)="close()" [attr.aria-label]="'teacherManage.common.close' | t"></button>
       </div>
       <div class="modal-body">
         <!-- Create/Edit Question Form -->
         <div class="card mb-4">
           <div class="card-header bg-primary text-white">
-            <h6 class="mb-0">{{ isEditing() ? 'Editar Pregunta' : 'Crear Nueva Pregunta' }}</h6>
+            <h6 class="mb-0">{{ (isEditing() ? 'teacherManage.question.editHeading' : 'teacherManage.question.createHeading') | t }}</h6>
           </div>
           <div class="card-body">
             <form [formGroup]="form" (ngSubmit)="submit()">
               <div class="mb-3">
-                <label for="questionText" class="form-label">Pregunta *</label>
+                <label for="questionText" class="form-label">{{ 'teacherManage.question.text' | t }}</label>
                 <input
                   type="text"
                   class="form-control"
@@ -25,54 +25,56 @@
               </div>
 
               <div class="mb-3">
-                <label class="form-label">Tipo de Pregunta *</label>
+                <label class="form-label">{{ 'teacherManage.question.type' | t }}</label>
                 <select class="form-select" formControlName="answerType">
-                  <option value="yes_no">Sí / No</option>
-                  <option value="choice">Opción Múltiple</option>
-                  <option value="open_ended">Pregunta a Desarrollar</option>
+                  <option value="yes_no">{{ 'teacherManage.question.typeYesNo' | t }}</option>
+                  <option value="choice">{{ 'teacherManage.question.typeChoice' | t }}</option>
+                  <option value="open_ended">{{ 'teacherManage.question.typeOpen' | t }}</option>
                 </select>
                 <small class="text-muted d-block mt-1">
-                  Las preguntas a desarrollar permiten que el estudiante escriba su respuesta y luego la compare con la respuesta sugerida (autocorrección).
+                  {{ 'teacherManage.question.typeHelp' | t }}
                 </small>
               </div>
 
               <!-- Multiple Choice Options -->
               <div *ngIf="answerType === 'choice'" class="mb-3">
-                <label class="form-label">Opciones *</label>
+                <label class="form-label">{{ 'teacherManage.question.options' | t }}</label>
                 <div formArrayName="options">
                   <div *ngFor="let option of options.controls; let i = index" class="input-group mb-2">
                     <input
                       type="text"
                       class="form-control"
                       [formControlName]="i"
-                      placeholder="Opción {{ i + 1 }}"
+                      [attr.placeholder]="'teacherManage.question.optionPlaceholder' | t:{ number: i + 1 }"
+                      [attr.aria-label]="'teacherManage.question.optionPlaceholder' | t:{ number: i + 1 }"
                     >
                     <button
                       *ngIf="options.length > 2"
                       type="button"
                       class="btn btn-outline-danger"
                       (click)="removeOption(i)"
+                      [attr.aria-label]="'teacherManage.question.removeOption' | t:{ number: i + 1 }"
                     >
                       <app-icon name="x" [size]="16" />
                     </button>
                   </div>
                 </div>
                 <button type="button" class="btn btn-sm btn-outline-primary" (click)="addOption()">
-                  + Agregar Opción
+                  {{ 'teacherManage.question.addOption' | t }}
                 </button>
               </div>
 
               <div class="mb-3">
-                <label class="form-label">Audio de la Pregunta (opcional)</label>
+                <label class="form-label">{{ 'teacherManage.question.audio' | t }}</label>
                 <app-audio-input #audio name="questionAudio" layout="stacked" [validate]="true" fileInputId="questionAudio"
-                  uploadHint="Sube un archivo de audio para que los estudiantes puedan escuchar la pregunta."
+                  uploadHint="teacherManage.question.audioHint"
                   recordedFileName="question-audio.webm"
-                  startedMessage="Grabación de audio iniciada" stoppedMessage="Grabación de audio detenida" />
+                  startedMessage="teacherManage.audio.startedGeneric" stoppedMessage="teacherManage.audio.stoppedGeneric" />
               </div>
 
               <div class="mb-3">
                 <label for="correctAnswer" class="form-label">
-                  {{ answerType === 'open_ended' ? 'Respuesta Sugerida *' : 'Respuesta Correcta *' }}
+                  {{ (answerType === 'open_ended' ? 'teacherManage.question.suggestedAnswer' : 'teacherManage.question.correctAnswer') | t }}
                 </label>
 
                 <!-- Yes/No input -->
@@ -91,7 +93,7 @@
                   class="form-select"
                   formControlName="correctAnswer"
                 >
-                  <option value="">Selecciona la respuesta correcta</option>
+                  <option value="">{{ 'teacherManage.question.selectCorrect' | t }}</option>
                   <option *ngFor="let opt of options.controls; let i = index" [value]="opt.value">
                     {{ opt.value }}
                   </option>
@@ -103,12 +105,12 @@
                   class="form-control"
                   formControlName="correctAnswer"
                   rows="4"
-                  placeholder="Escribe la respuesta sugerida que el estudiante podrá ver para comparar con su respuesta..."
+                  [attr.placeholder]="'teacherManage.question.openPlaceholder' | t"
                 ></textarea>
 
                 <!-- Help text -->
                 <small class="text-muted d-block mt-1" *ngIf="answerType === 'open_ended'">
-                  El estudiante escribirá su respuesta y luego podrá compararla con esta respuesta sugerida para hacer autocorrección.
+                  {{ 'teacherManage.question.openHelp' | t }}
                 </small>
               </div>
 
@@ -120,7 +122,7 @@
                   (click)="cancelEdit()"
                   [disabled]="isSubmitting()"
                 >
-                  Cancelar
+                  {{ 'teacherManage.common.cancel' | t }}
                 </button>
                 <button
                   type="submit"
@@ -128,11 +130,11 @@
                   [disabled]="form.invalid || isSubmitting()"
                 >
                   <span *ngIf="!isSubmitting()">
-                    {{ isEditing() ? 'Guardar cambios' : 'Crear pregunta' }}
+                    {{ (isEditing() ? 'teacherManage.question.saveChanges' : 'teacherManage.question.create') | t }}
                   </span>
                   <span *ngIf="isSubmitting()">
                     <span class="spinner-border spinner-border-sm me-2"></span>
-                    {{ isEditing() ? 'Guardando...' : 'Creando...' }}
+                    {{ (isEditing() ? 'teacherManage.question.saving' : 'teacherManage.question.creating') | t }}
                   </span>
                 </button>
               </div>
@@ -143,11 +145,11 @@
         <!-- Questions List -->
         <div class="card">
           <div class="card-header">
-            <h6 class="mb-0">Preguntas Existentes ({{ questions().length }})</h6>
+            <h6 class="mb-0">{{ 'teacherManage.question.existing' | t:{ count: questions().length } }}</h6>
           </div>
           <div class="card-body">
             <div *ngIf="questions().length === 0" class="text-center py-4 text-muted">
-              No hay preguntas creadas para esta historia
+              {{ 'teacherManage.question.none' | t }}
             </div>
 
             <div *ngIf="questions().length > 0" class="list-group">
@@ -162,16 +164,16 @@
                     <br>
                     <span class="badge bg-secondary mt-2">
                       {{
-                        question.answerType === 'yes_no' ? 'Sí/No' :
-                        question.answerType === 'choice' ? 'Opción Múltiple' :
-                        'A Desarrollar'
+                        (question.answerType === 'yes_no' ? 'teacherManage.question.badgeYesNo' :
+                        question.answerType === 'choice' ? 'teacherManage.question.badgeChoice' :
+                        'teacherManage.question.badgeOpen') | t
                       }}
                     </span>
                     <span *ngIf="question.correctAnswer" class="badge bg-success mt-2 ms-2">
                       <app-icon name="check" [size]="12" /> {{ question.correctAnswer }}
                     </span>
                     <span *ngIf="question.audioUrl" class="badge bg-info mt-2 ms-2">
-                      <app-icon name="volume" [size]="12" /> Con audio
+                      <app-icon name="volume" [size]="12" /> {{ 'teacherManage.question.withAudio' | t }}
                     </span>
 
                     <!-- Audio Player -->
@@ -179,7 +181,7 @@
                       <audio [src]="question.audioUrl" controls class="w-100" style="max-width: 300px;"></audio>
                     </div>
                     <div *ngIf="question.answerType === 'choice' && question.options" class="mt-2">
-                      <small class="text-muted">Opciones:</small>
+                      <small class="text-muted">{{ 'teacherManage.question.optionsLabel' | t }}</small>
                       <ul class="small mb-0">
                         <li *ngFor="let opt of question.options">{{ opt }}</li>
                       </ul>
@@ -189,7 +191,7 @@
                     <button
                       class="btn btn-sm btn-outline-info"
                       (click)="tooltipQuestion.set(question)"
-                      title="Gestionar Tooltips"
+                      [attr.title]="'teacherManage.question.manageTooltips' | t" [attr.aria-label]="'teacherManage.question.manageTooltips' | t"
                     >
                       <app-icon name="lightbulb" [size]="16" />
                     </button>
@@ -197,13 +199,13 @@
                       class="btn btn-sm btn-outline-primary"
                       (click)="edit(question)"
                     >
-                      Editar
+                      {{ 'teacherManage.question.edit' | t }}
                     </button>
                     <button
                       class="btn btn-sm btn-outline-danger"
                       (click)="remove(question.id)"
                     >
-                      Eliminar
+                      {{ 'teacherManage.common.delete' | t }}
                     </button>
                   </div>
                 </div>
@@ -214,7 +216,7 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" (click)="close()">
-          Cerrar
+          {{ 'teacherManage.common.close' | t }}
         </button>
       </div>
     </div>
@@ -223,7 +225,7 @@
 
 <app-tooltip-modal
   *ngIf="tooltipQuestion() as q"
-  title="Pregunta"
+  [title]="'teacherManage.tooltip.question' | t"
   targetType="question"
   [targetId]="q.id"
   [text]="q.questionText"

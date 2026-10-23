@@ -3,11 +3,13 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { IssuedCertificate, PublicCertificate } from '../models/content.model';
 import { environment } from '../../../environments/environment';
+import { I18nService } from '../i18n/i18n.service';
 
 /** Emisión (alumno) y verificación pública de certificados. */
 @Injectable({ providedIn: 'root' })
 export class CertificateService {
   private http = inject(HttpClient);
+  private i18n = inject(I18nService);
   private apiUrl = environment.apiUrl;
 
   /** Idempotente: si ya existe devuelve el mismo código. 409 { error, missing } si no es elegible. */
@@ -19,9 +21,9 @@ export class CertificateService {
     return this.http.get<PublicCertificate>(`${this.apiUrl}/public/certificates/${encodeURIComponent(code)}`);
   }
 
-  /** Link directo al PDF (endpoint público, sin token). */
+  /** Link directo al PDF (endpoint público, sin token), en el idioma que el usuario ve ahora. */
   pdfUrl(code: string): string {
-    return `${this.apiUrl}/public/certificates/${encodeURIComponent(code)}/pdf`;
+    return `${this.apiUrl}/public/certificates/${encodeURIComponent(code)}/pdf?lang=${this.i18n.locale()}`;
   }
 
   /** Link de verificación para compartir. */

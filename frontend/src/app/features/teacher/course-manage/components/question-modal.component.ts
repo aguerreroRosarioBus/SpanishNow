@@ -4,6 +4,8 @@ import { FormArray, FormBuilder, FormControl, ReactiveFormsModule, Validators } 
 import { QuestionService } from '../../../../core/services/question.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { Question, Story } from '../../../../core/models/course.model';
+import { I18nService } from '../../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { AudioInputComponent } from '../audio/audio-input.component';
 import { CourseManageStore } from '../course-manage.store';
 import { TooltipModalComponent } from './tooltip-modal.component';
@@ -13,7 +15,7 @@ import { IconComponent } from '../../../../shared/components/icon/icon.component
 @Component({
   selector: 'app-question-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, AudioInputComponent, TooltipModalComponent, IconComponent],
+  imports: [CommonModule, ReactiveFormsModule, AudioInputComponent, TooltipModalComponent, IconComponent, TranslatePipe],
   templateUrl: './question-modal.component.html',
   styleUrl: './question-modal.component.scss'
 })
@@ -21,6 +23,7 @@ export class QuestionModalComponent implements OnInit {
   private store = inject(CourseManageStore);
   private questionService = inject(QuestionService);
   private toast = inject(ToastService);
+  private i18n = inject(I18nService);
   private fb = inject(FormBuilder);
 
   story = input.required<Story>();
@@ -50,7 +53,7 @@ export class QuestionModalComponent implements OnInit {
       },
       error: error => {
         console.error('Error loading questions:', error);
-        this.toast.error('Error al cargar las preguntas');
+        this.toast.error(this.i18n.t('teacherManage.question.loadError'));
       }
     });
   }
@@ -106,7 +109,7 @@ export class QuestionModalComponent implements OnInit {
     if (answerType === 'choice') {
       data.options = (this.options.value as string[]).filter(opt => opt.trim() !== '');
       if (data.options.length < 2) {
-        this.toast.warning('Debes agregar al menos 2 opciones');
+        this.toast.warning(this.i18n.t('teacherManage.question.minOptions'));
         this.isSubmitting.set(false);
         return;
       }
@@ -125,11 +128,11 @@ export class QuestionModalComponent implements OnInit {
         if (editing && questionId) {
           this.questions.update(list => list.map(q => q.id === questionId ? question : q));
           this.store.patchStory(storyId, s => ({ ...s, questions: (s.questions || []).map(q => q.id === questionId ? question : q) }));
-          this.toast.success('Pregunta actualizada exitosamente');
+          this.toast.success(this.i18n.t('teacherManage.question.updated'));
         } else {
           this.questions.update(list => [...list, question]);
           this.store.patchStory(storyId, s => ({ ...s, questions: [...(s.questions || []), question] }));
-          this.toast.success('Pregunta creada exitosamente');
+          this.toast.success(this.i18n.t('teacherManage.question.created'));
         }
         this.resetForm();
         this.isSubmitting.set(false);
@@ -138,23 +141,23 @@ export class QuestionModalComponent implements OnInit {
       },
       error: error => {
         console.error(`Error ${editing ? 'updating' : 'creating'} question:`, error);
-        this.toast.error(`Error al ${editing ? 'actualizar' : 'crear'} la pregunta`);
+        this.toast.error(this.i18n.t(editing ? 'teacherManage.question.updateError' : 'teacherManage.question.createError'));
         this.isSubmitting.set(false);
       }
     });
   }
 
   remove(questionId: number): void {
-    this.store.confirm('Eliminar Pregunta', '¿Estás seguro de eliminar esta pregunta?', 'Eliminar', () => {
+    this.store.confirm('teacherManage.question.deleteTitle', 'teacherManage.question.deleteMessage', 'teacherManage.common.delete', () => {
       this.questionService.deleteQuestion(questionId).subscribe({
         next: () => {
           this.questions.update(list => list.filter(q => q.id !== questionId));
           this.store.patchStory(this.story().id, s => ({ ...s, questions: (s.questions || []).filter(q => q.id !== questionId) }));
-          this.toast.success('Pregunta eliminada exitosamente');
+          this.toast.success(this.i18n.t('teacherManage.question.deleted'));
         },
         error: error => {
           console.error('Error deleting question:', error);
-          this.toast.error('Error al eliminar la pregunta');
+          this.toast.error(this.i18n.t('teacherManage.question.deleteError'));
         }
       });
     }, 'danger');

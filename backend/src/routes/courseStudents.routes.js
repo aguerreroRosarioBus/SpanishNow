@@ -8,6 +8,8 @@ const { Op, fn, col } = require('sequelize');
 const { Course, Enrollment, User, Unit, Story, LessonPlan, LessonProgress, LessonAnswer, LessonReinforcement, UnitQuizAttempt, Certificate } = require('../models');
 const { normalizeEmail, isValidEmail } = require('../services/accounts');
 const { grantAccess, sendInvitation, previewImport, applyImport, ImportError } = require('../services/studentImport');
+const { IMPORT, errorBody, withErrorCodes } = require('../services/errorCodes');
+router.use(withErrorCodes(IMPORT));
 
 const validId = value => /^[1-9]\d{0,9}$/.test(String(value)) && Number(value) <= 2147483647;
 
@@ -94,7 +96,7 @@ router.post('/:id/students', async (req, res) => {
       invited
     });
   } catch (error) {
-    if (error instanceof ImportError) return res.status(error.status).json({ error: error.message });
+    if (error instanceof ImportError) return res.status(error.status).json(errorBody(IMPORT, error.message, error.status));
     res.status(500).json({ error: error.message });
   }
 });
@@ -137,7 +139,7 @@ router.post('/:id/students/import/preview', csvUpload, async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'A CSV file is required (field "file")' });
     res.json(await previewImport(course.id, req.file.buffer));
   } catch (error) {
-    if (error instanceof ImportError) return res.status(error.status).json({ error: error.message });
+    if (error instanceof ImportError) return res.status(error.status).json(errorBody(IMPORT, error.message, error.status));
     res.status(500).json({ error: error.message });
   }
 });
@@ -149,7 +151,7 @@ router.post('/:id/students/import', csvUpload, async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'A CSV file is required (field "file")' });
     res.json(await applyImport(course, req.file.buffer, { sendInvites: wantsInvites(req.body && req.body.sendInvites) }));
   } catch (error) {
-    if (error instanceof ImportError) return res.status(error.status).json({ error: error.message });
+    if (error instanceof ImportError) return res.status(error.status).json(errorBody(IMPORT, error.message, error.status));
     res.status(500).json({ error: error.message });
   }
 });

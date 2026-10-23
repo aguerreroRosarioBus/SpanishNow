@@ -4,27 +4,30 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { NgbDropdownModule } from '@ng-bootstrap/ng-bootstrap';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
+import { I18nService } from '../../core/i18n/i18n.service';
 import { LiveClassService } from '../../core/services/live-class.service';
 import { BoardElement, BoardOperation, BoardPage, BoardTool, ClassroomCourse, DriveBoardFile, GoogleStatus, LiveBoard, LiveClass, LiveSnapshot, LiveStatus } from '../../core/models/live-class.model';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { ImageSearchComponent } from '../../shared/components/image-search/image-search.component';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { copyText } from '../../shared/utils/clipboard';
-import { IMAGE_ACCEPT, validateImageFile } from '../teacher/lesson-composer/image-file';
+import { IMAGE_ACCEPT, imageFileErrorKey } from '../teacher/lesson-composer/image-file';
 import { LiveBoardComponent } from './board/live-board.component';
 import { BoardPreviewComponent } from './board/board-preview.component';
 import { newId, previewBoard } from './board/board.logic';
 import { downloadBlob, exportPagePng } from './board/board.export';
-import { liveErrorMessage, liveStatusLabel } from './live-classes.component';
+import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { LiveNotice, noticeError, noticeKey, noticeText, liveStatusText } from './live-notice';
 
 type Confirmation = 'clear' | 'delete-page' | 'restore' | 'end' | 'discard';
 @Component({
   selector: 'app-live-room', standalone: true,
-  imports: [FormsModule, RouterLink, NgbDropdownModule, IconComponent, ImageSearchComponent, ConfirmDialogComponent, LiveBoardComponent, BoardPreviewComponent],
+  imports: [FormsModule, RouterLink, NgbDropdownModule, IconComponent, ImageSearchComponent, ConfirmDialogComponent, LiveBoardComponent, BoardPreviewComponent, TranslatePipe],
   templateUrl: './live-room.component.html', styleUrls: ['./live-room.component.scss', './live-room-controls.scss']
 })
 export class LiveRoomComponent implements OnInit, OnDestroy {
   private api = inject(LiveClassService);
+  readonly i18n = inject(I18nService);
   private route = inject(ActivatedRoute);
   private element: ElementRef<HTMLElement> = inject(ElementRef);
   readonly user = inject(AuthService).currentUser;
@@ -33,12 +36,15 @@ export class LiveRoomComponent implements OnInit, OnDestroy {
   private base = signal<LiveBoard | null>(null);
   pending = signal<BoardOperation[]>([]);
   sending = signal(false);
-  syncError = signal('');
+  private syncFailure = signal<LiveNotice | null>(null);
+  readonly syncError = computed(() => noticeText(this.i18n, this.syncFailure()));
   connectionLost = signal(false);
   loading = signal(true);
   busy = signal(false);
-  error = signal('');
-  info = signal('');
+  private errorNotice = signal<LiveNotice | null>(null);
+  private infoNotice = signal<LiveNotice | null>(null);
+  readonly error = computed(() => noticeText(this.i18n, this.errorNotice()));
+  readonly info = computed(() => noticeText(this.i18n, this.infoNotice()));
   tool = signal<BoardTool>('select');
   hand = signal(false);
   zoom = signal(50);
@@ -47,7 +53,7 @@ export class LiveRoomComponent implements OnInit, OnDestroy {
   framesOpen = signal(true);
   dragging = signal(false);
   toolOptions = computed(() => !this.hand() && this.canEdit() && ['pen', 'line', 'rect', 'ellipse', 'text'].includes(this.tool()));
-  activeToolLabel = computed(() => this.hand() ? 'Desplazar lienzo' : this.tools.find(t => t.id === this.tool())?.label || 'Seleccionar');
+  activeToolLabel = computed(() => this.i18n.t(this.hand() ? 'liveBoard.room.tool.pan' : this.tools.find(t => t.id === this.tool())?.labelKey || 'liveBoard.room.tool.select'));
   pageNumber = computed(() => (this.board()?.pages.findIndex(p => p.id === this.currentPage()?.id) ?? 0) + 1);
   color = signal('#2b2b2b');
   size = signal(4);
@@ -58,7 +64,8 @@ export class LiveRoomComponent implements OnInit, OnDestroy {
   private confirmationPage: BoardPage | null = null;
   google = signal<GoogleStatus | null>(null);
   googleLoading = signal(false);
-  googleError = signal('');
+  private googleFailure = signal<LiveNotice | null>(null);
+  readonly googleError = computed(() => noticeText(this.i18n, this.googleFailure()));
   classroomCourses = signal<ClassroomCourse[]>([]);
   nextCoursePage = signal<string | null>(null);
   driveFiles = signal<DriveBoardFile[]>([]);
@@ -73,18 +80,16 @@ export class LiveRoomComponent implements OnInit, OnDestroy {
     const board = this.board();
     return board?.pages.find(p => p.id === (!this.room()?.isOwner && !this.follow() ? this.localPage() : board.activePageId)) || board?.pages[0] || null;
   });
-  canEdit = computed(() => !!this.room() && !this.syncError() && !this.busy() && (this.room()!.isOwner || (this.room()!.status === 'live' && this.room()!.allowStudentEdit)));
+  canEdit = computed(() => !!this.room() && !this.syncFailure() && !this.busy() && (this.room()!.isOwner || (this.room()!.status === 'live' && this.room()!.allowStudentEdit)));
   canManage = computed(() => !!this.room()?.isOwner && !this.busy() && !this.pending().length);
   readonly imageAccept = IMAGE_ACCEPT;
-  readonly statusLabel = liveStatusLabel;
-  readonly palette = [{ color: '#2b2b2b', name: 'Negro' }, { color: '#c94a14', name: 'Naranja' }, { color: '#b3372f', name: 'Rojo' }, { color: '#2f7d4f', name: 'Verde' }, { color: '#2f6f9f', name: 'Azul' }, { color: '#8b5e9e', name: 'Violeta' }];
-  readonly tools: { id: BoardTool; label: string; icon: string }[] = [
-    { id: 'select', label: 'Seleccionar y mover', icon: 'move' }, { id: 'pen', label: 'Lápiz', icon: 'pencil' },
-    { id: 'line', label: 'Línea', icon: 'line' }, { id: 'rect', label: 'Rectángulo', icon: 'rectangle' },
-    { id: 'ellipse', label: 'Elipse', icon: 'ellipse' }, { id: 'note', label: 'Nota adhesiva', icon: 'sticky-note' },
-    { id: 'text', label: 'Texto', icon: 'type' }, { id: 'eraser', label: 'Borrar elemento', icon: 'eraser' }
-  ];
-  readonly backgrounds: { id: BoardPage['background']; name: string }[] = [{ id: 'plain', name: 'Liso' }, { id: 'dots', name: 'Puntos' }, { id: 'grid', name: 'Cuadrícula' }, { id: 'lines', name: 'Renglones' }];
+  readonly statusLabel = (status: string) => liveStatusText(this.i18n, status);
+  readonly palette = [{ color: '#2b2b2b', nameKey: 'black' }, { color: '#c94a14', nameKey: 'orange' }, { color: '#b3372f', nameKey: 'red' }, { color: '#2f7d4f', nameKey: 'green' }, { color: '#2f6f9f', nameKey: 'blue' }, { color: '#8b5e9e', nameKey: 'violet' }].map(c => ({ ...c, nameKey: `liveBoard.room.color.${c.nameKey}` }));
+  readonly strokeSizes = [{ value: 2, labelKey: 'liveBoard.room.stroke.thin' }, { value: 4, labelKey: 'liveBoard.room.stroke.medium' }, { value: 8, labelKey: 'liveBoard.room.stroke.thick' }, { value: 16, labelKey: 'liveBoard.room.stroke.extra' }];
+  readonly tools: { id: BoardTool; labelKey: string; icon: string }[] = ([
+    ['select', 'move'], ['pen', 'pencil'], ['line', 'line'], ['rect', 'rectangle'], ['ellipse', 'ellipse'], ['note', 'sticky-note'], ['text', 'type'], ['eraser', 'eraser']
+  ] as [BoardTool, string][]).map(([id, icon]) => ({ id, icon, labelKey: `liveBoard.room.tool.${id}` }));
+  readonly backgrounds: { id: BoardPage['background']; nameKey: string }[] = (['plain', 'dots', 'grid', 'lines'] as const).map(id => ({ id, nameKey: `liveBoard.room.bg.${id}` }));
   private alive = true;
   private polling = false;
   private pollTimer?: ReturnType<typeof setInterval>;
@@ -164,7 +169,7 @@ export class LiveRoomComponent implements OnInit, OnDestroy {
   @HostListener('window:beforeunload', ['$event']) beforeUnload(event: BeforeUnloadEvent): void {
     if (this.pending().length || this.busy()) { event.preventDefault(); event.returnValue = ''; }
   }
-  canLeave(): boolean { return !(this.pending().length || this.busy()) || window.confirm('Hay cambios o archivos pendientes de guardar. ¿Quieres salir de la clase?'); }
+  canLeave(): boolean { return !(this.pending().length || this.busy()) || window.confirm(this.i18n.t('teacherDashboard.live.leavePrompt')); }
   async refresh(force = false): Promise<void> {
     if (!this.alive || this.polling || (!force && (this.sending() || this.pending().length || this.busy()))) return;
     this.polling = true; this.lastPoll = Date.now();
@@ -183,7 +188,7 @@ export class LiveRoomComponent implements OnInit, OnDestroy {
       }
     } catch (e: any) {
       if (!this.alive) return;
-      if (!this.room()) this.error.set(liveErrorMessage(e, 'No se pudo abrir la clase.'));
+      if (!this.room()) this.errorNotice.set(noticeError(e, 'liveBoard.error.openClass'));
       this.connectionLost.set(true);
     } finally { this.polling = false; if (this.alive) this.loading.set(false); }
   }
@@ -197,7 +202,7 @@ export class LiveRoomComponent implements OnInit, OnDestroy {
     void this.flush();
   }
   async flush(): Promise<void> {
-    if (this.sending() || !this.alive || this.syncError()) return;
+    if (this.sending() || !this.alive || this.syncFailure()) return;
     this.sending.set(true);
     try {
       while (this.pending().length && this.alive) {
@@ -213,27 +218,34 @@ export class LiveRoomComponent implements OnInit, OnDestroy {
         this.connectionLost.set(false);
       }
     } catch (e) {
-      if (this.alive) this.syncError.set(liveErrorMessage(e, 'La conexión se interrumpió. Tus cambios siguen en este navegador. Reintenta para guardarlos.'));
+      if (this.alive) this.syncFailure.set(noticeError(e, 'liveBoard.error.syncInterrupted'));
     } finally { this.sending.set(false); }
   }
-  retry(): void { this.syncError.set(''); void this.flush(); }
+  dismissInfo(): void { this.infoNotice.set(null); }
+  retry(): void { this.syncFailure.set(null); void this.flush(); }
   ask(action: Confirmation): void { this.confirmationPage = this.currentPage(); this.confirm.set(action); }
   get confirmationTitle(): string {
-    return ({ clear: 'Vaciar página', 'delete-page': 'Eliminar página', restore: 'Restaurar pizarra de Drive', end: 'Finalizar clase', discard: 'Descartar cambios pendientes' } as const)[this.confirm() || 'clear'];
+    const keys = { clear: 'clearTitle', 'delete-page': 'deletePageTitle', restore: 'restoreTitle', end: 'endTitle', discard: 'discardTitle' } as const;
+    return this.i18n.t(`teacherDashboard.live.${keys[this.confirm() || 'clear']}`);
   }
   get confirmationMessage(): string {
-    const page = this.confirmationPage?.title || 'la página';
+    const page = this.confirmationPage?.title || this.i18n.t('teacherDashboard.live.thisPage');
     switch (this.confirm()) {
-      case 'clear': return `Se borrarán todos los elementos de «${page}», incluidos los de los alumnos.`;
-      case 'delete-page': return `Se eliminará «${page}» con todos sus elementos.`;
-      case 'restore': return `«${this.selectedDriveFile()?.name}» reemplazará todas las páginas de esta clase. Puedes descargar una copia antes de continuar.`;
-      case 'end': return `Se finalizará «${this.room()?.title}». Los alumnos podrán seguir consultando la pizarra en modo lectura.`;
-      default: return 'Se descartarán los cambios que todavía no se guardaron. Puedes descargar una copia de la pizarra antes de continuar.';
+      case 'clear': return this.i18n.t('teacherDashboard.live.clearMessage', { page });
+      case 'delete-page': return this.i18n.t('teacherDashboard.live.deletePageMessage', { page });
+      case 'restore': return this.i18n.t('teacherDashboard.live.restoreMessage', { name: this.selectedDriveFile()?.name ?? '' });
+      case 'end': return this.i18n.t('teacherDashboard.live.endMessage', { title: this.room()?.title ?? '' });
+      default: return this.i18n.t('teacherDashboard.live.discardMessage');
     }
+  }
+  get confirmationAction(): string {
+    const keys = { end: 'endAction', restore: 'restoreAction', discard: 'discardAction' } as const;
+    const action = this.confirm();
+    return this.i18n.t(`teacherDashboard.live.${action && action in keys ? keys[action as keyof typeof keys] : 'deleteAction'}`);
   }
   async confirmAction(): Promise<void> {
     const action = this.confirm(); this.confirm.set(null);
-    if (action === 'discard') { this.pending.set([]); this.syncError.set(''); await this.refresh(true); return; }
+    if (action === 'discard') { this.pending.set([]); this.syncFailure.set(null); await this.refresh(true); return; }
     if (action === 'end') { await this.setStatus('ended'); return; }
     if (action === 'restore') { await this.restore(); return; }
     if ((action === 'clear' || action === 'delete-page') && this.confirmationPage && this.canManage()) {
@@ -250,23 +262,23 @@ export class LiveRoomComponent implements OnInit, OnDestroy {
   }
   addPage(): void {
     if (!this.canManage() || (this.board()?.pages.length || 0) >= 20) return;
-    this.queue({ id: newId(), type: 'page-add', pageId: newId(), title: `Página ${(this.board()?.pages.length || 0) + 1}` });
+    this.queue({ id: newId(), type: 'page-add', pageId: newId(), title: this.i18n.t('liveBoard.room.defaultPageTitle', { number: (this.board()?.pages.length || 0) + 1 }) });
   }
   background(value: string): void {
     if (this.canManage() && this.currentPage()) this.queue({ id: newId(), type: 'page-background', pageId: this.currentPage()!.id, background: value as BoardPage['background'] });
   }
   private updateRoom(result: LiveClass): void { this.room.update(room => room ? { ...room, ...result } : room); }
-  private async action(fn: () => Promise<void>): Promise<void> {
+  private async action(fn: () => Promise<void>, fallback = 'liveBoard.error.generic'): Promise<void> {
     if (this.busy() || this.pending().length) return;
-    this.busy.set(true); this.error.set(''); this.info.set('');
-    try { await fn(); } catch (e) { if (this.alive) this.error.set(liveErrorMessage(e)); } finally { if (this.alive) this.busy.set(false); }
+    this.busy.set(true); this.errorNotice.set(null); this.infoNotice.set(null);
+    try { await fn(); } catch (e) { if (this.alive) this.errorNotice.set(noticeError(e, fallback)); } finally { if (this.alive) this.busy.set(false); }
   }
   async setStatus(status: LiveStatus): Promise<void> { if (this.canManage()) await this.action(async () => this.updateRoom(await firstValueFrom(this.api.settings(this.id, { status })))); }
   async toggleEditing(): Promise<void> { if (this.canManage()) await this.action(async () => this.updateRoom(await firstValueFrom(this.api.settings(this.id, { allowStudentEdit: !this.room()!.allowStudentEdit })))); }
   get joinUrl(): string { return `${window.location.origin}/live/join/${this.room()?.joinCode || ''}`; }
   async share(): Promise<void> {
     const copied = await copyText(this.joinUrl);
-    this.info.set(copied ? 'Enlace de invitación copiado.' : 'No se pudo copiar automáticamente. Selecciona el enlace y cópialo.');
+    this.infoNotice.set(noticeKey(copied ? 'liveBoard.info.inviteCopied' : 'liveBoard.info.inviteCopyFailed'));
     this.panel.set('participants');
   }
   togglePanel(panel: 'images' | 'google' | 'participants'): void {
@@ -275,18 +287,18 @@ export class LiveRoomComponent implements OnInit, OnDestroy {
   }
   async loadGoogleStatus(): Promise<void> {
     if (!this.alive || !this.room()?.isOwner || this.googleLoading()) return;
-    this.googleLoading.set(true); this.googleError.set('');
+    this.googleLoading.set(true); this.googleFailure.set(null);
     try {
       const status = await firstValueFrom(this.api.googleStatus());
       if (this.alive) this.google.set(status);
     } catch (e) {
-      if (this.alive) this.googleError.set(liveErrorMessage(e, 'No se pudo consultar la conexión con Google.'));
+      if (this.alive) this.googleFailure.set(noticeError(e, 'liveBoard.error.googleStatus'));
     } finally { if (this.alive) this.googleLoading.set(false); }
   }
   async insertImage(file: File): Promise<void> {
     if (!this.canEdit() || this.pending().length) return;
-    const invalid = validateImageFile(file);
-    if (invalid) { this.error.set(invalid); return; }
+    const invalid = imageFileErrorKey(file);
+    if (invalid) { this.errorNotice.set(noticeKey(invalid)); return; }
     const pageId = this.currentPage()!.id;
     let url = '';
     await this.action(async () => { const result = await firstValueFrom(this.api.upload(this.id, file)); url = result.url; });
@@ -299,7 +311,7 @@ export class LiveRoomComponent implements OnInit, OnDestroy {
     if (!this.canEdit() || !this.resourceTitle.trim()) return;
     let url: URL;
     try { url = new URL(this.resourceUrl); if (url.protocol !== 'https:' || !['drive.google.com', 'docs.google.com'].includes(url.hostname) || url.username || url.password) throw new Error(); }
-    catch { this.error.set('Pega un enlace HTTPS de Google Drive o Google Docs.'); return; }
+    catch { this.errorNotice.set(noticeKey('liveBoard.error.resourceLink')); return; }
     const e: BoardElement = { id: newId(), type: 'link', x: 200, y: 180, w: 320, h: 100, color: '#2f6f9f', width: 1, text: this.resourceTitle.trim(), url: url.href, authorId: this.user()!.id, version: 0 };
     this.queue({ id: newId(), type: 'put', pageId: this.currentPage()!.id, expectedVersion: 0, element: e });
     this.resourceTitle = ''; this.resourceUrl = ''; this.tool.set('select');
@@ -308,17 +320,17 @@ export class LiveRoomComponent implements OnInit, OnDestroy {
     await this.action(async () => {
       const result = await firstValueFrom(this.api.classroomCourses(more ? this.nextCoursePage() || undefined : undefined));
       this.classroomCourses.set(more ? [...this.classroomCourses(), ...result.courses] : result.courses); this.nextCoursePage.set(result.nextPageToken);
-      if (!result.courses.length && !more) this.info.set('No encontramos clases activas donde tu cuenta de Google sea docente.');
+      if (!result.courses.length && !more) this.infoNotice.set(noticeKey('liveBoard.info.noClassroomClasses'));
     });
   }
   async linkClassroom(): Promise<void> {
-    if (this.classroomId) await this.action(async () => { this.updateRoom(await firstValueFrom(this.api.linkClassroom(this.id, this.classroomId))); this.info.set('Clase de Classroom vinculada.'); });
+    if (this.classroomId) await this.action(async () => { this.updateRoom(await firstValueFrom(this.api.linkClassroom(this.id, this.classroomId))); this.infoNotice.set(noticeKey('liveBoard.info.classroomLinked')); });
   }
   async announce(): Promise<void> {
-    await this.action(async () => { this.updateRoom(await firstValueFrom(this.api.announce(this.id))); this.info.set('Invitación publicada en Classroom.'); });
+    await this.action(async () => { this.updateRoom(await firstValueFrom(this.api.announce(this.id))); this.infoNotice.set(noticeKey('liveBoard.info.announced')); });
   }
   async saveDrive(): Promise<void> {
-    await this.action(async () => { this.updateRoom(await firstValueFrom(this.api.saveDrive(this.id))); this.info.set('Pizarra editable guardada en tu Google Drive.'); });
+    await this.action(async () => { this.updateRoom(await firstValueFrom(this.api.saveDrive(this.id))); this.infoNotice.set(noticeKey('liveBoard.info.driveSaved')); });
   }
   async loadDrive(more = false): Promise<void> {
     await this.action(async () => {
@@ -330,15 +342,15 @@ export class LiveRoomComponent implements OnInit, OnDestroy {
     const file = this.selectedDriveFile();
     if (!file || !this.canManage() || this.room()?.status === 'live') return;
     const revision = this.room()!.revision;
-    await this.action(async () => { const result = await firstValueFrom(this.api.restore(this.id, file.id, revision)); this.updateRoom(result); if (result.board) this.base.set(result.board); this.info.set('Pizarra restaurada desde Drive.'); });
+    await this.action(async () => { const result = await firstValueFrom(this.api.restore(this.id, file.id, revision)); this.updateRoom(result); if (result.board) this.base.set(result.board); this.infoNotice.set(noticeKey('liveBoard.info.restored')); });
   }
   download(): void {
     const board = this.board(); if (!board) return;
-    downloadBlob(new Blob([JSON.stringify({ format: 'spanishnow-live-board', version: 1, title: this.room()?.title, board }, null, 2)], { type: 'application/json' }), 'pizarra.spanishnow.json');
+    downloadBlob(new Blob([JSON.stringify({ format: 'spanishnow-live-board', version: 1, title: this.room()?.title, board }, null, 2)], { type: 'application/json' }), this.i18n.t('liveBoard.export.jsonFile'));
   }
   async exportPng(): Promise<void> {
     const svg = this.element.nativeElement.querySelector<SVGSVGElement>('svg.live-canvas');
     if (!svg) return;
-    await this.action(async () => { const blob = await exportPagePng(svg); downloadBlob(blob, 'pizarra.png'); });
+    await this.action(async () => { const blob = await exportPagePng(svg); downloadBlob(blob, this.i18n.t('liveBoard.export.pngFile')); }, 'liveBoard.error.exportFailed');
   }
 }

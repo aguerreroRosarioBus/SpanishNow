@@ -6,6 +6,10 @@ import { ACTIVITIES_EN } from './activities';
 import { COMMENTS_EN } from './comments';
 import { TEACHER_COMMERCE_EN } from './teacher-commerce';
 import { TEACHER_PROMOTIONS_EN } from './teacher-promotions';
+import { TEACHER_DASHBOARD_EN } from './teacher-dashboard';
+import { TEACHER_MANAGE_EN } from './teacher-manage';
+import { TEACHER_COMPOSER_EN } from './teacher-composer';
+import { LIVE_BOARD_EN } from './live-board';
 import { TranslationCatalog } from '../i18n.types';
 
 export const EN = {
@@ -17,6 +21,10 @@ export const EN = {
   ...COMMENTS_EN,
   ...TEACHER_COMMERCE_EN,
   ...TEACHER_PROMOTIONS_EN,
+  ...TEACHER_DASHBOARD_EN,
+  ...TEACHER_MANAGE_EN,
+  ...TEACHER_COMPOSER_EN,
+  ...LIVE_BOARD_EN,
   'common.language': 'Language',
   'preferences.loadError': 'Could not load your account preferences. Please try again.',
   'preferences.saveError': 'Could not save your preferences to your account. Please try again.',
@@ -39,6 +47,12 @@ export const EN = {
   'preferences.securityHelp': 'Change your password regularly to keep your account secure.',
   'preferences.changePassword': 'Change password',
   'common.close': 'Close',
+  'common.confirm': 'Confirm',
+  'common.areYouSure': 'Are you sure?',
+  'pwa.updateAvailable': 'A new version is available',
+  'pwa.update': 'Update',
+  'pwa.later': 'Later',
+  'pwa.offline': 'Offline',
   'common.cancel': 'Cancel',
   'common.show': 'Show',
   'common.hide': 'Hide',
@@ -214,5 +228,32 @@ export const EN = {
   'errors.operation_key_conflict': 'This request identifier was already used with different details.',
   'errors.rate_limited': 'Too many requests. Please wait before trying again.',
   'errors.payments_unavailable': 'Payments are currently unavailable. Please try again later.',
-  'errors.provider_unavailable': 'The external service is currently unavailable. Please try again later.'
+  'errors.provider_unavailable': 'The external service is currently unavailable. Please try again later.',
+  'errors.live_not_live': "The class is not live yet. Ask the teacher to start it.",
+  'errors.live_editing_paused': "The teacher paused editing for students.",
+  'errors.live_enrollment_required': "You need to be enrolled in the course to join.",
+  'errors.live_invite_required': "Join with the invitation link or code.",
+  'errors.live_invite_invalid': "This invitation code is not valid.",
+  'errors.live_ended': "This class has ended. Only participants can view it.",
+  'errors.live_finish_first': "End the class before restoring a board.",
+  'errors.live_start_first': "Start the class before publishing it to Classroom.",
+  'errors.live_already_published': "This class was already published to Classroom. Create another room for another group.",
+  'errors.live_board_changed': "The board changed. Refresh before continuing.",
+  'errors.live_element_conflict': "Another participant changed this item. Refresh and try again.",
+  'errors.live_own_elements_only': "You can only modify your own items.",
+  'errors.live_teacher_only_pages': "Only the teacher can manage pages.",
+  'errors.live_item_gone': "That page or item no longer exists. Refresh the board.",
+  'errors.live_page_full': "This page reached 500 items. Create another page.",
+  'errors.live_page_limit': "A board can have up to 20 pages.",
+  'errors.live_board_too_large': "The board reached its maximum size.",
+  'errors.lesson_plan_revision_conflict': "The draft changed in another tab or session. Reload it before continuing.",
+  'errors.lesson_plan_no_draft': "There is no draft to publish.",
+  'errors.lesson_plan_incomplete': "The lesson is not ready to publish. Check the required blocks.",
+  'errors.not_a_pdf': "The file is not a PDF.",
+  'errors.file_too_large': "The file is too large.",
+  'errors.import_file_empty': "The file is empty.",
+  'errors.import_file_invalid': "The file is not a valid CSV.",
+  'errors.import_email_column_missing': "No email column was found. Use a header such as Email.",
+  'errors.import_too_many_rows': "The file has too many rows.",
+  'errors.import_email_is_teacher': "This email belongs to a teacher account."
 } as const satisfies TranslationCatalog;

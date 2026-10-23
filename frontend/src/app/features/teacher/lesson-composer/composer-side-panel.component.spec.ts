@@ -1,3 +1,4 @@
+import { I18nService } from '../../../core/i18n/i18n.service';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ComposerSidePanelComponent } from './composer-side-panel.component';
 import { LessonBlock } from '../../../core/services/lesson-plan.service';
@@ -19,6 +20,7 @@ describe('ComposerSidePanelComponent: sincronía de posición', () => {
 
   beforeEach(() => {
     setReducedMotion(false);
+    TestBed.inject(I18nService).setLocale('es');
     fixture = TestBed.createComponent(ComposerSidePanelComponent);
     component = fixture.componentInstance;
     fixture.componentRef.setInput('blocks', [

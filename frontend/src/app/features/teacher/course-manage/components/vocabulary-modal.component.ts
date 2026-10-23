@@ -4,24 +4,27 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { VocabularyService } from '../../../../core/services/vocabulary.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { Unit, Vocabulary } from '../../../../core/models/course.model';
+import { I18nService } from '../../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { AudioInputComponent } from '../audio/audio-input.component';
 import { CourseManageStore } from '../course-manage.store';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
 
 import { ImageSearchComponent } from '../../../../shared/components/image-search/image-search.component';
-import { validateImageFile, IMAGE_ACCEPT } from '../../lesson-composer/image-file';
+import { imageFileErrorKey, IMAGE_ACCEPT } from '../../lesson-composer/image-file';
 
 /** Vocabulario de una unidad: alta con audio e imagen opcionales, listado y borrado. */
 @Component({
   selector: 'app-vocabulary-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, AudioInputComponent, IconComponent, ImageSearchComponent],
+  imports: [CommonModule, ReactiveFormsModule, AudioInputComponent, IconComponent, ImageSearchComponent, TranslatePipe],
   templateUrl: './vocabulary-modal.component.html'
 })
 export class VocabularyModalComponent implements OnInit, OnDestroy {
   private store = inject(CourseManageStore);
   private vocabularyService = inject(VocabularyService);
   private toast = inject(ToastService);
+  private i18n = inject(I18nService);
 
   unit = input.required<Unit>();
   audio = viewChild.required<AudioInputComponent>('audio');
@@ -36,8 +39,8 @@ export class VocabularyModalComponent implements OnInit, OnDestroy {
 
   selectImage(file: File | null): void {
     if (file) {
-      const invalid = validateImageFile(file);
-      if (invalid) { this.toast.warning(invalid); return; }
+      const invalid = imageFileErrorKey(file);
+      if (invalid) { this.toast.warning(this.i18n.t(invalid)); return; }
     }
     const previous = this.imagePreview();
     if (previous) URL.revokeObjectURL(previous);
@@ -88,26 +91,26 @@ export class VocabularyModalComponent implements OnInit, OnDestroy {
         this.audio().reset();
         this.selectImage(null);
         this.isSubmitting.set(false);
-        this.toast.success('Vocabulario creado exitosamente');
+        this.toast.success(this.i18n.t('teacherManage.vocab.created'));
       },
       error: error => {
         console.error('Error creating vocabulary:', error);
-        this.toast.error(error?.error?.error || 'Error al crear vocabulario');
+        this.toast.error(this.i18n.errorMessage(error, 'teacherManage.vocab.createError'));
         this.isSubmitting.set(false);
       }
     });
   }
 
   remove(id: number): void {
-    this.store.confirm('Eliminar Vocabulario', '¿Estás seguro de eliminar este vocabulario?', 'Eliminar', () => {
+    this.store.confirm('teacherManage.vocab.deleteTitle', 'teacherManage.vocab.deleteMessage', 'teacherManage.common.delete', () => {
       this.vocabularyService.deleteVocabulary(id).subscribe({
         next: () => {
           this.vocabulary.update(list => list.filter(v => v.id !== id));
-          this.toast.success('Vocabulario eliminado exitosamente');
+          this.toast.success(this.i18n.t('teacherManage.vocab.deleted'));
         },
         error: error => {
           console.error('Error deleting vocabulary:', error);
-          this.toast.error('Error al eliminar vocabulario');
+          this.toast.error(this.i18n.t('teacherManage.vocab.deleteError'));
         }
       });
     }, 'danger');

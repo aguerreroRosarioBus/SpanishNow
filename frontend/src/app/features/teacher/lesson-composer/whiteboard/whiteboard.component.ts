@@ -1,6 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild, computed, effect, input, output, signal } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild, computed, effect, inject, input, output, signal } from '@angular/core';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
+import { I18nService } from '../../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { BOARD_HEIGHT, BOARD_WIDTH, DrawOp, History, PALETTE, Pt, SIZES, TOOLS, Tool, appendPoint, clampToBoard, isShapeTool, toolForShortcut, visibleOps, widthFor } from './whiteboard.logic';
 import { renderOp } from './whiteboard.render';
 
@@ -10,14 +12,15 @@ const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), [href], [tabin
 @Component({
   selector: 'app-whiteboard',
   standalone: true,
-  imports: [CommonModule, IconComponent],
+  imports: [CommonModule, IconComponent, TranslatePipe],
   templateUrl: './whiteboard.component.html',
   styleUrls: ['./whiteboard.component.scss', './whiteboard-toolbar.scss']
 })
 export class WhiteboardComponent implements AfterViewInit, OnDestroy {
   /** Imagen actual del bloque, para «Partir de la imagen actual». */
   backgroundUrl = input<string | null>(null);
-  title = input('Dibujar ilustración');
+  /** Clave I18N del título del diálogo. */
+  titleKey = input('teacherComposer.wb.titleIllustration');
   done = output<File>();
   cancelled = output<void>();
 
@@ -35,7 +38,8 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
   confirm = signal<'discard' | 'clear' | null>(null);
   useBackground = signal(true);
   bgState = signal<'none' | 'loading' | 'ready' | 'error'>('none');
-  error = signal('');
+  /** Clave I18N del error visible ('' = sin error); se traduce en la plantilla. */
+  errorKey = signal('');
   exporting = signal(false);
 
   private history = new History<DrawOp>();
@@ -184,7 +188,7 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
 
   async use(): Promise<void> {
     if (this.exporting() || !this.hasStrokes()) return;
-    this.exporting.set(true); this.error.set('');
+    this.exporting.set(true); this.errorKey.set('');
     try {
       let source = this.baseRef.nativeElement;
       if (this.scale !== 1) { // exportación siempre 1200×900
@@ -195,7 +199,7 @@ export class WhiteboardComponent implements AfterViewInit, OnDestroy {
       if (!blob) throw new Error('empty');
       this.done.emit(new File([blob], 'ilustracion.png', { type: 'image/png' }));
     } catch {
-      this.error.set('No se pudo generar la imagen del dibujo. Prueba sin «Partir de la imagen actual».');
+      this.errorKey.set('teacherComposer.wb.exportError');
     } finally { this.exporting.set(false); }
   }
 

@@ -4,15 +4,17 @@ const { authMiddleware, isTeacher } = require('../middlewares/auth.middleware');
 const live = require('../services/liveClassService');
 const google = require('../services/liveGoogleService');
 const { LiveError, fail } = require('../services/liveBoard');
+const { LIVE, errorBody, withErrorCodes } = require('../services/errorCodes');
 const cloudinary = require('../config/cloudinary');
 const { detectedType } = require('../services/imageSearchService');
 const router = express.Router();
+router.use(withErrorCodes(LIVE));
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 0 } });
 const run = handler => async (req, res) => {
   try { await handler(req, res); }
   catch (e) {
-    if (e instanceof LiveError) return res.status(e.status).json({ error: e.message });
-    if (e instanceof multer.MulterError) return res.status(400).json({ error: 'Selecciona una imagen de hasta 5 MB.' });
+    if (e instanceof LiveError) return res.status(e.status).json(errorBody(LIVE, e.message, e.status));
+    if (e instanceof multer.MulterError) return res.status(400).json({ error: 'Selecciona una imagen de hasta 5 MB.', code: 'validation_failed' });
     console.error('Live class request failed:', e.name);
     res.status(500).json({ error: 'No se pudo completar la operación de la clase.' });
   }

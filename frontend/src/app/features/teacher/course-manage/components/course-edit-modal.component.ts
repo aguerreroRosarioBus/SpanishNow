@@ -9,13 +9,15 @@ import { ToastService } from '../../../../core/services/toast.service';
 import { CourseManageStore } from '../course-manage.store';
 import { VideoEmbedComponent } from '../../../../shared/components/video-embed/video-embed.component';
 import { ImageSearchComponent } from '../../../../shared/components/image-search/image-search.component';
-import { validateImageFile, IMAGE_ACCEPT } from '../../lesson-composer/image-file';
+import { imageFileErrorKey, IMAGE_ACCEPT } from '../../lesson-composer/image-file';
+import { I18nService } from '../../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 
 /** Edición del curso: título, descripción y datos de venta (precio, moneda, slug, publicación, texto de venta). */
 @Component({
   selector: 'app-course-edit-modal',
   standalone: true,
-  imports: [ReactiveFormsModule, VideoEmbedComponent, ImageSearchComponent],
+  imports: [ReactiveFormsModule, VideoEmbedComponent, ImageSearchComponent, TranslatePipe],
   templateUrl: './course-edit-modal.component.html'
 })
 export class CourseEditModalComponent implements OnDestroy {
@@ -24,11 +26,13 @@ export class CourseEditModalComponent implements OnDestroy {
   private couponService = inject(CouponService);
   private hotmartService = inject(HotmartService);
   private toast = inject(ToastService);
+  private i18n = inject(I18nService);
 
+  /** `label` es una clave I18N. */
   readonly currencies = [
-    { code: 'usd', label: 'USD (dólar)' },
-    { code: 'eur', label: 'EUR (euro)' },
-    { code: 'gbp', label: 'GBP (libra)' }
+    { code: 'usd', label: 'teacherManage.courseEdit.currencyUsd' },
+    { code: 'eur', label: 'teacherManage.courseEdit.currencyEur' },
+    { code: 'gbp', label: 'teacherManage.courseEdit.currencyGbp' }
   ];
 
   form = inject(FormBuilder).group({
@@ -62,8 +66,8 @@ export class CourseEditModalComponent implements OnDestroy {
 
   selectImage(file: File | null): void {
     if (file) {
-      const invalid = validateImageFile(file);
-      if (invalid) { this.toast.warning(invalid); return; }
+      const invalid = imageFileErrorKey(file);
+      if (invalid) { this.toast.warning(this.i18n.t(invalid)); return; }
     }
     const previous = this.imagePreview();
     if (previous) URL.revokeObjectURL(previous);
@@ -81,7 +85,12 @@ export class CourseEditModalComponent implements OnDestroy {
   coverPreview(): string | null { return this.imagePreview() || this.store.course()?.imageUrl || null; }
 
   isSaving = false;
-  errorMessage = '';
+  /** Error de guardado crudo: se traduce al leer, por código, con el idioma vigente. */
+  private saveError = signal<{ error: unknown } | null>(null);
+  errorMessage = computed(() => {
+    const failure = this.saveError();
+    return failure ? this.i18n.errorMessage(failure.error, 'teacherManage.courseEdit.updateError') : '';
+  });
 
   constructor() {
     const course = this.store.course();
@@ -133,7 +142,7 @@ export class CourseEditModalComponent implements OnDestroy {
     navigator.clipboard?.writeText(url).then(() => {
       this.webhookCopied.set(true);
       setTimeout(() => this.webhookCopied.set(false), 2000);
-    }, () => this.toast.error('No se pudo copiar. Selecciona la URL y cópiala a mano.'));
+    }, () => this.toast.error(this.i18n.t('teacherManage.courseEdit.copyError')));
   }
 
   close(): void { this.store.close(); }
@@ -165,7 +174,7 @@ export class CourseEditModalComponent implements OnDestroy {
     if (slug) payload['slug'] = slug;
 
     this.isSaving = true;
-    this.errorMessage = '';
+    this.saveError.set(null);
     let data: FormData | Partial<Course> = payload;
     if (this.imageFile) {
       const form = new FormData();
@@ -182,12 +191,12 @@ export class CourseEditModalComponent implements OnDestroy {
         const previous = this.store.course();
         this.store.course.set({ ...previous, ...updated, units: previous?.units, enrollmentCount: previous?.enrollmentCount });
         this.close();
-        this.toast.success('Curso actualizado exitosamente');
+        this.toast.success(this.i18n.t('teacherManage.courseEdit.updated'));
       },
       error: error => {
         console.error('Error updating course:', error);
         this.isSaving = false;
-        this.errorMessage = error?.error?.error || 'Error al actualizar el curso';
+        this.saveError.set({ error });
       }
     });
   }

@@ -7,6 +7,8 @@ const { Unit, Course, Enrollment, UnitQuiz, UnitQuizQuestion, UnitQuizAttempt } 
 const { canReadCourse } = require('../utils/courseAccess');
 const quizzes = require('../services/quizService');
 const { ContentLockedError, assertUnitOpen, sendLocked } = require('../services/unitAvailability');
+const { errorBody, withErrorCodes } = require('../services/errorCodes');
+router.use(withErrorCodes([]));
 
 const validId = value => /^[1-9]\d{0,9}$/.test(String(value)) && Number(value) <= 2147483647;
 
@@ -42,11 +44,11 @@ router.put('/:id/quiz', authMiddleware, isTeacher, async (req, res) => {
     const unit = await ownUnit(req, res);
     if (!unit) return;
     const parsed = quizzes.parseQuizPayload(req.body);
-    if (parsed.error) return res.status(400).json({ error: parsed.error });
+    if (parsed.error) return res.status(400).json(errorBody([], parsed.error, 400));
     const quizId = await quizzes.saveQuiz(unit.id, parsed.value);
     res.json(await quizzes.teacherView(await UnitQuiz.findByPk(quizId)));
   } catch (error) {
-    if (error instanceof quizzes.QuizError) return res.status(error.status).json({ error: error.message });
+    if (error instanceof quizzes.QuizError) return res.status(error.status).json(errorBody([], error.message, error.status));
     res.status(500).json({ error: error.message });
   }
 });

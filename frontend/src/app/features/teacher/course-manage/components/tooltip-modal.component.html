@@ -2,14 +2,14 @@
   <div class="modal-dialog modal-xl">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">Tooltips · {{ title() }}</h5>
-        <button type="button" class="btn-close" (click)="closed.emit()"></button>
+        <h5 class="modal-title">{{ 'teacherManage.tooltip.title' | t:{ title: title() } }}</h5>
+        <button type="button" class="btn-close" (click)="closed.emit()" [attr.aria-label]="'teacherManage.common.close' | t"></button>
       </div>
       <div class="modal-body">
         <app-tooltip-editor [targetType]="targetType()" [targetId]="targetId()" [text]="text()" />
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" (click)="closed.emit()">Cerrar</button>
+        <button type="button" class="btn btn-secondary" (click)="closed.emit()">{{ 'teacherManage.common.close' | t }}</button>
       </div>
     </div>
   </div>

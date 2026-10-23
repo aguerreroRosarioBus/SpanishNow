@@ -1,47 +1,47 @@
 <div class="page-container live-list">
   <header class="page-header">
-    <div class="page-header__main"><span class="eyebrow">Espacio colaborativo</span><h1 class="page-title">Clases en vivo</h1><p class="page-summary">Tus ideas, tus alumnos y una pizarra para compartir.</p></div>
-    <div class="page-actions"><button type="button" class="btn btn-secondary" (click)="load()" [disabled]="loading()"><app-icon name="rotate" [size]="16" />Actualizar</button>@if (teacher && !showCreate()) { <button type="button" class="btn btn-primary" (click)="showCreate.set(true)"><app-icon name="plus" [size]="16" /> Nueva clase</button> }</div>
+    <div class="page-header__main"><span class="eyebrow">{{ 'liveBoard.list.eyebrow' | t }}</span><h1 class="page-title">{{ 'liveBoard.list.title' | t }}</h1><p class="page-summary">{{ 'liveBoard.list.summary' | t }}</p></div>
+    <div class="page-actions"><button type="button" class="btn btn-secondary" (click)="load()" [disabled]="loading()"><app-icon name="rotate" [size]="16" />{{ 'liveBoard.list.refresh' | t }}</button>@if (teacher && !showCreate()) { <button type="button" class="btn btn-primary" (click)="showCreate.set(true)"><app-icon name="plus" [size]="16" /> {{ 'liveBoard.list.newClass' | t }}</button> }</div>
   </header>
   @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
   @if (info()) { <div class="alert alert-info" role="status">{{ info() }}</div> }
   @if (teacher && showCreate()) {
     <form class="live-panel create-form" (ngSubmit)="create()">
-      <h2>Prepara una pizarra</h2>
-      <label>Título de la clase<input name="title" [(ngModel)]="title" required maxlength="200" placeholder="Por ejemplo: Una aventura en la ciudad" class="form-control" /></label>
-      <label>Curso<select name="course" [(ngModel)]="courseId" class="form-select"><option [ngValue]="null">Sala independiente · acceso por invitación</option>@for (c of courses(); track c.id) { <option [ngValue]="c.id">{{ c.title }}</option> }</select></label>
-      <p class="text-muted">En un curso, solo podrán entrar sus alumnos inscritos. En una sala independiente, podrán entrar alumnos de SpanishNow con tu enlace.</p>
-      <div class="form-actions"><button type="button" class="btn btn-secondary" (click)="showCreate.set(false)" [disabled]="busy()">Cancelar</button><button class="btn btn-primary" [disabled]="busy() || !title.trim()">{{ busy() ? 'Creando…' : 'Crear clase' }}</button></div>
+      <h2>{{ 'liveBoard.list.createHeading' | t }}</h2>
+      <label>{{ 'liveBoard.list.titleLabel' | t }}<input name="title" [(ngModel)]="title" required maxlength="200" [placeholder]="'liveBoard.list.titlePlaceholder' | t" class="form-control" /></label>
+      <label>{{ 'liveBoard.list.courseLabel' | t }}<select name="course" [(ngModel)]="courseId" class="form-select"><option [ngValue]="null">{{ 'liveBoard.list.standaloneOption' | t }}</option>@for (c of courses(); track c.id) { <option [ngValue]="c.id">{{ c.title }}</option> }</select></label>
+      <p class="text-muted">{{ 'liveBoard.list.createHint' | t }}</p>
+      <div class="form-actions"><button type="button" class="btn btn-secondary" (click)="showCreate.set(false)" [disabled]="busy()">{{ 'liveBoard.list.cancel' | t }}</button><button class="btn btn-primary" [disabled]="busy() || !title.trim()">{{ (busy() ? 'liveBoard.list.creating' : 'liveBoard.list.create') | t }}</button></div>
     </form>
   }
   @if (teacher) {
     <section class="live-panel google-panel">
       <div class="integration-mark"><app-icon name="layers" [size]="20" /></div>
-      <div><h2>Google Classroom y Drive</h2>
-        <p>{{ google()?.connected ? 'Cuenta conectada: ' + (google()?.email || 'Google') : 'Publica el acceso a tu clase y guarda pizarras editables en tu Drive.' }}</p>
-        @if (google() && !google()?.configured) { <small>La conexión estará disponible cuando se configure Google en la plataforma.</small> }
+      <div><h2>{{ 'liveBoard.list.googleHeading' | t }}</h2>
+        <p>{{ google()?.connected ? ('liveBoard.list.googleConnectedAs' | t : { email: google()?.email || ('liveBoard.list.googleFallbackName' | t) }) : ('liveBoard.list.googlePrompt' | t) }}</p>
+        @if (google() && !google()?.configured) { <small>{{ 'liveBoard.list.googleUnavailable' | t }}</small> }
       </div>
       @if (google()?.connected) {
-        <button type="button" class="btn btn-secondary btn-sm" (click)="disconnect()" [disabled]="busy()">Desconectar</button>
-      } @else { <button type="button" class="btn btn-secondary" (click)="connect()" [disabled]="busy() || !google()?.configured">Conectar Google</button> }
+        <button type="button" class="btn btn-secondary btn-sm" (click)="disconnect()" [disabled]="busy()">{{ 'liveBoard.list.disconnect' | t }}</button>
+      } @else { <button type="button" class="btn btn-secondary" (click)="connect()" [disabled]="busy() || !google()?.configured">{{ 'liveBoard.list.connect' | t }}</button> }
     </section>
   } @else {
-    <form class="live-panel join-form" (ngSubmit)="join()"><label>Entrar por invitación<input class="form-control" name="code" [(ngModel)]="code" placeholder="Pega el enlace o código de tu docente" required maxlength="500" /></label><button class="btn btn-primary" [disabled]="busy() || !code.trim()">Entrar a clase</button></form>
+    <form class="live-panel join-form" (ngSubmit)="join()"><label>{{ 'liveBoard.list.joinLabel' | t }}<input class="form-control" name="code" [(ngModel)]="code" [placeholder]="'liveBoard.list.joinPlaceholder' | t" required maxlength="500" /></label><button class="btn btn-primary" [disabled]="busy() || !code.trim()">{{ 'liveBoard.list.joinButton' | t }}</button></form>
   }
-  <div class="library-heading"><h2>Tus pizarras</h2><div class="live-filters" role="group" aria-label="Filtrar clases">
+  <div class="library-heading"><h2>{{ 'liveBoard.list.libraryHeading' | t }}</h2><div class="live-filters" role="group" [attr.aria-label]="'liveBoard.list.filterLabel' | t">
     @for (f of ['all', 'live', 'draft', 'ended']; track f) {
-      @if (teacher || f !== 'draft') { <button type="button" class="btn btn-ghost btn-sm" [class.active]="filter() === f" [attr.aria-pressed]="filter() === f" (click)="filter.set(f)">{{ f === 'all' ? 'Todas' : statusLabel(f) }}</button> }
+      @if (teacher || f !== 'draft') { <button type="button" class="btn btn-ghost btn-sm" [class.active]="filter() === f" [attr.aria-pressed]="filter() === f" (click)="filter.set(f)">{{ f === 'all' ? ('liveBoard.list.filterAll' | t) : statusLabel(f) }}</button> }
     }
   </div></div>
-  @if (loading()) { <p role="status" class="text-muted">Cargando clases…</p> }
+  @if (loading()) { <p role="status" class="text-muted">{{ 'liveBoard.list.loading' | t }}</p> }
   @else if (!filtered().length) {
-    <div class="empty-live"><app-icon name="rectangle" [size]="48" /><h2>{{ teacher ? 'Tu próxima clase empieza con una idea' : 'Aquí encontrarás tus clases en vivo' }}</h2><p>{{ teacher ? 'Crea una sala, prepara las páginas y comparte el enlace cuando estés listo.' : 'Las clases de tus cursos aparecerán aquí. También puedes entrar con una invitación.' }}</p></div>
+    <div class="empty-live"><app-icon name="rectangle" [size]="48" /><h2>{{ (teacher ? 'liveBoard.list.emptyTeacherTitle' : 'liveBoard.list.emptyStudentTitle') | t }}</h2><p>{{ (teacher ? 'liveBoard.list.emptyTeacherText' : 'liveBoard.list.emptyStudentText') | t }}</p></div>
   } @else {
     <div class="live-grid">@for (c of filtered(); track c.id) {
-      <a [routerLink]="['/live', c.id]" class="live-card"><div class="board-mini" aria-hidden="true"><div class="mini-sheet"><span class="mini-note"></span><i class="mini-connector"></i><b class="mini-shape"></b><span class="mini-lines"></span></div><span class="board-kind"><app-icon name="rectangle" [size]="12" />Pizarra</span></div>
+      <a [routerLink]="['/live', c.id]" class="live-card"><div class="board-mini" aria-hidden="true"><div class="mini-sheet"><span class="mini-note"></span><i class="mini-connector"></i><b class="mini-shape"></b><span class="mini-lines"></span></div><span class="board-kind"><app-icon name="rectangle" [size]="12" />{{ 'liveBoard.list.boardKind' | t }}</span></div>
         <div class="live-card-body"><span class="badge-status" [class.badge-status--published]="c.status === 'live'" [class.badge-status--draft]="c.status !== 'live'">{{ statusLabel(c.status) }}</span><h2>{{ c.title }}</h2>
-          <p>{{ c.classroomCourseName || (c.courseId ? 'Vinculada a un curso' : 'Sala independiente') }}</p><small>Actualizada {{ c.updatedAt | date:'d MMM y, HH:mm' }}</small>
-          <span class="card-action">{{ c.status === 'live' ? 'Entrar a la clase' : teacher ? 'Abrir pizarra' : 'Ver pizarra' }} <app-icon name="arrow-right" [size]="18" /></span></div>
+          <p>{{ c.classroomCourseName || ((c.courseId ? 'liveBoard.list.linkedCourse' : 'liveBoard.list.standaloneRoom') | t) }}</p><small>{{ 'liveBoard.list.updated' | t : { date: updatedAt(c.updatedAt) } }}</small>
+          <span class="card-action">{{ (c.status === 'live' ? 'liveBoard.list.enterClass' : teacher ? 'liveBoard.list.openBoard' : 'liveBoard.list.viewBoard') | t }} <app-icon name="arrow-right" [size]="18" /></span></div>
       </a>
     }</div>
   }

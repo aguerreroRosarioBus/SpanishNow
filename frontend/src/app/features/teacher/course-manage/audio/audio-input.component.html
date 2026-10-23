@@ -1,16 +1,16 @@
 <!-- Botones para elegir método -->
 <div class="btn-group w-100 mb-2" role="group">
   <input type="radio" class="btn-check" [name]="name() + 'Method'" [id]="name() + 'MethodUpload'" [checked]="method() === 'upload'" (change)="setMethod('upload')">
-  <label class="btn btn-outline-primary" [for]="name() + 'MethodUpload'"><app-icon name="upload" [size]="16" />{{ uploadLabel() }}</label>
+  <label class="btn btn-outline-primary" [for]="name() + 'MethodUpload'"><app-icon name="upload" [size]="16" />{{ uploadLabel() | t }}</label>
 
   <input type="radio" class="btn-check" [name]="name() + 'Method'" [id]="name() + 'MethodRecord'" [checked]="method() === 'record'" (change)="setMethod('record')">
-  <label class="btn btn-outline-primary" [for]="name() + 'MethodRecord'"><app-icon name="mic" [size]="16" />{{ recordLabel() }}</label>
+  <label class="btn btn-outline-primary" [for]="name() + 'MethodRecord'"><app-icon name="mic" [size]="16" />{{ recordLabel() | t }}</label>
 </div>
 
 <!-- Subir archivo -->
 <div *ngIf="method() === 'upload'">
   <input type="file" class="form-control" accept="audio/*" [attr.id]="fileInputId()" (change)="onFileSelected($event)">
-  <small class="text-muted" [class.d-block]="layout() === 'inline'" [class.mt-1]="layout() === 'inline'" *ngIf="uploadHint()">{{ uploadHint() }}</small>
+  <small class="text-muted" [class.d-block]="layout() === 'inline'" [class.mt-1]="layout() === 'inline'" *ngIf="uploadHint()">{{ uploadHint() | t }}</small>
 </div>
 
 <!-- Grabar audio -->
@@ -18,40 +18,40 @@
   <ng-container *ngIf="layout() === 'inline'; else stacked">
     <div class="d-flex gap-2 mb-2">
       <button type="button" class="btn btn-danger" *ngIf="!rec.isRecording() && !rec.blob()" (click)="rec.start()">
-        <app-icon name="circle-dot" [size]="16" />Iniciar grabación
+        <app-icon name="circle-dot" [size]="16" />{{ 'teacherManage.audio.start' | t }}
       </button>
       <button type="button" class="btn btn-success" *ngIf="rec.isRecording()" (click)="rec.stop()">
-        <app-icon name="square" [size]="16" />Detener grabación
+        <app-icon name="square" [size]="16" />{{ 'teacherManage.audio.stop' | t }}
       </button>
       <button type="button" class="btn btn-warning" *ngIf="rec.blob() && !rec.isRecording()" (click)="rec.clear()">
-        <app-icon name="trash" [size]="16" />Borrar y grabar de nuevo
+        <app-icon name="trash" [size]="16" />{{ 'teacherManage.audio.rerecord' | t }}
       </button>
     </div>
 
     <div *ngIf="rec.isRecording()" class="alert alert-danger d-flex align-items-center">
       <span class="spinner-grow spinner-grow-sm me-2" role="status"></span>
-      <span>{{ recordingText() }}</span>
+      <span>{{ recordingText() | t }}</span>
     </div>
 
     <div *ngIf="rec.url() && !rec.isRecording()" class="mt-2">
       <audio [src]="rec.url()" controls class="w-100"></audio>
-      <small class="text-success d-block mt-1">{{ recordedText() }}</small>
+      <small class="text-success d-block mt-1">{{ recordedText() | t }}</small>
     </div>
 
-    <small *ngIf="recordHint()" class="text-muted d-block mt-1">{{ recordHint() }}</small>
+    <small *ngIf="recordHint()" class="text-muted d-block mt-1">{{ recordHint() | t }}</small>
   </ng-container>
 
   <ng-template #stacked>
     <button type="button" class="btn btn-danger w-100 mb-2" *ngIf="!rec.isRecording() && !rec.blob()" (click)="rec.start()">
-      <app-icon name="circle-dot" [size]="16" />Iniciar grabación
+      <app-icon name="circle-dot" [size]="16" />{{ 'teacherManage.audio.start' | t }}
     </button>
     <button type="button" class="btn btn-success w-100 mb-2" *ngIf="rec.isRecording()" (click)="rec.stop()">
-      <app-icon name="square" [size]="16" />Detener grabación
+      <app-icon name="square" [size]="16" />{{ 'teacherManage.audio.stop' | t }}
     </button>
     <div *ngIf="rec.url()" class="mt-2">
       <audio [src]="rec.url()" controls class="w-100 mb-2"></audio>
       <button type="button" class="btn btn-sm btn-warning w-100" (click)="rec.clear()">
-        <app-icon name="trash" [size]="16" />Limpiar grabación
+        <app-icon name="trash" [size]="16" />{{ 'teacherManage.audio.clear' | t }}
       </button>
     </div>
   </ng-template>

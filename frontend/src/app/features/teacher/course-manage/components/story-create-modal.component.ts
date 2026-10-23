@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { StoryService } from '../../../../core/services/story.service';
 import { ToastService } from '../../../../core/services/toast.service';
+import { I18nService } from '../../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { AudioInputComponent } from '../audio/audio-input.component';
 import { CourseManageStore } from '../course-manage.store';
 
@@ -10,13 +12,14 @@ import { CourseManageStore } from '../course-manage.store';
 @Component({
   selector: 'app-story-create-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, AudioInputComponent],
+  imports: [CommonModule, ReactiveFormsModule, AudioInputComponent, TranslatePipe],
   templateUrl: './story-create-modal.component.html'
 })
 export class StoryCreateModalComponent {
   private store = inject(CourseManageStore);
   private storyService = inject(StoryService);
   private toast = inject(ToastService);
+  private i18n = inject(I18nService);
 
   unitId = input.required<number>();
   slow = viewChild.required<AudioInputComponent>('slow');
@@ -48,7 +51,7 @@ export class StoryCreateModalComponent {
       },
       error: error => {
         console.error('Error creating story:', error);
-        this.toast.error('Error al crear la historia');
+        this.toast.error(this.i18n.t('teacherManage.storyCreate.error'));
       }
     });
   }

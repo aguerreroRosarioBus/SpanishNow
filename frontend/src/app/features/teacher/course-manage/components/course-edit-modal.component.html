@@ -2,147 +2,147 @@
   <div class="modal-dialog modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">Editar Curso</h5>
-        <button type="button" class="btn-close" (click)="close()" aria-label="Cerrar"></button>
+        <h5 class="modal-title">{{ 'teacherManage.courseEdit.title' | t }}</h5>
+        <button type="button" class="btn-close" (click)="close()" [attr.aria-label]="'teacherManage.common.close' | t"></button>
       </div>
       <form [formGroup]="form" (ngSubmit)="save()" class="d-flex flex-column overflow-hidden">
         <div class="modal-body">
-          @if (errorMessage) {
-            <div class="alert alert-danger" role="alert">{{ errorMessage }}</div>
+          @if (errorMessage()) {
+            <div class="alert alert-danger" role="alert">{{ errorMessage() }}</div>
           }
           <div class="mb-3">
-            <label for="courseTitle" class="form-label">Título *</label>
-            <input type="text" class="form-control" id="courseTitle" formControlName="title" placeholder="Ej: Español A1" />
+            <label for="courseTitle" class="form-label">{{ 'teacherManage.courseEdit.titleLabel' | t }}</label>
+            <input type="text" class="form-control" id="courseTitle" formControlName="title" [attr.placeholder]="'teacherManage.courseEdit.titlePlaceholder' | t" />
           </div>
           <div class="mb-3">
-            <label for="courseDescription" class="form-label">Descripción</label>
-            <textarea class="form-control" id="courseDescription" formControlName="description" rows="3" placeholder="Descripción del curso"></textarea>
+            <label for="courseDescription" class="form-label">{{ 'teacherManage.courseEdit.description' | t }}</label>
+            <textarea class="form-control" id="courseDescription" formControlName="description" rows="3" [attr.placeholder]="'teacherManage.courseEdit.descriptionPlaceholder' | t"></textarea>
           </div>
 
           <div class="mb-3">
-            <label for="courseCover" class="form-label">Imagen de portada</label>
+            <label for="courseCover" class="form-label">{{ 'teacherManage.courseEdit.cover' | t }}</label>
             <input id="courseCover" type="file" class="form-control" [accept]="imageAccept" [disabled]="isSaving" (change)="onImageFile($event)">
             <app-image-search [initialQuery]="form.controls.title.value || ''" [disabled]="isSaving" (imageSelected)="selectImage($event)" />
             @if (coverPreview(); as cover) {
-              <img [src]="cover" alt="Vista previa de la portada del curso" class="img-thumbnail mt-2" style="max-height: 160px">
+              <img [src]="cover" [attr.alt]="'teacherManage.courseEdit.coverAlt' | t" class="img-thumbnail mt-2" style="max-height: 160px">
             }
             @if (imageFile) {
-              <button type="button" class="btn btn-sm btn-link" [disabled]="isSaving" (click)="selectImage(null)">Descartar cambio de imagen</button>
+              <button type="button" class="btn btn-sm btn-link" [disabled]="isSaving" (click)="selectImage(null)">{{ 'teacherManage.courseEdit.discardImage' | t }}</button>
             }
           </div>
           <div class="mb-3">
-            <label for="courseIntroVideo" class="form-label">Video de bienvenida (YouTube, Vimeo o Bunny)</label>
+            <label for="courseIntroVideo" class="form-label">{{ 'teacherManage.courseEdit.introVideo' | t }}</label>
             <input type="url" class="form-control" id="courseIntroVideo" formControlName="introVideoUrl"
                    placeholder="https://www.youtube.com/watch?v=…" aria-describedby="courseIntroVideoHelp" />
-            <div class="form-text" id="courseIntroVideoHelp">Pega el link del video. Se muestra en la página de venta y como primer ítem del curso. Vacío = sin video.</div>
+            <div class="form-text" id="courseIntroVideoHelp">{{ 'teacherManage.courseEdit.introVideoHelp' | t }}</div>
             @if (savedIntroVideo(); as video) {
-              <div class="mt-2"><app-video-embed [url]="video" title="Vista previa del video de bienvenida" /></div>
+              <div class="mt-2"><app-video-embed [url]="video" [title]="'teacherManage.courseEdit.introVideoPreview' | t" /></div>
             }
           </div>
 
-          <h6 class="eyebrow mt-4 mb-3">Venta</h6>
+          <h6 class="eyebrow mt-4 mb-3">{{ 'teacherManage.courseEdit.sales' | t }}</h6>
           <div class="row g-3 mb-3">
             <div class="col-7">
-              <label for="coursePrice" class="form-label">Precio</label>
+              <label for="coursePrice" class="form-label">{{ 'teacherManage.courseEdit.price' | t }}</label>
               <input type="number" class="form-control" id="coursePrice" formControlName="price" min="0" step="0.01"
                      [class.is-invalid]="form.controls.price.invalid && form.controls.price.touched" />
-              <div class="form-text">0 = curso gratis.</div>
+              <div class="form-text">{{ 'teacherManage.courseEdit.priceHelp' | t }}</div>
             </div>
             <div class="col-5">
-              <label for="courseCurrency" class="form-label">Moneda</label>
+              <label for="courseCurrency" class="form-label">{{ 'teacherManage.courseEdit.currency' | t }}</label>
               <select class="form-select" id="courseCurrency" formControlName="currency">
                 @for (c of currencies; track c.code) {
-                  <option [value]="c.code">{{ c.label }}</option>
+                  <option [value]="c.code">{{ c.label | t }}</option>
                 }
               </select>
             </div>
           </div>
           <div class="mb-3">
-            <label for="courseSlug" class="form-label">Slug (URL de la página de venta)</label>
-            <input type="text" class="form-control" id="courseSlug" formControlName="slug" placeholder="ej: learn-spanish-short-film"
+            <label for="courseSlug" class="form-label">{{ 'teacherManage.courseEdit.slug' | t }}</label>
+            <input type="text" class="form-control" id="courseSlug" formControlName="slug" [attr.placeholder]="'teacherManage.courseEdit.slugPlaceholder' | t"
                    [class.is-invalid]="form.controls.slug.invalid" />
             @if (form.controls.slug.invalid) {
-              <div class="invalid-feedback">Solo minúsculas, números y guiones (sin espacios).</div>
+              <div class="invalid-feedback">{{ 'teacherManage.courseEdit.slugInvalid' | t }}</div>
             } @else {
-              <div class="form-text">Si lo dejas vacío se genera desde el título.</div>
+              <div class="form-text">{{ 'teacherManage.courseEdit.slugHelp' | t }}</div>
             }
             @if (savedSlug(); as slug) {
-              <a class="d-inline-block mt-1 small" [href]="'/courses/' + slug" target="_blank" rel="noopener">Ver página de venta</a>
+              <a class="d-inline-block mt-1 small" [href]="'/courses/' + slug" target="_blank" rel="noopener">{{ 'teacherManage.courseEdit.viewSalesPage' | t }}</a>
             }
           </div>
           <div class="mb-3">
-            <label for="courseSales" class="form-label">Texto de venta (en inglés)</label>
+            <label for="courseSales" class="form-label">{{ 'teacherManage.courseEdit.salesText' | t }}</label>
             <textarea class="form-control" id="courseSales" formControlName="salesDescription" rows="5"
                       placeholder="What students will learn, who it's for…"></textarea>
           </div>
           <div class="form-check form-switch mb-3">
             <input class="form-check-input" type="checkbox" role="switch" id="coursePublished" formControlName="isPublished" />
-            <label class="form-check-label" for="coursePublished">Publicado (visible en el catálogo y a la venta)</label>
+            <label class="form-check-label" for="coursePublished">{{ 'teacherManage.courseEdit.published' | t }}</label>
           </div>
 
-          <h6 class="eyebrow mt-4 mb-3">Serie de cursos</h6>
+          <h6 class="eyebrow mt-4 mb-3">{{ 'teacherManage.courseEdit.series' | t }}</h6>
           <div class="mb-3">
-            <label for="courseNext" class="form-label">Curso siguiente de la serie</label>
+            <label for="courseNext" class="form-label">{{ 'teacherManage.courseEdit.nextCourse' | t }}</label>
             <select class="form-select" id="courseNext" formControlName="nextCourseId" aria-describedby="courseNextHelp">
-              <option [ngValue]="null">Ninguno</option>
+              <option [ngValue]="null">{{ 'teacherManage.courseEdit.none' | t }}</option>
               @for (c of otherCourses(); track c.id) {
                 <option [ngValue]="c.id">{{ c.title }}</option>
               }
             </select>
-            <div class="form-text" id="courseNextHelp">Se ofrece al alumno cuando termina este curso y aparece en la página de venta («Part of a series»).</div>
+            <div class="form-text" id="courseNextHelp">{{ 'teacherManage.courseEdit.nextCourseHelp' | t }}</div>
           </div>
           @if (form.controls.nextCourseId.value != null) {
             <div class="mb-3">
-              <label for="courseNextCoupon" class="form-label">Cupón para ofrecerlo</label>
+              <label for="courseNextCoupon" class="form-label">{{ 'teacherManage.courseEdit.coupon' | t }}</label>
               <select class="form-select" id="courseNextCoupon" formControlName="nextCourseCouponId" aria-describedby="courseNextCouponHelp">
-                <option [ngValue]="null">Sin cupón</option>
+                <option [ngValue]="null">{{ 'teacherManage.courseEdit.noCoupon' | t }}</option>
                 @for (c of offerCoupons(); track c.id) {
                   <option [ngValue]="c.id">{{ c.code }}</option>
                 }
               </select>
-              <div class="form-text" id="courseNextCouponHelp">Solo se listan tus cupones activos que sirven para ese curso. Se aplica solo desde el link que ve el alumno.</div>
+              <div class="form-text" id="courseNextCouponHelp">{{ 'teacherManage.courseEdit.couponHelp' | t }}</div>
             </div>
           }
 
-          <h6 class="eyebrow mt-4 mb-3">Venta</h6>
-          <p class="form-text mt-0">Cobrar con Hotmart: Hotmart procesa el pago y SpanishNow da acceso al curso cuando recibe el aviso de compra. Déjalo vacío para no usar Hotmart.</p>
+          <h6 class="eyebrow mt-4 mb-3">{{ 'teacherManage.courseEdit.sales' | t }}</h6>
+          <p class="form-text mt-0">{{ 'teacherManage.courseEdit.hotmartIntro' | t }}</p>
           <div class="mb-3">
-            <label for="hotmartProduct" class="form-label">ID del producto en Hotmart</label>
+            <label for="hotmartProduct" class="form-label">{{ 'teacherManage.courseEdit.hotmartProduct' | t }}</label>
             <input class="form-control" id="hotmartProduct" formControlName="hotmartProductId" maxlength="40" autocomplete="off"
                    [class.is-invalid]="form.controls.hotmartProductId.invalid && form.controls.hotmartProductId.touched" />
             @if (form.controls.hotmartProductId.invalid && form.controls.hotmartProductId.touched) {
-              <div class="invalid-feedback">Solo letras y números, hasta 40 caracteres.</div>
+              <div class="invalid-feedback">{{ 'teacherManage.courseEdit.hotmartProductInvalid' | t }}</div>
             }
           </div>
           <div class="mb-3">
-            <label for="hotmartUrl" class="form-label">Link de pago de Hotmart (pay.hotmart.com/…)</label>
+            <label for="hotmartUrl" class="form-label">{{ 'teacherManage.courseEdit.hotmartUrl' | t }}</label>
             <input class="form-control" id="hotmartUrl" type="url" formControlName="hotmartCheckoutUrl" maxlength="500" autocomplete="off"
                    placeholder="https://pay.hotmart.com/…" />
-            <div class="form-text">Si pones el link, también hace falta el ID del producto para que el aviso de compra encuentre este curso.</div>
+            <div class="form-text">{{ 'teacherManage.courseEdit.hotmartUrlHelp' | t }}</div>
           </div>
           @if (hotmartSetup(); as hs) {
             <div class="mb-3">
-              <label for="hotmartWebhook" class="form-label">URL del webhook</label>
+              <label for="hotmartWebhook" class="form-label">{{ 'teacherManage.courseEdit.webhookUrl' | t }}</label>
               <div class="input-group">
                 <input class="form-control" id="hotmartWebhook" [value]="hs.webhookUrl" readonly />
-                <button type="button" class="btn btn-secondary" (click)="copyWebhook()">{{ webhookCopied() ? 'Copiada' : 'Copiar' }}</button>
+                <button type="button" class="btn btn-secondary" (click)="copyWebhook()">{{ (webhookCopied() ? 'teacherManage.courseEdit.copied' : 'teacherManage.courseEdit.copy') | t }}</button>
               </div>
               @if (hs.configured) {
-                <div class="form-text">El token de Hotmart ya está configurado en el servidor.</div>
+                <div class="form-text">{{ 'teacherManage.courseEdit.tokenConfigured' | t }}</div>
               } @else {
-                <div class="alert alert-warning mt-2 mb-0" role="note">El servidor todavía no tiene el token de Hotmart (HOTMART_HOTTOK). Hasta que se configure, las compras no darán acceso.</div>
+                <div class="alert alert-warning mt-2 mb-0" role="note">{{ 'teacherManage.courseEdit.tokenMissing' | t }}</div>
               }
             </div>
             <ol class="small mb-3">
-              <li>En Hotmart, ve a Herramientas → Webhook y agrega la URL de arriba con los eventos de compra aprobada, compra completa, reembolso y contracargo.</li>
-              <li>En el producto, ve a Área de miembros → externa y pega la URL de SpanishNow.</li>
-              <li>En la página de agradecimiento del producto, usa <code>/checkout/thanks</code> de este sitio.</li>
+              <li>{{ 'teacherManage.courseEdit.step1' | t }}</li>
+              <li>{{ 'teacherManage.courseEdit.step2' | t }}</li>
+              <li>{{ 'teacherManage.courseEdit.step3Before' | t }} <code>/checkout/thanks</code> {{ 'teacherManage.courseEdit.step3After' | t }}</li>
             </ol>
           }
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" (click)="close()">Cancelar</button>
-          <button type="submit" class="btn btn-primary" [disabled]="form.invalid || isSaving">Guardar Cambios</button>
+          <button type="button" class="btn btn-secondary" (click)="close()">{{ 'teacherManage.common.cancel' | t }}</button>
+          <button type="submit" class="btn btn-primary" [disabled]="form.invalid || isSaving">{{ 'teacherManage.courseEdit.save' | t }}</button>
         </div>
       </form>
     </div>

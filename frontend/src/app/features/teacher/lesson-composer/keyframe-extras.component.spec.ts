@@ -1,3 +1,4 @@
+import { I18nService } from '../../../core/i18n/i18n.service';
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -17,6 +18,7 @@ describe('KeyframeExtrasComponent', () => {
   function setup(block: LessonBlock, saved: LessonBlock | null, dirty = false, ensureSaved = async () => true): void {
     TestBed.configureTestingModule({ imports: [KeyframeExtrasComponent], providers: [provideHttpClient(), provideHttpClientTesting()] });
     http = TestBed.inject(HttpTestingController);
+    TestBed.inject(I18nService).setLocale('es');
     fixture = TestBed.createComponent(KeyframeExtrasComponent);
     component = fixture.componentInstance;
     audioChange = []; tooltipsChange = [];
@@ -54,13 +56,13 @@ describe('KeyframeExtrasComponent', () => {
       expect(component.audioError()).toBe('');
     });
 
-    it('un error 502 muestra el mensaje del backend', async () => {
+    it('un error del backend con código conocido se traduce', async () => {
       setup(kf(), kf());
       pickFile(new File(['x'], 'a.mp3', { type: 'audio/mpeg' }));
-      audioReq().flush({ error: 'No se pudo subir el audio a Cloudinary' }, { status: 502, statusText: 'Bad Gateway' });
+      audioReq().flush({ code: 'provider_unavailable' }, { status: 502, statusText: 'Bad Gateway' });
       await fixture.whenStable();
       fixture.detectChanges();
-      expect(el().querySelector('[role=alert]')?.textContent).toContain('Cloudinary');
+      expect(el().querySelector('[role=alert]')?.textContent).toContain('servicio externo');
       expect(audioChange).toEqual([]);
       expect(component.uploading()).toBe(false);
     });
@@ -180,14 +182,14 @@ describe('KeyframeExtrasComponent', () => {
       expect(tooltipsChange[1].tooltips.map((t: KeyframeTooltip) => t.id)).toEqual([1]);
     });
 
-    it('muestra el error del backend si falla la creación', async () => {
+    it('muestra el error traducido si falla la creación', async () => {
       setup(kf(), kf({ tooltips: [] }));
       select(0, 5);
       component.newContent.set('x');
       const p = component.createTooltip();
-      http.expectOne(r => r.url.endsWith('/tooltips')).flush({ error: 'El texto seleccionado no coincide' }, { status: 400, statusText: 'Bad Request' });
+      http.expectOne(r => r.url.endsWith('/tooltips')).flush({ code: 'validation_failed' }, { status: 400, statusText: 'Bad Request' });
       await p;
-      expect(component.tooltipError()).toContain('no coincide');
+      expect(component.tooltipError()).toContain('Revisa los datos');
     });
   });
 });

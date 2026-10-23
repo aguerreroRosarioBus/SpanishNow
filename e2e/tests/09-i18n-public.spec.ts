@@ -52,5 +52,5 @@ test('afiliados y certificado conservan nombres, código, moneda, notas y fechas
   await expect(page.getByText('Certificado válido', {exact: true})).toBeVisible();
   await expect(page.getByRole('heading', {name: 'José original', exact: true})).toBeVisible();
   await expect(page.getByText('K7QM-X2PD-9TNA', {exact: true})).toBeVisible();
-  await expect(page.getByRole('link', {name: 'Descargar PDF'})).toHaveAttribute('href', /K7QM-X2PD-9TNA\/pdf$/);
+  await expect(page.getByRole('link', {name: 'Descargar PDF'})).toHaveAttribute('href', /K7QM-X2PD-9TNA\/pdf\?lang=es$/);
 });

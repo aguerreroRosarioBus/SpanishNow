@@ -5,6 +5,8 @@ import { MaterialService, formatFileSize } from '../../../../core/services/mater
 import { ToastService } from '../../../../core/services/toast.service';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { unitDisplayTitle } from '../../../../shared/utils/unit-title';
+import { I18nService } from '../../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { CourseContentStore } from '../course-content.store';
 import { CourseManageStore } from '../course-manage.store';
 
@@ -16,7 +18,7 @@ interface Destination { value: string; label: string; group: string; }
 @Component({
   selector: 'app-materials-modal',
   standalone: true,
-  imports: [FormsModule, IconComponent],
+  imports: [FormsModule, IconComponent, TranslatePipe],
   templateUrl: './materials-modal.component.html'
 })
 export class MaterialsModalComponent implements OnInit {
@@ -24,24 +26,31 @@ export class MaterialsModalComponent implements OnInit {
   private content = inject(CourseContentStore);
   private api = inject(MaterialService);
   private toast = inject(ToastService);
+  private i18n = inject(I18nService);
 
   /** Unidad desde la que se abrió; null = materiales de todo el curso. */
   unit = input<Unit | null>(null);
 
-  readonly size = formatFileSize;
+  size = (bytes: number): string => formatFileSize(bytes, this.i18n.intlLocale());
   title = signal('');
   destination = signal('course');
   file = signal<File | null>(null);
+  /** Clave I18N del error del archivo elegido ('' = sin error). */
   fileError = signal('');
   isUploading = signal(false);
-  errorMessage = signal('');
+  /** Error crudo de la subida: se traduce al leer, por código, en el idioma vigente. */
+  private uploadFailure = signal<{ error: unknown } | null>(null);
+  errorMessage = computed(() => {
+    const failure = this.uploadFailure();
+    return failure ? this.i18n.errorMessage(failure.error, 'teacherManage.materials.uploadError') : '';
+  });
   editingId = signal<number | null>(null);
   editingTitle = signal('');
   fileInputKey = signal(0);
 
   heading = computed(() => {
     const unit = this.unit();
-    return unit ? `Materiales · ${unitDisplayTitle(unit.title)}` : 'Materiales del curso';
+    return unit ? this.i18n.t('teacherManage.materials.headingUnit', { unit: unitDisplayTitle(unit.title) }) : this.i18n.t('teacherManage.materials.headingCourse');
   });
 
   /** Unidades en alcance: la abierta, o todas si se abrió desde el curso. */
@@ -51,12 +60,12 @@ export class MaterialsModalComponent implements OnInit {
   });
 
   destinations = computed<Destination[]>(() => {
-    const list: Destination[] = [{ value: 'course', label: 'Todo el curso', group: 'Curso' }];
+    const list: Destination[] = [{ value: 'course', label: this.i18n.t('teacherManage.materials.wholeCourse'), group: this.i18n.t('teacherManage.materials.groupCourse') }];
     for (const unit of this.scopedUnits()) {
       const unitTitle = unitDisplayTitle(unit.title);
-      list.push({ value: `unit:${unit.id}`, label: `Unidad: ${unitTitle}`, group: unitTitle });
+      list.push({ value: `unit:${unit.id}`, label: this.i18n.t('teacherManage.materials.unitOption', { title: unitTitle }), group: unitTitle });
       for (const story of unit.stories ?? []) {
-        list.push({ value: `story:${story.id}`, label: `Historia: ${story.title}`, group: unitTitle });
+        list.push({ value: `story:${story.id}`, label: this.i18n.t('teacherManage.materials.storyOption', { title: story.title }), group: unitTitle });
       }
     }
     return list;
@@ -73,8 +82,8 @@ export class MaterialsModalComponent implements OnInit {
       .filter(m => m.storyId ? storyIds.has(m.storyId) : m.unitId ? unitIds.has(m.unitId) : !onlyUnit)
       .map(m => ({
         material: m,
-        where: m.storyId ? labelByValue.get(`story:${m.storyId}`) ?? 'Historia'
-          : m.unitId ? labelByValue.get(`unit:${m.unitId}`) ?? 'Unidad' : 'Todo el curso'
+        where: m.storyId ? labelByValue.get(`story:${m.storyId}`) ?? this.i18n.t('teacherManage.materials.whereStory')
+          : m.unitId ? labelByValue.get(`unit:${m.unitId}`) ?? this.i18n.t('teacherManage.materials.whereUnit') : this.i18n.t('teacherManage.materials.wholeCourse')
       }));
   });
 
@@ -92,8 +101,8 @@ export class MaterialsModalComponent implements OnInit {
     this.file.set(null);
     if (!file) return;
     const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-    if (!isPdf) this.fileError.set('Solo se admiten archivos PDF.');
-    else if (file.size > MAX_MATERIAL_BYTES) this.fileError.set('El PDF supera el máximo de 20 MB.');
+    if (!isPdf) this.fileError.set('teacherManage.materials.onlyPdf');
+    else if (file.size > MAX_MATERIAL_BYTES) this.fileError.set('teacherManage.materials.pdfTooBig');
     else {
       this.file.set(file);
       if (!this.title().trim()) this.title.set(file.name.replace(/\.pdf$/i, '').slice(0, 200));
@@ -114,7 +123,7 @@ export class MaterialsModalComponent implements OnInit {
     else if (kind === 'story') formData.append('storyId', id);
 
     this.isUploading.set(true);
-    this.errorMessage.set('');
+    this.uploadFailure.set(null);
     this.api.upload(this.store.courseId(), formData).subscribe({
       next: material => {
         this.content.materials.update(list => [...list, material]);
@@ -122,11 +131,11 @@ export class MaterialsModalComponent implements OnInit {
         this.file.set(null);
         this.fileInputKey.update(k => k + 1);
         this.isUploading.set(false);
-        this.toast.success('Material subido');
+        this.toast.success(this.i18n.t('teacherManage.materials.uploaded'));
       },
       error: error => {
         this.isUploading.set(false);
-        this.errorMessage.set(error?.error?.error || 'No se pudo subir el PDF. Intenta nuevamente.');
+        this.uploadFailure.set({ error });
       }
     });
   }
@@ -146,23 +155,23 @@ export class MaterialsModalComponent implements OnInit {
       next: updated => {
         this.content.materials.update(list => list.map(m => m.id === material.id ? { ...m, ...updated, title } : m));
         this.cancelRename();
-        this.toast.success('Material renombrado');
+        this.toast.success(this.i18n.t('teacherManage.materials.renamed'));
       },
-      error: error => this.toast.error(error?.error?.error || 'No se pudo renombrar el material')
+      error: error => this.toast.error(this.i18n.errorMessage(error, 'teacherManage.materials.renameError'))
     });
   }
 
   preview(material: Material): void { this.api.download(material.id); }
 
   remove(material: Material): void {
-    this.store.confirm('Eliminar material', `¿Eliminar «${material.title}»? Los alumnos dejarán de poder descargarlo.`, 'Eliminar material', () => {
+    this.store.confirm('teacherManage.materials.deleteTitle', 'teacherManage.materials.deleteMessage', 'teacherManage.materials.deleteConfirm', () => {
       this.api.remove(material.id).subscribe({
         next: () => {
           this.content.materials.update(list => list.filter(m => m.id !== material.id));
-          this.toast.success('Material eliminado');
+          this.toast.success(this.i18n.t('teacherManage.materials.deleted'));
         },
-        error: () => this.toast.error('No se pudo eliminar el material')
+        error: () => this.toast.error(this.i18n.t('teacherManage.materials.deleteError'))
       });
-    }, 'danger');
+    }, 'danger', { title: material.title });
   }
 }

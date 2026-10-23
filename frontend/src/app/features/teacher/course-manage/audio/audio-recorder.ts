@@ -14,7 +14,8 @@ export class AudioRecorder {
   private recorder: MediaRecorder | null = null;
   private chunks: Blob[] = [];
 
-  constructor(private notify: { success(m: string): void; error(m: string): void }, public messages: AudioRecorderMessages) {}
+  /** `messages` es una función para leer los textos en el idioma vigente al momento de avisar. */
+  constructor(private notify: { success(m: string): void; error(m: string): void }, public messages: () => AudioRecorderMessages) {}
 
   async start(): Promise<void> {
     try {
@@ -33,10 +34,10 @@ export class AudioRecorder {
       };
       this.recorder.start();
       this.isRecording.set(true);
-      this.notify.success(this.messages.started);
+      this.notify.success(this.messages().started);
     } catch (error) {
       console.error('Error accessing microphone:', error);
-      this.notify.error(this.messages.micError);
+      this.notify.error(this.messages().micError);
     }
   }
 
@@ -44,7 +45,7 @@ export class AudioRecorder {
     if (this.recorder && this.recorder.state !== 'inactive') {
       this.recorder.stop();
       this.isRecording.set(false);
-      this.notify.success(this.messages.stopped);
+      this.notify.success(this.messages().stopped);
     }
   }
 

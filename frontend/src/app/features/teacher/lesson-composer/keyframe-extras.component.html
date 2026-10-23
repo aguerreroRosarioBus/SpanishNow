@@ -1,37 +1,37 @@
 <div class="kf-audio">
-  <label class="kf-label" [attr.for]="'audio-' + block().blockKey">Audio del fragmento</label>
+  <label class="kf-label" [attr.for]="'audio-' + block().blockKey">{{ 'teacherComposer.extras.audioLabel' | t }}</label>
   <input [id]="'audio-' + block().blockKey" type="file" accept="audio/*" [disabled]="disabled() || uploading()" (change)="onAudioFile($event)" [attr.aria-describedby]="'audio-help-' + block().blockKey">
   <p class="kf-help" [id]="'audio-help-' + block().blockKey">
-    {{ block().audioUrl ? 'Elige otro archivo para reemplazar el audio.' : 'Sube un archivo de audio (opcional).' }}
-    <ng-container *ngIf="dirty()"> Hay cambios sin guardar: se guardará el borrador antes de subir.</ng-container>
+    {{ (block().audioUrl ? 'teacherComposer.extras.audioReplace' : 'teacherComposer.extras.audioUpload') | t }}
+    <ng-container *ngIf="dirty()">{{ 'teacherComposer.extras.dirtyHelp' | t }}</ng-container>
   </p>
-  <p *ngIf="uploading()" class="kf-status" role="status">Procesando audio…</p>
+  <p *ngIf="uploading()" class="kf-status" role="status">{{ 'teacherComposer.extras.processing' | t }}</p>
   <p *ngIf="audioError()" class="kf-error" role="alert">{{ audioError() }}</p>
   <div *ngIf="block().audioUrl" class="kf-preview">
-    <audio [src]="block().audioUrl" controls preload="none" aria-label="Vista previa del audio del fragmento"></audio>
-    <button type="button" class="text-button" [disabled]="disabled() || uploading()" (click)="removeAudio()">Quitar audio</button>
+    <audio [src]="block().audioUrl" controls preload="none" [attr.aria-label]="'teacherComposer.extras.previewAria' | t"></audio>
+    <button type="button" class="text-button" [disabled]="disabled() || uploading()" (click)="removeAudio()">{{ 'teacherComposer.extras.removeAudio' | t }}</button>
   </div>
 </div>
 
 <details class="kf-tooltips">
-  <summary>Tooltips del fragmento ({{ tooltips().length }})</summary>
+  <summary>{{ 'teacherComposer.extras.summary' | t:{ count: tooltips().length } }}</summary>
   <p *ngIf="tooltipBlockReason()" class="kf-help" role="status">{{ tooltipBlockReason() }}</p>
 
   <ng-container *ngIf="!tooltipBlockReason()">
-    <label class="kf-label" [attr.for]="'sel-' + block().blockKey">Selecciona el texto (con el ratón o con Mayús + flechas)</label>
+    <label class="kf-label" [attr.for]="'sel-' + block().blockKey">{{ 'teacherComposer.extras.selectText' | t }}</label>
     <textarea [id]="'sel-' + block().blockKey" class="kf-select" rows="3" readonly [value]="savedText()" [disabled]="disabled()"
       (select)="onSelect($event)" (mouseup)="onSelect($event)" (keyup)="onSelect($event)" (blur)="onSelect($event)"></textarea>
     <p class="kf-help" aria-live="polite">
-      <ng-container *ngIf="selectedSnippet().trim(); else noSel">Selección: «{{ selectedSnippet() }}»<ng-container *ngIf="selectionOverlaps()"> — se solapa con un tooltip activo.</ng-container></ng-container>
-      <ng-template #noSel>Aún no hay texto seleccionado.</ng-template>
+      <ng-container *ngIf="selectedSnippet().trim(); else noSel">{{ 'teacherComposer.extras.selection' | t:{ text: selectedSnippet() } }}<ng-container *ngIf="selectionOverlaps()">{{ 'teacherComposer.extras.overlaps' | t }}</ng-container></ng-container>
+      <ng-template #noSel>{{ 'teacherComposer.extras.noSelection' | t }}</ng-template>
     </p>
-    <button *ngIf="!creating()" type="button" class="small-button" [disabled]="!canCreate()" (click)="startCreate()">Crear tooltip con la selección</button>
+    <button *ngIf="!creating()" type="button" class="small-button" [disabled]="!canCreate()" (click)="startCreate()">{{ 'teacherComposer.extras.createFromSelection' | t }}</button>
     <form *ngIf="creating()" class="kf-form" (ngSubmit)="createTooltip()">
-      <label class="kf-label" [attr.for]="'new-' + block().blockKey">Contenido del tooltip para «{{ selectedSnippet() }}»</label>
+      <label class="kf-label" [attr.for]="'new-' + block().blockKey">{{ 'teacherComposer.extras.newContent' | t:{ text: selectedSnippet() } }}</label>
       <textarea [id]="'new-' + block().blockKey" rows="2" name="content" [ngModel]="newContent()" (ngModelChange)="newContent.set($event)" maxlength="500"></textarea>
       <div class="kf-actions">
-        <button type="submit" class="small-button" [disabled]="tooltipBusy() || !newContent().trim()">{{ tooltipBusy() ? 'Guardando…' : 'Guardar tooltip' }}</button>
-        <button type="button" class="text-button" (click)="cancelCreate()">Cancelar</button>
+        <button type="submit" class="small-button" [disabled]="tooltipBusy() || !newContent().trim()">{{ (tooltipBusy() ? 'teacherComposer.extras.saving' : 'teacherComposer.extras.saveTooltip') | t }}</button>
+        <button type="button" class="text-button" (click)="cancelCreate()">{{ 'teacherComposer.extras.cancel' | t }}</button>
       </div>
     </form>
   </ng-container>
@@ -42,23 +42,23 @@
     <li *ngFor="let tooltip of tooltips()" [class.kf-inactive]="!tooltip.isActive">
       <div class="kf-item-head">
         <strong>«{{ tooltip.selectedText }}»</strong>
-        <span *ngIf="!tooltip.isActive" class="kf-badge">Inactivo</span>
+        <span *ngIf="!tooltip.isActive" class="kf-badge">{{ 'teacherComposer.extras.inactive' | t }}</span>
       </div>
-      <p *ngIf="!tooltip.isActive" class="kf-help">El texto del keyframe cambió y este tooltip ya no coincide; el alumno no lo verá.</p>
+      <p *ngIf="!tooltip.isActive" class="kf-help">{{ 'teacherComposer.extras.inactiveHelp' | t }}</p>
       <ng-container *ngIf="editingId() !== tooltip.id; else editing">
         <p class="kf-content">{{ tooltip.tooltipContent }}</p>
         <div class="kf-actions">
-          <button type="button" class="text-button" [disabled]="disabled() || tooltipBusy()" [attr.aria-label]="'Editar tooltip de ' + tooltip.selectedText" (click)="startEdit(tooltip)">Editar</button>
-          <button type="button" class="text-button kf-danger" [disabled]="disabled() || tooltipBusy()" [attr.aria-label]="'Eliminar tooltip de ' + tooltip.selectedText" (click)="deleteTooltip(tooltip)">Eliminar</button>
+          <button type="button" class="text-button" [disabled]="disabled() || tooltipBusy()" [attr.aria-label]="'teacherComposer.extras.editAria' | t:{ text: tooltip.selectedText }" (click)="startEdit(tooltip)">{{ 'teacherComposer.extras.edit' | t }}</button>
+          <button type="button" class="text-button kf-danger" [disabled]="disabled() || tooltipBusy()" [attr.aria-label]="'teacherComposer.extras.deleteAria' | t:{ text: tooltip.selectedText }" (click)="deleteTooltip(tooltip)">{{ 'teacherComposer.extras.delete' | t }}</button>
         </div>
       </ng-container>
       <ng-template #editing>
         <form class="kf-form" (ngSubmit)="saveEdit(tooltip)">
-          <label class="kf-label" [attr.for]="'edit-' + tooltip.id">Contenido del tooltip</label>
+          <label class="kf-label" [attr.for]="'edit-' + tooltip.id">{{ 'teacherComposer.extras.contentLabel' | t }}</label>
           <textarea [id]="'edit-' + tooltip.id" rows="2" name="edit" [ngModel]="editContent()" (ngModelChange)="editContent.set($event)" maxlength="500"></textarea>
           <div class="kf-actions">
-            <button type="submit" class="small-button" [disabled]="tooltipBusy() || !editContent().trim()">Guardar</button>
-            <button type="button" class="text-button" (click)="cancelEdit()">Cancelar</button>
+            <button type="submit" class="small-button" [disabled]="tooltipBusy() || !editContent().trim()">{{ 'teacherComposer.extras.save' | t }}</button>
+            <button type="button" class="text-button" (click)="cancelEdit()">{{ 'teacherComposer.extras.cancel' | t }}</button>
           </div>
         </form>
       </ng-template>

@@ -91,7 +91,8 @@ export class I18nService {
       return this.t(`errors.${code}`, params);
     }
     if (response?.status === 0) return this.t('errors.network');
-    return this.t(fallbackKey);
+    const byStatus = response?.status === 403 ? 'errors.forbidden' : response?.status === 409 ? 'errors.version_conflict' : response?.status === 429 ? 'errors.rate_limited' : null;
+    return this.t(byStatus ?? fallbackKey);
   }
 
   formatNumber(value: number, options?: Intl.NumberFormatOptions): string {
