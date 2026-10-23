@@ -18,6 +18,10 @@ router.get('/integrations/zoom/callback', requireFeature('zoom'), wrap(async (re
       res.redirect(`${target}?zoom=zoom_oauth_denied`);
       return;
     }
+    if (error.code === 'zoom_oauth_scopes_missing') {
+      res.redirect(`${target}?zoom=zoom_oauth_scopes_missing`);
+      return;
+    }
     // Un callback inválido es un resultado de OAuth, no una respuesta JSON de API.
     // El código público es estable y no filtra detalles del proveedor.
     if (error.statusCode === 400 || error.code === 'zoom_oauth_invalid') {

@@ -140,14 +140,15 @@ test('401 persistente tras refresh marca el grant en needs_attention', async () 
   expect((await c.rowFor(teacher.id)).toJSON()).toMatchObject({ status: 'needs_attention', credentials: null, lastError: 'zoom_revoked' });
 });
 
-test.each([['zoom_provider_unavailable', 503], ['zoom_unauthorized', 401]])('callback redirige %s con un código estable', async (code, statusCode) => {
+test.each([['zoom_provider_unavailable', 503, 'zoom_provider_unavailable'], ['zoom_unauthorized', 401, 'zoom_provider_unavailable'],
+  ['zoom_oauth_scopes_missing', 400, 'zoom_oauth_scopes_missing']])('callback redirige %s con un código estable', async (code, statusCode, redirectCode) => {
   const previous = process.env.FRONTEND_URL;
   process.env.FRONTEND_URL = 'http://localhost:4200';
   const callback = jest.spyOn(c, 'callback').mockRejectedValueOnce(new adapter.ZoomError(code, statusCode));
   try {
     const response = await request(app).get('/api/integrations/zoom/callback').query({ state: 'state' });
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('http://localhost:4200/teacher/integrations/zoom?zoom=zoom_provider_unavailable');
+    expect(response.headers.location).toBe(`http://localhost:4200/teacher/integrations/zoom?zoom=${redirectCode}`);
     expect(response.headers['cache-control']).toBe('no-store');
   } finally {
     callback.mockRestore();

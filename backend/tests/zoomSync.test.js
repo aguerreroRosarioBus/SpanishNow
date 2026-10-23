@@ -167,6 +167,13 @@ test('meeting.updated emitido por el sync no vuelve a encolar Zoom ni Calendar',
     expect(await M.OutboxJob.count({ where: { aggregateId: c.session.id, topic: 'zoom.sync' } })).toBe(zoomJobsBefore);
     expect(await M.OutboxJob.count({ where: { aggregateId: c.session.id, topic: 'calendar.sync' } })).toBe(calendarJobsBefore);
     expect((await refFor(c.session.id)).status).toBe('ready');
+
+    const partial = await webhook({ event: 'meeting.updated', event_ts: Date.now() + 1, payload: { account_id: tokens.accountId,
+      object: { id: ref.externalId } } });
+    expect(partial.status).toBe(200);
+    expect(await M.OutboxJob.count({ where: { aggregateId: c.session.id, topic: 'zoom.sync' } })).toBe(zoomJobsBefore);
+    expect(await M.OutboxJob.count({ where: { aggregateId: c.session.id, topic: 'calendar.sync' } })).toBe(calendarJobsBefore);
+    expect((await refFor(c.session.id)).status).toBe('ready');
   } finally { delete process.env.FEATURE_GOOGLE_CALENDAR; }
 });
 

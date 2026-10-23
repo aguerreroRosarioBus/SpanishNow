@@ -61,6 +61,10 @@ describe('W08 UI propia', () => {
     const complete = vi.fn(); const f = setupCard({ complete }, { zoom: 'zoom_oauth_invalid' });
     expect(complete).not.toHaveBeenCalled(); expect(f.componentInstance.failure()).toEqual({ error: { code: 'zoom_oauth_invalid' } });
   });
+  it('callback con scopes faltantes conserva el código sin completar ningún grant', () => {
+    const complete = vi.fn(); const f = setupCard({ complete }, { zoom: 'zoom_oauth_scopes_missing' });
+    expect(complete).not.toHaveBeenCalled(); expect(f.componentInstance.failure()).toEqual({ error: { code: 'zoom_oauth_scopes_missing' } });
+  });
   it('callback con Zoom no disponible muestra el código sin completar ningún grant', () => {
     const complete = vi.fn(); const f = setupCard({ complete }, { zoom: 'zoom_provider_unavailable' });
     expect(complete).not.toHaveBeenCalled(); expect(f.componentInstance.failure()).toEqual({ error: { code: 'zoom_provider_unavailable' } });
@@ -93,9 +97,11 @@ describe('W08 API y errores seguros', () => {
     i18n.setLocale('en'); expect(api.error({ error: { code: 'zoom_capacity_exceeded' } })).toContain('class length');
     expect(api.error({ error: { code: 'provider_unavailable' } })).toContain('not configured');
     expect(api.error({ error: { code: 'zoom_provider_unavailable' } })).toContain('could not complete');
+    expect(api.error({ error: { code: 'zoom_oauth_scopes_missing' } })).toContain('requested permissions');
     i18n.setLocale('es'); expect(api.error({ error: { code: 'zoom_invalid_link' } })).toContain('participante');
     expect(api.error({ error: { code: 'provider_unavailable' } })).toContain('todavía no está configurado');
     expect(api.error({ error: { code: 'zoom_provider_unavailable' } })).toContain('no pudo completar');
+    expect(api.error({ error: { code: 'zoom_oauth_scopes_missing' } })).toContain('permisos solicitados');
     expect(api.error({ error: { error: 'https://zoom.us/s/secret?zak=secret' } })).not.toContain('secret');
     api.manual(7, 2, null).subscribe(); const request = TestBed.inject(HttpTestingController).expectOne(r => r.url.endsWith('/zoom/sessions/7/manual-link'));
     expect(request.request.method).toBe('PUT'); expect(request.request.body).toEqual({ version: 2, joinUrl: null }); request.flush({ manual: false });

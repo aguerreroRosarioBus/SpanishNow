@@ -29,7 +29,7 @@ export class ZoomCardComponent {
     } else {
       this.refresh();
       const callbackError = route.snapshot.queryParamMap.get('zoom');
-      if (callbackError === 'zoom_oauth_denied' || callbackError === 'zoom_oauth_invalid'
+      if (callbackError === 'zoom_oauth_denied' || callbackError === 'zoom_oauth_invalid' || callbackError === 'zoom_oauth_scopes_missing'
         || callbackError === 'zoom_provider_unavailable' || callbackError === 'forbidden') {
         void router.navigate([], { relativeTo: route, queryParams: {}, replaceUrl: true });
         this.failure.set({ error: { code: callbackError } });
