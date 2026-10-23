@@ -51,6 +51,7 @@ app.use((req, res, next) => {
 });
 
 // Routes
+app.use('/api', require('./routes/zoom.routes')); // W08: rutas propias y preflight de capacidad
 app.use('/api', require('./routes/legal.routes'));
 app.use('/api', require('./routes/classCatalog.routes')); // W05: catálogo versionado y configuración de clases
 app.use('/api', require('./routes/classOffers.routes')); // W05: ofertas inmutables del chat
