@@ -5,6 +5,10 @@
 #   scripts/run-main.sh         update, start backend + LAN frontend (HTTPS), then follow origin/main
 #   scripts/run-main.sh sync    update once (pull, deps, migrations, env check) and exit
 #
+# Public access: while .run/public exists (`spanishnow public on`) it also runs the Cloudflare tunnel
+# that serves the frontend at https://$PUBLIC_HOST (Zoom and Hotmart need a public HTTPS URL), and the
+# backend gets FRONTEND_URL=https://$PUBLIC_HOST. SIGUSR1 makes it check the marker right away.
+#
 # On every new commit in origin/main it fast-forwards, runs `npm ci` only when a package-lock changed,
 # `db:migrate` only when there are new migrations, restarts only what needs it (nodemon and ng serve
 # reload code by themselves) and warns when backend/.env.example gains a variable backend/.env lacks.
@@ -14,7 +18,9 @@
 #      RUN_MAIN_FRONTEND_URL (default https://<LAN IP>:<front port>, overrides FRONTEND_URL for the backend
 #      so checkout, email and certificate links open on phones too),
 #      RUN_MAIN_CERT_DIR (default ~/.spanishnow/certs: if lan.pem and lan-key.pem exist there, ng serve uses them
-#      instead of its self-signed certificate, so the browser trusts the site and saves passwords; see DEVELOPMENT.md).
+#      instead of its self-signed certificate, so the browser trusts the site and saves passwords; see DEVELOPMENT.md),
+#      RUN_MAIN_PUBLIC_HOST (default platform.spanishnow.ar), RUN_MAIN_TUNNEL (cloudflared tunnel name,
+#      default spanishnow-platform).
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -22,10 +28,16 @@ RUN="$ROOT/.run"
 INTERVAL="${RUN_MAIN_INTERVAL:-60}"
 FRONT_PORT="${RUN_MAIN_FRONT_PORT:-4200}"
 CERT_DIR="${RUN_MAIN_CERT_DIR:-$HOME/.spanishnow/certs}"
+PUBLIC_HOST="${RUN_MAIN_PUBLIC_HOST:-platform.spanishnow.ar}"
+TUNNEL="${RUN_MAIN_TUNNEL:-spanishnow-platform}"
 BACK_PID=""
 FRONT_PID=""
+TUNNEL_PID=""
+SLEEP_PID=""
 mkdir -p "$RUN"
 cd "$ROOT" || exit 1
+# `spanishnow public on|off` sends SIGUSR1: cut the wait short (and never die from it, even mid-startup).
+trap '[ -n "$SLEEP_PID" ] && kill "$SLEEP_PID" 2>/dev/null' USR1
 
 # Logs go to stderr so functions can return data on stdout (pull prints the changed paths).
 log() { printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" | tee -a "$RUN/run-main.log" >&2; }
@@ -98,9 +110,31 @@ start_frontend() {
   (cd frontend && exec node node_modules/@angular/cli/bin/ng.js serve --configuration lan --port "$FRONT_PORT" ${ssl[@]+"${ssl[@]}"}) >>"$RUN/frontend.log" 2>&1 &
   FRONT_PID=$!
 }
+start_tunnel() {
+  cloudflared tunnel --no-autoupdate run --url "https://localhost:$FRONT_PORT" --no-tls-verify "$TUNNEL" >>"$RUN/tunnel.log" 2>&1 &
+  TUNNEL_PID=$!
+}
 # Each background job has its own process group (set -m), so this also stops nodemon's and ng's children.
 stop() { [ -n "$1" ] && kill -TERM -- "-$1" 2>/dev/null; wait "$1" 2>/dev/null; }
-stop_all() { stop "$BACK_PID"; stop "$FRONT_PID"; BACK_PID=""; FRONT_PID=""; }
+stop_all() { stop "$BACK_PID"; stop "$FRONT_PID"; stop "$TUNNEL_PID"; BACK_PID=""; FRONT_PID=""; TUNNEL_PID=""; }
+
+# Opens or closes the public tunnel to match .run/public; the backend restarts with the matching FRONTEND_URL.
+sync_public() {
+  if [ -f "$RUN/public" ]; then
+    [ -n "$TUNNEL_PID" ] && return 0
+    log "Abriendo acceso público: https://$PUBLIC_HOST"
+    start_tunnel
+    FRONTEND_URL="https://$PUBLIC_HOST"
+    notify "Público: https://$PUBLIC_HOST"
+  else
+    [ -z "$TUNNEL_PID" ] && return 0
+    log "Cerrando acceso público"
+    stop "$TUNNEL_PID"; TUNNEL_PID=""
+    FRONTEND_URL="$LAN_URL"
+    notify "Acceso público cerrado"
+  fi
+  if [ -n "$BACK_PID" ]; then log "Reiniciando backend (FRONTEND_URL=$FRONTEND_URL)"; stop "$BACK_PID"; start_backend; fi
+}
 
 # Applies what a pull changed: deps, migrations, restarts.
 apply() {
@@ -126,11 +160,13 @@ changed="$(pull)"
 check_env
 [ "${1:-}" = "sync" ] && exit 0
 
-FRONTEND_URL="${RUN_MAIN_FRONTEND_URL:-https://$(lan_ip):$FRONT_PORT}"
+LAN_URL="${RUN_MAIN_FRONTEND_URL:-https://$(lan_ip):$FRONT_PORT}"
+FRONTEND_URL="$LAN_URL"
 ensure_free "$(back_port)"
 ensure_free "$FRONT_PORT"
 set -m
 trap 'stop_all; log "Detenido"; notify "Apagado"; exit 0' INT TERM HUP
+sync_public
 start_backend
 start_frontend
 log "Corriendo main $(git rev-parse --short HEAD). Dispositivos: https://$(lan_ip):$FRONT_PORT  ·  Mac: https://localhost:$FRONT_PORT"
@@ -138,8 +174,11 @@ log "Logs: $RUN/{backend,frontend,run-main}.log. Revisando origin/main cada ${IN
 notify "Encendido: https://$(lan_ip):$FRONT_PORT"
 
 while true; do
-  sleep "$INTERVAL" & wait $!
+  sleep "$INTERVAL" & SLEEP_PID=$!
+  wait "$SLEEP_PID"; SLEEP_PID=""
+  sync_public
   kill -0 "$BACK_PID" 2>/dev/null || { warn "El backend se cayó; lo reinicio (ver .run/backend.log)."; start_backend; }
   kill -0 "$FRONT_PID" 2>/dev/null || { warn "El frontend se cayó; lo reinicio (ver .run/frontend.log)."; start_frontend; }
+  [ -z "$TUNNEL_PID" ] || kill -0 "$TUNNEL_PID" 2>/dev/null || { warn "El túnel se cayó; lo reinicio (ver .run/tunnel.log)."; start_tunnel; }
   changed="$(pull)" && apply "$changed"
 done

@@ -1,6 +1,6 @@
 const crypto = require('node:crypto');
 const sequelize = require('../config/database');
-const { GoogleConnection } = require('../models');
+const { GoogleConnection, ExternalConnection } = require('../models');
 const { LiveError, fail, restoreBoard } = require('./liveBoard');
 
 const SCOPES = [
@@ -140,7 +140,9 @@ async function disconnect(userId) {
   if (row?.credentials) {
     let credentials;
     try { credentials = decrypt(row.credentials); } catch (e) { if (!(e instanceof LiveError)) throw e; }
-    if (credentials) await remote('https://oauth2.googleapis.com/revoke', { method: 'POST', body: new URLSearchParams({ token: credentials.refreshToken }) });
+    // W07: si Calendar sigue conectado comparte el grant de Google; revocarlo lo dejaría sin acceso. Solo se borran los tokens locales.
+    const calendarActive = await ExternalConnection.count({ where: { userId, provider: 'google_calendar', status: 'connected' } });
+    if (credentials && !calendarActive) await remote('https://oauth2.googleapis.com/revoke', { method: 'POST', body: new URLSearchParams({ token: credentials.refreshToken }) });
   }
   await GoogleConnection.destroy({ where: { userId } });
 }

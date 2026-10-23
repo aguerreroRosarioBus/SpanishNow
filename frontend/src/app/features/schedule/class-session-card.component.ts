@@ -117,6 +117,15 @@ export class ClassSessionCardComponent {
     this.act(this.api.requestExtension(s.id, { version: s.version, purchaseId, reason: this.adjustmentReason, unavailableMinutes: Number(this.unavailableMinutes) }));
   }
   participantName(userId: number): string { return this.session()?.participants.find(p => p.userId === userId)?.name || ''; }
+  private static readonly syncCodes = ['external_changed', 'external_deleted', 'integration_not_connected', 'authorization_lost', 'sync_failed'];
+  syncMessage(code?: string | null): string { return `calendar.syncError.${code && ClassSessionCardComponent.syncCodes.includes(code) ? code : 'generic'}`; }
+  downloadIcs(): void {
+    const s = this.session(); if (!s) return;
+    this.api.ics(s.id).subscribe({ next: blob => {
+      const url = URL.createObjectURL(blob); const link = this.document.createElement('a');
+      link.href = url; link.download = `clase-${s.id}.ics`; link.click(); URL.revokeObjectURL(url);
+    }, error: error => this.failure.set(error) });
+  }
   retrySync(): void { const s = this.session(); if (s) this.act(this.api.retrySync(s.id)); }
   join(): void {
     const generation = this.generation; const s = this.session(); if (!s) return;

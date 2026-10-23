@@ -211,6 +211,7 @@ export const EN = {
   'errors.message_too_long': 'The message is too long.',
   'errors.invalid_credit_operation': 'This credit operation is not valid.',
   'errors.forbidden': 'You do not have permission for this action.',
+  'errors.oauth_state_invalid': 'The connection link expired or was already used. Start the connection again.',
   'errors.not_found': 'This resource is not available.',
   'errors.feature_disabled': 'This feature is currently unavailable.',
   'errors.version_conflict': 'This information changed. Refresh it before trying again.',

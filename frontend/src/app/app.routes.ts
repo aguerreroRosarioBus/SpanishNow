@@ -87,6 +87,7 @@ export const routes: Routes = [
     loadComponent: () => import('./features/live-classes/live-room.component').then(m => m.LiveRoomComponent)
   },
   {path:'admin/class-commerce',canActivate:[authGuard],loadComponent:()=>import('./features/packages/commerce-admin.component').then(m=>m.CommerceAdminComponent)},
+  {path:'teacher/integrations',canActivate:[teacherGuard],loadComponent:()=>import('./features/integrations/integrations.component').then(m=>m.IntegrationsComponent)},
   {path:'teacher/class-cohorts',canActivate:[teacherGuard],loadComponent:()=>import('./features/packages/groups.component').then(m=>m.GroupsComponent)},
   // Rutas de profesor
   {

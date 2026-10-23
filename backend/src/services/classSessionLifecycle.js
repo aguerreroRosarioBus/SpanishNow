@@ -64,6 +64,24 @@ module.exports = core => {
         dedupeKey: `${provider}.sync:${session.id}:v${session.version}` }, { transaction });
     }
   }
+  // W07 (CAL-03): ocupación externa leída ANTES de abrir la transacción (nunca una llamada a Google con locks tomados).
+  async function externalAvailability(user, sessionId, wanted) {
+    const calendar = require('./googleCalendarService');
+    const session = await M.ClassSession.findByPk(core._internal.id(sessionId));
+    if (!session || !features.isEnabled('google_calendar')) return null;
+    const member = session.teacherId === user.id || await M.ClassSessionParticipant.count({ where: { sessionId: session.id, userId: user.id } });
+    if (!member) return null; // la autorización completa (404/403) la resuelve la transacción
+    const p = await M.ClassSessionProposal.findOne({ where: { sessionId: session.id, version: wanted, status: 'pending' } });
+    if (!p) return null;
+    const desired = scheduleOf(p);
+    const own = session.status === 'confirmed' ? { startsAt: session.startsAt.toISOString(), endsAt: session.endsAt.toISOString() } : null;
+    const result = await calendar.assertAvailable({ teacherId: session.teacherId, startsAt: desired.startsAt, endsAt: desired.endsAt, own });
+    return result.checked ? { startsAt: desired.startsAt, endsAt: desired.endsAt } : null;
+  }
+  async function calendarCheckRequired(teacherId, transaction) {
+    if (!features.isEnabled('google_calendar')) return false;
+    return Boolean(await M.ExternalConnection.count({ where: { userId: teacherId, provider: 'google_calendar', status: ['connected', 'needs_attention', 'revoked'] }, transaction }));
+  }
   async function pending(session, wanted, transaction, now) {
     const p = await M.ClassSessionProposal.findOne({ where: { sessionId: session.id, version: wanted }, transaction });
     if (!p || p.version !== session.version || p.status !== 'pending' || p.expiresAt <= now) fail('proposal_stale');
@@ -72,6 +90,7 @@ module.exports = core => {
 
   async function accept(user, sessionId, wanted, body = {}, { now = new Date() } = {}) {
     core._internal.id(wanted);
+    const checked = await externalAvailability(user, sessionId, wanted);
     return locked(user, sessionId, async ({ session, seats, settings, transaction }) => {
       const me = seats.find(s => s.userId === user.id && s.status !== 'cancelled');
       if (!me) fail('forbidden', {}, 403);
@@ -93,8 +112,8 @@ module.exports = core => {
       const terms = termsRows.find(r => r.data?.version === wanted)?.data;
       if (terms?.late && body.acknowledgeCharge !== true) invalid(['acknowledgeCharge']);
       await conflicts(session, activeSeats, desired, settings, now, transaction);
-      // Hasta W07 no se confirma a ciegas con una conexión externa que exigiría free/busy.
-      if (await M.ExternalConnection.count({ where: { userId: session.teacherId, provider: 'google_calendar', status: 'connected' }, transaction })) {
+      // W07: con Calendar conectado se exige que la ocupación externa se haya leído (fuera de locks) para este mismo intervalo.
+      if (await calendarCheckRequired(session.teacherId, transaction) && !(checked?.startsAt === desired.startsAt && checked?.endsAt === desired.endsAt)) {
         fail('provider_unavailable', { reason: 'availability_check_required' }, 503);
       }
       if (me.acceptedVersion !== wanted) {

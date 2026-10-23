@@ -212,6 +212,7 @@ export const ES = {
   'errors.message_too_long': 'El mensaje es demasiado largo.',
   'errors.invalid_credit_operation': 'Esta operación de saldo no es válida.',
   'errors.forbidden': 'No tienes permiso para realizar esta acción.',
+  'errors.oauth_state_invalid': 'El enlace de conexión venció o ya se usó. Inicia la conexión de nuevo.',
   'errors.not_found': 'Este recurso no está disponible.',
   'errors.feature_disabled': 'Esta función no está disponible por el momento.',
   'errors.version_conflict': 'Esta información cambió. Actualízala antes de intentar de nuevo.',
