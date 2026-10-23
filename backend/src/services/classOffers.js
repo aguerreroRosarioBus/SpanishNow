@@ -38,7 +38,7 @@ function present(row) {
   const { hotmartCheckoutUrl, ...snapshot } = result.snapshot;
   return { ...result, snapshot, status: ['sent','checkout_pending'].includes(row.status) && row.expiresAt <= new Date() ? 'expired' : row.status };
 }
-async function detail(user, id) { return present(await load(user,id)); }
+async function detail(user, id) { const row=await load(user,id); return {...present(row),canCheckout:row.buyerId===user.id,canManage:row.teacherId===user.id}; }
 async function list(user,id) {
   await conversationFor(user,id);
   return (await Offer.findAll({ where:{conversationId:id},order:[['id','ASC']] })).map(present);
@@ -65,6 +65,7 @@ function sameRequest(existing, conversationId, body, replacesOfferId) {
     (existing.replacesOfferId || null) === (replacesOfferId || null) && JSON.stringify(sortedIds(existing.snapshot.beneficiaryIds)) === JSON.stringify(ids);
 }
 async function closePending(row, status, reason, transaction, now) {
+  if(status!=='expired' && await Order.findOne({where:{offerId:row.id,status:'paid_needs_review'},transaction})) throw fail(409,'offer_not_payable');
   const orders = await Order.findAll({where:{offerId:row.id,status:'pending'},transaction,lock:transaction.LOCK.UPDATE});
   for (const order of orders) await order.update({status:'failed',failedAt:now},{transaction});
   await row.update({status,cancelledAt:status==='expired'?null:now,cancelReason:reason},{transaction});
@@ -100,6 +101,10 @@ async function send(user, conversationId, body, idempotencyKey, { replacesOfferI
     catalog.assertReady(version);
     const policy = await Policy.findByPk(version.policyVersionId,{transaction});
     const {beneficiaryIds,cohort} = await groupFor(version,conversation.studentId,body,{transaction,now});
+    if (cohort) {
+      const active = await Offer.findAll({where:{cohortId:cohort.id,buyerId:conversation.studentId,status:['sent','checkout_pending','paid']},transaction});
+      if (active.some(o=>o.id!==replacesOfferId)) throw fail(409,'group_incomplete');
+    }
     const expiresAt = new Date(Math.min(now.getTime()+policy.rules.offerTtlHours*3600000,cohort?.formingDeadlineAt.getTime() ?? Infinity));
     if (expiresAt <= now) throw fail(409,'offer_expired');
     let previous;
@@ -111,7 +116,7 @@ async function send(user, conversationId, body, idempotencyKey, { replacesOfferI
     const docs = await legal.currentSet(legal.KEYS,{transaction});
     const values = Object.fromEntries(catalog.FIELDS.map(k=>[k,version[k]]));
     const teacher = await User.findByPk(user.id,{transaction});
-    const snapshot = {...values,templateKey:template.templateKey,templateVersionId:version.id,templateVersion:version.version,teacherId:user.id,teacherName:teacher.name,buyerId:conversation.studentId,beneficiaryIds,cohortId:cohort?.id || null,
+    const snapshot = {...values,refundPolicyStatus:'pending_validation',templateKey:template.templateKey,templateVersionId:version.id,templateVersion:version.version,teacherId:user.id,teacherName:teacher.name,buyerId:conversation.studentId,beneficiaryIds,cohortId:cohort?.id || null,
       policyVersion:policy.version,policy:policy.rules,sentAt:now.toISOString(),expiresAt:expiresAt.toISOString(),
       legalDocuments:docs.map(d=>({documentKey:d.documentKey,version:String(d.version),content:d.content,business:d.business,effectiveAt:d.effectiveAt.toISOString()}))};
     const row = await Offer.create({conversationId:conversation.id,teacherId:user.id,buyerId:conversation.studentId,cohortId:cohort?.id || null,templateVersionId:version.id,policyVersionId:policy.id,replacesOfferId,status:'sent',snapshot,

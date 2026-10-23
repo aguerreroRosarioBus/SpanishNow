@@ -2,12 +2,20 @@ import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { I18nService } from '../../core/i18n/i18n.service';
-import { ClassCohort, ClassOffer, ClassSettings, PackageTemplate } from './packages.model';
+import { ClassCohort, ClassOffer, ClassSettings, PackageTemplate, ClassOrder, CheckoutState, ClassPurchase } from './packages.model';
 @Injectable({providedIn:'root'})
 export class PackagesService {
   private http = inject(HttpClient);
   private i18n = inject(I18nService);
   private base = environment.apiUrl;
+  checkout(id:number,key:string,body:unknown) {return this.http.post<{order:ClassOrder;checkoutUrl:string|null}>(`${this.base}/class-offers/${id}/checkout`,body,{headers:{'Idempotency-Key':key}});}
+  checkoutState(id:number) {return this.http.get<CheckoutState>(`${this.base}/class-offers/${id}/checkout`);}
+  fakeComplete(id:number) {return this.http.post<CheckoutState>(`${this.base}/class-offers/${id}/checkout/fake-complete`,{});}
+  cancelOffer(id:number,reason:string) {return this.http.post<ClassOffer>(`${this.base}/class-offers/${id}/cancel`,{reason});}
+  replaceOffer(id:number,body:unknown,key:string) {return this.http.post<ClassOffer>(`${this.base}/class-offers/${id}/replace`,body,{headers:{'Idempotency-Key':key}});}
+  purchases(teacher=false) {return this.http.get<ClassPurchase[]>(`${this.base}/${teacher?'teacher/class-purchases':'me/class-packages'}`);}
+  purchase(id:number) {return this.http.get<ClassPurchase>(`${this.base}/me/class-packages/${id}`);}
+  changePurchase(p:ClassPurchase,action:string,reason?:string) {return this.http.post<ClassPurchase>(`${this.base}/me/class-packages/${p.id}/${action}`,{version:p.version,...(reason?{reason}:{})});}
   group(id:number) { return this.http.get<ClassCohort>(`${this.base}/class-cohorts/${id}`); }
   respondGroup(id:number,accepted:boolean) { return this.http.post<ClassCohort>(`${this.base}/class-cohorts/${id}/invitation/${accepted?'accept':'decline'}`,{}); }
   offer(id: number) { return this.http.get<ClassOffer>(`${this.base}/class-offers/${id}`); }
@@ -23,6 +31,7 @@ export class PackagesService {
   status(id: number, status: string, version: number) { return this.http.patch<PackageTemplate>(`${this.base}/teacher/class-packages/${id}/status`, {status, version}); }
   error(error: unknown) {
     const code = (error as {error?:{code?:string}})?.error?.code;
-    return code && this.i18n.has(`packages.errors.${code}`) ? this.i18n.t(`packages.errors.${code}`) : this.i18n.errorMessage(error);
+    if(code && this.i18n.has(`packages.errors.${code}`)) return this.i18n.t(`packages.errors.${code}`);
+    return code && this.i18n.has(`legal.errors.${code}`) ? this.i18n.t(`legal.errors.${code}`) : this.i18n.errorMessage(error);
   }
 }

@@ -1,6 +1,6 @@
 # Contrato técnico W00: clases, chat, paquetes e integraciones
 
-Versión **1.4** · 22/10/2026 · Paquete W00 ([#13](https://github.com/aguerreroRosarioBus/SpanishNow/issues/13)) · Responsable: orquestador de turno.
+Versión **1.5** · 22/10/2026 · Paquete W00 ([#13](https://github.com/aguerreroRosarioBus/SpanishNow/issues/13)) · Responsable: orquestador de turno.
 
 Este documento convierte la [guía](SPEC.md) §13 en un contrato que los paquetes W01–W09 consumen sin renegociar. La guía manda sobre el *qué*; este contrato fija nombres, tablas, estados, invariantes, formatos y rutas. Cambiarlo exige un PR que suba la versión, actualice la tabla de cambios del final y avise en el issue «Orquestación» (#23) a los paquetes afectados.
 
@@ -335,15 +335,24 @@ El job `offer.expire` (dedupe `offer.expire:<offerId>`, `runAt = expiresAt`) pas
 
 ### 7.5 A verificar en el sandbox de Hotmart (primer paso de W05)
 
-La documentación pública no confirma dónde llega el parámetro de seguimiento en el webhook 2.0.0. W05 debe hacer una compra de prueba en el sandbox con `sck` y `off` y registrar el payload real (sin datos personales) en `backend/tests/fixtures/`. Si `sck` no vuelve, usar `xcod`; si ninguno vuelve, la correlación pasa a ser **producto + `offer.code` + email del comprador + única orden `pending` de ese comprador para ese código**, y cualquier ambigüedad cae en `paid_needs_review`. El contrato de tablas no cambia en ningún caso.
+La [documentación oficial del webhook 2.0.0](https://developers.hotmart.com/docs/en/2.0.0/webhook/purchase-webhook/) enumera `purchase.origin.sck`, `purchase.origin.xcod` y `purchase.offer.code` (verificada el 22/10/2026). Aun falta una compra de prueba autorizada en sandbox con `sck`/`off` y guardar el payload real saneado en `backend/tests/fixtures/`; la fixture actual es explícitamente sintética. Si `sck` no vuelve, usar `xcod`; si ninguno vuelve, la correlación pasa a ser **producto + `offer.code` + email del comprador + única orden `pending` de ese comprador para ese código**, y cualquier ambigüedad cae en `paid_needs_review`. El contrato de tablas no cambia en ningún caso.
 
 ### 7.6 Modo fake (CONTRACT-05)
 
 Con `PAYMENTS_FAKE=1` (prohibido en producción por `config/payments.js`) el checkout devuelve una URL interna del frontend que llama a `POST /api/class-offers/:id/checkout/fake-complete`; esa ruta arma un cuerpo con la forma del webhook de Hotmart y lo pasa por **el mismo** manejador del 7.3. Así las pruebas recorren la conciliación real sin proveedor.
 
-### 7.7 Reembolsos iniciados por la escuela (PACK-08)
+### 7.7 Reembolsos iniciados por la escuela (PACK-08, P01 resuelta)
 
-Primero se registra la solicitud (`audit_logs` + outbox), después se ejecuta en Hotmart y solo el webhook de reembolso mueve saldo y estado (§7.3-5). Ver decisión pendiente **P01**: Hotmart reembolsa la transacción completa, y la regla de §4 pide prorratear.
+**Decisión comercial de 22/10/2026 por delegación expresa de Andrés al orquestador:** garantía inicial de paquetes de 15 días (`360` horas bajo la semántica temporal actual), con plazo configurado/contractual/legal más favorable. Antes de habilitar ventas reales hay que verificar cuenta/formato/producto/oferta y garantía compatible en Hotmart; un plazo interno calculado nunca se presenta como garantía del proveedor comprobada. El formato Servicio Online tiene restricciones: no presumir elegibilidad ni disfrazar un producto.
+
+- Voluntario estándar: devolución total sin créditos consumidos, solicitada en el plazo aplicable. Resolver reservas futuras de forma explícita; una reserva no equivale a consumo.
+- Uso previo, fuera de plazo o excepción: revisión individual según condiciones de compra, Hotmart y derechos aplicables; sin aprobación o rechazo automáticos por uso. No hay prorrateo automático inicial por elección comercial, no por incapacidad técnica afirmada de Hotmart.
+- Servicio no prestable por escuela/docente o grupo incompleto: soluciones/devoluciones y revisión humana auditada incluso fuera de garantía; no imponer otra fecha, vale o extensión sin aceptación.
+- Primero solicitud y confirmación interna auditadas; después trámite manual en Hotmart si falta capacidad de automatización validada. Solo un resultado verificable mueve saldo/estado. El ejecutor automatizado disponible en esta entrega es fake local.
+- Reembolso real posterior al uso: §7.3-5; cancelar compra, retirar disponibles, conservar consumo y revisar reservas. No nace deuda, recobro ni cargo adicional.
+- Nueva configuración versionada y nuevos snapshots; ninguna regla inmutable ni compra anterior se reinterpreta. Cursos digitales intactos. El `refundWindowHours=336` histórico no se transforma en 360 en registros ya guardados ni se trata como garantía Hotmart verificada.
+
+Fuentes verificadas el 22/10/2026: [garantías 7/15/21/30 y restricciones por formato](https://suportehotmart.zendesk.com/hc/en-us/articles/360034552751-How-to-adjust-the-guarantee-period-for-a-product-I-created), [Compra §3](https://hotmart.com/es/legal/plazo-de-compra), [Uso §5.11](https://hotmart.com/es/legal/terminos-de-uso). El [webhook](https://developers.hotmart.com/docs/en/2.0.0/webhook/purchase-webhook/) lista `PARTIALLY_REFUNDED`; no prueba que nuestra cuenta pueda iniciarlo. La decisión comercial está resuelta; las comprobaciones de integración no habilitan ventas por sí mismas.
 
 ---
 
@@ -447,10 +456,10 @@ Notas de W04 (1.1): el contexto (`{ type: course|package|session, id }`) viaja e
 | --- | --- |
 | `GET /api/me/class-packages` | Compras propias (comprador o beneficiario) con saldo por cubeta |
 | `GET /api/me/class-packages/:id` | Detalle, ledger y reglas compradas |
-| `POST /api/me/class-packages/:id/pause` · `/resume` · `/cancel` | `409 package_not_active`, `409 sessions_pending_resolution` (PACK-07) |
+| `POST /api/me/class-packages/:id/pause` · `/resume` · `/cancel` | `{ version, reason? }` (motivo obligatorio al cancelar); `409 package_not_active`, `409 sessions_pending_resolution` (PACK-07) |
 | `POST /api/me/class-packages/:id/refund-requests` | Solicitud con desglose (PACK-08) |
 | `GET /api/teacher/class-purchases?studentId=` | Compras de sus alumnos (para proponer) |
-| `POST /api/admin/class-purchases/:id/adjustments` | `class_credits.adjust`; `{ units, direction, reason }` |
+| `POST /api/admin/class-purchases/:id/adjustments` | `class_credits.adjust`; `Idempotency-Key`, `{ units, direction: add/remove/restore, reason, version? }`; no cambia `credits.apply` |
 
 ### 9.7 Agenda — W06
 
@@ -575,9 +584,9 @@ Ninguna capacidad da lectura general de mensajes privados ni el `start_url` de Z
 
 ## 15. Decisiones pendientes detectadas en W00
 
-Registradas en [COORDINACION.md](COORDINACION.md#decisiones). Ninguna bloquea el esquema; sí la implementación de reembolsos en W05.
+Registradas en [COORDINACION.md](COORDINACION.md#decisiones). P01 comercial fue resuelta; la comprobación de integración sigue siendo necesaria antes de habilitar ventas reales. No bloquea el esquema ni la implementación fake.
 
-- **P01 — Reembolso parcial con Hotmart.** §4 propone reembolsar la parte no usada prorrateada dentro de 14 días, pero Hotmart reembolsa la transacción completa y además el comprador puede pedir reembolso total dentro de la garantía del producto (mínimo 7 días). Falta decidir: cómo se devuelve una parte (fuera de Hotmart, registrada a mano; o solo reembolsos totales antes de usar clases) y qué pasa si el alumno pide el reembolso total en Hotmart después de usar clases.
+- **P01 — Resuelta por delegación expresa de Andrés (22/10/2026).** Garantía inicial 15 días y voluntario total sin consumo en plazo; demás casos a revisión individual, condiciones más favorables y excepciones preservadas. Sin prorrateo automático, deuda ni recobro. Implementar por nuevas versiones/snapshots; comprobar cuenta/formato/garantía/trámite antes de habilitar Hotmart real (§7.7).
 
 ---
 
@@ -585,6 +594,7 @@ Registradas en [COORDINACION.md](COORDINACION.md#decisiones). Ninguna bloquea el
 
 | Versión | Fecha | Cambio |
 | --- | --- | --- |
+| 1.5 | 22/10/2026 | W05: checkout fake, conciliación/saldo/pausa; mutaciones de compra con versión y ajustes idempotentes. P01 comercial resuelta por delegación de Andrés: nuevas condiciones de 15 días y revisión individual; integración efectiva previa a ventas reales, sin cambios de ledger W06. |
 | 1.4 | 22/10/2026 | W05 (Codex): lectura propia de invitaciones, metadata de ofertas/política. Sin esquema ni cambios de saldo. |
 | 1.3.1 | 22/10/2026 | Correcciones de revisión W05: activación exige versión comercial vista; exclusividad Hotmart serializada entre curso y paquete. Sin cambios de saldo. |
 | 1.3 | 22/10/2026 | W05 (Codex): agrega importación explícita de catálogo en §9.3; sin cambio de esquema ni contrato de saldo. |

@@ -1,0 +1,22 @@
+const router=require('express').Router();
+const {authMiddleware,requirePermission}=require('../middlewares/auth.middleware');
+const {requireFeature}=require('../config/features');
+const {fail}=require('../services/legalDocuments');
+const checkout=require('../services/classCheckout');
+const payments=require('../services/classPayments');
+const review=require('../services/classPaymentReview');
+require('../services/classPackageJobs');
+const {ClassPackageOrder:Order,PaymentProviderEvent:Event}=require('../models');
+const wrap=fn=>(req,res,next)=>Promise.resolve(fn(req,res)).catch(next);
+const secure=[authMiddleware,(req,res,next)=>req.impersonatedBy?next(fail(403,'forbidden',{reason:'impersonation'})):next()];
+router.post('/class-offers/:id/checkout',...secure,requireFeature('class_packages'),wrap(async(req,res)=>res.json(await checkout.start(req.user,req.params.id,req.get('Idempotency-Key'),req.body))));
+router.get('/class-offers/:id/checkout',...secure,wrap(async(req,res)=>res.json(await checkout.status(req.user,req.params.id))));
+router.post('/class-offers/:id/checkout/fake-complete',...secure,wrap(async(req,res)=>res.json(await checkout.completeFake(req.user,req.params.id))));
+router.get('/admin/class-payments',...secure,requirePermission('class_payments.review'),wrap(async(req,res)=>{
+  const status=req.query.status||'paid_needs_review';if(!['paid_needs_review','paid','refunded','partially_refunded','pending','failed'].includes(status))throw fail(400,'validation_failed');
+  const items=await Order.findAll({where:{status},order:[['id','DESC']],limit:200});
+  const events=await Event.findAll({where:{outcome:'needs_review'},order:[['id','DESC']],limit:200});
+  res.json({items:items.map(checkout.present),events:events.map(e=>({id:Number(e.id),orderId:e.orderId,eventType:e.eventType,payload:e.payload,outcome:e.outcome,createdAt:e.createdAt}))});
+}));
+router.post('/admin/class-payments/:orderId/resolve',...secure,requirePermission('class_payments.review'),wrap(async(req,res)=>res.json(await review.resolve(req.user,req.params.orderId,req.body))));
+module.exports=router;

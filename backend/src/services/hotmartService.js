@@ -135,6 +135,8 @@ async function orderFor(course, purchase, buyer, status) {
  * webhook off when it gets errors. Returns { handled, reason? }.
  */
 async function handleEvent(body) {
+  const classResult = await require('./classPayments').handleEvent(body);
+  if (classResult.handled) return classResult;
   const event = body && body.event;
   const data = (body && body.data) || {};
   const purchase = data.purchase || {};

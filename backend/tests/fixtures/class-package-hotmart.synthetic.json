@@ -1,0 +1,19 @@
+{
+  "fixtureKind": "synthetic-not-a-sandbox-capture",
+  "id": "synthetic-package-approved-v2",
+  "event": "PURCHASE_APPROVED",
+  "version": "2.0.0",
+  "creation_date": 1792677600000,
+  "data": {
+    "product": { "id": "SYNTHETIC-PACKAGE" },
+    "buyer": { "email": "fictional-buyer@fake.invalid" },
+    "purchase": {
+      "transaction": "SYNTHETIC-TRANSACTION",
+      "approved_date": 1792677600000,
+      "status": "APPROVED",
+      "price": { "value": 90, "currency_value": "USD" },
+      "offer": { "code": "SYNTHETIC-OFFER" },
+      "origin": { "sck": "1234567890abcdef1234567890abcdef" }
+    }
+  }
+}

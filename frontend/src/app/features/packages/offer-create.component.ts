@@ -34,6 +34,7 @@ export class OfferCreateComponent implements OnInit {
   private api=inject(PackagesService); private chat=inject(ChatService); private router=inject(Router);
   readonly i18n=inject(I18nService); readonly fields=EXPECTATION_FIELDS;
   readonly conversationId=Number(inject(ActivatedRoute).snapshot.queryParamMap.get('conversationId'));
+  readonly replacesOfferId=Number(inject(ActivatedRoute).snapshot.queryParamMap.get('replacesOfferId'))||null;
   items=signal<PackageTemplate[]>([]);selectedId=signal(0);selected=computed(()=>this.items().find(p=>p.id===this.selectedId()));
   recipient=signal('');busy=signal(false);loaded=signal(false);private failure=signal<unknown>(null);error=computed(()=>this.failure()?this.api.error(this.failure()):'');
   private key='';
@@ -41,6 +42,7 @@ export class OfferCreateComponent implements OnInit {
   name(p:PackageTemplate){return this.i18n.locale()==='es'?p.current.nameEs:p.current.nameEn;}
   select(id:number){this.selectedId.set(id);this.key=crypto.randomUUID();}
   send(){const p=this.selected();if(!p || this.busy())return;this.busy.set(true);this.failure.set(null);
-    this.api.sendOffer(this.conversationId,{templateVersionId:p.current.id},this.key).subscribe({next:o=>void this.router.navigate(['/class-offers',o.id]),error:e=>{this.busy.set(false);this.failure.set(e);}});
+    const request=this.replacesOfferId?this.api.replaceOffer(this.replacesOfferId,{templateVersionId:p.current.id},this.key):this.api.sendOffer(this.conversationId,{templateVersionId:p.current.id},this.key);
+    request.subscribe({next:o=>void this.router.navigate(['/class-offers',o.id]),error:e=>{this.busy.set(false);this.failure.set(e);}});
   }
 }

@@ -4,7 +4,7 @@ const {packageWorld}=require('./helpers/classPackages');
 const chat=require('../src/services/chatService');
 const {ClassOffer:Offer,ClassCohort:Cohort}=require('../src/models');
 beforeEach(()=>{process.env.FEATURE_CHAT='1';process.env.FEATURE_CLASS_PACKAGES='1';});
-afterEach(()=>{delete process.env.FEATURE_CHAT;delete process.env.FEATURE_CLASS_PACKAGES;});
+afterEach(()=>{delete process.env.FEATURE_CHAT;delete process.env.FEATURE_CLASS_PACKAGES;process.env.PAYMENTS_FAKE='0';});
 async function groupWorld(key){const w=await packageWorld({key});await chat.startConversation(w.other,{teacherId:w.teacher.id});return w;}
 const future=()=>new Date(Date.now()+240*3600000).toISOString();
 const create=(w,ids)=>as(w.teacher).post('/api/teacher/class-cohorts',{templateVersionId:w.version.id,tentativeStartsAt:future(),invitedIds:ids});
@@ -36,4 +36,17 @@ test('invitación rechazada no cambia de identidad; plazo vencido impide oferta 
   await require('../src/services/classCohorts').deadline({aggregateId:c.body.id});
   expect((await Cohort.findByPk(c.body.id)).status).toBe('cancelled');expect(await Offer.count({where:{cohortId:c.body.id}})).toBe(0);
   expect((await send(w,{cohortId:c.body.id,beneficiaryIds:[w.buyer.id,w.other.id]})).body.code).toBe('group_incomplete');
+});
+test('grupo de dos pagado concede una unidad grupal y dos beneficiarios; no crea agenda',async()=>{
+  process.env.PAYMENTS_FAKE='1';const w=await groupWorld('group2-1x50-total');const c=await create(w,[w.buyer.id,w.other.id]);for(const u of [w.buyer,w.other])await as(u).post(`/api/class-cohorts/${c.body.id}/invitation/accept`);
+  const offer=(await send(w,{cohortId:c.body.id,beneficiaryIds:[w.buyer.id,w.other.id]})).body;
+  const checkout=require('../src/services/classCheckout');await checkout.start(w.buyer,offer.id,randomUUID());await checkout.completeFake(w.buyer,offer.id);
+  const {ClassPackagePurchase:Purchase,ClassPackageBeneficiary:Beneficiary}=require('../src/models');const p=await Purchase.findOne({where:{offerId:offer.id}});expect(p).toMatchObject({unitsGranted:1,unitsAvailable:1,seatsCovered:2});expect(await Beneficiary.count({where:{purchaseId:p.id}})).toBe(2);expect((await Cohort.findByPk(c.body.id)).status).toBe('ready');process.env.PAYMENTS_FAKE='0';
+});
+test('grupo de tres solo queda pagado con tres compras/plazas propias',async()=>{
+  process.env.PAYMENTS_FAKE='1';const w=await groupWorld('group3-1x50-seat');const third=await require('./helpers/fixtures').createUser('student','w05-paid-third');await chat.startConversation(third,{teacherId:w.teacher.id});const users=[w.buyer,w.other,third];const c=await create(w,users.map(u=>u.id));
+  for(const u of users)await as(u).post(`/api/class-cohorts/${c.body.id}/invitation/accept`);
+  const checkout=require('../src/services/classCheckout');const offers=require('../src/services/classOffers');
+  for(let i=0;i<users.length;i++){const user=users[i];const conversation=(await chat.startConversation(user,{teacherId:w.teacher.id})).conversation;const offer=(await offers.send(w.teacher,conversation.id,{templateVersionId:w.version.id,cohortId:c.body.id,beneficiaryIds:[user.id]},randomUUID())).offer;await checkout.start(user,offer.id,randomUUID());await checkout.completeFake(user,offer.id);expect((await Cohort.findByPk(c.body.id)).status).toBe(i===2?'ready':'forming');}
+  const {ClassPackagePurchase:Purchase}=require('../src/models');const rows=await Purchase.findAll({where:{cohortId:c.body.id}});expect(rows).toHaveLength(3);expect(rows.every(p=>p.unitsGranted===1&&p.seatsCovered===1)).toBe(true);process.env.PAYMENTS_FAKE='0';
 });

@@ -1,0 +1,16 @@
+const router=require('express').Router();
+const {authMiddleware,requirePermission}=require('../middlewares/auth.middleware');
+const {requireFeature}=require('../config/features');
+const {fail}=require('../services/legalDocuments');
+const purchases=require('../services/classPurchases');
+const wrap=fn=>(req,res,next)=>Promise.resolve(fn(req,res)).catch(next);
+const secure=[authMiddleware,(req,res,next)=>req.impersonatedBy?next(fail(403,'forbidden',{reason:'impersonation'})):next()];
+router.get('/me/class-packages',...secure,wrap(async(req,res)=>res.json(await purchases.list(req.user))));
+router.get('/me/class-packages/:id',...secure,wrap(async(req,res)=>res.json(await purchases.detail(req.user,req.params.id))));
+router.get('/teacher/class-purchases',...secure,wrap(async(req,res)=>res.json(await purchases.teacherList(req.user,req.query.studentId))));
+router.post('/me/class-packages/:id/pause',...secure,wrap(async(req,res)=>res.json(await purchases.change(req.user,req.params.id,'pause',req.body))));
+router.post('/me/class-packages/:id/resume',...secure,wrap(async(req,res)=>res.json(await purchases.change(req.user,req.params.id,'resume',req.body))));
+router.post('/me/class-packages/:id/cancel',...secure,wrap(async(req,res)=>res.json(await purchases.change(req.user,req.params.id,'cancel',req.body))));
+router.post('/me/class-packages/:id/refund-requests',...secure,wrap(async(req,res)=>{await purchases.load(req.user,req.params.id);throw fail(409,'refund_policy_pending');}));
+router.post('/admin/class-purchases/:id/adjustments',...secure,requirePermission('class_credits.adjust'),wrap(async(req,res)=>res.json(await purchases.adjust(req.user,req.params.id,req.body,req.get('Idempotency-Key')))));
+module.exports=router;
