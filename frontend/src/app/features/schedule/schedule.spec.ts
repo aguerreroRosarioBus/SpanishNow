@@ -153,4 +153,45 @@ describe('W06: interfaz conectada por contratos de agenda', () => {
     expect(Object.keys(SCHEDULE_MESSAGES.en).sort()).toEqual(Object.keys(SCHEDULE_MESSAGES.es).sort());
     expect(Object.keys(SCHEDULE_MESSAGES.en).every(key => key.startsWith('schedule.') || key.startsWith('errors.'))).toBe(true);
   });
+
+  describe('Tanda B: clave de idempotencia al proponer una clase', () => {
+    const setup = () => {
+      auth.currentUser.set({ id: 2, role: 'teacher' });
+      api.options.mockReturnValue(of({ studentId: 7, students: [{ id: 7, name: 'Alumno' }], cohorts: [],
+        purchases: [{ id: 5, cohortId: null, minutesPerSession: 50, seatsCovered: 1, status: 'active', expiresAt: '2027-06-01T00:00:00Z', available: 4, beneficiaryIds: [7] }] }));
+      const fixture = TestBed.createComponent(ScheduleComponent); fixture.detectChanges();
+      const c = fixture.componentInstance; c.selectPurchase(5);
+      c.patch({ localStart: '2027-01-11T09:00', timeZone: 'America/New_York' });
+      return { fixture, c };
+    };
+    const keys = () => api.create.mock.calls.map(call => call[1] as string);
+    it('tras una propuesta creada, proponer de nuevo los mismos datos usa una clave nueva (no repite la clase anterior)', () => {
+      const { fixture, c } = setup();
+      c.submit(); c.submit();
+      expect(api.create).toHaveBeenCalledTimes(2);
+      expect(keys()[1]).not.toBe(keys()[0]);
+      expect(api.create.mock.calls[1][0]).toEqual(api.create.mock.calls[0][0]);
+      fixture.destroy();
+    });
+    it('un corte de red conserva la clave para reintentar sin duplicar; una respuesta 4xx la renueva', () => {
+      const { fixture, c } = setup();
+      api.create.mockReturnValueOnce(throwError(() => ({ status: 0 }))).mockReturnValueOnce(throwError(() => ({ status: 503 })))
+        .mockReturnValueOnce(throwError(() => ({ status: 409, error: { code: 'operation_key_conflict' } })));
+      c.submit(); c.submit(); c.submit(); c.submit();
+      const [a, b, third, fourth] = keys();
+      expect(b).toBe(a); expect(third).toBe(a);
+      expect(fourth).not.toBe(a);
+      fixture.destroy();
+    });
+    it('datos distintos usan otra clave y el mismo envío mientras espera no se duplica', () => {
+      const { fixture, c } = setup();
+      const pending = new Subject<ClassSession>(); api.create.mockReturnValueOnce(pending);
+      c.submit(); c.submit();
+      expect(api.create).toHaveBeenCalledTimes(1);
+      pending.next(session()); pending.complete();
+      c.patch({ localStart: '2027-01-12T09:00' }); c.submit();
+      expect(keys()[1]).not.toBe(keys()[0]);
+      fixture.destroy();
+    });
+  });
 });
