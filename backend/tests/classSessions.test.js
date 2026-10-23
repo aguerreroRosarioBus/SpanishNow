@@ -384,3 +384,20 @@ test('PACK-09: dispensa posterior y compensación de vigencia son explícitas, �
   expect((await sessions.detail(d.students[0], cancelled.id)).purchases).toHaveLength(1);
   expect(await M.AuditLog.count({ where: { entityId: cancelled.id, action: 'session.extend_validity' } })).toBe(1);
 });
+
+test('AGENDA-08/AC07: aceptar una reprogramación reencola los avisos al nuevo horario y anula los del original', async () => {
+  const c = await chain(); const original = await confirmed(c);
+  const intent = { ...c.body.intent, localStart: c.body.intent.localStart.replace('09:00', '12:00') };
+  const pending = await sessions.reschedule(c.teacher, original.id, { version: original.version, intent });
+  const accepted = await sessions.accept(c.students[0], original.id, pending.version);
+  const jobs = await M.OutboxJob.findAll({ where: { aggregateId: original.id, topic: 'reminder.session', status: 'pending' } });
+  const expected = [1440, 60].map(minutes => accepted.startsAt.getTime() - minutes * 60e3).sort();
+  expect(jobs.length).toBe(4);
+  expect([...new Set(jobs.map(j => j.runAt.getTime()))].sort()).toEqual(expected);
+  // Una entrega vieja que ya estuviera reclamada tampoco avisa con el horario anterior.
+  const outbox = require('../src/services/outbox');
+  const stale = await M.OutboxJob.findOne({ where: { aggregateId: original.id, topic: 'reminder.session', status: 'cancelled' } });
+  await stale.update({ status: 'pending', runAt: new Date() });
+  await outbox.runOnce({ limit: 200 });
+  expect(await M.AuditLog.count({ where: { entityType: 'class_sessions', entityId: original.id, action: 'session.reminder', data: { startsAt: original.startsAt.toISOString() } } })).toBe(0);
+});

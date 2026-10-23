@@ -32,17 +32,23 @@ module.exports = core => {
       : `${operation}:session:${session.id}:purchase:${purchaseId}`;
     return credits.apply({ purchaseId, operation, units: 1, operationKey: key, classSessionId: session.id, actorId, reason: why }, { transaction });
   }
+  // La clave incluye el inicio: aceptar una reprogramación cambia el horario sin cambiar la versión.
   async function reminders(session, seats, rules, transaction, now) {
     await outbox.cancel({ aggregateType: 'class_sessions', aggregateId: session.id, topicPrefix: 'reminder.', beforeVersion: session.version }, { transaction });
-    if (session.status !== 'confirmed') return;
-    for (const userId of [session.teacherId, ...seats.filter(s => s.status !== 'cancelled').map(s => s.userId)]) {
-      for (const minutes of rules.remindersBeforeStartMinutes) {
-        const runAt = new Date(time.addElapsed(session.startsAt.toISOString(), { minutes: -minutes }));
-        if (runAt <= now) continue;
-        await outbox.enqueue({ topic: 'reminder.session', aggregateType: 'class_sessions', aggregateId: session.id, aggregateVersion: session.version,
-          dedupeKey: `reminder:${session.id}:v${session.version}:${userId}:${minutes}`, payload: { userId, minutes }, runAt }, { transaction });
+    const startsAt = session.startsAt.toISOString();
+    const wanted = [];
+    if (session.status === 'confirmed') {
+      for (const userId of [session.teacherId, ...seats.filter(s => s.status !== 'cancelled').map(s => s.userId)]) {
+        for (const minutes of rules.remindersBeforeStartMinutes) {
+          const runAt = new Date(time.addElapsed(startsAt, { minutes: -minutes }));
+          if (runAt > now) wanted.push({ dedupeKey: `reminder:${session.id}:v${session.version}:${session.startsAt.getTime()}:${userId}:${minutes}`, payload: { userId, minutes, startsAt }, runAt });
+        }
       }
     }
+    await M.OutboxJob.update({ status: 'cancelled' }, { where: { aggregateType: 'class_sessions', aggregateId: session.id, aggregateVersion: session.version,
+      topic: { [Op.startsWith]: 'reminder.' }, status: 'pending', dedupeKey: { [Op.notIn]: wanted.map(j => j.dedupeKey).concat('') } }, transaction });
+    for (const job of wanted) await outbox.enqueue({ topic: 'reminder.session', aggregateType: 'class_sessions', aggregateId: session.id,
+      aggregateVersion: session.version, ...job }, { transaction });
   }
   async function syncIntents(session, transaction) {
     for (const provider of ['google_calendar', 'zoom']) {
@@ -333,6 +339,7 @@ module.exports = core => {
     if (!await M.ClassSession.count({ where: { id: job.aggregateId } })) return;
     await locked(null, job.aggregateId, async ({ session, seats, transaction }) => {
       if (session.status !== 'confirmed' || session.version !== job.aggregateVersion || session.startsAt <= new Date()) return;
+      if (job.payload?.startsAt !== session.startsAt.toISOString()) return;
       const userId = job.payload?.userId;
       if (userId !== session.teacherId && !seats.some(s => s.userId === userId && s.status !== 'cancelled')) return;
       const recipient = await M.User.findByPk(userId, { transaction });
