@@ -15,6 +15,7 @@ import {LiveClassService} from '../../core/services/live-class.service';
 import {AuthService} from '../../core/services/auth.service';
 import {CourseService} from '../../core/services/course.service';
 import {CourseStudentsService} from '../../core/services/course-students.service';
+import {UserPreferencesService} from '../../core/services/user-preferences.service';
 import {I18nService} from '../../core/i18n/i18n.service';
 import {Course, Unit} from '../../core/models/course.model';
 import {CourseStudent} from '../../core/models/sales.model';
@@ -69,7 +70,7 @@ describe('panel docente, unidades, alumnos y sala en vivo: idioma', () => {
   it('alumnos: conserva formulario, diálogo de baja y error por código sin repetir peticiones', () => {
     const student = {enrollmentId: 4, user: {id: 9, name: 'Ana ficticia', email: 'ana@example.test'}, source: 'hotmart_import', enrolledAt: '2026-10-23T00:00:00.000Z', progress: {completedStories: 1, totalStories: 4}} as CourseStudent;
     const api = {list: vi.fn(() => of([student])), add: vi.fn(() => throwError(() => ({status: 400, error: {error: 'texto libre', code: 'forbidden'}}))), remove: vi.fn(), previewImport: vi.fn(), import: vi.fn()};
-    TestBed.configureTestingModule({providers: [{provide: CourseManageStore, useValue: {courseId: signal(1)}}, {provide: CourseStudentsService, useValue: api}]});
+    TestBed.configureTestingModule({providers: [{provide: CourseManageStore, useValue: {courseId: signal(1)}}, {provide: CourseStudentsService, useValue: api}, {provide: UserPreferencesService, useValue: {preferences: () => ({timeZone: 'UTC'})}}]});
     const i18n = TestBed.inject(I18nService); i18n.setLocale('es');
     const f = TestBed.createComponent(StudentsPanelComponent); f.detectChanges(); const c = f.componentInstance;
     expect(text(f)).toContain('Agregar alumno'); expect(text(f)).toContain('23 oct 2026'); expect(text(f)).toContain('Hotmart'); expect(text(f)).toContain('1 alumno');
@@ -80,6 +81,17 @@ describe('panel docente, unidades, alumnos y sala en vivo: idioma', () => {
     expect(text(f)).toContain('Remove access for Ana ficticia (ana@example.test) to this course?');
     expect(c.addForm.value).toEqual({email: 'nuevo@example.test', name: 'Borrador'}); expect(c.studentToRemove()).toBe(student);
     expect(api.list).toHaveBeenCalledTimes(1); expect(api.remove).not.toHaveBeenCalled(); expect(api.add).not.toHaveBeenCalled();
+  });
+
+  it('alumnos: la fecha de inscripción usa la zona de las preferencias, no UTC', () => {
+    const student = {enrollmentId: 4, user: {id: 9, name: 'Ana ficticia', email: 'ana@example.test'}, source: 'manual', enrolledAt: '2026-10-23T00:30:00.000Z', progress: {completedStories: 0, totalStories: 4}} as CourseStudent;
+    const api = {list: vi.fn(() => of([student])), add: vi.fn(), remove: vi.fn(), previewImport: vi.fn(), import: vi.fn()};
+    TestBed.configureTestingModule({providers: [{provide: CourseManageStore, useValue: {courseId: signal(1)}}, {provide: CourseStudentsService, useValue: api}, {provide: UserPreferencesService, useValue: {preferences: () => ({timeZone: 'America/Argentina/Cordoba'})}}]});
+    const i18n = TestBed.inject(I18nService); i18n.setLocale('es');
+    const f = TestBed.createComponent(StudentsPanelComponent); f.detectChanges();
+    expect(text(f)).toContain('22 oct 2026'); expect(text(f)).not.toContain('23 oct 2026');
+    i18n.setLocale('en'); f.detectChanges();
+    expect(text(f)).toContain('Oct 22, 2026');
   });
 
   it('sala en vivo: la confirmación abierta cambia de idioma sin perder el estado ni pedir la sala de nuevo', async () => {
