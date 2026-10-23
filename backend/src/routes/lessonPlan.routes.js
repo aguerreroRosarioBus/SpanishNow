@@ -10,9 +10,11 @@ const { REINFORCEMENTS, MAX_AUDIO_URL, fail, validId, planWithBlocks, blockData,
   replaceDraftBlocks, publishDraft, validateShape } = require('../services/lessonPlanService');
 const { ContentLockedError, assertUnitOpen, sendLocked } = require('../services/unitAvailability');
 
+const { LESSON_PLAN, errorBody, withErrorCodes } = require('../services/errorCodes');
+router.use(withErrorCodes(LESSON_PLAN));
 const sendError = (res, error) => (error instanceof ContentLockedError
   ? sendLocked(res, error)
-  : res.status(error.status || 500).json({ error: error.message }));
+  : res.status(error.status || 500).json(errorBody(LESSON_PLAN, error.message, error.status || 500)));
 const AUDIO_MIME = /^audio\//i;
 const AUDIO_OTHER_MIME = new Set(['video/mp4', 'video/webm', 'application/ogg']);
 const IMAGE_MIME = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
