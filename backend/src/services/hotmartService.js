@@ -15,7 +15,7 @@ const PRODUCT_PATTERN = /^[A-Za-z0-9-]{1,40}$/;
 const isHotmartCourse = course => Boolean(course && course.hotmartCheckoutUrl);
 
 /** Course fields of a PUT body: { values } or { error, status? }. '' or null clears a field. */
-async function parseCourseFields(body, course) {
+async function parseCourseFields(body, course, { transaction } = {}) {
   const has = key => body[key] !== undefined;
   if (!has('hotmartProductId') && !has('hotmartCheckoutUrl')) return { values: {} };
   const values = {};
@@ -25,8 +25,11 @@ async function parseCourseFields(body, course) {
     const id = text('hotmartProductId');
     if (id && !PRODUCT_PATTERN.test(id)) return { error: 'hotmartProductId must be the Hotmart product id (letters, numbers and hyphens)' };
     if (id) {
-      const other = await Course.findOne({ where: { hotmartProductId: id, id: { [Op.ne]: course.id } }, attributes: ['id'] });
+      const read = transaction ? { transaction, lock: transaction.LOCK.UPDATE } : {};
+      const other = await Course.findOne({ where: { hotmartProductId: id, id: { [Op.ne]: course.id } }, attributes: ['id'], ...read });
       if (other) return { status: 409, error: 'Another course already uses this Hotmart product' };
+      const packageVersion = await require('../models').ClassPackageTemplateVersion.findOne({ where: { hotmartProductId: id }, attributes: ['id'], ...read });
+      if (packageVersion) return { status: 409, error: 'Este producto Hotmart ya pertenece a un paquete de clases' };
     }
     values.hotmartProductId = id || null;
   }
@@ -45,6 +48,22 @@ async function parseCourseFields(body, course) {
   const checkoutUrl = has('hotmartCheckoutUrl') ? values.hotmartCheckoutUrl : course.hotmartCheckoutUrl;
   if (checkoutUrl && !productId) return { error: 'Set the Hotmart product id too: the webhook needs it to find the course' };
   return { values };
+}
+
+// La validación previa puede quedar obsoleta durante una subida de imagen. Se repite bajo el mismo cerrojo que W05
+// inmediatamente antes de escribir, sin mantener transacciones abiertas durante llamadas a Cloudinary.
+async function saveCourseFields(course, fields) {
+  if (fields.hotmartProductId === undefined && fields.hotmartCheckoutUrl === undefined) return course.update(fields);
+  const sequelize = require('../config/database');
+  return sequelize.transaction(async transaction => {
+    await require('./hotmartProductLocks').lock(fields.hotmartProductId || course.hotmartProductId, transaction);
+    const fresh = await Course.findByPk(course.id, { transaction, lock: transaction.LOCK.UPDATE });
+    const parsed = await parseCourseFields(fields, fresh, { transaction });
+    if (parsed.error) throw Object.assign(new Error(parsed.error), { statusCode: parsed.status || 400, code: 'hotmart_product_conflict' });
+    await fresh.update(fields, { transaction });
+    course.set(fresh.toJSON());
+    return course;
+  });
 }
 
 /** Hotmart checkout link of a course, with the logged-in buyer's email and name prefilled. */
@@ -116,6 +135,8 @@ async function orderFor(course, purchase, buyer, status) {
  * webhook off when it gets errors. Returns { handled, reason? }.
  */
 async function handleEvent(body) {
+  const classResult = await require('./classPayments').handleEvent(body);
+  if (classResult.handled) return classResult;
   const event = body && body.event;
   const data = (body && body.data) || {};
   const purchase = data.purchase || {};
@@ -151,4 +172,4 @@ async function handleEvent(body) {
   return { handled: true, applied: result.applied };
 }
 
-module.exports = { isHotmartCourse, parseCourseFields, checkoutUrlFor, verifyHottok, handleEvent, webhookUrl, configured };
+module.exports = { isHotmartCourse, parseCourseFields, saveCourseFields, checkoutUrlFor, verifyHottok, handleEvent, webhookUrl, configured };

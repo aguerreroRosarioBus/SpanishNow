@@ -162,6 +162,7 @@ async function presentConversation(conversation, me, other, { unreadCount = null
   return {
     id: conversation.id,
     role: me.role,
+    canSendOffers: me.role === 'teacher' && require('../config/features').isEnabled('class_packages'),
     counterpart: { id: otherUser.id, name: otherUser.name, role: other.role },
     context,
     lastMessage,

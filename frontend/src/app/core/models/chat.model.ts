@@ -23,6 +23,7 @@ export interface LastMessagePreview {
 export interface Conversation {
   id: number;
   role: ChatRole;
+  canSendOffers?: boolean;
   counterpart: { id: number; name: string; role: ChatRole };
   context: ChatContext | null;
   lastMessage: LastMessagePreview | null;

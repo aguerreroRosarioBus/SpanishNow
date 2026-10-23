@@ -262,9 +262,10 @@ router.put('/:id', authMiddleware, isTeacher, upload.single('image'), async (req
     }
 
     try {
-      await course.update({ title, description, level, imageUrl, ...sales.values, ...series.values, ...hotmartFields.values, ...(intro.skip ? {} : { introVideoUrl: intro.value }) });
+      await hotmart.saveCourseFields(course, { title, description, level, imageUrl, ...sales.values, ...series.values, ...hotmartFields.values, ...(intro.skip ? {} : { introVideoUrl: intro.value }) });
     } catch (error) {
       if (error instanceof UniqueConstraintError) return res.status(409).json({ error: 'That slug is already used by another course' });
+      if (error.statusCode) return res.status(error.statusCode).json({ error: error.message, code: error.code, params: {} });
       throw error;
     }
 
