@@ -82,6 +82,8 @@ export async function openAudioLesson(page: Page, origin: string, options: { ful
         if (route.request().method() === 'PATCH') preferences = { ...preferences, ...route.request().postDataJSON() };
         body = preferences;
       }
+      else if (url.pathname === '/api/features') body = {chat: false};
+      else if (url.pathname === '/api/conversations/unread') body = {messages: 0, conversations: 0};
       else if (url.pathname === '/api/enrollments/my-courses') body = [{ id: 1, courseId: 1, studentId: 1, lessonProgress: [] }];
       else if (url.pathname === '/api/enrollments/1/progress') body = { stories: [], quizzes: [], certificate: null };
       else if (url.pathname === '/api/courses/1') body = { id: 1, title: 'Curso ficticio', units: [{ id: 1, title: 'Unidad', order: 1,

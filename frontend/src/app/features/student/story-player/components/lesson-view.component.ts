@@ -1,3 +1,5 @@
+import { I18nService } from '../../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { Component, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
@@ -13,27 +15,28 @@ import { LessonCommentsComponent } from '../../../../shared/components/lesson-co
 import { MaterialsListComponent } from '../../../../shared/components/materials-list/materials-list.component';
 
 const BLOCK_LABELS: Record<string, string> = {
-  expression: 'Expresión',
-  keyframe: 'Historia',
-  question: 'Pregunta',
-  full_story: 'Lectura completa'
+  expression: 'player.expression',
+  keyframe: 'player.story',
+  question: 'player.question',
+  full_story: 'player.fullReading'
 };
 
 /** Tarjeta de la lección: título, barra de pasos, paso actual y el único par Anterior/Continuar. */
 @Component({
   selector: 'app-lesson-view',
   standalone: true,
-  imports: [IconComponent, LessonBlockComponent, FullStoryBlockComponent, ReinforcementsComponent, VideoEmbedComponent, MaterialsListComponent, NextCourseCardComponent, LessonCommentsComponent],
+  imports: [TranslatePipe, IconComponent, LessonBlockComponent, FullStoryBlockComponent, ReinforcementsComponent, VideoEmbedComponent, MaterialsListComponent, NextCourseCardComponent, LessonCommentsComponent],
   templateUrl: './lesson-view.component.html',
   styleUrl: './lesson-view.component.scss'
 })
 export class LessonViewComponent {
+  i18n = inject(I18nService);
   session = inject(LessonSessionStore);
   nav = inject(LessonNavigationStore);
   private router = inject(Router);
 
   blockLabel(type: string): string {
-    return BLOCK_LABELS[type] ?? 'Refuerzo';
+    return this.i18n.t(BLOCK_LABELS[type] ?? 'player.reinforcement');
   }
 
   unitTitle = computed(() => unitDisplayTitle(this.nav.currentUnit()?.title));
@@ -51,10 +54,10 @@ export class LessonViewComponent {
   });
   /** Etiqueta del botón principal según el punto de la lección. */
   nextLabel = computed(() => {
-    if (!this.isLast()) return 'Continuar';
-    if (!this.session.narrativeCompleted()) return 'Completar lectura';
+    if (!this.isLast()) return this.i18n.t('player.continue');
+    if (!this.session.narrativeCompleted()) return this.i18n.t('player.completeReading');
     const after = this.nav.afterLesson();
-    return after === 'story' ? 'Siguiente historia' : after === 'quiz' ? 'Hacer el quiz' : after === 'unit' ? 'Siguiente unidad' : 'Volver a mis cursos';
+    return after === 'story' ? this.i18n.t('player.nextStory') : after === 'quiz' ? this.i18n.t('player.takeQuiz') : after === 'unit' ? this.i18n.t('player.nextUnitButton') : this.i18n.t('player.backCourses');
   });
 
   next(): void {

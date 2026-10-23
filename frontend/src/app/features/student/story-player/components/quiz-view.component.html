@@ -1,22 +1,22 @@
 @if (loading()) {
-  <div class="lesson-card text-center" role="status">Cargando el quiz…</div>
+  <div class="lesson-card text-center" role="status">{{ 'player.quizLoading' | t }}</div>
 }
 
 @if (error()) {
   <div class="alert alert-danger d-flex align-items-center justify-content-between gap-2" role="alert">
     <span>{{ error() }}</span>
-    <button type="button" class="btn btn-secondary btn-sm" (click)="retryLoad()">Reintentar</button>
+    <button type="button" class="btn btn-secondary btn-sm" (click)="retryLoad()">{{ 'player.retry' | t }}</button>
   </div>
 }
 
 @if (quiz(); as q) {
   <article class="lesson-card">
     <header class="lesson-head">
-      <span class="lesson-head__meta">Quiz · Unidad {{ nav.unitNumber() }}</span>
+      <span class="lesson-head__meta">{{ 'player.quizUnit' | t: {number: nav.unitNumber()} }}</span>
       <h1 class="lesson-head__title">{{ q.title }}</h1>
       <p class="quiz__summary">
-        {{ q.questions.length }} {{ q.questions.length === 1 ? 'pregunta' : 'preguntas' }} · Para aprobar necesitas {{ q.passingScore }}%
-        @if (best() !== null) { · Tu mejor puntaje: <strong>{{ best() }}%</strong> }
+        {{ 'player.questions' | t: {count: q.questions.length} }} · {{ 'player.passing' | t: {score: q.passingScore} }}
+        @if (best() !== null) { · {{ 'player.best' | t: {score: best() ?? 0} }} }
       </p>
     </header>
 
@@ -24,8 +24,8 @@
       <div class="quiz-result" [class.is-passed]="r.passed" role="status" aria-live="polite">
         <div class="quiz-result__score">{{ r.score }}%</div>
         <div>
-          <strong>{{ r.passed ? '¡Aprobaste!' : 'Todavía no alcanzas el puntaje para aprobar' }}</strong>
-          <div class="quiz__summary">Acertaste {{ correct() }} de {{ q.questions.length }}. Mejor puntaje: {{ r.bestScore }}%.</div>
+          <strong>{{ (r.passed ? 'player.quizPassed' : 'player.quizFailed') | t }}</strong>
+          <div class="quiz__summary">{{ 'player.quizResult' | t: {correct: correct(), total: q.questions.length, score: r.bestScore} }}</div>
         </div>
       </div>
     }
@@ -52,7 +52,7 @@
           </fieldset>
           @if (res) {
             <p class="quiz-q__feedback" [class.text-success-ui]="res.correct">
-              <strong>{{ res.correct ? 'Correcta.' : 'Incorrecta.' }}</strong>
+              <strong>{{ (res.correct ? 'player.correct' : 'player.incorrect') | t }}</strong>
               @if (res.explanation) { {{ res.explanation }} }
             </p>
           }
@@ -62,7 +62,7 @@
 
     @if (showMissing() && pending() > 0 && !result()) {
       <div class="alert alert-warning mb-0" role="alert">
-        Te falta responder {{ pending() }} {{ pending() === 1 ? 'pregunta' : 'preguntas' }}.
+        {{ 'player.missing' | t: {count: pending()} }}
       </div>
     }
     @if (submitError()) {
@@ -71,12 +71,12 @@
 
     <footer class="lesson-foot">
       <button type="button" class="btn btn-ghost btn-lg" (click)="nav.goToPrevious()" [disabled]="!nav.canGoPrevious()">
-        <app-icon name="chevron-left" [size]="16" />Anterior
+        <app-icon name="chevron-left" [size]="16" />{{ 'player.previous' | t }}
       </button>
       @if (result(); as r) {
         <div class="quiz__actions">
           <button type="button" class="btn btn-secondary btn-lg" (click)="retry()">
-            <app-icon name="rotate-ccw" [size]="16" />Reintentar
+            <app-icon name="rotate-ccw" [size]="16" />{{ 'player.retry' | t }}
           </button>
           @if (r.passed) {
             <button type="button" class="btn btn-primary btn-lg" (click)="afterQuiz()">
@@ -87,7 +87,7 @@
       } @else {
         <button type="button" class="btn btn-primary btn-lg" (click)="submit()" [disabled]="submitting()">
           @if (submitting()) { <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> }
-          Enviar respuestas
+          {{ 'player.submit' | t }}
         </button>
       }
     </footer>

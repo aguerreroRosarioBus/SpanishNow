@@ -17,6 +17,8 @@ test('selector global traduce audio activo y conserva medio, borrador A/B y prog
   const before = await currentMedia(page);
   await page.getByRole('combobox', { name: 'Idioma' }).selectOption('en');
   await expect(page.getByRole('button', { name: 'Pause audio', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', {name: 'Full story', exact: true})).toBeVisible();
+  await expect(page.getByRole('progressbar', {name: 'Course progress'})).toBeVisible();
   await expect(page.getByRole('slider', { name: 'Audio position in seconds' })).toBeEnabled();
   await expect(page.getByRole('spinbutton', { name: 'Start A (seconds)' })).toHaveValue('1');
   await expect(page.getByRole('spinbutton', { name: 'End B (seconds)' })).toHaveValue('11');
@@ -28,5 +30,23 @@ test('selector global traduce audio activo y conserva medio, borrador A/B y prog
   expect(lesson.progress.narrativeCompleted).toBe(false);
   await expect(page.locator('.story-text')).toContainText('María llega a la fiesta.');
   expect(mutations).toEqual(['/api/me/preferences']);
+  expect(unknown).toEqual([]);
+});
+
+
+test('selector conserva respuesta de comprensión escrita, bloque y progreso', async ({page}) => {
+  const {mutations, unknown, lesson} = await openAudioLesson(page, server.origin);
+  (lesson.blocks as unknown[]).push({blockKey: 'q1', position: 3, type: 'question', phase: 'during', active: true, questionId: 9, question: {questionText: '¿Dónde está María?', answerType: 'open_ended'}});
+  lesson.progress.lastBlockKey = 'q1';
+  await page.reload();
+  await page.getByRole('textbox', {name: 'Tu respuesta', exact: true}).fill('Respuesta humana original');
+  const before = [...mutations];
+  await page.locator('app-language-selector select').selectOption('en');
+  await expect(page.getByRole('heading', {name: 'Comprehension question'})).toBeVisible();
+  await expect(page.getByRole('textbox', {name: 'Your answer', exact: true})).toHaveValue('Respuesta humana original');
+  await expect(page.getByText('¿Dónde está María?', {exact: true})).toBeVisible();
+  expect(lesson.progress.lastBlockKey).toBe('q1');
+  expect(lesson.progress.narrativeCompleted).toBe(false);
+  expect(mutations.slice(before.length)).toEqual(['/api/me/preferences']);
   expect(unknown).toEqual([]);
 });

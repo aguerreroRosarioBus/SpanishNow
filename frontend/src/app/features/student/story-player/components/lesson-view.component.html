@@ -1,37 +1,37 @@
 @if (session.loading()) {
-  <div class="lesson-card text-center" role="status">Cargando tu lección…</div>
+  <div class="lesson-card text-center" role="status">{{ 'player.lessonLoading' | t }}</div>
 }
 
 @if (session.visibleError()) {
   <div class="alert alert-danger d-flex align-items-center justify-content-between gap-2" role="alert">
     <span>{{ session.visibleError() }}</span>
-    <button type="button" class="btn btn-secondary btn-sm" (click)="session.retryLoad()">Reintentar</button>
+    <button type="button" class="btn btn-secondary btn-sm" (click)="session.retryLoad()">{{ 'player.retry' | t }}</button>
   </div>
 }
 
 @if (session.lesson(); as lesson) {
   <article class="lesson-card">
     <header class="lesson-head">
-      <span class="lesson-head__meta">Historia {{ storyPosition() }} de {{ nav.storyItems().length }} · Unidad {{ nav.unitNumber() }}</span>
+      <span class="lesson-head__meta">{{ 'player.storyCount' | t: {number: storyPosition(), total: nav.storyItems().length, unit: nav.unitNumber()} }}</span>
       <h1 class="lesson-head__title">{{ lesson.story.title }}</h1>
     </header>
 
     @if (videoUrl(); as video) {
-      <app-video-embed [url]="video" [title]="'Video: ' + lesson.story.title" />
+      <app-video-embed [url]="video" [title]="'player.videoTitle' | t: {title: lesson.story.title}" />
     }
 
     <div class="steps">
       <div class="steps__label">
-        <span class="steps__current" role="status" aria-live="polite" aria-atomic="true">Paso {{ session.currentBlockIndex() + 1 }} de {{ session.activeBlocks().length }} ·
+        <span class="steps__current" role="status" aria-live="polite" aria-atomic="true">{{ 'player.stepCount' | t: {number: session.currentBlockIndex() + 1, total: session.activeBlocks().length} }} ·
           <span class="steps__type">{{ blockLabel(session.currentBlock()?.type ?? '') }}</span></span>
-        <span class="steps__percent">{{ percent() }}% completado</span>
+        <span class="steps__percent">{{ 'player.percent' | t: {percent: percent()} }}</span>
       </div>
-      <div class="steps__bar" role="group" aria-label="Pasos de la lección">
+      <div class="steps__bar" role="group" [attr.aria-label]="'player.steps' | t">
         @for (block of session.activeBlocks(); track block.blockKey; let i = $index) {
           <button type="button" class="seg"
                   [class.is-done]="i < session.currentBlockIndex() || session.narrativeCompleted()"
                   [class.is-current]="i === session.currentBlockIndex()"
-                  [attr.aria-label]="'Paso ' + (i + 1) + ': ' + blockLabel(block.type)"
+                  [attr.aria-label]="'player.stepLabel' | t: {number: i + 1, type: blockLabel(block.type)}"
                   [attr.aria-current]="i === session.currentBlockIndex() ? 'step' : null"
                   (click)="session.goToBlockIndex(i)"></button>
         }
@@ -50,7 +50,7 @@
 
     <footer class="lesson-foot">
       <button type="button" class="btn btn-ghost btn-lg" (click)="session.goToBlock(-1)" [disabled]="session.currentBlockIndex() <= 0">
-        <app-icon name="chevron-left" [size]="16" />Anterior
+        <app-icon name="chevron-left" [size]="16" />{{ 'player.previous' | t }}
       </button>
       <button type="button" class="btn btn-primary btn-lg" (click)="next()">
         {{ nextLabel() }}
@@ -65,8 +65,8 @@
     <app-next-course-card [offer]="next" />
   }
 
-  <app-materials-list [materials]="storyMaterials()" heading="Materiales de esta historia" />
-  <app-materials-list [materials]="unitMaterials()" heading="Materiales de la unidad" />
+  <app-materials-list [materials]="storyMaterials()" [heading]="'player.storyMaterials' | t" />
+  <app-materials-list [materials]="unitMaterials()" [heading]="'player.unitMaterials' | t" />
 
   <app-lesson-comments [storyId]="lesson.storyId" [autoScroll]="nav.focusCommentsStoryId() === lesson.storyId" />
 }
