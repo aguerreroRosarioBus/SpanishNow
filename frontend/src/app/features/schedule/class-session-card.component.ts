@@ -59,6 +59,7 @@ export class ClassSessionCardComponent {
     const p = this.selectedProposal(), s = this.session();
     return p?.status === 'pending' ? p : s;
   });
+  hasPendingSync = computed(() => (this.session()?.sync || []).some(r => r.status !== 'ready'));
   lateCancel(): boolean {
     const s = this.session(); if (!s || (this.teacher() && (!this.requestedBy || this.waiver.trim())) || s.status !== 'confirmed') return false;
     return !isAtLeastHoursBefore(s.startsAt, new Date(Date.now() + this.clockOffset).toISOString(), s.rules?.freeCancelHours ?? 24);
@@ -131,7 +132,7 @@ export class ClassSessionCardComponent {
     const generation = this.generation; const s = this.session(); if (!s) return;
     this.actionRequest = this.api.join(s.id).subscribe({ next: result => {
       if (generation !== this.generation) return;
-      try { const u = new URL(result.joinUrl); if (u.protocol === 'https:' && (u.hostname === 'zoom.us' || u.hostname.endsWith('.zoom.us'))) this.meeting.set(u.href); } catch { /* no se muestra una URL inválida */ }
+      try { const u = new URL((this.teacher() && result.hostUrl) || result.joinUrl || ''); if (u.protocol === 'https:' && (u.hostname === 'zoom.us' || u.hostname.endsWith('.zoom.us'))) this.meeting.set(u.href); } catch { /* no se muestra una URL inválida */ }
     }, error: error => { if (generation === this.generation) this.failure.set(error); } });
   }
   displayProposal(p: SessionProposal): string { return this.i18n.formatInstant(p.expiresAt, isTimeZone(this.zone()) ? this.zone() : 'UTC'); }

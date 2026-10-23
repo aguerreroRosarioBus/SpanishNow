@@ -41,7 +41,7 @@ const pairs: Record<string, [string, string]> = {
   groupDecision: ['A participant cancelled. The teacher must keep the agreed price with fewer participants or cancel and return the remaining reservations.', 'Un participante canceló. El docente debe aceptar dictar con menos personas al precio acordado o cancelar y devolver las reservas restantes.'],
   keepGroup: ['Teach with remaining participants at the agreed price', 'Dictar con quienes quedan al precio acordado'],
   sync: ['Calendar / meeting', 'Calendario / reunión'], syncPending: ['External integrations are not ready. The internal class and credits remain recorded.', 'Las integraciones externas no están listas. La clase interna y el saldo se conservan.'],
-  syncRetry: ['Retry synchronization', 'Reintentar sincronización'], join: ['Open participant meeting link', 'Abrir enlace de participante'], whiteboard: ['Whiteboard', 'Pizarra'],
+  syncRetry: ['Retry synchronization', 'Reintentar sincronización'], join: ['Open participant meeting link', 'Abrir enlace de participante'], start: ['Start meeting', 'Iniciar reunión'], whiteboard: ['Whiteboard', 'Pizarra'],
   manual: ['Manual meeting link', 'Enlace de reunión manual'], reminders: ['Class reminders', 'Recordatorios de clases'],
   truncated: ['The list is limited. Narrow the date range.', 'La lista está limitada. Acotá el rango de fechas.'],
   from: ['From date', 'Desde fecha'], to: ['Until date (exclusive)', 'Hasta fecha (exclusiva)'], apply: ['Apply dates', 'Aplicar fechas'],

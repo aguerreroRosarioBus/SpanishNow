@@ -95,6 +95,35 @@ describe('W06: interfaz conectada por contratos de agenda', () => {
     fixture.destroy();
   });
 
+  const confirmed = (sync: { provider: string; status: string; syncedVersion: number }[]) => ({ ...session(), status: 'confirmed', sync });
+  it('el aviso de integraciones pendientes se oculta si todo está ready y aparece si no', () => {
+    for (const [sync, shown] of [[[{ provider: 'zoom', status: 'ready', syncedVersion: 1 }, { provider: 'google_calendar', status: 'ready', syncedVersion: 1 }], false],
+      [[{ provider: 'zoom', status: 'ready', syncedVersion: 1 }, { provider: 'google_calendar', status: 'needs_attention', syncedVersion: 1 }], true], [[], true]] as const) {
+      api.get.mockReturnValue(of(confirmed([...sync])));
+      const fixture = TestBed.createComponent(ClassSessionCardComponent); fixture.componentRef.setInput('sessionId', 10); fixture.detectChanges();
+      expect(fixture.nativeElement.textContent.includes('Las integraciones externas no están listas')).toBe(shown); fixture.destroy();
+    }
+  });
+
+  it('la docente inicia la reunión con hostUrl de zoom.us; la alumna solo entra como participante', () => {
+    const sync = [{ provider: 'zoom', status: 'ready', syncedVersion: 1 }];
+    const api2 = api as typeof api & { join: ReturnType<typeof vi.fn> };
+    api2.join = vi.fn(() => of({ hostUrl: 'https://us02web.zoom.us/s/1?zak=x', joinUrl: 'https://us02web.zoom.us/j/1', manual: false }));
+    api.get.mockReturnValue(of(confirmed(sync)));
+    auth.currentUser.set({ id: 2, role: 'teacher' });
+    let fixture = TestBed.createComponent(ClassSessionCardComponent); fixture.componentRef.setInput('sessionId', 10); fixture.detectChanges();
+    const button = () => [...fixture.nativeElement.querySelectorAll('.sync button')].find((b: HTMLElement) => b.textContent?.includes('Iniciar reunión')) as HTMLButtonElement | undefined;
+    expect(button()).toBeTruthy(); button()!.click(); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.sync a[href*="zak=x"]')).toBeTruthy(); fixture.destroy();
+    api2.join.mockReturnValue(of({ hostUrl: 'https://evil.example/s/1', manual: false }));
+    fixture = TestBed.createComponent(ClassSessionCardComponent); fixture.componentRef.setInput('sessionId', 10); fixture.detectChanges();
+    button()!.click(); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.sync a')).toBeNull(); fixture.destroy();
+    auth.currentUser.set({ id: 1, role: 'student' });
+    fixture = TestBed.createComponent(ClassSessionCardComponent); fixture.componentRef.setInput('sessionId', 10); fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toContain('Iniciar reunión'); fixture.destroy();
+  });
+
   it('catálogo de agenda conserva paridad EN/ES y claves propias', () => {
     expect(Object.keys(SCHEDULE_MESSAGES.en).sort()).toEqual(Object.keys(SCHEDULE_MESSAGES.es).sort());
     expect(Object.keys(SCHEDULE_MESSAGES.en).every(key => key.startsWith('schedule.') || key.startsWith('errors.'))).toBe(true);
