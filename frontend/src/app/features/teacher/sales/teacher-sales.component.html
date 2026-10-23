@@ -1,17 +1,17 @@
 <div class="page-container">
   <div class="page-header">
     <div class="page-header__main">
-      <h1 class="page-title">Ventas</h1>
-      <p class="page-summary">Ingresos netos (ventas menos reembolsos), agrupados por moneda.</p>
+      <h1 class="page-title">{{ 'teacherCommerce.title' | t }}</h1>
+      <p class="page-summary">{{ 'teacherCommerce.summary' | t }}</p>
     </div>
     <div class="page-actions">
-      <div class="period" role="group" aria-label="Período">
+      <div class="period" role="group" [attr.aria-label]="'teacherCommerce.period' | t">
         @for (p of periods; track p.value) {
           <button type="button" class="btn btn-sm" [class.btn-primary]="period() === p.value" [class.btn-secondary]="period() !== p.value"
-                  [attr.aria-pressed]="period() === p.value" (click)="setPeriod(p.value)">{{ p.label }}</button>
+                  [attr.aria-pressed]="period() === p.value" (click)="setPeriod(p.value)">{{ p.label | t }}</button>
         }
       </div>
-      <a routerLink="/teacher/orders" class="btn btn-secondary btn-sm">Ver órdenes</a>
+      <a routerLink="/teacher/orders" class="btn btn-secondary btn-sm">{{ 'teacherCommerce.viewOrders' | t }}</a>
     </div>
   </div>
 
@@ -22,42 +22,42 @@
   @if (isLoading()) {
     <div class="text-center py-5" role="status">
       <div class="spinner-border text-primary" aria-hidden="true"></div>
-      <p class="text-muted mt-2 mb-0">Cargando ventas…</p>
+      <p class="text-muted mt-2 mb-0">{{ 'teacherCommerce.loadingSales' | t }}</p>
     </div>
   } @else if (summary() && isEmpty()) {
     <div class="state-box">
-      <strong>Todavía no hay ventas en este período</strong>
-      <span>Cuando alguien compre un curso vas a ver acá los ingresos. Prueba con un período más largo.</span>
+      <strong>{{ 'teacherCommerce.emptySales' | t }}</strong>
+      <span>{{ 'teacherCommerce.emptySalesHint' | t }}</span>
     </div>
   } @else if (summary()) {
     @for (currency of currencies(); track currency) {
-      <section class="currency-block" [attr.aria-label]="'Ventas en ' + currency.toUpperCase()">
+      <section class="currency-block" [attr.aria-label]="'teacherCommerce.salesCurrency' | t: {currency: currency.toUpperCase()}">
         <h2 class="currency-block__title">{{ currency.toUpperCase() }}</h2>
 
         @if (totalFor(currency); as t) {
           <div class="kpi-grid">
             <div class="kpi">
-              <span class="kpi__label">Ingresos netos</span>
+              <span class="kpi__label">{{ 'teacherCommerce.net' | t }}</span>
               <strong class="kpi__value">{{ money(t.net, currency) }}</strong>
-              <span class="kpi__hint">Bruto {{ money(t.gross, currency) }}</span>
+              <span class="kpi__hint">{{ 'teacherCommerce.gross' | t: {amount: money(t.gross, currency)} }}</span>
             </div>
             <div class="kpi">
-              <span class="kpi__label">Órdenes</span>
-              <strong class="kpi__value">{{ t.orders }}</strong>
+              <span class="kpi__label">{{ 'teacherCommerce.orders' | t }}</span>
+              <strong class="kpi__value">{{ number(t.orders) }}</strong>
             </div>
             <div class="kpi">
-              <span class="kpi__label">Reembolsos</span>
+              <span class="kpi__label">{{ 'teacherCommerce.refunds' | t }}</span>
               <strong class="kpi__value">{{ money(t.refunds, currency) }}</strong>
-              <span class="kpi__hint">{{ t.refundsCount }} {{ t.refundsCount === 1 ? 'reembolso' : 'reembolsos' }}</span>
+              <span class="kpi__hint">{{ 'teacherCommerce.refundCount' | t: {count: t.refundsCount} }}</span>
             </div>
           </div>
         }
 
         @if (chartFor(currency); as chart) {
           <div class="panel-block">
-            <h3 class="panel-block__title">Ingresos netos por mes</h3>
+            <h3 class="panel-block__title">{{ 'teacherCommerce.monthly' | t }}</h3>
             <svg class="chart" [attr.viewBox]="'0 0 ' + (chartW + 96) + ' ' + (chartH + 36)" role="img"
-                 [attr.aria-label]="'Gráfico de barras de ingresos netos por mes en ' + currency.toUpperCase() + '. Los mismos datos están en la tabla siguiente.'">
+                 [attr.aria-label]="'teacherCommerce.chartAria' | t: {currency: currency.toUpperCase()}">
               <g transform="translate(88 8)">
                 @for (tick of chart.ticks; track tick.value) {
                   <line class="chart__grid" x1="0" [attr.x2]="chartW" [attr.y1]="tick.y" [attr.y2]="tick.y" />
@@ -65,7 +65,7 @@
                 }
                 @for (bar of chart.bars; track bar.month; let i = $index) {
                   <rect class="chart__bar" [attr.x]="bar.x" [attr.y]="bar.y" [attr.width]="bar.width" [attr.height]="bar.height" rx="3">
-                    <title>{{ bar.label }}: {{ bar.valueLabel }} ({{ bar.orders }} {{ bar.orders === 1 ? 'orden' : 'órdenes' }})</title>
+                    <title>{{ bar.label }}: {{ bar.valueLabel }} ({{ 'teacherCommerce.orderCount' | t: {count: bar.orders} }})</title>
                   </rect>
                   @if (i % chart.labelEvery === 0) {
                     <text class="chart__tick" [attr.x]="bar.x + bar.width / 2" [attr.y]="chartH + 20" text-anchor="middle">{{ bar.label }}</text>
@@ -74,14 +74,14 @@
               </g>
             </svg>
             <details class="chart-table">
-              <summary>Ver como tabla</summary>
+              <summary>{{ 'teacherCommerce.table' | t }}</summary>
               <div class="table-wrap">
                 <table class="data-table">
-                  <caption class="visually-hidden">Ingresos netos por mes en {{ currency.toUpperCase() }}</caption>
-                  <thead><tr><th scope="col">Mes</th><th scope="col" class="num">Ingresos netos</th><th scope="col" class="num">Órdenes</th></tr></thead>
+                  <caption class="visually-hidden">{{ 'teacherCommerce.monthlyCurrency' | t: {currency: currency.toUpperCase()} }}</caption>
+                  <thead><tr><th scope="col">{{ 'teacherCommerce.month' | t }}</th><th scope="col" class="num">{{ 'teacherCommerce.net' | t }}</th><th scope="col" class="num">{{ 'teacherCommerce.orders' | t }}</th></tr></thead>
                   <tbody>
                     @for (bar of chart.bars; track bar.month) {
-                      <tr><th scope="row">{{ bar.label }}</th><td class="num">{{ bar.valueLabel }}</td><td class="num">{{ bar.orders }}</td></tr>
+                      <tr><th scope="row">{{ bar.label }}</th><td class="num">{{ bar.valueLabel }}</td><td class="num">{{ number(bar.orders) }}</td></tr>
                     }
                   </tbody>
                 </table>
@@ -93,20 +93,20 @@
     }
 
     <section class="panel-block" aria-labelledby="by-course">
-      <h2 id="by-course" class="panel-block__title">Ingresos por curso</h2>
+      <h2 id="by-course" class="panel-block__title">{{ 'teacherCommerce.byCourse' | t }}</h2>
       @if (courseRows().length === 0) {
-        <p class="text-secondary-ui mb-0">Sin ventas por curso en este período.</p>
+        <p class="text-secondary-ui mb-0">{{ 'teacherCommerce.noCourseSales' | t }}</p>
       } @else {
         <div class="table-wrap">
           <table class="data-table">
-            <thead><tr><th scope="col">Curso</th><th scope="col">Moneda</th><th scope="col" class="num">Ingresos netos</th><th scope="col" class="num">Órdenes</th></tr></thead>
+            <thead><tr><th scope="col">{{ 'teacherCommerce.course' | t }}</th><th scope="col">{{ 'teacherCommerce.currency' | t }}</th><th scope="col" class="num">{{ 'teacherCommerce.net' | t }}</th><th scope="col" class="num">{{ 'teacherCommerce.orders' | t }}</th></tr></thead>
             <tbody>
               @for (row of courseRows(); track row.courseId + row.currency) {
                 <tr>
                   <th scope="row">{{ row.title }}</th>
                   <td>{{ row.currency.toUpperCase() }}</td>
                   <td class="num">{{ money(row.net, row.currency) }}</td>
-                  <td class="num">{{ row.orders }}</td>
+                  <td class="num">{{ number(row.orders) }}</td>
                 </tr>
               }
             </tbody>

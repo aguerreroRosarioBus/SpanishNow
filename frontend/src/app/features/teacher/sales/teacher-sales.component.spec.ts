@@ -1,0 +1,23 @@
+import {TestBed} from '@angular/core/testing';
+import {provideRouter} from '@angular/router';
+import {of} from 'rxjs';
+import {vi} from 'vitest';
+import {TeacherSalesComponent} from './teacher-sales.component';
+import {SalesService} from '../../../core/services/sales.service';
+import {I18nService} from '../../../core/i18n/i18n.service';
+import {monthLabel} from './sales-chart.logic';
+it('ventas: localiza gráfico sin recargar período, convertir monedas ni modificar datos', () => {
+  const data = Object.freeze({totals: [{currency: 'USD', gross: 9015, refunds: 0, net: 9015, orders: 1, refundsCount: 0}, {currency: 'ARS', gross: 1, refunds: 0, net: 1, orders: 1, refundsCount: 0}], byMonth: [{currency: 'USD', month: '2026-01', net: 9015, orders: 1}, {currency: 'ARS', month: '2026-01', net: 1, orders: 1}], byCourse: []});
+  const summary = vi.fn(() => of(data));
+  TestBed.configureTestingModule({providers: [provideRouter([]), {provide: SalesService, useValue: {summary}}]});
+  const i18n = TestBed.inject(I18nService); i18n.setLocale('es');
+  const f = TestBed.createComponent(TeacherSalesComponent); f.detectChanges();
+  expect(f.nativeElement.textContent).toContain('90,15'); expect(f.componentInstance.charts()[0].bars[0].label).toBe('ene 26');
+  i18n.setLocale('en'); f.detectChanges();
+  expect(f.nativeElement.textContent).toContain('90.15');
+  expect(f.componentInstance.charts()[0].bars[0].label).toBe('Jan 26');
+  expect(f.componentInstance.charts()[1].bars[0].value).toBe(1);
+  expect(f.componentInstance.summary()).toBe(data); expect(f.componentInstance.currencies()).toEqual(['usd', 'ars']);
+  expect(f.componentInstance.period()).toBe('12m'); expect(summary).toHaveBeenCalledTimes(1);
+  expect(monthLabel('2026-12', 'en-US')).toBe('Dec 26');
+});
