@@ -13,7 +13,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 *
 const run = handler => async (req, res) => {
   try { await handler(req, res); }
   catch (e) {
-    if (e instanceof LiveError) return res.status(e.status).json(errorBody(LIVE, e.message, e.status));
+    if (e instanceof LiveError) return res.status(e.status).json(errorBody(LIVE, e.message, e.status, e.code));
     if (e instanceof multer.MulterError) return res.status(400).json({ error: 'Selecciona una imagen de hasta 5 MB.', code: 'validation_failed' });
     console.error('Live class request failed:', e.name);
     res.status(500).json({ error: 'No se pudo completar la operación de la clase.' });

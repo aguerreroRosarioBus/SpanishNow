@@ -14,7 +14,7 @@ const BACKGROUND_INVITES_OVER = 50; // more invitations than this are sent after
 const INVITE_CONCURRENCY = 5;
 
 class ImportError extends Error {
-  constructor(status, message) { super(message); this.status = status; }
+  constructor(status, message, code) { super(message); this.status = status; this.code = code; }
 }
 
 // Header names (Hotmart exports in the language of the account). Compared after normalizing: lowercase, no accents,
@@ -47,8 +47,8 @@ function detectDelimiter(text) {
  * Throws ImportError for an unusable file (too big, not CSV, no email column, too many rows).
  */
 function parseCsv(buffer) {
-  if (!buffer || !buffer.length) throw new ImportError(400, 'The file is empty');
-  if (buffer.length > MAX_BYTES) throw new ImportError(413, 'The file is larger than 2 MB');
+  if (!buffer || !buffer.length) throw new ImportError(400, 'The file is empty', 'import_file_empty');
+  if (buffer.length > MAX_BYTES) throw new ImportError(413, 'The file is larger than 2 MB', 'file_too_large');
   const text = decode(buffer);
   let records;
   try {
@@ -57,17 +57,17 @@ function parseCsv(buffer) {
       trim: true, info: true
     });
   } catch (error) {
-    throw new ImportError(400, `The file is not a valid CSV: ${error.message}`);
+    throw new ImportError(400, `The file is not a valid CSV: ${error.message}`, 'import_file_invalid');
   }
-  if (!records.length) throw new ImportError(400, 'The file is empty');
+  if (!records.length) throw new ImportError(400, 'The file is empty', 'import_file_empty');
 
   const headers = records[0].record.map(normalizeHeader);
   const emailIndex = headers.findIndex(h => EMAIL_HEADERS.includes(h));
-  if (emailIndex === -1) throw new ImportError(400, 'No email column found. Expected a header such as Email, E-mail, Buyer email, Email del comprador or Email do comprador.');
+  if (emailIndex === -1) throw new ImportError(400, 'No email column found. Expected a header such as Email, E-mail, Buyer email, Email del comprador or Email do comprador.', 'import_email_column_missing');
   const nameIndex = headers.findIndex((h, i) => i !== emailIndex && NAME_HEADERS.includes(h));
 
   const data = records.slice(1);
-  if (data.length > MAX_ROWS) throw new ImportError(400, `The file has more than ${MAX_ROWS} rows`);
+  if (data.length > MAX_ROWS) throw new ImportError(400, `The file has more than ${MAX_ROWS} rows`, 'import_too_many_rows');
 
   const rows = [];
   const seen = new Set();
@@ -132,7 +132,7 @@ async function previewImport(courseId, buffer) {
 async function grantAccess({ course, email, name, source }) {
   return sequelize.transaction(async transaction => {
     const { user, created: userCreated } = await findOrCreateStudent({ email, name }, { transaction });
-    if (user.role !== 'student') throw new ImportError(400, 'This email belongs to a teacher account');
+    if (user.role !== 'student') throw new ImportError(400, 'This email belongs to a teacher account', 'import_email_is_teacher');
     const [enrollment, enrollmentCreated] = await Enrollment.findOrCreate({
       where: { studentId: user.id, courseId: course.id },
       defaults: { studentId: user.id, courseId: course.id, source },

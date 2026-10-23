@@ -14,7 +14,7 @@ const { LESSON_PLAN, errorBody, withErrorCodes } = require('../services/errorCod
 router.use(withErrorCodes(LESSON_PLAN));
 const sendError = (res, error) => (error instanceof ContentLockedError
   ? sendLocked(res, error)
-  : res.status(error.status || 500).json(errorBody(LESSON_PLAN, error.message, error.status || 500)));
+  : res.status(error.status || 500).json(errorBody(LESSON_PLAN, error.message, error.status || 500, error.code)));
 const AUDIO_MIME = /^audio\//i;
 const AUDIO_OTHER_MIME = new Set(['video/mp4', 'video/webm', 'application/ogg']);
 const IMAGE_MIME = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
