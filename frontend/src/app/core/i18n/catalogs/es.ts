@@ -10,6 +10,7 @@ import { TEACHER_PROMOTIONS_ES } from './teacher-promotions';
 import { TEACHER_DASHBOARD_ES } from './teacher-dashboard';
 import { TEACHER_MANAGE_ES } from './teacher-manage';
 import { TEACHER_COMPOSER_ES } from './teacher-composer';
+import { LIVE_BOARD_ES } from './live-board';
 import { TranslationMessage } from '../i18n.types';
 
 export const ES = {
@@ -24,6 +25,7 @@ export const ES = {
   ...TEACHER_DASHBOARD_ES,
   ...TEACHER_MANAGE_ES,
   ...TEACHER_COMPOSER_ES,
+  ...LIVE_BOARD_ES,
   'common.language': 'Idioma',
   'preferences.loadError': 'No pudimos cargar las preferencias de tu cuenta. Intenta de nuevo.',
   'preferences.saveError': 'No pudimos guardar las preferencias en tu cuenta. Intenta de nuevo.',

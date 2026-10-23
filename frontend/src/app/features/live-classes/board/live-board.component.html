@@ -1,5 +1,5 @@
 <div class="board-surface" [class.read-only]="!editable()" [class.selecting]="tool() === 'select'" [class.is-panning]="panning()">
-  <svg class="live-canvas" viewBox="0 0 1600 900" tabindex="0" role="img" [attr.aria-label]="page().title + '. Usa Seleccionar para mover elementos y las flechas del teclado para ajustar su posición.'"
+  <svg class="live-canvas" viewBox="0 0 1600 900" tabindex="0" role="img" [attr.aria-label]="'liveBoard.board.canvasLabel' | t : { title: page().title }"
        (pointerdown)="pointerDown($event)" (pointermove)="pointerMove($event)" (pointerup)="pointerUp($event)" (pointercancel)="cancel()" (lostpointercapture)="cancel()" (keydown)="keydown($event)">
     <defs>
       <pattern id="live-dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="12" cy="12" r="1.2" fill="#ccd4df" /></pattern>
@@ -18,7 +18,7 @@
           @case ('image') { <image [attr.href]="e.url" [attr.x]="e.x" [attr.y]="e.y" [attr.width]="e.w" [attr.height]="e.h" preserveAspectRatio="xMidYMid meet" /> }
           @case ('link') {
             <rect [attr.x]="e.x" [attr.y]="e.y" [attr.width]="e.w" [attr.height]="e.h" rx="12" fill="#e8efff" stroke="#a4b7e7" />
-            <text [attr.x]="e.x + 16" [attr.y]="e.y + 30" fill="#263b70" font-size="18">GOOGLE DRIVE</text>
+            <text [attr.x]="e.x + 16" [attr.y]="e.y + 30" fill="#263b70" font-size="18">{{ 'liveBoard.board.driveLabel' | t }}</text>
             <text [attr.x]="e.x + 16" [attr.y]="e.y + 62" fill="#263b70" font-size="22">{{ (e.text || '').slice(0, 22) }}</text>
           }
           @default {
@@ -46,17 +46,17 @@
 </div>
 @if (selected(); as e) {
   <div class="object-editor">
-    <span class="object-label">{{ e.type === 'note' ? 'Nota seleccionada' : e.type === 'text' ? 'Texto seleccionado' : e.type === 'image' ? 'Imagen seleccionada' : e.type === 'link' ? 'Recurso de Drive seleccionado' : 'Dibujo seleccionado' }}</span>
-    @if (e.type === 'link') { <a [href]="e.url" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">Abrir recurso ↗</a> }
+    <span class="object-label">{{ (e.type === 'note' ? 'liveBoard.board.selNote' : e.type === 'text' ? 'liveBoard.board.selText' : e.type === 'image' ? 'liveBoard.board.selImage' : e.type === 'link' ? 'liveBoard.board.selLink' : 'liveBoard.board.selDrawing') | t }}</span>
+    @if (e.type === 'link') { <a [href]="e.url" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">{{ 'liveBoard.board.openResource' | t }}</a> }
     @if (canChangeSelected()) {
       @if (e.type === 'note' || e.type === 'text' || e.type === 'link') {
-        <textarea aria-label="Texto del elemento" rows="2" maxlength="1000" [value]="editingText() ?? e.text" (input)="editingText.set($any($event.target).value)"></textarea>
-        <button type="button" class="btn btn-secondary btn-sm" (click)="saveText()" [disabled]="!editingText()?.trim()">Guardar texto</button>
+        <textarea [attr.aria-label]="'liveBoard.board.elementText' | t" rows="2" maxlength="1000" [value]="editingText() ?? e.text" (input)="editingText.set($any($event.target).value)"></textarea>
+        <button type="button" class="btn btn-secondary btn-sm" (click)="saveText()" [disabled]="!editingText()?.trim()">{{ 'liveBoard.board.saveText' | t }}</button>
       }
-      <button type="button" class="btn btn-secondary btn-sm" (click)="resize(0.8)" aria-label="Reducir elemento">− Tamaño</button>
-      <button type="button" class="btn btn-secondary btn-sm" (click)="resize(1.25)" aria-label="Ampliar elemento">+ Tamaño</button>
-      <div ngbDropdown placement="bottom-end"><button type="button" class="btn-icon" ngbDropdownToggle aria-label="Más acciones del elemento"><app-icon name="more" [size]="18" /></button><div ngbDropdownMenu><button ngbDropdownItem type="button" (click)="remove()" class="text-danger"><app-icon name="trash" [size]="16" /> Eliminar elemento</button></div></div>
-    } @else { <span class="text-muted">{{ editable() ? 'Este elemento pertenece a otro participante.' : 'Pizarra en modo lectura.' }}</span> }
+      <button type="button" class="btn btn-secondary btn-sm" (click)="resize(0.8)" [attr.aria-label]="'liveBoard.board.shrinkLabel' | t">{{ 'liveBoard.board.shrink' | t }}</button>
+      <button type="button" class="btn btn-secondary btn-sm" (click)="resize(1.25)" [attr.aria-label]="'liveBoard.board.growLabel' | t">{{ 'liveBoard.board.grow' | t }}</button>
+      <div ngbDropdown placement="bottom-end"><button type="button" class="btn-icon" ngbDropdownToggle [attr.aria-label]="'liveBoard.board.moreActions' | t"><app-icon name="more" [size]="18" /></button><div ngbDropdownMenu><button ngbDropdownItem type="button" (click)="remove()" class="text-danger"><app-icon name="trash" [size]="16" /> {{ 'liveBoard.board.deleteElement' | t }}</button></div></div>
+    } @else { <span class="text-muted">{{ (editable() ? 'liveBoard.board.notOwner' : 'liveBoard.board.readOnlyMode') | t }}</span> }
   </div>
 }
-@if (deleting(); as e) { <app-confirm-dialog [show]="true" title="Eliminar elemento" [message]="'Se eliminará ' + (e.text ? '«' + e.text.slice(0, 60) + '»' : 'el dibujo o imagen seleccionado') + ' de ' + page().title + '.'" confirmText="Eliminar" (confirmed)="confirmRemove()" (cancelled)="deleting.set(null)" /> }
+@if (deleting(); as e) { <app-confirm-dialog [show]="true" [title]="'liveBoard.board.deleteTitle' | t" [message]="e.text ? ('liveBoard.board.deleteWithText' | t : { text: e.text.slice(0, 60), page: page().title }) : ('liveBoard.board.deleteDrawing' | t : { page: page().title })" [confirmText]="'liveBoard.board.deleteConfirm' | t" (confirmed)="confirmRemove()" (cancelled)="deleting.set(null)" /> }

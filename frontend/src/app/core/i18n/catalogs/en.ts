@@ -9,6 +9,7 @@ import { TEACHER_PROMOTIONS_EN } from './teacher-promotions';
 import { TEACHER_DASHBOARD_EN } from './teacher-dashboard';
 import { TEACHER_MANAGE_EN } from './teacher-manage';
 import { TEACHER_COMPOSER_EN } from './teacher-composer';
+import { LIVE_BOARD_EN } from './live-board';
 import { TranslationCatalog } from '../i18n.types';
 
 export const EN = {
@@ -23,6 +24,7 @@ export const EN = {
   ...TEACHER_DASHBOARD_EN,
   ...TEACHER_MANAGE_EN,
   ...TEACHER_COMPOSER_EN,
+  ...LIVE_BOARD_EN,
   'common.language': 'Language',
   'preferences.loadError': 'Could not load your account preferences. Please try again.',
   'preferences.saveError': 'Could not save your preferences to your account. Please try again.',

@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { I18nService } from '../../../core/i18n/i18n.service';
 import { LiveBoardComponent } from './live-board.component';
 import { BoardElement, BoardPage } from '../../../core/models/live-class.model';
 const e: BoardElement = { id: 'element_001', type: 'note', x: 100, y: 100, w: 280, h: 220, color: '#fff2a8', width: 4, text: 'Hola', authorId: 7, version: 1 };
@@ -6,6 +7,7 @@ const page: BoardPage = { id: 'page_0001', title: 'Página 1', background: 'plai
 describe('LiveBoardComponent', () => {
   function create(owner = false, userId = 7, editable = true) {
     TestBed.configureTestingModule({ imports: [LiveBoardComponent] });
+    TestBed.inject(I18nService).setLocale('es');
     const fixture = TestBed.createComponent(LiveBoardComponent);
     fixture.componentRef.setInput('page', structuredClone(page)); fixture.componentRef.setInput('userId', userId);
     fixture.componentRef.setInput('owner', owner); fixture.componentRef.setInput('editable', editable);
