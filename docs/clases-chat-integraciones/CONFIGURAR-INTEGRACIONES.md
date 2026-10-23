@@ -62,25 +62,17 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 
 Copiá la línea que imprime. El `ZOOM_WEBHOOK_SECRET_TOKEN` **no se genera**: lo entrega Zoom (§4.4) y lo pegás en `.env`.
 
-### 1.4 Instalar el túnel (recomendado)
+### 1.4 Túnel público: `spanishnow public on`
 
-Opción A, `cloudflared` (sin cuenta, gratis): instalación y límites en la [documentación de Quick Tunnels](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/trycloudflare/).
-
-```bash
-brew install cloudflared
-```
-
-Para encenderlo apuntando al backend de la copia fija (puerto 3001, el de su `backend/.env`):
+Ya está armado en esta Mac (DEVELOPMENT.md, «Acceso público»): un túnel de Cloudflare publica la copia fija en **`https://platform.spanishnow.ar`**, con dirección **fija** (no cambia entre sesiones). Solo responde mientras lo tengas abierto:
 
 ```bash
-cloudflared tunnel --url http://localhost:3001
+spanishnow public on
 ```
 
-Imprime una dirección tipo `https://algo-aleatorio.trycloudflare.com`. **Esa dirección cambia cada vez que lo reiniciás** y deja de funcionar al cerrarlo. Dejá esa terminal abierta durante toda la prueba. Si cambia la dirección tenés que actualizar tres lugares: `.env`, la app de Zoom y (si usás push) la variable de Google (§2.5).
+Cerralo con `spanishnow public off` (o `spanishnow off`). Mientras está abierto, **cualquiera con la URL llega a tu servidor de desarrollo**: abrilo solo para probar. La Mac tiene que estar encendida. Al abrirlo y cerrarlo el backend se reinicia (cambia `FRONTEND_URL`). `/api` llega al backend por el proxy de la app, así que todo comparte el mismo origen.
 
-Opción B, ngrok (necesita cuenta gratuita): [ngrok.com](https://ngrok.com). Sirve igual; verificá en su sitio si la cuenta gratuita te da un dominio fijo, así no hay que reconfigurar cada vez.
-
-En esta guía, `TUNEL` significa esa dirección HTTPS, sin barra final.
+En esta guía, `platform.spanishnow.ar` = `platform.spanishnow.ar`.
 
 ---
 
@@ -107,7 +99,7 @@ Fuente: [OAuth 2.0 para aplicaciones de servidor web](https://developers.google.
    http://localhost:3001/api/integrations/google-calendar/callback
    ```
 
-   Google acepta `http` solo con `localhost`. El puerto `3001` es el del backend de la copia fija. Si el callback de W07 es otro (la ruta está fijada en CONTRATO §Rutas; el puerto lo da tu `backend/.env`), usá ese **exacto**. Un cambio de una letra da el error `redirect_uri_mismatch`.
+   Google acepta `http` solo con `localhost`. Si preferís una sola URL para todo, también podés agregar `https://platform.spanishnow.ar/api/integrations/google-calendar/callback` (con el túnel abierto) y usarla en `GOOGLE_CALENDAR_REDIRECT_URI`. El puerto `3001` es el del backend de la copia fija. Si el callback de W07 es otro (la ruta está fijada en CONTRATO §Rutas; el puerto lo da tu `backend/.env`), usá ese **exacto**. Un cambio de una letra da el error `redirect_uri_mismatch`.
 4. **Guardar**. Puede tardar unos minutos en aplicarse.
 5. El *client ID* y el *client secret* son los mismos que ya tenés; no hace falta crear otro cliente.
 
@@ -159,7 +151,7 @@ GOOGLE_TOKEN_ENCRYPTION_KEY=...
 # Nuevas para Calendar (nombres fijados por el orquestador; el .env.example lo agrega W07)
 GOOGLE_CALENDAR_REDIRECT_URI=http://localhost:3001/api/integrations/google-calendar/callback
 # Solo si usás túnel; sin esto la sincronización es por sondeo:
-GOOGLE_CALENDAR_NOTIFICATIONS_URL=https://TUNEL/api/integrations/google-calendar/notifications
+GOOGLE_CALENDAR_NOTIFICATIONS_URL=https://platform.spanishnow.ar/api/integrations/google-calendar/notifications
 
 FEATURE_GOOGLE_CALENDAR=1
 FEATURE_CLASS_SCHEDULING=1
@@ -245,7 +237,7 @@ En la app, sección **Basic Information** → **OAuth Information**:
 
 1. **OAuth Redirect URL for Production**/«Redirect URL»: pegá
    ```
-   https://TUNEL/api/integrations/zoom/callback
+   https://platform.spanishnow.ar/api/integrations/zoom/callback
    ```
 2. **OAuth Allow List**: agregá la **misma URL** completa (o el dominio base del túnel).
 3. Dejá **Strict Mode** apagado al empezar (si lo activás, la URL debe coincidir exacta).
@@ -275,7 +267,7 @@ Fuente: [Webhooks de Zoom](https://developers.zoom.us/docs/api/webhooks/).
 2. Activá **Event Subscriptions** → **Add new event subscription**: nombre «SpanishNow Pruebas».
 3. **Event notification endpoint URL**:
    ```
-   https://TUNEL/api/integrations/zoom/webhook
+   https://platform.spanishnow.ar/api/integrations/zoom/webhook
    ```
 4. Eventos a suscribir (Zoom agrega solos los scopes necesarios) **(lo define W08)**: los de reunión actualizada/borrada y el de **desautorización de la app**.
 5. **Validate**. Para que funcione, el backend ya tiene que estar encendido con `ZOOM_WEBHOOK_SECRET_TOKEN` cargado y con el túnel abierto. Zoom manda un evento `endpoint.url_validation` y espera en menos de 3 segundos la respuesta firmada con HMAC-SHA-256. Se ve un tilde verde «Validated». Zoom revalida el endpoint cada 72 horas.
@@ -288,13 +280,13 @@ El endpoint debe ser HTTPS público con certificado de una autoridad reconocida 
 ```
 ZOOM_CLIENT_ID=...
 ZOOM_CLIENT_SECRET=...
-ZOOM_REDIRECT_URI=https://TUNEL/api/integrations/zoom/callback
+ZOOM_REDIRECT_URI=https://platform.spanishnow.ar/api/integrations/zoom/callback
 ZOOM_WEBHOOK_SECRET_TOKEN=...
 FEATURE_ZOOM=1
 FEATURE_CLASS_SCHEDULING=1
 ```
 
-(`INTEGRATIONS_FAKE` ausente.) Después: `spanishnow off` y `spanishnow on`. Cada vez que cambie la dirección del túnel hay que actualizar `ZOOM_REDIRECT_URI`, la redirección y el allow list en Zoom, y la URL del endpoint de eventos.
+(`INTEGRATIONS_FAKE` ausente.) Después: `spanishnow off` y `spanishnow on`. La dirección es fija, así que esto se configura una sola vez; solo recordá abrir el túnel (`spanishnow public on`) **antes de pulsar Validate** en Zoom.
 
 ### 4.6 Qué permite una cuenta gratuita
 
@@ -353,10 +345,10 @@ Los *refresh tokens* de Zoom duran 90 días y rotan cada vez que se usan (se gua
 | Google: «Debes autorizar…» o faltan permisos | No marcaste todas las casillas en la pantalla de permisos, o falta un scope en *Acceso a los datos*. Revocar en <https://myaccount.google.com/permissions> y reconectar. |
 | Conexión de Google que cae a la semana | *Refresh token* de 7 días en modo Testing (§2.4). Reconectar. |
 | Google: 403 «API has not been used / disabled» | Falta habilitar Calendar API en el **mismo proyecto** (§2.1). |
-| El canal push no llega | Sin `GOOGLE_CALENDAR_NOTIFICATIONS_URL`, túnel apagado, o la dirección cambió al reiniciar el túnel. Reiniciar `spanishnow` para que se registre otro canal. Sin push, el sondeo igual sincroniza. |
-| Zoom: «Invalid redirect» (4700) o 403 en la redirección | Falta la URL en *Redirect URL* **y** en *OAuth Allow List*, no es HTTPS, o se usó `localhost`. Usar la dirección del túnel. |
+| El canal push no llega | Sin `GOOGLE_CALENDAR_NOTIFICATIONS_URL`, túnel apagado, o el túnel se cerró y el canal venció. Abrir el túnel y reiniciar `spanishnow` para que se registre otro canal. Sin push, el sondeo igual sincroniza. |
+| Zoom: «Invalid redirect» (4700) o 403 en la redirección | Falta la URL en *Redirect URL* **y** en *OAuth Allow List*, no es HTTPS, o se usó `localhost`. Usar `https://platform.spanishnow.ar/...` con el túnel abierto. |
 | Zoom: «Validation failed» al guardar el endpoint | Backend apagado, túnel apagado, `ZOOM_WEBHOOK_SECRET_TOKEN` distinto al del panel, o respuesta tardó más de 3 s. |
-| Zoom: el túnel se reinició y todo falla | La dirección cambió. Actualizar las tres cosas de §4.5. |
+| Zoom/Google: error de conexión o 530 de Cloudflare | El túnel está cerrado: `spanishnow public on`. |
 | «La integración … todavía no está configurada» (503) | Faltan variables en `.env` o no reiniciaste `spanishnow`. |
 | 404 `feature_disabled` | Flag apagado (`FEATURE_GOOGLE_CALENDAR`, `FEATURE_ZOOM`, `FEATURE_CLASS_SCHEDULING`). |
 | Se ve «modo fake» / no aparece nada en Google ni Zoom | `INTEGRATIONS_FAKE=1` está activo. Sacarlo. |
@@ -385,7 +377,7 @@ Hallazgos que pueden requerir cambios en los nombres fijados o en el CONTRATO. L
 1. **Redirección con `localhost`**: Google acepta `http://localhost:<puerto>` en clientes web, pero no IPs. La copia fija debe probarse en `https://localhost:4200`. `GOOGLE_CALENDAR_REDIRECT_URI` queda como `http://localhost:3001/api/integrations/google-calendar/callback`. Ojo: el servicio de Classroom (`liveGoogleService.js`) solo admite `http` si el host es `localhost`/`127.0.0.1` y `NODE_ENV` no es producción; W07 debería aplicar la misma validación y no depender de cookies de terceros (hoy usa una cookie `spanishnow_google_state` y una navegación de primera parte `…/start`).
 2. **Scope mínimo**: `calendar.events.owned` + `calendar.freebusy` + `calendar.calendarlist.readonly` alcanza para CAL-01/02; evitar `calendar.events` y `calendar`. Documentar en el PR si hace falta otro. Dado el grant de Classroom/Drive: usar `include_granted_scopes` con cuidado (CAL-08, no mezclar grants).
 3. **Free/busy no es *push***: el recurso FreeBusy no se puede observar con canales, solo Events, CalendarList, Acl y Settings. Los canales deben ser sobre *events* de cada calendario relevante, y la ocupación se consulta por API antes de confirmar (CAL-03).
-4. **Canales push**: exigen HTTPS con certificado válido (mkcert no sirve), vencen y no se renuevan solos. Con túnel `trycloudflare` cada reinicio cambia la URL: W07 debe tolerar `GOOGLE_CALENDAR_NOTIFICATIONS_URL` cambiante (detener canales viejos con `channels.stop`, registrar nuevos) y caer a sondeo cuando falta.
+4. **Canales push**: exigen HTTPS con certificado válido (mkcert no sirve), vencen y no se renuevan solos. Como el túnel se abre y se cierra a demanda, los canales vencen mientras está cerrado: W07 debe tolerar `GOOGLE_CALENDAR_NOTIFICATIONS_URL` inalcanzable (detener canales viejos con `channels.stop`, registrar nuevos) y caer a sondeo cuando falta.
 5. **Testing**: *refresh tokens* de 7 días; W07 debe pasar a «requiere atención» en `invalid_grant`, no a error genérico (CAL-08).
 6. **Puerto**: la copia fija usa backend 3001, el `.env.example` de Classroom sugiere 3000. El ejemplo de `GOOGLE_CALENDAR_REDIRECT_URI` en `.env.example` debería aclararlo.
 
@@ -412,4 +404,4 @@ Hallazgos que pueden requerir cambios en los nombres fijados o en el CONTRATO. L
 - Zoom, scopes granulares: <https://developers.zoom.us/docs/integrations/oauth-scopes-granular/>
 - Zoom, webhooks: <https://developers.zoom.us/docs/api/webhooks/>
 - Zoom, plan Basic (40 min): <https://support.zoom.com/hc/en/article?id=zm_kb&sysparm_article=KB0063110>
-- Cloudflare Quick Tunnels: <https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/trycloudflare/>
+- Acceso público de la copia fija: DEVELOPMENT.md, «Acceso público (platform.spanishnow.ar)»
