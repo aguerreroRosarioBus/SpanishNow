@@ -7,9 +7,8 @@ import { PublicCatalogService } from '../../../core/services/public-catalog.serv
 import { CheckoutQuote, PublicCourseDetail } from '../../../core/models/sales.model';
 import { VideoEmbedComponent } from '../../../shared/components/video-embed/video-embed.component';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
-import { formatPrice } from '../../../shared/utils/money';
 import { browserStorage, normalizeAffiliateCode, readAffiliateRef, saveAffiliateRef } from '../../../shared/utils/affiliate-attribution';
-import { couponErrorMessage, normalizeCouponCode, priceView } from '../../../shared/utils/coupon-price';
+import { normalizeCouponCode, priceView } from '../../../shared/utils/coupon-price';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { ExpectationsViewComponent } from '../../legal/expectations-view/expectations-view.component';
@@ -41,7 +40,11 @@ export class CourseSalesComponent implements OnInit {
   enrolledCourseId = signal<number | null>(null);
   alreadyEnrolled = signal(false);
   isBuying = signal(false);
-  buyError = signal('');
+  private buyFailure = signal<unknown>(null);
+  buyError = computed(() => {
+    const failure = this.buyFailure();
+    return typeof failure === 'string' ? this.i18n.t(failure) : failure ? this.legal.errorMessage(failure, 'publicCourse.checkoutError') : '';
+  });
   currentUser = this.auth.currentUser;
 
   // Cupón
@@ -49,7 +52,13 @@ export class CourseSalesComponent implements OnInit {
   couponInput = signal('');
   quote = signal<CheckoutQuote | null>(null);
   isApplying = signal(false);
-  couponError = signal('');
+  private couponFailure = signal<unknown>(null);
+  couponError = computed(() => {
+    const failure = this.couponFailure();
+    if (typeof failure === 'string') return this.i18n.t(failure);
+    if (this.isHotmart() && (failure as {error?: {code?: string}})?.error?.code === 'coupon_not_applicable') return this.i18n.t('publicCourse.hotmartCoupon');
+    return failure ? this.i18n.errorMessage(failure, 'publicCourse.couponError') : '';
+  });
 
   /** Se cobra en el checkout de Hotmart: sin campo de email y sin cupones parciales (solo ?coupon= del 100 %). */
   isHotmart = computed(() => this.course()?.checkoutProvider === 'hotmart');
@@ -65,18 +74,18 @@ export class CourseSalesComponent implements OnInit {
     const c = this.course();
     const p = this.price();
     if (!c || !p) return '';
-    if (c.price <= 0) return 'Free';
-    return p.isFree ? 'Free' : formatPrice(p.final, c.currency);
+    if (c.price <= 0) return this.i18n.t('publicCourse.free');
+    return p.isFree ? this.i18n.t('publicCourse.free') : this.i18n.formatMoney(p.final, c.currency);
   });
   originalLabel = computed(() => {
     const c = this.course();
     const p = this.price();
-    return c && p?.original != null ? formatPrice(p.original, c.currency) : '';
+    return c && p?.original != null ? this.i18n.formatMoney(p.original, c.currency) : '';
   });
   savingsLabel = computed(() => {
     const c = this.course();
     const q = this.quote();
-    return c && q && q.discountAmount > 0 ? formatPrice(q.discountAmount, c.currency) : '';
+    return c && q && q.discountAmount > 0 ? this.i18n.formatMoney(q.discountAmount, c.currency) : '';
   });
   // W02 (SALES-04, LEGAL-02): la casilla acepta exactamente las versiones de la instantánea mostrada.
   commercial = computed(() => this.course()?.commercial ?? null);
@@ -152,12 +161,12 @@ export class CourseSalesComponent implements OnInit {
     const code = normalizeCouponCode(this.couponInput());
     if (!course || this.isApplying()) return;
     if (!code) {
-      this.couponError.set('Enter a coupon code.');
+      this.couponFailure.set('publicCourse.enterCoupon');
       return;
     }
     this.couponInput.set(code);
     this.isApplying.set(true);
-    this.couponError.set('');
+    this.couponFailure.set(null);
     this.catalog.quote(course.id, code, this.affiliateCode()).subscribe({
       next: quote => {
         this.quote.set(quote);
@@ -165,7 +174,7 @@ export class CourseSalesComponent implements OnInit {
       },
       error: error => {
         this.quote.set(null);
-        this.couponError.set(couponErrorMessage(error));
+        this.couponFailure.set(error);
         this.isApplying.set(false);
       }
     });
@@ -174,7 +183,7 @@ export class CourseSalesComponent implements OnInit {
   removeCoupon(): void {
     this.quote.set(null);
     this.couponInput.set('');
-    this.couponError.set('');
+    this.couponFailure.set(null);
     this.showCoupon.set(false);
   }
 
@@ -192,7 +201,7 @@ export class CourseSalesComponent implements OnInit {
     if (!course || this.isBuying()) return;
     const email = this.needsEmail() ? this.buyerEmail().trim() : null;
     if (this.needsEmail() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email ?? '')) {
-      this.buyError.set('Enter a valid email address to get the course.');
+      this.buyFailure.set('publicCourse.validEmail');
       return;
     }
     this.consentSubmitted.set(true);
@@ -204,7 +213,7 @@ export class CourseSalesComponent implements OnInit {
       ...(this.needsConsent() ? { legalConsent: consentFor(commercial.legalDocuments) } : {})
     } : null;
     this.isBuying.set(true);
-    this.buyError.set('');
+    this.buyFailure.set(null);
     this.catalog.checkout(course.id, this.quote()?.coupon.code, email, this.affiliateCode(), evidence).subscribe({
       next: ({ url }) => {
         this.redirect(url);
@@ -213,7 +222,7 @@ export class CourseSalesComponent implements OnInit {
         this.isBuying.set(false);
         if (['sales_snapshot_changed', 'legal_version_changed', 'legal_acceptance_required'].includes(error?.error?.code)) {
           // Cambió precio, expectativas o legales: se muestra la versión nueva y hay que aceptarla otra vez.
-          this.buyError.set(this.legal.errorMessage(error));
+          this.buyFailure.set(error);
           this.refreshCommercial(course.slug);
         } else if (error?.status === 409) {
           this.alreadyEnrolled.set(true);
@@ -221,10 +230,10 @@ export class CourseSalesComponent implements OnInit {
         } else if (error?.status === 400 && error?.error?.code?.startsWith?.('coupon_')) {
           // El cupón dejó de servir entre el precio mostrado y la compra
           this.quote.set(null);
-          this.couponError.set(couponErrorMessage(error));
+          this.couponFailure.set(error);
           this.showCoupon.set(true);
         } else {
-          this.buyError.set(error?.error?.error || 'We could not start the checkout. Please try again.');
+          this.buyFailure.set(error);
         }
       }
     });
