@@ -59,46 +59,51 @@ async function status(user) {
   return body;
 }
 
-/** /connect devuelve una URL de primera parte (/start): allí se fija la cookie que ata el callback a este navegador. */
 async function connect(user) {
   if (user.role !== 'teacher') throw new IntegrationError(403, 'forbidden');
   config();
-  const { state } = await connections.beginOAuth(user.id, PROVIDER);
-  const start = new URL('start', redirectUri());
-  start.searchParams.set('state', state);
-  return { url: start.href };
-}
-
-const cookiePath = () => new URL('.', redirectUri()).pathname.replace(/\/$/, '');
-
-/** GET /start: sin sesión (navegación del navegador); devuelve la URL del proveedor y la cookie de enlace. */
-async function start(state) {
-  config();
-  const challenge = await connections.pendingChallenge(PROVIDER, state);
-  return { location: adapter().authUrl({ state, challenge, redirectUri: redirectUri() }),
-    cookie: connections.bindingCookie(PROVIDER, state, { path: cookiePath(), secure: new URL(redirectUri()).protocol === 'https:' }) };
+  const { state, challenge } = await connections.beginOAuth(user.id, PROVIDER);
+  return { url: adapter().authUrl({ state, challenge, redirectUri: redirectUri() }) };
 }
 
 /** Redirección final al frontend. Los errores viajan como código estable, nunca como texto del proveedor. */
-const done = outcome => `${frontendUrl()}/teacher/integrations?calendar=${encodeURIComponent(outcome)}`;
+const done = (outcome, token) => `${frontendUrl()}/teacher/integrations?calendar=${encodeURIComponent(outcome)}${token ? `&token=${encodeURIComponent(token)}` : ''}`;
 
-async function callback(query, cookieHeader) {
+/**
+ * Callback del proveedor (sin sesión): intercambia el código y deja el resultado PENDIENTE; no conecta nada. La conexión la
+ * confirma la persona autenticada con complete(), solo si es quien la inició (evita vincular el Calendar de otra persona).
+ */
+async function callback(query) {
   config();
   let pending;
-  // Sin la cookie de /start de este navegador el state no se consume: otra persona no puede ni vincular ni quemar la conexión.
-  if (!connections.matchesBinding(PROVIDER, query.state, cookieHeader)) return done('error');
   try { pending = await connections.consumeOAuth(PROVIDER, query.state); } catch { return done('error'); }
   if (query.error || typeof query.code !== 'string' || query.code.length > 4096) return done('denied');
   let tokens;
   try { tokens = await adapter().exchangeCode({ code: query.code, verifier: pending.verifier }); } catch (error) {
     return done(error instanceof IntegrationError && error.code === 'oauth_scopes_missing' ? 'scopes' : 'error');
   }
-  const row = await M.ExternalConnection.findByPk(pending.connectionId);
-  const saved = await connections.saveCredentials(row.id, tokens, {
+  return done('confirm', await connections.stagePending(pending.connectionId, tokens));
+}
+
+/** POST /complete { token }: confirma la conexión pendiente solo para quien la inició; a otra persona se le descartan y revocan los tokens. */
+async function complete(user, token) {
+  if (user.role !== 'teacher') throw new IntegrationError(403, 'forbidden');
+  config();
+  const result = await connections.completePending(PROVIDER, token, user.id);
+  if (!result.ok) {
+    // Los tokens son de la cuenta de Google de quien autorizó. Si esa persona ya tiene otra conexión con el mismo cliente
+    // OAuth comparte el grant: revocar lo rompería, así que solo se descartan.
+    const sharesGrant = await M.GoogleConnection.count({ where: { userId: user.id, credentials: { [Op.ne]: null } } })
+      || await M.ExternalConnection.count({ where: { userId: user.id, status: 'connected' } });
+    if (!sharesGrant) await adapter().revoke(result.tokens.refreshToken).catch(() => {});
+    throw new IntegrationError(403, 'forbidden', { reason: 'oauth_user_mismatch' });
+  }
+  const row = await M.ExternalConnection.findByPk(result.connectionId);
+  const saved = await connections.saveCredentials(row.id, result.tokens, {
     targetCalendarId: row.targetCalendarId || 'primary', busyCalendarIds: row.busyCalendarIds?.length ? row.busyCalendarIds : [row.targetCalendarId || 'primary']
   });
   await recover(saved);
-  return done('connected');
+  return status(user);
 }
 
 /** Tras (re)conectar: sesiones futuras que quedaron sin sincronizar se reencolan; el id determinista evita duplicar eventos. */
@@ -197,4 +202,4 @@ async function assertAvailable({ teacherId, startsAt, endsAt, own = null }) {
   return { checked: true };
 }
 
-module.exports = { PROVIDER, REQUIRES_CHECK, call, status, connect, start, callback, cookiePath, recover, scheduleTick, update, disconnect, assertAvailable, redirectUri, frontendUrl, TICK_MS };
+module.exports = { PROVIDER, REQUIRES_CHECK, call, status, connect, callback, complete, recover, scheduleTick, update, disconnect, assertAvailable, redirectUri, frontendUrl, TICK_MS };

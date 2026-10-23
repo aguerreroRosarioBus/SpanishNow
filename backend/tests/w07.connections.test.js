@@ -78,3 +78,21 @@ test('desconectar borra credenciales, conserva la fila y no resucita con un refr
   expect(after).toMatchObject({ status: 'disconnected', credentials: null });
   await expect(connections.accessToken(row.id, adapter().refresh)).rejects.toMatchObject({ code: 'integration_not_connected' });
 });
+
+test('stagePending/completePending: solo confirma quien inició, una vez, y lo recibido va cifrado', async () => {
+  const a = await createUser('teacher', 'cal-pendiente-a');
+  const b = await createUser('teacher', 'cal-pendiente-b');
+  const { state } = await connections.beginOAuth(a.id, 'google_calendar');
+  const pending = await connections.consumeOAuth('google_calendar', state);
+  const tokens = await adapter().exchangeCode({ code: 'fake-code', verifier: pending.verifier });
+  const token = await connections.stagePending(pending.connectionId, tokens);
+  const stored = await M.ExternalConnection.findByPk(pending.connectionId);
+  expect(stored.credentials).toBeNull();
+  expect(stored.oauthVerifier).not.toContain(tokens.refreshToken);
+  expect(stored.oauthStateHash).toBe(connections.sha256(token));
+  const wrong = await connections.completePending('google_calendar', token, b.id);
+  expect(wrong).toMatchObject({ ok: false, tokens: { refreshToken: tokens.refreshToken } });
+  await expect(connections.completePending('google_calendar', token, a.id)).rejects.toMatchObject({ code: 'oauth_state_invalid' });
+  const again = await connections.stagePending(pending.connectionId, tokens);
+  expect(await connections.completePending('google_calendar', again, a.id)).toMatchObject({ ok: true, connectionId: pending.connectionId });
+});

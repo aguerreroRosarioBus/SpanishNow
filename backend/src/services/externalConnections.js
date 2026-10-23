@@ -51,36 +51,50 @@ async function beginOAuth(userId, provider) {
 
 const validState = state => typeof state === 'string' && /^[\w-]{43}$/.test(state);
 
-/** Desafío PKCE de una conexión pendiente (para /start); no consume el state. */
-async function pendingChallenge(provider, state) {
-  if (!validState(state)) fail('oauth_state_invalid', {}, 400);
-  const row = await ExternalConnection.findOne({ where: { provider, oauthStateHash: sha256(state) } });
-  if (!row?.oauthVerifier || !row.oauthExpiresAt || new Date(row.oauthExpiresAt).getTime() < Date.now()) fail('oauth_state_invalid', {}, 400);
-  return crypto.createHash('sha256').update(decrypt(row.oauthVerifier)).digest('base64url');
-}
-
-/** Cookie httpOnly SameSite=Lax que ata el callback al navegador que pasó por /start (evita vincular la cuenta de otra persona). */
-function bindingCookie(provider, state, { path, secure }) {
-  return { name: `spanishnow_${provider}_state`, value: state, options: { httpOnly: true, secure: Boolean(secure), sameSite: 'lax', path, maxAge: OAUTH_TTL_MS } };
-}
-
-/** ¿La cookie de este navegador corresponde a este state? (comparación en tiempo constante) */
-function matchesBinding(provider, state, cookieHeader) {
-  const name = `spanishnow_${provider}_state`;
-  const value = String(cookieHeader || '').split(';').map(c => c.trim()).find(c => c.startsWith(`${name}=`))?.slice(name.length + 1);
-  if (!validState(state) || !value) return false;
-  return crypto.timingSafeEqual(Buffer.from(sha256(value)), Buffer.from(sha256(state)));
-}
-
 /** Consume el state una sola vez (transaccional, incluso con dos callbacks simultáneos). */
 async function consumeOAuth(provider, state) {
-  if (typeof state !== 'string' || !/^[\w-]{43}$/.test(state)) fail('oauth_state_invalid', {}, 400);
+  if (!validState(state)) fail('oauth_state_invalid', {}, 400);
   return sequelize.transaction(async transaction => {
     const row = await ExternalConnection.findOne({ where: { provider, oauthStateHash: sha256(state) }, transaction, lock: transaction.LOCK.UPDATE });
     if (!row || !row.oauthVerifier || !row.oauthExpiresAt || new Date(row.oauthExpiresAt).getTime() < Date.now()) fail('oauth_state_invalid', {}, 400);
     const result = { connectionId: row.id, userId: row.userId, verifier: decrypt(row.oauthVerifier) };
     await row.update({ oauthStateHash: null, oauthVerifier: null, oauthExpiresAt: null }, { transaction });
     return result;
+  });
+}
+
+
+const COMPLETION_TTL_MS = 5 * 60 * 1000;
+
+/**
+ * El callback del proveedor no tiene sesión: nada de lo que trae identifica a quién inició la conexión, y una cookie de
+ * navegación tampoco (otra persona puede mandar el enlace de inicio a su víctima). Por eso el callback NO guarda
+ * credenciales: las deja cifradas como «pendientes de confirmar» (reutiliza oauth* de la fila del que inició) con un
+ * token de un solo uso y vida corta, y la persona autenticada las confirma con completePending.
+ * Devuelve el token que viaja al frontend.
+ */
+async function stagePending(connectionId, tokens) {
+  const token = crypto.randomBytes(32).toString('base64url');
+  await ExternalConnection.update({ oauthStateHash: sha256(token), oauthVerifier: encrypt({ kind: 'completion', tokens }),
+    oauthExpiresAt: new Date(Date.now() + COMPLETION_TTL_MS) }, { where: { id: connectionId } });
+  return token;
+}
+
+/**
+ * Consume el pendiente (una sola vez, transaccional). { ok: true, connectionId, tokens } si quien confirma es quien inició;
+ * { ok: false, tokens } si es otra persona: el pendiente se descarta y la conexión del que inició no cambia (el llamador
+ * decide si revoca esos tokens). Token inexistente, usado o vencido → 400 oauth_state_invalid.
+ */
+async function completePending(provider, token, userId) {
+  if (!validState(token)) fail('oauth_state_invalid', {}, 400);
+  return sequelize.transaction(async transaction => {
+    const row = await ExternalConnection.findOne({ where: { provider, oauthStateHash: sha256(token) }, transaction, lock: transaction.LOCK.UPDATE });
+    if (!row?.oauthVerifier || !row.oauthExpiresAt || new Date(row.oauthExpiresAt).getTime() < Date.now()) fail('oauth_state_invalid', {}, 400);
+    let payload;
+    try { payload = decrypt(row.oauthVerifier); } catch { fail('oauth_state_invalid', {}, 400); }
+    if (payload?.kind !== 'completion') fail('oauth_state_invalid', {}, 400);
+    await row.update({ oauthStateHash: null, oauthVerifier: null, oauthExpiresAt: null }, { transaction });
+    return row.userId === userId ? { ok: true, connectionId: row.id, tokens: payload.tokens } : { ok: false, tokens: payload.tokens };
   });
 }
 
@@ -161,4 +175,4 @@ async function disconnect(row, status = 'disconnected') {
     oauthExpiresAt: null, status, lastError: null, version: row.version + 1 });
 }
 
-module.exports = { IntegrationError, fail, find, view, beginOAuth, pendingChallenge, bindingCookie, matchesBinding, consumeOAuth, saveCredentials, markNeedsAttention, accessToken, refreshTokenOf, disconnect, sha256, sleep };
+module.exports = { IntegrationError, fail, find, view, beginOAuth, consumeOAuth, stagePending, completePending, saveCredentials, markNeedsAttention, accessToken, refreshTokenOf, disconnect, sha256, sleep };
