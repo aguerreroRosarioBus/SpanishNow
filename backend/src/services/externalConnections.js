@@ -48,6 +48,29 @@ async function beginOAuth(userId, provider) {
   return { state, challenge: crypto.createHash('sha256').update(verifier).digest('base64url') };
 }
 
+const validState = state => typeof state === 'string' && /^[\w-]{43}$/.test(state);
+
+/** Desafío PKCE de una conexión pendiente (para /start); no consume el state. */
+async function pendingChallenge(provider, state) {
+  if (!validState(state)) fail('oauth_state_invalid', {}, 400);
+  const row = await ExternalConnection.findOne({ where: { provider, oauthStateHash: sha256(state) } });
+  if (!row?.oauthVerifier || !row.oauthExpiresAt || new Date(row.oauthExpiresAt).getTime() < Date.now()) fail('oauth_state_invalid', {}, 400);
+  return crypto.createHash('sha256').update(decrypt(row.oauthVerifier)).digest('base64url');
+}
+
+/** Cookie httpOnly SameSite=Lax que ata el callback al navegador que pasó por /start (evita vincular la cuenta de otra persona). */
+function bindingCookie(provider, state, { path, secure }) {
+  return { name: `spanishnow_${provider}_state`, value: state, options: { httpOnly: true, secure: Boolean(secure), sameSite: 'lax', path, maxAge: OAUTH_TTL_MS } };
+}
+
+/** ¿La cookie de este navegador corresponde a este state? (comparación en tiempo constante) */
+function matchesBinding(provider, state, cookieHeader) {
+  const name = `spanishnow_${provider}_state`;
+  const value = String(cookieHeader || '').split(';').map(c => c.trim()).find(c => c.startsWith(`${name}=`))?.slice(name.length + 1);
+  if (!validState(state) || !value) return false;
+  return crypto.timingSafeEqual(Buffer.from(sha256(value)), Buffer.from(sha256(state)));
+}
+
 /** Consume el state una sola vez (transaccional, incluso con dos callbacks simultáneos). */
 async function consumeOAuth(provider, state) {
   if (typeof state !== 'string' || !/^[\w-]{43}$/.test(state)) fail('oauth_state_invalid', {}, 400);
@@ -131,4 +154,4 @@ async function disconnect(row, status = 'disconnected') {
     oauthExpiresAt: null, status, lastError: null, version: row.version + 1 });
 }
 
-module.exports = { IntegrationError, fail, find, view, beginOAuth, consumeOAuth, saveCredentials, markNeedsAttention, accessToken, refreshTokenOf, disconnect, sha256, sleep };
+module.exports = { IntegrationError, fail, find, view, beginOAuth, pendingChallenge, bindingCookie, matchesBinding, consumeOAuth, saveCredentials, markNeedsAttention, accessToken, refreshTokenOf, disconnect, sha256, sleep };

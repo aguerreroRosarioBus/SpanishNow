@@ -48,17 +48,31 @@ async function status(user) {
   return body;
 }
 
+/** /connect devuelve una URL de primera parte (/start): allí se fija la cookie que ata el callback a este navegador. */
 async function connect(user) {
   if (user.role !== 'teacher') throw new IntegrationError(403, 'forbidden');
-  const { state, challenge } = await connections.beginOAuth(user.id, PROVIDER);
-  return { url: adapter().authUrl({ state, challenge, redirectUri: redirectUri() }) };
+  const { state } = await connections.beginOAuth(user.id, PROVIDER);
+  const start = new URL('start', redirectUri());
+  start.searchParams.set('state', state);
+  return { url: start.href };
+}
+
+const cookiePath = () => new URL('.', redirectUri()).pathname.replace(/\/$/, '');
+
+/** GET /start: sin sesión (navegación del navegador); devuelve la URL del proveedor y la cookie de enlace. */
+async function start(state) {
+  const challenge = await connections.pendingChallenge(PROVIDER, state);
+  return { location: adapter().authUrl({ state, challenge, redirectUri: redirectUri() }),
+    cookie: connections.bindingCookie(PROVIDER, state, { path: cookiePath(), secure: new URL(redirectUri()).protocol === 'https:' }) };
 }
 
 /** Redirección final al frontend. Los errores viajan como código estable, nunca como texto del proveedor. */
 const done = outcome => `${frontendUrl()}/teacher/integrations?calendar=${encodeURIComponent(outcome)}`;
 
-async function callback(query) {
+async function callback(query, cookieHeader) {
   let pending;
+  // Sin la cookie de /start de este navegador el state no se consume: otra persona no puede ni vincular ni quemar la conexión.
+  if (!connections.matchesBinding(PROVIDER, query.state, cookieHeader)) return done('error');
   try { pending = await connections.consumeOAuth(PROVIDER, query.state); } catch { return done('error'); }
   if (query.error || typeof query.code !== 'string' || query.code.length > 4096) return done('denied');
   let tokens;
@@ -166,4 +180,4 @@ async function assertAvailable({ teacherId, startsAt, endsAt, own = null }) {
   return { checked: true };
 }
 
-module.exports = { PROVIDER, REQUIRES_CHECK, call, status, connect, callback, recover, scheduleTick, update, disconnect, assertAvailable, redirectUri, frontendUrl, TICK_MS };
+module.exports = { PROVIDER, REQUIRES_CHECK, call, status, connect, start, callback, cookiePath, recover, scheduleTick, update, disconnect, assertAvailable, redirectUri, frontendUrl, TICK_MS };

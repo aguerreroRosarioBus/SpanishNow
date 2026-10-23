@@ -22,10 +22,13 @@ beforeEach(() => fake.reset());
 afterEach(() => { delete process.env.GOOGLE_CALENDAR_NOTIFICATIONS_URL; process.env.FEATURE_GOOGLE_CALENDAR = '1'; });
 afterAll(() => ['FEATURE_GOOGLE_CALENDAR', 'FEATURE_CLASS_SCHEDULING', 'CHAT_UNREAD_EMAIL', 'INTEGRATIONS_FAKE'].forEach(k => delete process.env[k]));
 
+// Recorrido real del navegador: /connect → /start (cookie atada al navegador) → proveedor → /callback con esa cookie.
 async function connect(teacher) {
   const { url } = await calendar.connect(teacher);
-  const params = new URL(url).searchParams;
-  const redirect = await calendar.callback({ state: params.get('state'), code: params.get('code') });
+  const state = new URL(url).searchParams.get('state');
+  const started = await calendar.start(state);
+  const code = new URL(started.location).searchParams.get('code');
+  const redirect = await calendar.callback({ state, code }, `${started.cookie.name}=${started.cookie.value}`);
   expect(redirect).toContain('calendar=connected');
   return M.ExternalConnection.findOne({ where: { userId: teacher.id, provider: 'google_calendar' } });
 }
@@ -57,13 +60,18 @@ describe('rutas y conexión (CAL-01, CAL-08)', () => {
     const started = await as(teacher).post('/api/integrations/google-calendar/connect');
     expect(started.status).toBe(200);
     const params = new URL(started.body.url).searchParams;
+    expect(started.body.url).toContain('/api/integrations/google-calendar/start');
     expect(params.get('state')).toMatch(/^[\w-]{43}$/);
     const request = require('supertest')(require('../src/app'));
-    const callback = await request.get(`/api/integrations/google-calendar/callback?state=${params.get('state')}&code=fake-code`);
+    const start = await request.get(`/api/integrations/google-calendar/start?state=${params.get('state')}`);
+    expect(start.status).toBe(302);
+    const cookie = start.headers['set-cookie'][0];
+    expect(cookie).toMatch(/HttpOnly/i); expect(cookie).toMatch(/SameSite=Lax/i); expect(cookie).toMatch(/Path=\/api\/integrations\/google-calendar/);
+    const callback = await request.get(new URL(start.headers.location).pathname + new URL(start.headers.location).search).set('Cookie', cookie.split(';')[0]);
     expect(callback.status).toBe(302);
     expect(callback.headers.location).toBe('http://localhost:4200/teacher/integrations?calendar=connected');
     // El mismo state no se puede reutilizar.
-    const replay = await request.get(`/api/integrations/google-calendar/callback?state=${params.get('state')}&code=fake-code`);
+    const replay = await request.get(`/api/integrations/google-calendar/callback?state=${params.get('state')}&code=fake-code`).set('Cookie', cookie.split(';')[0]);
     expect(replay.headers.location).toContain('calendar=error');
     const state = (await as(teacher).get('/api/integrations/google-calendar')).body;
     expect(state).toMatchObject({ status: 'connected', accountEmail: 'calendar-fake@example.test', targetCalendarId: 'primary', busyCalendarIds: ['primary'] });
@@ -84,6 +92,24 @@ describe('rutas y conexión (CAL-01, CAL-08)', () => {
     const row = await M.ExternalConnection.findOne({ where: { userId: teacher.id } });
     expect(row.credentials).toBeNull();
     expect(await M.GoogleConnection.count({ where: { userId: teacher.id } })).toBe(1);
+  });
+
+  test('P1: el callback solo vale en el navegador que inició la conexión (otra persona no puede vincular su Calendar)', async () => {
+    const a = await createUser('teacher', 'cal-victima');
+    const { url } = await calendar.connect(a);
+    const state = new URL(url).searchParams.get('state');
+    const code = 'fake-code';
+    // La docente B recibe el enlace, autoriza en Google y vuelve al callback sin la cookie de A.
+    expect(await calendar.callback({ state, code })).toContain('calendar=error');
+    expect(await calendar.callback({ state, code }, 'spanishnow_calendar_state=otro-valor')).toContain('calendar=error');
+    const attacker = await calendar.start((await (async () => { const b = await createUser('teacher', 'cal-otra'); return new URL((await calendar.connect(b)).url).searchParams.get('state'); })()));
+    expect(await calendar.callback({ state, code }, `${attacker.cookie.name}=${attacker.cookie.value}`)).toContain('calendar=error');
+    expect((await M.ExternalConnection.findOne({ where: { userId: a.id } }))).toMatchObject({ status: 'pending', credentials: null });
+    // Los intentos ajenos no queman el state: A, con su cookie, completa la conexión.
+    const mine = await calendar.start(state);
+    expect(await calendar.callback({ state, code }, `${mine.cookie.name}=${mine.cookie.value}`)).toContain('calendar=connected');
+    expect((await M.ExternalConnection.findOne({ where: { userId: a.id } })).status).toBe('connected');
+    await expect(calendar.start('x'.repeat(43))).rejects.toMatchObject({ code: 'oauth_state_invalid' });
   });
 
   test('solo docentes, sin impersonación y con flag apagado la superficie no existe', async () => {

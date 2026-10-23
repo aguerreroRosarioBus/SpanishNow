@@ -12,7 +12,14 @@ const noImpersonation = (req, res, next) => (req.impersonatedBy
 router.use(requireFeature('google_calendar'));
 
 // Callbacks de Google: sin sesión (navegación del navegador / servidores de Google); la verificación es el state o el token del canal.
-router.get('/callback', handle(async (req, res) => res.redirect(await calendar.callback(req.query))));
+router.get('/start', handle(async (req, res) => {
+  const { location, cookie } = await calendar.start(req.query.state);
+  res.cookie(cookie.name, cookie.value, cookie.options).redirect(location);
+}));
+router.get('/callback', handle(async (req, res) => {
+  const location = await calendar.callback(req.query, req.headers.cookie);
+  res.clearCookie('spanishnow_google_calendar_state', { path: calendar.cookiePath() }).redirect(location);
+}));
 router.post('/notifications', handle(async (req, res) => { res.status(await sync.notification(req.headers)).end(); }));
 
 router.use(authMiddleware, noImpersonation);
