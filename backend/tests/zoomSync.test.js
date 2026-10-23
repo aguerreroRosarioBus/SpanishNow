@@ -261,3 +261,14 @@ test.each(['absent', 'disconnected', 'needs_attention', 'refresh'])('P2: agenda/
     expect(await zoom.join(w.buyer, proposed.body.id)).toMatchObject({ manual: true });
   } finally { delete process.env.FEATURE_CHAT; delete process.env.PAYMENTS_FAKE; }
 });
+
+test('P3: meeting.deleted propio conserva la ref cancelled y no vuelve a needs_attention', async () => {
+  const c = await fixture(); await sync(c.session.id); const ref = await refFor(c.session.id);
+  const { tokens } = await connection.credentials(c.teacher.id);
+  await sessions.cancel(c.teacher, c.session.id, { version: c.session.version, reason: 'Cancelación de prueba' });
+  await sync(c.session.id);
+  const event = { event: 'meeting.deleted', event_ts: Date.now(), payload: { account_id: tokens.accountId, object: { id: ref.externalId } } };
+  expect((await webhook(event)).status).toBe(200); expect((await webhook(event)).status).toBe(200);
+  expect(await refFor(c.session.id)).toMatchObject({ status: 'cancelled', lastError: null });
+  expect((await c.purchases[0].reload()).unitsReserved).toBe(0);
+});

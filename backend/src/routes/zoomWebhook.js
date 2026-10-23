@@ -45,7 +45,7 @@ router.post('/', require('express').raw({ type: 'application/json', limit: '256k
         await M.ExternalSyncRef.update({ status: 'needs_attention', lastError: 'zoom_revoked' }, { where: { connectionId: current.id, provider: 'zoom', status: { [require('sequelize').Op.ne]: 'cancelled' } }, transaction });
       }
       if (body.event === 'meeting.deleted') await M.ExternalSyncRef.update({ status: 'needs_attention', lastError: 'zoom_meeting_missing' },
-        { where: { connectionId: current.id, provider: 'zoom', externalId: String(body.payload?.object?.id) }, transaction });
+        { where: { connectionId: current.id, provider: 'zoom', externalId: String(body.payload?.object?.id), status: { [require('sequelize').Op.ne]: 'cancelled' } }, transaction });
       // meeting.ended y repetidos jamás marcan asistencia, completan clases ni consumen saldo.
     });
     res.json({ received: true });
