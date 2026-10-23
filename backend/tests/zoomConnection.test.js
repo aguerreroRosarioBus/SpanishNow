@@ -134,3 +134,32 @@ test('P3: refresh tardío no resucita un grant desconectado o reemplazado', asyn
   finally { newer.mockRestore(); }
   expect((await c.rowFor(teacher.id)).credentials).toBe(replacement);
 });
+
+test('P3: access_denied consume state y redirige con código sin cambiar el grant existente', async () => {
+  const { teacher } = await chain(); await connected(teacher); const previous = (await c.rowFor(teacher.id)).credentials;
+  const url = new URL((await c.connect(teacher)).url);
+  url.searchParams.set('error', 'access_denied'); url.searchParams.set('error_description', 'secreto-del-proveedor');
+  const result = await request(app).get(url.pathname + url.search);
+  expect(result.status).toBe(302); expect(result.headers.location).toBe('http://localhost:4200/teacher/integrations/zoom?zoom=zoom_oauth_denied');
+  expect(result.headers['cache-control']).toBe('no-store');
+  expect((await c.rowFor(teacher.id)).credentials).toBe(previous);
+  expect((await c.rowFor(teacher.id)).oauthVerifier).toBeNull();
+  expect((await request(app).get(url.pathname + url.search)).status).toBe(400);
+});
+test('P3: FRONTEND_URL y redirect exigen HTTPS sin credenciales, localhost HTTP solo fuera de producción', async () => {
+  const previous = { NODE_ENV: process.env.NODE_ENV, FRONTEND_URL: process.env.FRONTEND_URL, ZOOM_REDIRECT_URI: process.env.ZOOM_REDIRECT_URI };
+  try {
+    for (const field of ['FRONTEND_URL', 'ZOOM_REDIRECT_URI']) {
+      for (const value of ['http://example.test/api/integrations/zoom/callback', 'https://user:pass@example.test/api/integrations/zoom/callback', 'javascript:alert(1)', 'inválida']) {
+        process.env[field] = value;
+        expect(() => c.config()).toThrow(expect.objectContaining({ code: 'zoom_configuration' }));
+      }
+      delete process.env[field];
+    }
+    process.env.FRONTEND_URL = 'https://platform.spanishnow.ar/path';
+    process.env.ZOOM_REDIRECT_URI = 'https://platform.spanishnow.ar/api/integrations/zoom/callback';
+    expect(c.config().frontend).toBe('https://platform.spanishnow.ar');
+    process.env.NODE_ENV = 'production'; process.env.FRONTEND_URL = 'http://localhost:4200';
+    expect(() => c.config()).toThrow(expect.objectContaining({ code: 'zoom_configuration' }));
+  } finally { for (const [key,value] of Object.entries(previous)) if (value === undefined) delete process.env[key]; else process.env[key] = value; }
+});

@@ -26,7 +26,13 @@ export class ZoomCardComponent {
       this.api.complete(token).pipe(takeUntilDestroyed(this.destroy), finalize(() => this.busy.set(false))).subscribe({
         next: status => { this.status.set(status); this.refreshSessions(); }, error: error => this.failure.set(error)
       });
-    } else this.refresh();
+    } else {
+      this.refresh();
+      if (route.snapshot.queryParamMap.get('zoom') === 'zoom_oauth_denied') {
+        void router.navigate([], { relativeTo: route, queryParams: {}, replaceUrl: true });
+        this.failure.set({ error: { code: 'zoom_oauth_denied' } });
+      }
+    }
   }
   refresh(): void {
     if (this.busy()) return;

@@ -14,16 +14,22 @@ async function teacher(user) {
   const settings = user?.role === 'teacher' && await M.TeacherClassSettings.findByPk(user.id);
   if (!settings?.classesEnabledAt || user.suspendedAt) fail('forbidden', 403);
 }
-function redirect() {
-  let url;
-  try { url = new URL(process.env.ZOOM_REDIRECT_URI || 'http://localhost:3000/api/integrations/zoom/callback'); }
-  catch { fail('zoom_configuration', 503); }
-  if (url.pathname !== '/api/integrations/zoom/callback' || url.username || url.password
-    || (url.protocol !== 'https:' && !(url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname)))) fail('zoom_configuration', 503);
-  return url;
+// Mismas reglas que googleCalendarService.config(): HTTPS o localhost HTTP fuera de producción.
+function config() {
+  let redirect, frontend;
+  try {
+    redirect = new URL(process.env.ZOOM_REDIRECT_URI || 'http://localhost:3000/api/integrations/zoom/callback');
+    frontend = new URL(process.env.FRONTEND_URL || 'http://localhost:4200');
+  } catch { fail('zoom_configuration', 503); }
+  for (const url of [redirect, frontend]) {
+    const local = process.env.NODE_ENV !== 'production' && url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname);
+    if ((!local && url.protocol !== 'https:') || url.username || url.password) fail('zoom_configuration', 503);
+  }
+  if (redirect.pathname !== '/api/integrations/zoom/callback') fail('zoom_configuration', 503);
+  return { redirect, frontend: frontend.origin };
 }
 async function connect(user) {
-  await teacher(user); adapter.assertFake();
+  await teacher(user); adapter.assertFake(); config();
   const state = crypto.randomBytes(32).toString('base64url');
   const pending = { accountId: hash(`${process.env.DB_NAME}:${user.id}:${user.email}`), verifier: crypto.randomBytes(48).toString('base64url'), code: crypto.randomBytes(32).toString('base64url') };
   const encrypted = cipher.encrypt(pending);
@@ -33,12 +39,12 @@ async function connect(user) {
     await row.update({ oauthStateHash: hash(state), oauthVerifier: encrypted, oauthExpiresAt: new Date(Date.now() + 600000), version: row.version + 1 }, { transaction });
   });
   await adapter.issueAuthorization({ code: pending.code, challenge: crypto.createHash('sha256').update(pending.verifier).digest('base64url'), accountId: pending.accountId });
-  const url = redirect(); url.search = new URLSearchParams({ state, code: pending.code }).toString();
+  const url = config().redirect; url.search = new URLSearchParams({ state, code: pending.code }).toString();
   return { url: url.href, fake: true };
 }
 // El callback nunca activa el grant: solo quien inició puede confirmarlo con su sesión autenticada.
 async function callback(req) {
-  adapter.assertFake();
+  adapter.assertFake(); config();
   const pending = await connections.consumeOAuth('zoom', req.query.state);
   const user = await M.User.findByPk(pending.userId); await teacher(user);
   if (req.query.error) fail('zoom_oauth_denied', 400);
@@ -118,4 +124,4 @@ async function disconnect(user) {
   });
   return status(user);
 }
-module.exports = { teacher, connect, callback, complete, credentials, status, disconnect, rowFor, readTokens };
+module.exports = { teacher, connect, callback, complete, credentials, status, disconnect, rowFor, readTokens, config };
