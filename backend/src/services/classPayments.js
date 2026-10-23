@@ -91,7 +91,8 @@ async function handleEvent(body,{provider='hotmart'}={}){
     if(order.provider!==provider)return finish('needs_review',{needsReview:true});
     const txOwner=await Order.findOne({where:{providerTransactionId:n.transactionId},transaction});
     if(txOwner&&txOwner.id!==order.id){await markReview(order,offer,n,'duplicate_transaction',transaction);return finish('needs_review',{needsReview:true});}
-    if(!order.providerTransactionId)await order.update({providerTransactionId:n.transactionId},{transaction});
+    // Un intento fallido no fija la transacción: un pago real posterior con el mismo link debe poder conciliarse.
+    if(!order.providerTransactionId){if(!FAILED.has(n.eventType))await order.update({providerTransactionId:n.transactionId},{transaction});}
     else if(order.providerTransactionId!==n.transactionId){
       // Otro cobro real sobre el mismo link: no se vuelve a acreditar ni se borra el pago original.
       await reviewJob(order,'additional_transaction',transaction);return finish('needs_review',{needsReview:true});

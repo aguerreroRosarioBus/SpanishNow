@@ -108,3 +108,13 @@ test('PARTIALLY_REFUNDED no se confunde con aprobación ni prueba capacidad de i
   const w=await world();const {order,body}=await pending(w);body.data.purchase.status='PARTIALLY_REFUNDED';
   const result=await apply(body);expect(result.needsReview).toBe(true);expect((await order.reload()).status).toBe('paid_needs_review');expect(await Purchase.count({where:{orderId:order.id}})).toBe(0);expect((await order.reload()).refundedAmount).toBe(0);
 });
+test('P2-1: un pago real después de un intento fallido pasa a revisión y se puede acreditar',async()=>{
+  const w=await world();const {order,body}=await pending(w);
+  await apply({...body,id:randomUUID(),event:'PURCHASE_EXPIRED',data:{...body.data,purchase:{...body.data.purchase,transaction:'FAILED-T1'}}});
+  expect((await order.reload()).status).toBe('failed');expect(order.providerTransactionId).toBeNull();
+  const paid=JSON.parse(JSON.stringify(body));paid.id=randomUUID();paid.data.purchase.transaction='REAL-T2';
+  expect((await apply(paid)).needsReview).toBe(true);expect((await order.reload()).status).toBe('paid_needs_review');expect(order.providerTransactionId).toBe('REAL-T2');
+  const admin=await createUser('student','w05-p21');await admin.update({permissions:['class_payments.review']});
+  const r=await as(admin).post(`/api/admin/class-payments/${order.id}/resolve`,{action:'credit',reason:'Pago real confirmado ficticio'});expect(r.status).toBe(200);
+  expect(await Purchase.count({where:{orderId:order.id}})).toBe(1);
+});
