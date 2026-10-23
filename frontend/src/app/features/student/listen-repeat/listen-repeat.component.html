@@ -2,14 +2,14 @@
   <!-- Loading -->
   <div *ngIf="isLoading()" class="text-center py-5">
     <div class="spinner-border text-primary" role="status"></div>
-    <p class="text-muted mt-2">Cargando actividades...</p>
+    <p class="text-muted mt-2">{{ 'activities.loadingActivities' | t }}</p>
   </div>
 
   <!-- Error -->
   <div *ngIf="errorMessage()" class="alert alert-warning">
     {{ errorMessage() }}
     <button class="btn btn-secondary mt-3" (click)="goBack()">
-      <app-icon name="chevron-left" [size]="16" />Volver
+      <app-icon name="chevron-left" [size]="16" />{{ 'activities.back' | t }}
     </button>
   </div>
 
@@ -18,11 +18,11 @@
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
       <button class="btn btn-ghost" (click)="goBack()">
-        <app-icon name="chevron-left" [size]="16" />Volver
+        <app-icon name="chevron-left" [size]="16" />{{ 'activities.back' | t }}
       </button>
-      <h2 class="mb-0">Escucha y Repite</h2>
+      <h2 class="mb-0">{{ 'activities.repeatTitle' | t }}</h2>
       <button class="btn btn-outline-primary" (click)="restart()">
-        <app-icon name="rotate-ccw" [size]="16" />Reiniciar
+        <app-icon name="rotate-ccw" [size]="16" />{{ 'activities.restart' | t }}
       </button>
     </div>
 
@@ -30,10 +30,10 @@
     <div class="mb-4">
       <div class="d-flex justify-content-between mb-2">
         <small class="text-muted">
-          Frase {{ currentIndex() + 1 }} de {{ totalActivities }}
+          {{ 'activities.phraseCount' | t: {number: currentIndex() + 1, total: totalActivities} }}
         </small>
         <small class="text-muted">
-          Completadas: {{ completedCount }} / {{ totalActivities }}
+          {{ 'activities.completedCount' | t: {count: completedCount, total: totalActivities} }}
         </small>
       </div>
       <div class="progress" style="height: 8px;">
@@ -58,17 +58,17 @@
           <div class="step-section mb-4">
             <h5 class="step-title">
               <span class="step-number">1</span>
-              Escucha el modelo
+              {{ 'activities.listenModel' | t }}
             </h5>
             <button
               class="btn btn-lg btn-primary w-100"
               [disabled]="!currentActivity?.audioUrl || isPlayingModel()"
               (click)="playModel()"
             >
-              <span *ngIf="!isPlayingModel()"><app-icon name="volume" [size]="16" />Reproducir modelo</span>
+              <span *ngIf="!isPlayingModel()"><app-icon name="volume" [size]="16" />{{ 'activities.playModel' | t }}</span>
               <span *ngIf="isPlayingModel()">
                 <span class="spinner-border spinner-border-sm me-2"></span>
-                Reproduciendo...
+                {{ 'activities.playing' | t }}
               </span>
             </button>
           </div>
@@ -77,7 +77,7 @@
           <div class="step-section mb-4">
             <h5 class="step-title">
               <span class="step-number">2</span>
-              Graba tu voz
+              {{ 'activities.recordVoice' | t }}
             </h5>
             <div class="d-grid gap-2">
               <button
@@ -85,14 +85,14 @@
                 class="btn btn-lg btn-danger w-100"
                 (click)="startRecording()"
               >
-                <app-icon name="mic" [size]="16" />Iniciar grabación
+                <app-icon name="mic" [size]="16" />{{ 'activities.startRecording' | t }}
               </button>
               <button
                 *ngIf="isRecording()"
                 class="btn btn-lg btn-warning w-100"
                 (click)="stopRecording()"
               >
-                <app-icon name="square" [size]="16" />Detener grabación
+                <app-icon name="square" [size]="16" />{{ 'activities.stopRecording' | t }}
               </button>
               <button
                 *ngIf="hasRecording() && !isRecording()"
@@ -100,10 +100,10 @@
                 [disabled]="isPlayingRecording()"
                 (click)="playRecording()"
               >
-                <span *ngIf="!isPlayingRecording()"><app-icon name="play" [size]="16" />Escuchar mi grabación</span>
+                <span *ngIf="!isPlayingRecording()"><app-icon name="play" [size]="16" />{{ 'activities.listenRecording' | t }}</span>
                 <span *ngIf="isPlayingRecording()">
                   <span class="spinner-border spinner-border-sm me-2"></span>
-                  Reproduciendo...
+                  {{ 'activities.playing' | t }}
                 </span>
               </button>
             </div>
@@ -113,12 +113,13 @@
           <div class="step-section">
             <h5 class="step-title">
               <span class="step-number">3</span>
-              Evalúa tu pronunciación
+              {{ 'activities.evaluate' | t }}
             </h5>
             <div class="rating-container">
               <button
                 *ngFor="let star of [1, 2, 3, 4, 5]"
                 class="star-btn"
+                [attr.aria-label]="'activities.rateStars' | t: {count: star}"
                 [class.active]="star <= rating()"
                 (click)="setRating(star)"
               >
@@ -127,12 +128,12 @@
             </div>
             <div class="text-center mt-2">
               <small class="text-muted">
-                <span *ngIf="rating() === 0">Selecciona una calificación</span>
-                <span *ngIf="rating() === 1">Necesita mejorar</span>
-                <span *ngIf="rating() === 2">Regular</span>
-                <span *ngIf="rating() === 3">Bueno</span>
-                <span *ngIf="rating() === 4">Muy bueno</span>
-                <span *ngIf="rating() === 5">¡Excelente!</span>
+                <span *ngIf="rating() === 0">{{ 'activities.selectRating' | t }}</span>
+                <span *ngIf="rating() === 1">{{ 'activities.needsImprovement' | t }}</span>
+                <span *ngIf="rating() === 2">{{ 'activities.fair' | t }}</span>
+                <span *ngIf="rating() === 3">{{ 'activities.good' | t }}</span>
+                <span *ngIf="rating() === 4">{{ 'activities.veryGood' | t }}</span>
+                <span *ngIf="rating() === 5">{{ 'activities.excellentRating' | t }}</span>
               </small>
             </div>
           </div>
@@ -147,7 +148,7 @@
         [disabled]="currentIndex() === 0"
         (click)="previousActivity()"
       >
-        <app-icon name="chevron-left" [size]="16" />Anterior
+        <app-icon name="chevron-left" [size]="16" />{{ 'activities.previous' | t }}
       </button>
 
       <button
@@ -156,36 +157,36 @@
         [disabled]="completedCount !== totalActivities"
         (click)="checkCompletion()"
       >
-        Finalizar actividad
+        {{ 'activities.finish' | t }}
       </button>
       <button
         *ngIf="currentIndex() < totalActivities - 1"
         class="btn btn-lg btn-primary"
         (click)="nextActivity()"
       >
-        Siguiente<app-icon name="chevron-right" [size]="16" />
+        {{ 'activities.next' | t }}<app-icon name="chevron-right" [size]="16" />
       </button>
     </div>
 
     <!-- Summary -->
     <div *ngIf="completedCount === totalActivities && completedCount > 0" class="alert alert-success mt-4">
-      <h4>¡Completaste todas las frases!</h4>
+      <h4>{{ 'activities.allPhrases' | t }}</h4>
       <p class="mb-0">
-        Has evaluado tu pronunciación en {{ totalActivities }} frases.
+        {{ 'activities.evaluated' | t: {count: totalActivities} }}
         <button class="btn btn-sm btn-outline-success ms-3" (click)="restart()">
-          Practicar de Nuevo
+          {{ 'activities.practiceAgain' | t }}
         </button>
       </p>
     </div>
 
     <!-- Instructions -->
     <div class="alert alert-info mt-4" *ngIf="completedCount === 0">
-      <strong>Instrucciones:</strong>
+      <strong>{{ 'activities.instructions' | t }}</strong>
       <ol class="mb-0 mt-2">
-        <li>Escucha el modelo de pronunciación</li>
-        <li>Graba tu voz repitiendo la frase</li>
-        <li>Escucha tu grabación y compárala con el modelo</li>
-        <li>Evalúa tu pronunciación con estrellas (1-5)</li>
+        <li>{{ 'activities.listenInstruction' | t }}</li>
+        <li>{{ 'activities.recordInstruction' | t }}</li>
+        <li>{{ 'activities.compareInstruction' | t }}</li>
+        <li>{{ 'activities.rateInstruction' | t }}</li>
       </ol>
     </div>
   </div>

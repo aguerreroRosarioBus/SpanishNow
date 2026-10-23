@@ -2,6 +2,7 @@ import { STUDENT_EN } from './student';
 import { PUBLIC_EN } from './public';
 import { ADMIN_EN } from './admin';
 import { PLAYER_EN } from './player';
+import { ACTIVITIES_EN } from './activities';
 import { TranslationCatalog } from '../i18n.types';
 
 export const EN = {
@@ -9,6 +10,7 @@ export const EN = {
   ...PUBLIC_EN,
   ...ADMIN_EN,
   ...PLAYER_EN,
+  ...ACTIVITIES_EN,
   'common.language': 'Language',
   'preferences.loadError': 'Could not load your account preferences. Please try again.',
   'preferences.saveError': 'Could not save your preferences to your account. Please try again.',
