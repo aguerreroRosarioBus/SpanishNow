@@ -84,3 +84,16 @@ test('P1: A inicia y B completa: se descarta el grant pendiente, A sin credencia
   expect((await as(b).post('/api/integrations/zoom/complete').send({ token: another })).status).toBe(403);
   expect((await c.rowFor(a.id)).credentials).toBe(previous);
 });
+
+test('P2: clave rotada devuelve estado needs_attention sin 500 y código traducible', async () => {
+  const { teacher } = await chain(); await connected(teacher);
+  const previousKey = process.env.GOOGLE_TOKEN_ENCRYPTION_KEY;
+  process.env.GOOGLE_TOKEN_ENCRYPTION_KEY = Buffer.alloc(32, 2).toString('base64');
+  try {
+    const response = await as(teacher).get('/api/integrations/zoom');
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({ status: 'needs_attention', lastError: 'zoom_authorization_lost', capabilities: null });
+    expect(JSON.stringify(response.body)).not.toMatch(/accessToken|refreshToken|credentials/);
+    expect((await c.rowFor(teacher.id)).refreshLockedUntil).toBeNull();
+  } finally { process.env.GOOGLE_TOKEN_ENCRYPTION_KEY = previousKey; }
+});

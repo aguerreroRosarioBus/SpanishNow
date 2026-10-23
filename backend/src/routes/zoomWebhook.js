@@ -3,7 +3,7 @@ const router = require('express').Router();
 const crypto = require('node:crypto');
 const db = require('../config/database');
 const M = require('../models');
-const cipher = require('../services/liveGoogleService');
+const zoomConnections = require('../services/zoomConnection');
 const { fail, hash } = require('../services/zoomAdapter');
 router.post('/', require('express').raw({ type: 'application/json', limit: '256kb' }), async (req, res, next) => {
   try {
@@ -25,7 +25,8 @@ router.post('/', require('express').raw({ type: 'application/json', limit: '256k
     const connections = await M.ExternalConnection.findAll({ where: { provider: 'zoom', status: 'connected' } });
     let connection;
     for (const c of connections) {
-      if (c.credentials && cipher.decrypt(c.credentials).accountId === accountId) { connection = c; break; }
+      try { if ((await zoomConnections.readTokens(c)).accountId === accountId) { connection = c; break; } }
+      catch (error) { if (error.code !== 'zoom_authorization_lost') throw error; }
     }
     if (!connection) return res.json({ received: true });
     const eventKey = hash(JSON.stringify([body.event, body.event_ts, accountId, body.payload?.object?.id]));

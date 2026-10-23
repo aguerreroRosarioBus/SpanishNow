@@ -60,18 +60,28 @@ async function complete(user, token) {
   });
   return status(user);
 }
+// Un grant ilegible requiere reconexión; no filtrar errores del cifrador ni invalidar una reconexión concurrente.
+async function readTokens(row) {
+  try { return cipher.decrypt(row.credentials); }
+  catch {
+    await M.ExternalConnection.update({ status: 'needs_attention', lastError: 'zoom_authorization_lost', refreshLockedUntil: null,
+      version: db.literal('version + 1') }, { where: { id: row.id, status: 'connected', credentials: row.credentials } });
+    fail('zoom_authorization_lost');
+  }
+}
 async function credentials(userId) {
   adapter.assertFake();
   let row = await rowFor(userId);
   if (!row?.credentials || row.status !== 'connected') fail('integration_not_connected');
-  if (row.tokenExpiresAt > new Date(Date.now() + 60000)) return { row, tokens: cipher.decrypt(row.credentials) };
+  const tokens = await readTokens(row);
+  if (row.tokenExpiresAt > new Date(Date.now() + 60000)) return { row, tokens };
   // CAS con lease: solo una réplica puede rotar el refresh token; ninguna llamada bajo lock SQL.
   const lease = new Date(Math.floor(Date.now() / 1000) * 1000 + 30000);
   const [claimed] = await M.ExternalConnection.update({ refreshLockedUntil: lease }, { where: { id: row.id, version: row.version, status: 'connected',
     [Op.or]: [{ refreshLockedUntil: null }, { refreshLockedUntil: { [Op.lt]: new Date() } }] } });
   if (!claimed) fail('zoom_busy', 503);
   try {
-    const next = await adapter.refresh(cipher.decrypt(row.credentials));
+    const next = await adapter.refresh(tokens);
     const [saved] = await M.ExternalConnection.update({ credentials: cipher.encrypt(next), tokenExpiresAt: new Date(next.expiresAt),
       refreshLockedUntil: null, version: row.version + 1, lastError: null }, { where: { id: row.id, version: row.version, status: 'connected', refreshLockedUntil: lease } });
     if (!saved) fail('integration_not_connected');
@@ -87,7 +97,7 @@ async function status(user) {
   let capabilities = null;
   if (row?.status === 'connected' && process.env.INTEGRATIONS_FAKE === '1') {
     try { const c = await credentials(user.id); capabilities = await adapter.capabilities(c.tokens); }
-    catch (error) { if (!['zoom_revoked', 'integration_not_connected', 'zoom_busy'].includes(error.code)) throw error; }
+    catch (error) { if (!['zoom_revoked', 'zoom_authorization_lost', 'integration_not_connected', 'zoom_busy'].includes(error.code)) throw error; }
   }
   const current = await rowFor(user.id);
   return { fake: process.env.INTEGRATIONS_FAKE === '1', status: current?.status || 'disconnected', accountEmail: current?.accountEmail || null,
@@ -106,4 +116,4 @@ async function disconnect(user) {
   });
   return status(user);
 }
-module.exports = { teacher, connect, callback, complete, credentials, status, disconnect, rowFor };
+module.exports = { teacher, connect, callback, complete, credentials, status, disconnect, rowFor, readTokens };

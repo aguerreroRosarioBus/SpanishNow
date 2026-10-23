@@ -187,3 +187,15 @@ test('clase próxima sin reunión genera aviso seguro al dueño', async () => {
   const read = await as(c.students[0]).get(`/api/integrations/zoom/sessions/${c.session.id}`);
   expect(read.status).toBe(200); expect(JSON.stringify(read.body)).not.toMatch(/credentials|joinUrl|hostUrl/);
 });
+
+test('P2: webhook saltea un grant ilegible y procesa revocación de otro docente', async () => {
+  const bad = await fixture();
+  await (await connection.rowFor(bad.teacher.id)).update({ credentials: 'ilegible' });
+  const good = await fixture(); await sync(good.session.id);
+  const { tokens } = await connection.credentials(good.teacher.id);
+  const result = await webhook({ event: 'app_deauthorized', event_ts: Date.now(), payload: { account_id: tokens.accountId } });
+  expect(result.status).toBe(200);
+  expect((await connection.rowFor(bad.teacher.id)).status).toBe('needs_attention');
+  expect((await connection.rowFor(good.teacher.id)).status).toBe('revoked');
+  expect((await refFor(good.session.id)).lastError).toBe('zoom_revoked');
+});

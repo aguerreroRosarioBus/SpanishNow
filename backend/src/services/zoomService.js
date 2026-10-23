@@ -55,7 +55,7 @@ async function enqueue(session, transaction, reason = 'retry') {
     dedupeKey: `zoom:${reason}:${session.id}:v${session.version}:${crypto.randomUUID()}` }, { transaction });
 }
 function safeError(error) {
-  return ['zoom_revoked', 'zoom_busy', 'zoom_capacity_unknown', 'zoom_capacity_exceeded', 'zoom_meeting_missing', 'integration_not_connected', 'zoom_fake_required', 'zoom_rate_limited'].includes(error.code)
+  return ['zoom_revoked', 'zoom_authorization_lost', 'zoom_busy', 'zoom_capacity_unknown', 'zoom_capacity_exceeded', 'zoom_meeting_missing', 'integration_not_connected', 'zoom_fake_required', 'zoom_rate_limited'].includes(error.code)
     ? error.code : 'zoom_provider_unavailable';
 }
 async function sync(job, ctx = { stillOwned: async () => true }) {
