@@ -12,6 +12,9 @@
     <div class="state-box"><strong>{{ 'chat.conv.notFound' | t }}</strong></div>
   } @else if (conversation(); as c) {
     <section class="chat" [attr.aria-label]="c.counterpart.name">
+      @if (c.canSendOffers && !isBlocked()) {
+        <a class="btn btn-outline-primary m-2" routerLink="/teacher/class-offers/new" [queryParams]="{conversationId:c.id}">{{ 'packages.offer.send' | t }}</a>
+      }
       <header class="chat__head">
         <span class="avatar" aria-hidden="true">{{ c.counterpart.name.charAt(0).toUpperCase() }}</span>
         <div class="chat__who">
@@ -57,6 +60,9 @@
               <li class="event" data-kind="system">
                 <app-icon name="circle-dot" [size]="14" />
                 <span><span class="visually-hidden">{{ 'chat.conv.system' | t }}: </span>{{ eventText(m) }}</span>
+                @if (m.eventCode === 'package_group_invited') {
+                  <a [routerLink]="['/class-cohorts',m.eventParams?.['cohortId']]">{{ 'packages.group.invitation' | t }}</a>
+                }
                 <time [attr.datetime]="m.createdAt">{{ fmt.instant(m.createdAt) }}</time>
               </li>
             } @else if (m.type === 'session_proposal' && m.classSessionId) {
@@ -64,6 +70,10 @@
             } @else if (m.type === 'offer' || m.type === 'session_proposal') {
               <li class="card-msg" data-kind="system">
                 <strong>{{ m.type === 'offer' ? ('chat.conv.offerCard' | t:{ id: m.offerId ?? '' }) : ('chat.conv.proposalCard' | t) }}</strong>
+                @if (m.type === 'offer' && m.offerId) {
+                  <a [routerLink]="['/class-offers',m.offerId]">{{ 'packages.offer.open' | t }}</a>
+                  <span>{{ offerSummary(m) }}</span>
+                }
                 <time [attr.datetime]="m.createdAt">{{ fmt.instant(m.createdAt) }}</time>
               </li>
             } @else {

@@ -1,0 +1,56 @@
+<div class="page-container">
+  <h1>{{ 'packages.catalog.title' | t }}</h1>
+  <p>{{ 'packages.catalog.hint' | t }}</p>
+  @if (error()) { <p class="alert alert-danger" role="alert">{{ error() }}</p> }
+  @if (settings(); as s) {
+    <section class="card p-3 mb-3">
+      <p>{{ (s.salesPausedAt ? 'packages.sales.paused' : 'packages.sales.open') | t }}</p>
+      @if (!s.classesEnabledAt) { <p>{{ 'packages.sales.notEnabled' | t }}</p> }
+      <button class="btn btn-secondary align-self-start" [disabled]="busy()" (click)="pause()">{{ (s.salesPausedAt ? 'packages.sales.resume' : 'packages.sales.pause') | t }}</button>
+    </section>
+  }
+  <button class="btn btn-primary mb-3" [disabled]="busy()" (click)="importInitial()">{{ 'packages.catalog.import' | t }}</button>
+  @if (busy()) { <p role="status">{{ 'packages.loading' | t }}</p> }
+  <div class="row g-3">
+    @for (item of items(); track item.id) {
+      <article class="col-md-6"><div class="card p-3 h-100">
+        <h2 class="h5">{{ name(item) }}</h2>
+        <p>{{ i18n.formatMoney(item.current.priceAmount,item.current.currency) }} · {{ 'packages.summary' | t:{count:item.current.sessionsCount,minutes:item.current.minutesPerSession,seats:item.current.seatsCovered,hours:item.current.validityHours} }}</p>
+        <p>{{ 'packages.version' | t:{version:item.current.version} }} · {{ ('packages.status.'+item.status) | t }}</p>
+        <div class="d-flex flex-wrap gap-2">
+          <button class="btn btn-outline-primary" [disabled]="busy() || item.status==='archived'" (click)="edit(item)">{{ 'packages.edit' | t }}</button>
+          <button class="btn btn-secondary" [disabled]="busy() || item.status==='archived'" (click)="status(item,item.status==='active'?'paused':'active')">{{ (item.status==='active'?'packages.pause':'packages.activate') | t }}</button>
+          <button class="btn btn-ghost" [disabled]="busy() || item.status==='archived'" (click)="status(item,'archived')">{{ 'packages.archive' | t }}</button>
+        </div>
+      </div></article>
+    } @empty { <p>{{ 'packages.catalog.empty' | t }}</p> }
+  </div>
+  @if (selected(); as item) {
+    <section class="card p-3 mt-4">
+      <h2 class="h4">{{ 'packages.edit' | t }} — {{ name(item) }}</h2>
+      <p>{{ 'packages.catalog.immutable' | t }}</p>
+      <form [formGroup]="form" (ngSubmit)="save()">
+        <div class="row g-3">
+          @for (field of textFields; track field) {
+            <div class="col-md-6"><label [for]="field" class="form-label">{{ ('packages.field.'+field) | t }}</label><input [id]="field" class="form-control" [formControlName]="field" [maxlength]="field.startsWith('name')?150:field.startsWith('description')?8000:500"></div>
+          }
+          @for (field of numberFields; track field) {
+            <div class="col-md-4"><label [for]="field" class="form-label">{{ ('packages.field.'+field) | t }}</label><input [id]="field" type="number" min="1" step="1" class="form-control" [formControlName]="field" required></div>
+          }
+          <div class="col-md-4"><label for="currency" class="form-label">{{ 'packages.field.currency' | t }}</label><input id="currency" class="form-control" formControlName="currency" maxlength="3" required></div>
+          <div class="col-md-4"><label for="groupSize" class="form-label">{{ 'packages.field.modality' | t }}</label><select id="groupSize" class="form-select" [value]="form.get('groupSize')?.value" (change)="modality($any($event.target).value)"><option value="1">{{ 'packages.individual' | t }}</option><option value="2">{{ 'packages.group2' | t }}</option><option value="3">{{ 'packages.group3' | t }}</option></select></div>
+        </div>
+        <div formGroupName="expectations" class="row mt-3">
+          @for (locale of locales; track locale) {
+            <fieldset [formGroupName]="locale" class="col-md-6"><legend>{{ locale==='en'?'English':'Español' }}</legend>
+              @for (field of fields; track field) { <label [for]="locale+'-'+field" class="form-label">{{ ('packages.expectations.'+field) | t }}</label><textarea [id]="locale+'-'+field" class="form-control mb-2" [formControlName]="field" rows="2" maxlength="4000"></textarea> }
+            </fieldset>
+          }
+        </div>
+        <button type="submit" class="btn btn-primary mt-3" [disabled]="busy() || form.invalid">{{ 'packages.save' | t }}</button>
+        <button type="button" class="btn btn-secondary mt-3 ms-2" (click)="selected.set(null)">{{ 'packages.close' | t }}</button>
+        @if (saved()) { <p role="status">{{ 'packages.saved' | t }}</p> }
+      </form>
+    </section>
+  }
+</div>

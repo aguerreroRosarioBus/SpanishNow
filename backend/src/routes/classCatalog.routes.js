@@ -1,0 +1,27 @@
+const router = require('express').Router();
+const { authMiddleware, requirePermission } = require('../middlewares/auth.middleware');
+const { requireFeature } = require('../config/features');
+const catalog = require('../services/classCatalog');
+const { ClassPolicyVersion, TeacherClassSettings, User } = require('../models');
+const { fail } = require('../services/legalDocuments');
+const wrap = fn => (req, res, next) => Promise.resolve(fn(req, res)).catch(next);
+const secure = [authMiddleware, (req, res, next) => req.impersonatedBy ? next(fail(403, 'forbidden')) : next()];
+const enabled = requireFeature('class_packages');
+router.get('/public/teachers/:id/class-packages', enabled, wrap(async (req, res) => res.json(await catalog.publicCatalog(req.params.id))));
+router.get('/teacher/class-settings', ...secure, wrap(async (req, res) => res.json(await catalog.settings(req.user))));
+router.patch('/teacher/class-settings', ...secure, enabled, wrap(async (req, res) => res.json(await catalog.saveSettings(req.user, req.body))));
+router.get('/teacher/class-packages', ...secure, enabled, wrap(async (req, res) => res.json(await catalog.list(req.user, req.query.teacherId))));
+router.post('/teacher/class-packages/import-initial', ...secure, enabled, wrap(async (req, res) => res.json(await catalog.importInitial(req.user, req.query.teacherId))));
+router.post('/teacher/class-packages', ...secure, enabled, wrap(async (req, res) => res.status(201).json(await catalog.create(req.user, req.body, req.query.teacherId))));
+router.get('/teacher/class-packages/:id', ...secure, enabled, wrap(async (req, res) => res.json(await catalog.detail(req.user, req.params.id))));
+router.post('/teacher/class-packages/:id/versions', ...secure, enabled, wrap(async (req, res) => res.status(201).json(await catalog.newVersion(req.user, req.params.id, req.body))));
+router.patch('/teacher/class-packages/:id/status', ...secure, enabled, wrap(async (req, res) => res.json(await catalog.setStatus(req.user, req.params.id, req.body))));
+router.get('/admin/class-teachers', ...secure, requirePermission('class_teachers.manage'), wrap(async (req, res) => {
+  const teachers = await User.findAll({ where: { role: 'teacher' }, attributes: ['id', 'name', 'suspendedAt'], order: [['id', 'ASC']], limit: 200 });
+  const rows = await TeacherClassSettings.findAll({ where: { userId: teachers.map(t => t.id) } });
+  res.json(teachers.map(t => ({ ...t.toJSON(), settings: rows.find(s => s.userId === t.id) || null })));
+}));
+router.patch('/admin/class-teachers/:userId', ...secure, requirePermission('class_teachers.manage'), enabled, wrap(async (req, res) => res.json(await catalog.enableTeacher(req.user, req.params.userId, req.body))));
+router.get('/admin/class-policies', ...secure, requirePermission('class_packages.manage_all'), wrap(async (req, res) => res.json(await ClassPolicyVersion.findAll({ order: [['version', 'DESC']] }))));
+router.post('/admin/class-policies', ...secure, requirePermission('class_packages.manage_all'), enabled, wrap(async (req, res) => res.status(201).json(await catalog.createPolicy(req.user, req.body))));
+module.exports = router;

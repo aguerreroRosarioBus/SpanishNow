@@ -104,11 +104,13 @@ Estos valores no fueron extraídos del sitio: se proponen bajo D09. Deben existi
 | Tolerancia de llegada | 10 minutos transcurridos | Llegar tarde no desplaza el fin acordado. Ausencia requiere marca docente registrada; no inferirla solo por abrir Zoom. |
 | Pausa del paquete comprado | Una pausa de hasta 30 días | Pausar exige resolver/cancelar sesiones futuras conforme a las reglas; no borra ni perdona una cancelación tardía. Al reanudar, extender vencimiento por duración real de pausa. |
 | Renovación | Nueva compra independiente | El docente puede enviar oferta cuando reste 1 clase disponible o falten 7 días para vencer; es una sugerencia, nunca un cobro automático. |
-| Reembolso de paquete | Solicitable dentro de 14 días del pago, por la parte no utilizada | Prorratear por precio efectivo pagado, sin recalcular clases usadas a tarifa individual. Usar asignación de centavos determinista; la suma nunca excede lo pagado. |
+| Reembolso de paquete — P01 resuelta | Garantía comercial inicial de 15 días (360 horas bajo la semántica actual); prevalece un plazo más favorable | Voluntario estándar total sin créditos consumidos dentro del plazo aplicable. Resolver reservas expresamente. Con uso previo, fuera de plazo o ante excepciones: revisión individual, sin rechazo automático ni deuda/recobro. Sin prorrateo automático inicial por elección comercial. Verificar formato/cuenta/producto y garantía efectiva Hotmart antes de habilitar ventas reales; no presentar un vencimiento calculado como verificado. |
 | Servicio no prestable por la escuela/docente | Reembolso de saldo no utilizado sin el límite anterior | Registrar razón. Derechos aplicables o condiciones del proveedor que sean más favorables prevalecen; no inventar exclusiones legales. |
 | Reembolso de cursos digitales | Conserva condiciones actuales de cada producto/proveedor | No aplicar automáticamente la política de paquetes a cursos ya vendidos. |
 | Recordatorios de sesión confirmada | 24 h y 1 h antes | Enviar solo los que aún sean futuros al confirmar; zona/idioma del destinatario y preferencias de avisos. |
 | Separación entre sesiones del docente | 10 minutos | Configurable; validar también al reprogramar y al confirmar. |
+
+**P01 resuelta (22/10/2026, por delegación expresa de Andrés al orquestador):** esta decisión reemplaza la propuesta original de 14 días/prorrateo para nuevas ofertas y compras, mediante configuración y snapshots nuevos. No editar reglas inmutables ni reducir derechos comprados; cursos digitales intactos. Plazo configurado/contractual/legal más favorable prevalece. Uso previo o fuera de plazo exige revisión individual; no supone aprobación ni rechazo automáticos. Si la escuela/docente no puede cumplir o no se forma el grupo, conservar soluciones y devoluciones incluso fuera de garantía, con resolución humana auditada y sin imponer fecha/vale/extensión sin aceptación. La solicitud interna no devuelve dinero: se tramita en Hotmart de forma manual si falta capacidad verificada y se concilia solo el resultado real. Si Hotmart reembolsa tras uso, cerrar compra, retirar disponibles, conservar consumidos y revisar reservas, sin segundo cobro. La verificación efectiva de formato/garantía/cuenta sigue siendo condición técnica previa a habilitación real, no una decisión comercial pendiente.
 
 PACK-06. Cancelar un paquete significa impedir nuevas reservas y tramitar el saldo según condiciones; no equivale a cancelar un débito recurrente, porque no existe. Mostrar por separado estado del paquete, saldo y estado del reembolso.
 
@@ -478,6 +480,8 @@ Aplicar pruebas unitarias de reglas/tiempo, integración con MySQL para locks/sa
 
 Las referencias explican capacidades de proveedores; las reglas de producto de esta guía son decisiones de SpanishNow. Verificar documentación/scopes/límites vigentes al implementar; no copiar números o permisos de ejemplos sin validar su aplicación.
 
+Fuentes P01 verificadas el 22/10/2026: [alta de producto y garantía](https://suportehotmart.zendesk.com/hc/es-es/articles/215828518--C%C3%B3mo-registrar-mi-producto-en-Hotmart) (opciones 7/15/21/30 días), [Términos de Compra §3.2](https://hotmart.com/es/legal/plazo-de-compra) (puede haber rechazo por uso, no aprobación incondicional) y [webhook de compras](https://developers.hotmart.com/docs/en/2.0.0/webhook/purchase-webhook/) (`PARTIALLY_REFUNDED` existe; no acredita que nuestra cuenta pueda iniciar un parcial).
+
 ### Registro inicial
 
 | Decisión | Estado | Origen |
@@ -486,6 +490,7 @@ Las referencias explican capacidades de proveedores; las reglas de producto de e
 | Catálogo de seis variantes | Verificado al redactar | Página pública de paquetes; importación inicial configurable. |
 | Reglas de sección 4, límites de chat y retención propuesta | Definido como valor inicial configurable | Criterio delegado por el usuario; explícitamente separado de datos del sitio. |
 | Fuente de verdad de agenda en SpanishNow | Diseño inicial propuesto | Evita mover horarios sin aceptación. |
+| P01: garantía inicial 15 días, voluntario total sin consumo; demás casos a revisión individual | Resuelta por delegación expresa de Andrés, 22/10/2026 | Configuración/snapshots nuevos; plazo más favorable, incumplimiento y grupo incompleto conservan derechos; sin rechazo automático por uso, prorrateo inicial ni deuda/recobro. Verificación de formato/cuenta/garantía y capacidad de trámite real pendiente antes de habilitar. PACK-08, §4, W05. |
 | D10: Hotmart cobra los paquetes; Stripe descartado | Confirmado el 22/10/2026 | Andrés: Stripe no es viable desde Argentina. Afecta PACK-13, W00 y W05. |
 | Paquetes primero, suscripción automática fuera de alcance | Confirmado | D01; no construir renovación automática. |
 

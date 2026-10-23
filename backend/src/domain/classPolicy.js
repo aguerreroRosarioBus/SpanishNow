@@ -34,7 +34,8 @@ const isCount = value => Number.isSafeInteger(value) && value >= 0;
 function validatePolicy(rules) {
   const errors = [];
   if (!rules || typeof rules !== 'object' || Array.isArray(rules)) return ['rules must be an object'];
-  const known = new Set([...INTEGER_KEYS, 'validityHoursBySessions', 'remindersBeforeStartMinutes', 'chatLimits']);
+  const known = new Set([...INTEGER_KEYS, 'validityHoursBySessions', 'remindersBeforeStartMinutes', 'chatLimits', 'refundMode']);
+  if (rules.refundMode !== undefined && (rules.refundMode !== 'full_unused_then_review' || rules.refundWindowHours < 360)) errors.push('refundMode requires full_unused_then_review and at least 360 hours');
   for (const key of Object.keys(rules)) if (!known.has(key)) errors.push(`unknown key ${key}`);
   for (const key of INTEGER_KEYS) if (!isCount(rules[key])) errors.push(`${key} must be a non-negative integer`);
   const validity = rules.validityHoursBySessions;

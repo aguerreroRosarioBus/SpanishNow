@@ -38,6 +38,11 @@ const PERMISSIONS = Object.freeze([
     description: 'Corregir saldo o vigencia de una compra de clases, siempre con motivo y registro de auditoría.'
   },
   {
+    key: 'class_credits.adjust_any',
+    label: 'Ajustes de saldo de cualquier docente',
+    description: 'Corregir el saldo de compras de clases de cualquier docente. Sin este permiso, class_credits.adjust solo alcanza las compras del propio docente.'
+  },
+  {
     key: 'class_sessions.support',
     label: 'Soporte de clases',
     description: 'Ver el estado de Calendar y Zoom de las clases, reintentar sincronizaciones y reenviar invitaciones. No da el enlace de anfitrión.'

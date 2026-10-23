@@ -84,7 +84,44 @@ export const routes: Routes = [
     canDeactivate: [(component: { canLeave(): boolean }) => component.canLeave()],
     loadComponent: () => import('./features/live-classes/live-room.component').then(m => m.LiveRoomComponent)
   },
+  {path:'admin/class-commerce',canActivate:[authGuard],loadComponent:()=>import('./features/packages/commerce-admin.component').then(m=>m.CommerceAdminComponent)},
+  {path:'teacher/class-cohorts',canActivate:[teacherGuard],loadComponent:()=>import('./features/packages/groups.component').then(m=>m.GroupsComponent)},
   // Rutas de profesor
+  {
+    path: 'teacher/class-purchases',
+    loadComponent: () => import('./features/packages/purchases.component').then(m => m.PurchasesComponent),
+    data: {teacher:true}, canActivate: [teacherGuard]
+  },
+  {
+    path: 'class-packages',
+    loadComponent: () => import('./features/packages/purchases.component').then(m => m.PurchasesComponent),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'class-packages/:id',
+    loadComponent: () => import('./features/packages/purchases.component').then(m => m.PurchasesComponent),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'class-cohorts/:id',
+    loadComponent: () => import('./features/packages/cohort-invitation.component').then(m => m.CohortInvitationComponent),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'teacher/class-offers/new',
+    loadComponent: () => import('./features/packages/offer-create.component').then(m => m.OfferCreateComponent),
+    canActivate: [teacherGuard]
+  },
+  {
+    path: 'class-offers/:id',
+    loadComponent: () => import('./features/packages/offer-detail.component').then(m => m.OfferDetailComponent),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'teacher/class-packages',
+    loadComponent: () => import('./features/packages/package-catalog.component').then(m => m.PackageCatalogComponent),
+    canActivate: [teacherGuard]
+  },
   {
     path: 'teacher/dashboard',
     loadComponent: () => import('./features/teacher/dashboard/teacher-dashboard.component').then(m => m.TeacherDashboardComponent),

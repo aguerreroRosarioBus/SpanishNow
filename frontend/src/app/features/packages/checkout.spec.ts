@@ -1,0 +1,25 @@
+import {TestBed} from '@angular/core/testing';
+import {ActivatedRoute,convertToParamMap,provideRouter} from '@angular/router';
+import {of,Subject,throwError} from 'rxjs';
+import {OfferDetailComponent} from './offer-detail.component';
+import {PackagesService} from './packages.service';
+import {ChatFormat} from '../chat/chat-format';
+import {I18N_CATALOGS,I18nService} from '../../core/i18n/i18n.service';
+import {PACKAGE_MESSAGES} from './packages.i18n';
+import {LEGAL_SALES_MESSAGES} from '../legal/legal-messages';
+const offer={id:10,conversationId:9,buyerId:4,canCheckout:true,amount:9000,currency:'USD',sessionsCount:4,minutesPerSession:50,seatsCovered:1,status:'sent',expiresAt:'2026-11-05T00:00:00Z',snapshot:{nameEn:'Four sessions',nameEs:'Cuatro sesiones',teacherName:'Docente ficticio',templateVersion:3,policyVersion:1,policy:{freeCancelHours:24,maxPauseHours:720,maxPauses:1},legalDocuments:[{documentKey:'terms',version:'3',content:{en:{title:'Terms',body:'text'},es:{title:'Términos',body:'texto'}}}]}};
+function fixture(api:unknown){TestBed.configureTestingModule({imports:[OfferDetailComponent],providers:[provideRouter([]),{provide:I18N_CATALOGS,multi:true,useValue:PACKAGE_MESSAGES},{provide:I18N_CATALOGS,multi:true,useValue:LEGAL_SALES_MESSAGES},{provide:ActivatedRoute,useValue:{paramMap:of(convertToParamMap({id:'10'}))}},{provide:ChatFormat,useValue:{timeZone:()=> 'America/Argentina/Cordoba'}},{provide:PackagesService,useValue:api}]});const f=TestBed.createComponent(OfferDetailComponent);f.detectChanges();return f;}
+describe('checkout W05',()=>{
+ it('retorno solo lee estado; requiere aceptación y simular confirmación es otra acción',()=>{
+   const pending=new Subject<any>();const checkout=vi.fn<(...args:any[])=>any>(()=>pending);const fakeComplete=vi.fn(()=>of({offer:{...offer,status:'paid'},order:{id:1,provider:'fake',status:'paid'},purchaseId:77}));
+   const f=fixture({offer:()=>of(offer),checkoutState:()=>of({offer,order:null,purchaseId:null}),checkout,fakeComplete,error:()=> 'Error'});const c=f.componentInstance;
+   expect(fakeComplete).not.toHaveBeenCalled();c.pay();expect(checkout).not.toHaveBeenCalled();
+   c.accepted.set(true);c.pay();c.pay();expect(checkout).toHaveBeenCalledTimes(1);expect(checkout.mock.calls[0][2]).toMatchObject({legalConsent:{accepted:true,documents:[{documentKey:'terms',documentVersion:'3'}]}});
+   pending.next({order:{id:1,provider:'fake',status:'pending'},checkoutUrl:'http://localhost:4200/class-offers/10?checkout=fake'});c.completeFake();f.detectChanges();
+   expect(c.purchaseId()).toBe(77);expect(c.payable()).toBe(false);expect(f.nativeElement.querySelector('a[href="/class-packages/77"]')).toBeTruthy();
+ });
+ it('red fallida e idioma conservan la clave de checkout y el snapshot aceptado',()=>{
+   const checkout=vi.fn<(...args:any[])=>any>(()=>throwError(()=>new Error('network')));const f=fixture({offer:()=>of(offer),checkoutState:()=>of({offer,order:null,purchaseId:null}),checkout,error:()=> 'Error'});const c=f.componentInstance;
+   c.accepted.set(true);c.pay();TestBed.inject(I18nService).setLocale('es');c.pay();expect(checkout.mock.calls[0][1]).toBe(checkout.mock.calls[1][1]);expect(c.offer()!.amount).toBe(9000);expect(c.accepted()).toBe(true);
+ });
+});
