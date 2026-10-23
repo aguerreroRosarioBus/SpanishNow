@@ -124,6 +124,24 @@ describe('W06: interfaz conectada por contratos de agenda', () => {
     expect(fixture.nativeElement.textContent).not.toContain('Iniciar reunión'); fixture.destroy();
   });
 
+  it('si la reunión de Zoom no existe, la alumna ve que no está lista y la docente conserva el aviso de conexión', () => {
+    const sync = [{ provider: 'zoom', status: 'needs_attention', syncedVersion: 1 }];
+    const api2 = api as typeof api & { join: ReturnType<typeof vi.fn> };
+    api2.join = vi.fn(() => throwError(() => ({ status: 409, error: { code: 'integration_not_connected' } })));
+    api.get.mockReturnValue(of(confirmed(sync)));
+    const click = (fixture: { nativeElement: HTMLElement; detectChanges(): void }, label: string) => {
+      ([...fixture.nativeElement.querySelectorAll('.sync button')] as HTMLButtonElement[]).find(b => b.textContent?.includes(label))!.click(); fixture.detectChanges();
+    };
+    let fixture = TestBed.createComponent(ClassSessionCardComponent); fixture.componentRef.setInput('sessionId', 10); fixture.detectChanges();
+    click(fixture, 'Abrir enlace de participante');
+    expect(fixture.nativeElement.textContent).toContain('La reunión todavía no está lista');
+    expect(fixture.nativeElement.textContent).not.toContain('Conecta el servicio'); expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeNull(); fixture.destroy();
+    auth.currentUser.set({ id: 2, role: 'teacher' });
+    fixture = TestBed.createComponent(ClassSessionCardComponent); fixture.componentRef.setInput('sessionId', 10); fixture.detectChanges();
+    click(fixture, 'Iniciar reunión');
+    expect(fixture.nativeElement.textContent).not.toContain('La reunión todavía no está lista'); expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeTruthy();
+  });
+
   it('catálogo de agenda conserva paridad EN/ES y claves propias', () => {
     expect(Object.keys(SCHEDULE_MESSAGES.en).sort()).toEqual(Object.keys(SCHEDULE_MESSAGES.es).sort());
     expect(Object.keys(SCHEDULE_MESSAGES.en).every(key => key.startsWith('schedule.') || key.startsWith('errors.'))).toBe(true);
