@@ -20,6 +20,8 @@ router.post('/admin/class-purchases/:id/refund-deadline',...secure,requirePermis
 router.post('/admin/class-purchases/:id/adjustments',...secure,requirePermission('class_credits.adjust'),wrap(async(req,res)=>res.json(await purchases.adjust(req.user,req.params.id,req.body,req.get('Idempotency-Key')))));
 router.get('/admin/class-purchases/:id',...secure,(req,res,next)=>['class_credits.adjust','class_payments.review'].some(p=>require('../config/permissions').hasPermission(req.user,p))?next():next(fail(403,'forbidden')),wrap(async(req,res)=>{
   if(!require('../services/legalDocuments').validId(req.params.id))throw fail(404,'not_found');
-  const p=await require('../models').ClassPackagePurchase.findByPk(req.params.id);if(!p)throw fail(404,'not_found');res.json(purchases.present(p));
+  const p=await require('../models').ClassPackagePurchase.findByPk(req.params.id);
+  const {hasPermission}=require('../config/permissions');
+  if(!p||!(hasPermission(req.user,'class_payments.review')||purchases.canAdjust(req.user,p)))throw fail(404,'not_found');res.json(purchases.present(p));
 }));
 module.exports=router;

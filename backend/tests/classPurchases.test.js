@@ -45,7 +45,7 @@ test('cancelación separa saldo/reembolso; solicitud no marca dinero devuelto',a
   expect((await as(w.buyer).get(`/api/me/class-packages/${w.p.id}/refund-preview`)).body).toMatchObject({amount:9000,refundedAmount:0});expect(await AuditLog.count({where:{action:'purchase.cancelled',entityId:w.p.id}})).toBe(1);
 });
 test('ajuste autorizado e idempotente no duplica saldo; motivo y versión obligan a revisión explícita',async()=>{
-  const w=await paid();const admin=await createUser('student','credits-review');await admin.update({permissions:['class_credits.adjust']});const key=randomUUID();const url=`/api/admin/class-purchases/${w.p.id}/adjustments`;
+  const w=await paid();const admin=await createUser('student','credits-review');await admin.update({permissions:['class_credits.adjust','class_credits.adjust_any']});const key=randomUUID();const url=`/api/admin/class-purchases/${w.p.id}/adjustments`;
   const body={units:1,direction:'add',reason:'Corrección ficticia autorizada',version:w.p.version};
   expect((await as(w.teacher).post(url,body).set('Idempotency-Key',key)).status).toBe(403);
   const [a,b]=await Promise.all([as(admin).post(url,body).set('Idempotency-Key',key),as(admin).post(url,body).set('Idempotency-Key',key)]);expect([a.status,b.status]).toEqual([200,200]);expect(a.body.balance.available).toBe(5);expect(b.body.balance.available).toBe(5);
@@ -57,4 +57,16 @@ test('confirmación de compra por outbox se localiza y un reintento ordinario no
   const job=await OutboxJob.findOne({where:{topic:'email.purchase_confirmed',aggregateId:w.p.id}});
   const mail=require('../src/services/mailService');mail.clearOutbox();const jobs=require('../src/services/classPackageJobs');
   await jobs.confirmation(job);await jobs.confirmation(job);expect(mail.getOutbox()).toHaveLength(1);expect(mail.getOutbox()[0].subject).toContain('confirmado');expect(mail.getOutbox()[0].text).toContain('America/Argentina/Cordoba');
+});
+test('P2-3: class_credits.adjust solo alcanza compras propias; otro docente 404, dueño 200, adjust_any 200',async()=>{
+  const w=await paid();const url=`/api/admin/class-purchases/${w.p.id}/adjustments`;const body={units:1,direction:'add',reason:'Corrección ficticia'};
+  const other=await createUser('teacher','credits-other');await other.update({permissions:['class_credits.adjust']});
+  expect((await as(other).post(url,body).set('Idempotency-Key',randomUUID())).status).toBe(404);
+  expect((await as(other).get(`/api/admin/class-purchases/${w.p.id}`)).status).toBe(404);
+  expect(await Ledger.count({where:{purchaseId:w.p.id,operation:'adjust'}})).toBe(0);
+  await w.teacher.update({permissions:['class_credits.adjust']});
+  expect((await as(w.teacher).post(url,body).set('Idempotency-Key',randomUUID())).status).toBe(200);
+  expect((await as(w.teacher).get(`/api/admin/class-purchases/${w.p.id}`)).status).toBe(200);
+  await other.update({permissions:['class_credits.adjust','class_credits.adjust_any']});
+  expect((await as(other).post(url,body).set('Idempotency-Key',randomUUID())).status).toBe(200);
 });
