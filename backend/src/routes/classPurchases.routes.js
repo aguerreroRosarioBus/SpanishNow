@@ -11,6 +11,15 @@ router.get('/teacher/class-purchases',...secure,wrap(async(req,res)=>res.json(aw
 router.post('/me/class-packages/:id/pause',...secure,wrap(async(req,res)=>res.json(await purchases.change(req.user,req.params.id,'pause',req.body))));
 router.post('/me/class-packages/:id/resume',...secure,wrap(async(req,res)=>res.json(await purchases.change(req.user,req.params.id,'resume',req.body))));
 router.post('/me/class-packages/:id/cancel',...secure,wrap(async(req,res)=>res.json(await purchases.change(req.user,req.params.id,'cancel',req.body))));
-router.post('/me/class-packages/:id/refund-requests',...secure,wrap(async(req,res)=>{await purchases.load(req.user,req.params.id);throw fail(409,'refund_policy_pending');}));
+const refunds=require('../services/classRefunds');
+router.get('/me/class-packages/:id/refund-preview',...secure,wrap(async(req,res)=>res.json(await refunds.ownPreview(req.user,req.params.id,req.query.type))));
+router.post('/me/class-packages/:id/refund-requests',...secure,wrap(async(req,res)=>res.json(await refunds.request(req.user,req.params.id,req.body,req.get('Idempotency-Key')))));
+router.get('/admin/class-refund-requests',...secure,requirePermission('class_payments.review'),wrap(async(req,res)=>res.json(await refunds.adminList())));
+router.post('/admin/class-refund-requests/:id/review',...secure,requirePermission('class_payments.review'),wrap(async(req,res)=>res.json(await refunds.review(req.user,req.params.id,req.body))));
+router.post('/admin/class-purchases/:id/refund-deadline',...secure,requirePermission('class_payments.review'),wrap(async(req,res)=>res.json(await refunds.verifyDeadline(req.user,req.params.id,req.body))));
 router.post('/admin/class-purchases/:id/adjustments',...secure,requirePermission('class_credits.adjust'),wrap(async(req,res)=>res.json(await purchases.adjust(req.user,req.params.id,req.body,req.get('Idempotency-Key')))));
+router.get('/admin/class-purchases/:id',...secure,(req,res,next)=>['class_credits.adjust','class_payments.review'].some(p=>require('../config/permissions').hasPermission(req.user,p))?next():next(fail(403,'forbidden')),wrap(async(req,res)=>{
+  if(!require('../services/legalDocuments').validId(req.params.id))throw fail(404,'not_found');
+  const p=await require('../models').ClassPackagePurchase.findByPk(req.params.id);if(!p)throw fail(404,'not_found');res.json(purchases.present(p));
+}));
 module.exports=router;

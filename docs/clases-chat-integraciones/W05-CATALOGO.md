@@ -1,5 +1,7 @@
 # W05 — Entrega 1: catálogo versionado
 
+**Alcance histórico de este corte.** P01 comercial está resuelta; el cierre vigente y su validación están en [W05-CIERRE.md](W05-CIERRE.md).
+
 Rama `w05-catalogo-ofertas`, base main `2fd928f`. Implementación: Codex. Refs #18.
 
 ## Alcance

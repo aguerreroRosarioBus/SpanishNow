@@ -40,9 +40,9 @@ test('reanudación máxima y vencimiento son idempotentes y usan solo el ledger 
   await Promise.all([purchases.settle(w.p.id),purchases.settle(w.p.id)]);
   expect(await w.p.reload()).toMatchObject({status:'expired',unitsAvailable:0,unitsExpired:4,unitsGranted:4});expect(await Ledger.count({where:{purchaseId:w.p.id,operation:'expire'}})).toBe(1);
 });
-test('cancelación separa saldo/reembolso; P01 sigue pendiente sin dinero marcado devuelto',async()=>{
+test('cancelación separa saldo/reembolso; solicitud no marca dinero devuelto',async()=>{
   const w=await paid();const r=await change(w,'cancel',{version:w.p.version,reason:'Cancelar ficticiamente'});expect(r.status).toBe(200);expect(r.body).toMatchObject({status:'cancelled',balance:{available:4,refunded:0}});
-  expect((await change(w,'refund-requests',{})).body.code).toBe('refund_policy_pending');expect(await AuditLog.count({where:{action:'purchase.cancelled',entityId:w.p.id}})).toBe(1);
+  expect((await as(w.buyer).get(`/api/me/class-packages/${w.p.id}/refund-preview`)).body).toMatchObject({amount:9000,refundedAmount:0});expect(await AuditLog.count({where:{action:'purchase.cancelled',entityId:w.p.id}})).toBe(1);
 });
 test('ajuste autorizado e idempotente no duplica saldo; motivo y versión obligan a revisión explícita',async()=>{
   const w=await paid();const admin=await createUser('student','credits-review');await admin.update({permissions:['class_credits.adjust']});const key=randomUUID();const url=`/api/admin/class-purchases/${w.p.id}/adjustments`;

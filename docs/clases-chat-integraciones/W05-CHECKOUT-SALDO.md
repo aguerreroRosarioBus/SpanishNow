@@ -1,5 +1,7 @@
 # W05 — Entrega 3: checkout fake, conciliación y saldo
 
+**Nota de vigencia:** este documento conserva el alcance histórico de su corte. El cierre y las limitaciones vigentes están en [W05-CIERRE.md](W05-CIERRE.md); P01 comercial ya está resuelta e implementada por nuevas versiones.
+
 Codex, rama `w05-checkout-saldo`, dependiente de #37 y #32 con sus correcciones (`cde8d69`). Refs #18. Sin agenda ni cambios a `classCredits.apply` de W00/W06.
 
 ## Requisitos y resultado

@@ -98,11 +98,13 @@ async function send(user, conversationId, body, idempotencyKey, { replacesOfferI
     const template = await Template.findOne({where:{id:version.templateId,teacherId:user.id},transaction,lock:transaction.LOCK.UPDATE});
     if (!template) throw fail(404,'not_found');
     if (template.status !== 'active' || template.currentVersionId !== version.id) throw fail(409,'version_conflict');
+    require('./classPackageProvider').assertSelling();
     catalog.assertReady(version);
     const policy = await Policy.findByPk(version.policyVersionId,{transaction});
+    if (policy.rules.refundMode !== 'full_unused_then_review' || policy.rules.refundWindowHours < 360) throw fail(409,'refund_policy_update_required');
     const {beneficiaryIds,cohort} = await groupFor(version,conversation.studentId,body,{transaction,now});
     if (cohort) {
-      const active = await Offer.findAll({where:{cohortId:cohort.id,buyerId:conversation.studentId,status:['sent','checkout_pending','paid']},transaction});
+      const active = await Offer.findAll({where:{cohortId:cohort.id,...(version.billing==='per_group'?{}:{buyerId:conversation.studentId}),status:['sent','checkout_pending','paid']},transaction});
       if (active.some(o=>o.id!==replacesOfferId)) throw fail(409,'group_incomplete');
     }
     const expiresAt = new Date(Math.min(now.getTime()+policy.rules.offerTtlHours*3600000,cohort?.formingDeadlineAt.getTime() ?? Infinity));
@@ -116,7 +118,7 @@ async function send(user, conversationId, body, idempotencyKey, { replacesOfferI
     const docs = await legal.currentSet(legal.KEYS,{transaction});
     const values = Object.fromEntries(catalog.FIELDS.map(k=>[k,version[k]]));
     const teacher = await User.findByPk(user.id,{transaction});
-    const snapshot = {...values,refundPolicyStatus:'pending_validation',templateKey:template.templateKey,templateVersionId:version.id,templateVersion:version.version,teacherId:user.id,teacherName:teacher.name,buyerId:conversation.studentId,beneficiaryIds,cohortId:cohort?.id || null,
+    const snapshot = {...values,refundPolicyStatus:'commercial_resolved',providerVerification:'fake_unverified',templateKey:template.templateKey,templateVersionId:version.id,templateVersion:version.version,teacherId:user.id,teacherName:teacher.name,buyerId:conversation.studentId,beneficiaryIds,cohortId:cohort?.id || null,
       policyVersion:policy.version,policy:policy.rules,sentAt:now.toISOString(),expiresAt:expiresAt.toISOString(),
       legalDocuments:docs.map(d=>({documentKey:d.documentKey,version:String(d.version),content:d.content,business:d.business,effectiveAt:d.effectiveAt.toISOString()}))};
     const row = await Offer.create({conversationId:conversation.id,teacherId:user.id,buyerId:conversation.studentId,cohortId:cohort?.id || null,templateVersionId:version.id,policyVersionId:policy.id,replacesOfferId,status:'sent',snapshot,

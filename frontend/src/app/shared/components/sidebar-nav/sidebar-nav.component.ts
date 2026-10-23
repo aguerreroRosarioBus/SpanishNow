@@ -83,7 +83,7 @@ export class SidebarNavComponent {
       groups = [{ ...groups[0], items: [...groups[0].items, {label:'packages.purchase.nav',icon:'receipt',link:this.currentUser()?.role==='teacher'?'/teacher/class-purchases':'/class-packages'}] }, ...groups.slice(1)];
     }
     if (this.features.enabled('class_packages') && this.currentUser()?.role === 'teacher' && groups.length) {
-      groups = [{ ...groups[0], items: [...groups[0].items, { label: 'packages.nav', icon: 'shopping-bag', link: '/teacher/class-packages' }] }, ...groups.slice(1)];
+      groups = [{ ...groups[0], items: [...groups[0].items, { label: 'packages.nav', icon: 'shopping-bag', link: '/teacher/class-packages' }, {label:'packages.group.manage',icon:'users',link:'/teacher/class-cohorts'}] }, ...groups.slice(1)];
     }
     if (!this.features.enabled('chat') || !groups.length) return groups;
     const chat: NavItem = { label: 'chat.nav', icon: 'message-square', link: '/messages', badge: 'chat' };
@@ -105,6 +105,7 @@ export class SidebarNavComponent {
     if (!(this.currentUser()?.permissions?.length)) return groups;
     // «Administración» va antes de «Cuenta», que siempre es el último grupo
     const admin: NavGroup = { title: 'nav.admin', items: [{ label: 'nav.users', icon: 'users', link: '/admin/users' }] };
+    if(['class_payments.review','class_credits.adjust','class_packages.manage_all','class_teachers.manage'].some(p=>this.authService.hasPermission(p))) admin.items.push({label:'packages.admin.title',icon:'receipt',link:'/admin/class-commerce'});
     if (this.authService.hasPermission('legal.manage')) admin.items.push({ label: 'legal.nav', icon: 'file-text', link: '/admin/legal' });
     return [...groups.slice(0, -1), admin, groups[groups.length - 1]];
   });

@@ -8,8 +8,9 @@ import { I18nService } from '../../core/i18n/i18n.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ChatFormat } from '../chat/chat-format';
 import { PackagesService } from './packages.service';
+import { RefundRequestComponent } from './refund-request.component';
 import { ClassPurchase } from './packages.model';
-@Component({selector:'app-class-purchases',standalone:true,imports:[FormsModule,RouterLink,TranslatePipe],template:`
+@Component({selector:'app-class-purchases',standalone:true,imports:[FormsModule,RouterLink,TranslatePipe,RefundRequestComponent],template:`
 <div class="page-container"><h1>{{ 'packages.purchase.title' | t }}</h1>
 @if(error()){<p class="alert alert-danger" role="alert">{{error()}}</p>}
 @if(busy()){<p role="status">{{ 'packages.loading' | t }}</p>}
@@ -36,6 +37,7 @@ import { ClassPurchase } from './packages.model';
       <input [id]="'reason-'+p.id" class="form-control" maxlength="500" [ngModel]="reason()" (ngModelChange)="reason.set($event)">
       <button class="btn btn-danger mt-2" [disabled]="busy()||!reason().trim()" (click)="change(p,'cancel')">{{'packages.purchase.confirmCancel'|t}}</button>
     }
+    @if(id && !teacher && p.buyerId===auth.currentUser()?.id){<app-refund-request [purchaseId]="p.id" [hours]="p.snapshot.policy.refundWindowHours" [mode]="p.snapshot.policy.refundMode" />}
     @if(p.ledger){<h3 class="h5 mt-3">{{'packages.purchase.history'|t}}</h3><ol>@for(entry of p.ledger;track entry.id){<li>{{('packages.ledger.'+entry.operation)|t}}: {{entry.units}} · {{instant(entry.createdAt)}} @if(entry.reason){<span>— {{entry.reason}}</span>}</li>}</ol>}
     @if(teacher && (p.balance.available<=1 || untilExpiry(p)<=168)){<p class="mt-2">{{'packages.purchase.renewHint'|t}}</p>}
   </article>

@@ -3,7 +3,7 @@ const {as}=require('./helpers/fixtures');
 const {packageWorld}=require('./helpers/classPackages');
 const chat=require('../src/services/chatService');
 const {ClassOffer:Offer,ClassCohort:Cohort}=require('../src/models');
-beforeEach(()=>{process.env.FEATURE_CHAT='1';process.env.FEATURE_CLASS_PACKAGES='1';});
+beforeEach(()=>{process.env.FEATURE_CHAT='1';process.env.FEATURE_CLASS_PACKAGES='1';process.env.PAYMENTS_FAKE='1';});
 afterEach(()=>{delete process.env.FEATURE_CHAT;delete process.env.FEATURE_CLASS_PACKAGES;process.env.PAYMENTS_FAKE='0';});
 async function groupWorld(key){const w=await packageWorld({key});await chat.startConversation(w.other,{teacherId:w.teacher.id});return w;}
 const future=()=>new Date(Date.now()+240*3600000).toISOString();

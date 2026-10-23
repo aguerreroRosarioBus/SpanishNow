@@ -23,15 +23,11 @@ test('doble clic y dos claves reutilizan un solo intento; redirect no acredita; 
   expect(await Purchase.count({where:{offerId:w.offer.id}})).toBe(0);
   for(const user of [w.teacher,w.other])expect((await as(user).get(`/api/class-offers/${w.offer.id}/checkout`)).status).toBe(404);
 });
-test('checkout Hotmart usa off/sck persistidos; sin configuración da 503 y no crea intento',async()=>{
-  const w=await world();process.env.PAYMENTS_FAKE='0';expect((await start(w)).body.code).toBe('payments_unavailable');
+test('token Hotmart no habilita paquetes reales sin verificar cuenta, formato, garantía y mapeo',async()=>{
+  const w=await world();process.env.PAYMENTS_FAKE='0';
+  for(const token of ['', 'fake-secret-only-test']){process.env.HOTMART_HOTTOK=token;expect((await start(w)).body.code).toBe('package_provider_verification_required');}
   expect(await Order.count({where:{offerId:w.offer.id}})).toBe(0);
-  process.env.HOTMART_HOTTOK='fake-secret-only-test';const r=await start(w);expect(r.status).toBe(200);
-  const url=new URL(r.body.checkoutUrl),order=await Order.findByPk(r.body.order.id);
-  expect(url.hostname).toBe('pay.hotmart.com');expect(url.searchParams.get('off')).toBe(w.offer.hotmartOfferCode);expect(url.searchParams.get('sck')).toBe(order.checkoutRef);expect(url.searchParams.get('email')).toBe(w.buyer.email);
-  const body=checkout.fakeBody(order,w.offer);const before=await Purchase.count({where:{offerId:w.offer.id}});
-  expect((await request(app).post('/api/payments/hotmart/webhook').set('x-hotmart-hottok','wrong').send(body)).status).toBe(401);expect(await Purchase.count({where:{offerId:w.offer.id}})).toBe(before);
-  expect((await request(app).post('/api/payments/hotmart/webhook').set('x-hotmart-hottok','fake-secret-only-test').send(body)).status).toBe(200);expect(await Purchase.count({where:{offerId:w.offer.id}})).toBe(1);
+  expect((await request(app).patch('/api/teacher/class-settings').set('Authorization',`Bearer ${w.teacher.token}`).send({salesPaused:false})).body.code).toBe('package_provider_verification_required');
 });
 test('AC02/03: fake-complete y eventos concurrentes producen una compra, 4 créditos y cero inscripciones de curso',async()=>{
   const w=await world();const {order,body}=await pending(w);const enrollments=await Enrollment.count();

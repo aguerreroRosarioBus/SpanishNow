@@ -26,5 +26,5 @@ async function attention(job){
   await AuditLog.create({action:'payment.attention',entityType:job.aggregateType,entityId:job.aggregateId,reason:job.dedupeKey,data:{topic:job.topic,reason:job.payload?.reason||null}});
 }
 outbox.register('email.purchase_confirmed',confirmation);
-for(const topic of ['review.class_payment','review.incomplete_group','review.refunded_with_reservations'])outbox.register(topic,attention);
+for(const topic of ['review.class_payment','review.incomplete_group','review.refunded_with_reservations','review.package_refund'])outbox.register(topic,attention);
 module.exports={MESSAGES,confirmation,attention};

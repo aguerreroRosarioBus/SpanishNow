@@ -1,5 +1,5 @@
 const sequelize=require('../config/database');
-const {User,Conversation,ClassPackageTemplate:Template,ClassPackageTemplateVersion:Version,ClassPolicyVersion:Policy,ClassCohort:Cohort,ClassCohortMember:Member,ClassPackagePurchase:Purchase}=require('../models');
+const {User,Conversation,ClassPackageTemplate:Template,ClassPackageTemplateVersion:Version,ClassPolicyVersion:Policy,ClassCohort:Cohort,ClassCohortMember:Member,ClassPackagePurchase:Purchase,AuditLog}=require('../models');
 const {fail,invalid,validId,only,persistedSecond}=require('./legalDocuments');
 const offers=require('./classOffers');
 const outbox=require('./outbox');
@@ -15,10 +15,12 @@ async function load(user,id,{transaction,lock=false}={}){
 async function present(user,row,{transaction}={}){
   const members=await Member.findAll({where:{cohortId:row.id},order:[['userId','ASC']],transaction});
   const own=members.find(m=>m.userId===user.id);
+  const teacherMembers=[];
+  if(row.teacherId===user.id)for(const m of members){const u=await User.findByPk(m.userId,{attributes:['name'],transaction});const c=await Conversation.findOne({where:{teacherId:user.id,studentId:m.userId},transaction});teacherMembers.push({userId:m.userId,status:m.status,name:u?.name||'',conversationId:c?.id});}
   return {id:row.id,teacherId:row.teacherId,templateVersionId:row.templateVersionId,groupSize:row.groupSize,status:row.status,formingDeadlineAt:row.formingDeadlineAt,tentativeStartsAt:row.tentativeStartsAt,
     acceptedCount:members.filter(m=>m.status==='accepted').length,
     // La invitación no revela otras identidades, ofertas ni pagos.
-    ...(row.teacherId===user.id?{members:members.map(m=>({userId:m.userId,status:m.status}))}:{invitation:{status:own.status}})};
+    ...(row.teacherId===user.id?{members:teacherMembers}:{invitation:{status:own.status}})};
 }
 async function detail(user,id){const {row}=await load(user,id);return present(user,row);}
 async function create(user,body){
@@ -68,11 +70,13 @@ async function deadline(job){
     const row=await Cohort.findByPk(ref.id,{transaction,lock:transaction.LOCK.UPDATE});
     if(row.status!=='forming'||row.formingDeadlineAt>new Date())return;
     await row.update({status:'cancelled'},{transaction});
-    const purchases=await Purchase.findAll({where:{cohortId:row.id},attributes:['id','buyerId'],transaction});
+    const purchases=await Purchase.findAll({where:{cohortId:row.id},transaction,lock:transaction.LOCK.UPDATE});
+    for(const p of purchases){if(p.status!=='cancelled'){await p.update({status:'cancelled',cancelledAt:new Date(),version:p.version+1},{transaction});await AuditLog.create({action:'cohort.purchase_blocked',entityType:'class_package_purchases',entityId:p.id,reason:'group_incomplete',data:{cohortId:row.id}},{transaction});}}
     if(purchases.length)await outbox.enqueue({topic:'review.incomplete_group',aggregateType:'class_cohorts',aggregateId:row.id,dedupeKey:`review:cohort:${row.id}:incomplete`,payload:{purchaseIds:purchases.map(p=>p.id),reason:'group_incomplete'},runAt:new Date()},{transaction});
     const members=await Member.findAll({where:{cohortId:row.id},transaction});
     for(const m of members){const c=await Conversation.findOne({where:{teacherId:row.teacherId,studentId:m.userId},transaction});if(c)await chat.appendSystemMessage(c.id,{eventCode:'package_group_incomplete',eventParams:{cohortId:row.id},dedupeKey:`cohort:${row.id}:incomplete:${m.userId}`},{transaction});}
   });
 }
 outbox.register('cohort.deadline',deadline);
-module.exports={load,present,detail,create,respond,deadline};
+async function list(user){if(user.role!=='teacher')throw fail(403,'forbidden');const rows=await Cohort.findAll({where:{teacherId:user.id},order:[['id','DESC']],limit:200});return Promise.all(rows.map(row=>present(user,row)));}
+module.exports={load,present,detail,list,create,respond,deadline};

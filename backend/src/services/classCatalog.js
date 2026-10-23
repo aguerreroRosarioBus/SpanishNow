@@ -2,7 +2,7 @@ const { Op } = require('sequelize');
 const sequelize = require('../config/database');
 const { User, Course, TeacherClassSettings, ClassPackageTemplate: Template, ClassPackageTemplateVersion: Version, ClassPolicyVersion: Policy, AuditLog } = require('../models');
 const { hasPermission } = require('../config/permissions');
-const { DEFAULT_POLICY_V1, validatePolicy } = require('../domain/classPolicy');
+const { validatePolicy } = require('../domain/classPolicy');
 const initial = require('../domain/classInitialCatalog');
 const { validateExpectations } = require('./salesExpectations');
 const { fail, invalid, only, validId } = require('./legalDocuments');
@@ -28,10 +28,10 @@ async function owned(user, id, options = {}) {
   if (!row || !(user.role === 'teacher' && row.teacherId === user.id) && !canManageAll(user)) throw fail(404, 'not_found');
   return row;
 }
-async function policy(body, transaction) {
+async function policy(body, transaction, actorId) {
   const row = body.policyVersionId === undefined ? await Policy.findOne({ order: [['version', 'DESC']], transaction }) : await Policy.findByPk(body.policyVersionId, { transaction });
   if (!row) throw invalid(['policyVersionId']);
-  return row;
+  return require('./classRefundPolicy').current(actorId, transaction, row);
 }
 function validateVersion(body) {
   for (const key of ['nameEn', 'nameEs']) if (typeof body[key] !== 'string' || !body[key].trim() || body[key].length > 150) throw invalid([key]);
@@ -90,7 +90,7 @@ async function create(user, body, requested) {
   return sequelize.transaction(async transaction => {
     await teacherLock(teacherId, transaction);
     if (await Template.findOne({ where: { teacherId, templateKey: body.templateKey }, transaction })) throw fail(409, 'template_key_conflict');
-    const rules = await policy(body, transaction); await assertProductFree(values.hotmartProductId, { transaction });
+    const rules = await policy(body, transaction, user.id); await assertProductFree(values.hotmartProductId, { transaction });
     const row = await Template.create({ teacherId, templateKey: body.templateKey, status: 'draft' }, { transaction });
     const v = await Version.create({ ...values, templateId: row.id, version: 1, policyVersionId: rules.id, createdById: user.id }, { transaction });
     await row.update({ currentVersionId: v.id }, { transaction });
@@ -105,7 +105,7 @@ async function newVersion(user, id, body) {
     const previous = await Version.findByPk(row.currentVersionId, { transaction });
     if (previous.version !== body.version) throw fail(409, 'version_conflict');
     if (row.status === 'archived') throw fail(409, 'version_conflict');
-    const rules = await policy(body, transaction); await assertProductFree(values.hotmartProductId, { transaction });
+    const rules = await policy(body, transaction, user.id); await assertProductFree(values.hotmartProductId, { transaction });
     if (row.status === 'active') assertReady(values);
     const v = await Version.create({ ...values, templateId: row.id, version: previous.version + 1, policyVersionId: rules.id, createdById: user.id }, { transaction });
     await row.update({ currentVersionId: v.id }, { transaction });
@@ -128,7 +128,7 @@ async function importInitial(user, requested) {
   const teacherId = ownerId(user, requested);
   return sequelize.transaction(async transaction => {
     await teacherLock(teacherId, transaction);
-    const [rules] = await Policy.findOrCreate({ where: { version: 1 }, defaults: { rules: DEFAULT_POLICY_V1, createdById: user.id }, transaction });
+    const rules = await require('./classRefundPolicy').current(user.id, transaction);
     await TeacherClassSettings.findOrCreate({ where: { userId: teacherId }, defaults: { salesPausedAt: new Date() }, transaction });
     for (const item of initial) {
       if (await Template.findOne({ where: { teacherId, templateKey: item.templateKey }, transaction })) continue;
@@ -156,6 +156,7 @@ async function settings(user) {
 }
 async function saveSettings(user, body) {
   if (!only(body, ['salesPaused', 'acceptsInquiries', 'sessionBufferMinutes', 'minLeadTimeHours'])) throw invalid();
+  if (body.salesPaused === false) require('./classPackageProvider').assertSelling();
   const values = {};
   for (const key of ['salesPaused', 'acceptsInquiries']) if (body[key] !== undefined && typeof body[key] !== 'boolean') throw invalid([key]);
   if (body.salesPaused !== undefined) values.salesPausedAt = body.salesPaused ? new Date() : null;
@@ -171,6 +172,7 @@ async function saveSettings(user, body) {
   });
 }
 async function enableTeacher(actor, id, body) {
+  if (body.enabled === true) require('./classPackageProvider').assertSelling();
   if (!validId(id) || !only(body, ['enabled']) || typeof body.enabled !== 'boolean') throw invalid(['enabled']);
   return sequelize.transaction(async transaction => {
     await teacherLock(id, transaction);
@@ -183,9 +185,10 @@ async function enableTeacher(actor, id, body) {
 async function createPolicy(actor, body) {
   if (!only(body, ['version', 'rules']) || !positive(body.version)) throw invalid(['version']);
   const errors = validatePolicy(body.rules); if (errors.length) throw invalid(errors);
+  if (body.rules.refundMode !== 'full_unused_then_review' || body.rules.refundWindowHours < 360) throw invalid(['refundMode', 'refundWindowHours']);
   return sequelize.transaction(async transaction => {
-    // Un dueño fijo serializa versiones aun cuando dos administradores publican a la vez.
-    await User.findOne({ order: [['id', 'ASC']], transaction, lock: transaction.LOCK.UPDATE });
+    // El mismo mutex de política que usa la importación serializa nuevas versiones.
+    await Policy.findOne({ order: [['version', 'ASC']], transaction, lock: transaction.LOCK.UPDATE });
     const latest = await Policy.findOne({ order: [['version', 'DESC']], transaction });
     if (body.version !== (latest?.version || 0) + 1) throw fail(409, 'version_conflict');
     return Policy.create({ version: body.version, rules: body.rules, createdById: actor.id }, { transaction });

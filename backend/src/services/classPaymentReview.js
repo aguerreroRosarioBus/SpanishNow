@@ -28,6 +28,7 @@ async function resolve(actor,id,body){
     }
     if(order.status==='refunded')return {order:checkout.present(order),resolved:true};
     if(!['paid','paid_needs_review'].includes(order.status))throw fail(409,'offer_not_payable');
+    if(order.provider==='hotmart'){await AuditLog.create({actorId:actor.id,action:'payment.refund_manual',entityType:'class_package_orders',entityId:order.id,reason:body.reason.trim(),data:{amount:order.amount,currency:order.currency}},{transaction});return {order:checkout.present(order),refundRequested:true,manualRequired:true};}
     const {created}=await outbox.enqueue({topic:'payment.refund',aggregateType:'class_package_orders',aggregateId:order.id,dedupeKey:`payment.refund:${order.id}`,payload:{reason:body.reason.trim()},runAt:new Date()},{transaction});
     if(created)await AuditLog.create({actorId:actor.id,action:'payment.refund_requested',entityType:'class_package_orders',entityId:order.id,reason:body.reason.trim(),data:{amount:order.amount,currency:order.currency}},{transaction});
     return {order:checkout.present(order),refundRequested:true};

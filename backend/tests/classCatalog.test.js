@@ -15,7 +15,7 @@ beforeAll(async () => {
   [teacher, other, buyer, admin] = await Promise.all(['teacher','teacher','student','student'].map((role,i) => createUser(role, `catalog-${i}`)));
   await admin.update({ permissions: ['class_packages.manage_all', 'class_teachers.manage'] });
 });
-beforeEach(() => { process.env.FEATURE_CLASS_PACKAGES = '1'; });
+beforeEach(() => { process.env.FEATURE_CLASS_PACKAGES = '1'; process.env.PAYMENTS_FAKE='1'; });
 afterEach(() => { delete process.env.FEATURE_CLASS_PACKAGES; });
 
 test('importación explícita concurrente, seis variantes exactas en borrador y ventas pausadas', async () => {
@@ -78,7 +78,7 @@ test('dinero entero, moneda ISO, capacidad D07, URL segura, claves y producto ex
   const created=await as(teacher).post('/api/teacher/class-packages',{...input,templateKey:'custom'}); expect(created.status).toBe(201); expect(created.body.status).toBe('draft');
 });
 test('políticas inmutables, permisos explícitos y flag apagado', async () => {
-  const rules={...require('../src/domain/classPolicy').DEFAULT_POLICY_V1,offerTtlHours:48};
+  const rules={...require('../src/domain/classPolicy').DEFAULT_POLICY_V1,refundMode:'full_unused_then_review',refundWindowHours:360,offerTtlHours:48};
   expect((await as(teacher).post('/api/admin/class-policies',{version:2,rules})).status).toBe(403);
   const latest=await Policy.findOne({order:[['version','DESC']]});const version=latest.version+1;
   expect((await as(admin).post('/api/admin/class-policies',{version,rules})).status).toBe(201);

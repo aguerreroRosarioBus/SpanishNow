@@ -2,12 +2,31 @@ import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { I18nService } from '../../core/i18n/i18n.service';
-import { ClassCohort, ClassOffer, ClassSettings, PackageTemplate, ClassOrder, CheckoutState, ClassPurchase } from './packages.model';
+import { ClassCohort, ClassOffer, ClassSettings, PackageTemplate, ClassOrder, CheckoutState, ClassPurchase, RefundPreview, PaymentJob } from './packages.model';
 @Injectable({providedIn:'root'})
 export class PackagesService {
   private http = inject(HttpClient);
   private i18n = inject(I18nService);
   private base = environment.apiUrl;
+  refundPreview(id:number,type='voluntary'){return this.http.get<RefundPreview>(`${this.base}/me/class-packages/${id}/refund-preview`,{params:{type}});}
+  requestRefund(id:number,body:unknown,key:string){return this.http.post<RefundPreview>(`${this.base}/me/class-packages/${id}/refund-requests`,body,{headers:{'Idempotency-Key':key}});}
+  refundRequests(){return this.http.get<RefundPreview[]>(`${this.base}/admin/class-refund-requests`);}
+  reviewRefund(id:number,body:unknown){return this.http.post<RefundPreview>(`${this.base}/admin/class-refund-requests/${id}/review`,body);}
+  paymentList(status:string){return this.http.get<{items:ClassOrder[];events:{id:number;orderId:number|null;eventType:string;createdAt:string}[]}>(`${this.base}/admin/class-payments`,{params:{status}});}
+  resolvePayment(id:number,action:string,reason:string){return this.http.post<{manualRequired?:boolean}>(`${this.base}/admin/class-payments/${id}/resolve`,{action,reason});}
+  paymentJobs(){return this.http.get<PaymentJob[]>(`${this.base}/admin/class-payment-jobs`);}
+  acknowledgePaymentJob(id:number,reason:string){return this.http.post(`${this.base}/admin/class-payment-jobs/${id}/acknowledge`,{reason});}
+  verifyRefundDeadline(id:number,deadline:string,reason:string){return this.http.post(`${this.base}/admin/class-purchases/${id}/refund-deadline`,{deadline,reason});}
+  retryPaymentJob(id:number,reason:string){return this.http.post(`${this.base}/admin/class-payment-jobs/${id}/retry`,{reason});}
+  fakeRefundComplete(orderId:number){return this.http.post(`${this.base}/admin/class-payments/${orderId}/fake-refund-complete`,{});}
+  teachers(){return this.http.get<{id:number;name:string;settings:ClassSettings|null}[]>(`${this.base}/admin/class-teachers`);}
+  enableTeacher(id:number,enabled:boolean){return this.http.patch(`${this.base}/admin/class-teachers/${id}`,{enabled});}
+  policies(){return this.http.get<{version:number;rules:Record<string,unknown>}[]>(`${this.base}/admin/class-policies`);}
+  createPolicy(body:unknown){return this.http.post(`${this.base}/admin/class-policies`,body);}
+  adjustmentPurchase(id:number){return this.http.get<ClassPurchase>(`${this.base}/admin/class-purchases/${id}`);}
+  adjustPurchase(id:number,body:unknown,key:string){return this.http.post<ClassPurchase>(`${this.base}/admin/class-purchases/${id}/adjustments`,body,{headers:{'Idempotency-Key':key}});}
+  groups(){return this.http.get<ClassCohort[]>(`${this.base}/teacher/class-cohorts`);}
+  createGroup(body:unknown){return this.http.post<ClassCohort>(`${this.base}/teacher/class-cohorts`,body);}
   checkout(id:number,key:string,body:unknown) {return this.http.post<{order:ClassOrder;checkoutUrl:string|null}>(`${this.base}/class-offers/${id}/checkout`,body,{headers:{'Idempotency-Key':key}});}
   checkoutState(id:number) {return this.http.get<CheckoutState>(`${this.base}/class-offers/${id}/checkout`);}
   fakeComplete(id:number) {return this.http.post<CheckoutState>(`${this.base}/class-offers/${id}/checkout/fake-complete`,{});}

@@ -1,5 +1,7 @@
 # W05 — Entrega 2: ofertas inmutables y grupos identificados
 
+**Alcance histórico de este corte.** P01 comercial está resuelta; el cierre vigente y su validación están en [W05-CIERRE.md](W05-CIERRE.md).
+
 Rama `w05-ofertas-chat`, sobre `5ee6cd5` (catálogo #32). Codex. Refs #18.
 
 ## Alcance verificable

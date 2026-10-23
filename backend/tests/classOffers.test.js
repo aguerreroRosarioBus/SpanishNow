@@ -5,7 +5,7 @@ const { packageWorld } = require('./helpers/classPackages');
 const { ClassOffer: Offer, ClassOfferBeneficiary, Message, OutboxJob, ClassPackageOrder: Order, TeacherClassSettings, ClassPackageTemplateVersion: Version }=require('../src/models');
 const offers=require('../src/services/classOffers');
 const send=(w,key=randomUUID(),body={templateVersionId:w.version.id})=>as(w.teacher).post(`/api/conversations/${w.conversation.id}/offers`,body).set('Idempotency-Key',key);
-beforeEach(()=>{process.env.FEATURE_CHAT='1';process.env.FEATURE_CLASS_PACKAGES='1';});
+beforeEach(()=>{process.env.FEATURE_CHAT='1';process.env.FEATURE_CLASS_PACKAGES='1';process.env.PAYMENTS_FAKE='1';});
 afterEach(()=>{delete process.env.FEATURE_CHAT;delete process.env.FEATURE_CLASS_PACKAGES;});
 test('oferta inmutable 4×50 USD 90: snapshot, política, beneficiario, mensaje y expiración durables',async()=>{
   const w=await packageWorld();const key=randomUUID();const [a,b]=await Promise.all([send(w,key),send(w,key)]);

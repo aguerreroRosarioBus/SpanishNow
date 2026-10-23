@@ -15,6 +15,8 @@
       <dl>@for (field of fields; track field) { <dt>{{ ('packages.expectations.'+field) | t }}</dt><dd class="text-break">{{ o.snapshot.expectations?.[i18n.locale()]?.[field] }}</dd> }</dl>
       <h2 class="h5">{{ 'packages.offer.rules' | t }}</h2>
       <p>{{ 'packages.offer.rulesText' | t:{cancel:o.snapshot.policy.freeCancelHours,pause:o.snapshot.policy.maxPauseHours,pauses:o.snapshot.policy.maxPauses} }}</p>
+      <p>{{(o.snapshot.policy.refundMode==='full_unused_then_review'?'packages.refund.policy':'packages.refund.legacy')|t:{hours:o.snapshot.policy.refundWindowHours} }}</p>
+      <p>{{'packages.refund.beforePay'|t}}</p>
       <p>{{ 'packages.offer.validity' | t }}</p>
       @for (doc of o.snapshot.legalDocuments; track doc.documentKey) {
         <a [routerLink]="['/legal',doc.documentKey]" [queryParams]="{version:doc.version}" target="_blank" rel="noopener">{{ doc.content[i18n.locale()].title }} ({{ doc.version }})</a>
@@ -35,7 +37,7 @@
         <label for="cancelReason" class="form-label mt-3">{{ 'packages.offer.cancelReason' | t }}</label>
         <input id="cancelReason" class="form-control" maxlength="500" [ngModel]="reason()" (ngModelChange)="reason.set($event)">
         <button class="btn btn-outline-danger mt-2 align-self-start" [disabled]="busy() || !reason().trim()" (click)="cancel()">{{ 'packages.offer.cancel' | t }}</button>
-        <a routerLink="/teacher/class-offers/new" [queryParams]="{conversationId:o.conversationId,replacesOfferId:o.id}" class="mt-2">{{ 'packages.offer.replace' | t }}</a>
+        <a routerLink="/teacher/class-offers/new" [queryParams]="{conversationId:o.conversationId,replacesOfferId:o.id,cohortId:o.cohortId}" class="mt-2">{{ 'packages.offer.replace' | t }}</a>
       }
       <button class="btn btn-secondary mt-3 align-self-start" (click)="reload()">{{ 'packages.offer.refresh' | t }}</button>
     </article>

@@ -83,6 +83,8 @@ export const routes: Routes = [
     canDeactivate: [(component: { canLeave(): boolean }) => component.canLeave()],
     loadComponent: () => import('./features/live-classes/live-room.component').then(m => m.LiveRoomComponent)
   },
+  {path:'admin/class-commerce',canActivate:[authGuard],loadComponent:()=>import('./features/packages/commerce-admin.component').then(m=>m.CommerceAdminComponent)},
+  {path:'teacher/class-cohorts',canActivate:[teacherGuard],loadComponent:()=>import('./features/packages/groups.component').then(m=>m.GroupsComponent)},
   // Rutas de profesor
   {
     path: 'teacher/class-purchases',

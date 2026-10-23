@@ -26,7 +26,7 @@ async function status(user,id){
 async function start(user,id,idempotencyKey,body={}){
   offers.key(idempotencyKey);
   const ref=await buyerOffer(user,id);
-  if(!payments.fake()&&!require('./hotmartService').configured())throw fail(503,'payments_unavailable');
+  require('./classPackageProvider').assertSelling();
   payments.assertSafe();
   return sequelize.transaction(async transaction=>{
     await offers.teacherSettings(ref.teacherId,transaction,{selling:true});

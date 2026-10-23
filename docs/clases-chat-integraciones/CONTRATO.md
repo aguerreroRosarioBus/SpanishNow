@@ -1,6 +1,6 @@
 # Contrato técnico W00: clases, chat, paquetes e integraciones
 
-Versión **1.5** · 22/10/2026 · Paquete W00 ([#13](https://github.com/aguerreroRosarioBus/SpanishNow/issues/13)) · Responsable: orquestador de turno.
+Versión **1.6** · 22/10/2026 · Paquete W00 ([#13](https://github.com/aguerreroRosarioBus/SpanishNow/issues/13)) · Responsable: orquestador de turno.
 
 Este documento convierte la [guía](SPEC.md) §13 en un contrato que los paquetes W01–W09 consumen sin renegociar. La guía manda sobre el *qué*; este contrato fija nombres, tablas, estados, invariantes, formatos y rutas. Cambiarlo exige un PR que suba la versión, actualice la tabla de cambios del final y avise en el issue «Orquestación» (#23) a los paquetes afectados.
 
@@ -15,7 +15,7 @@ Estado de la implementación en W00: el esquema completo (§3) existe como migra
 - Importe: **entero en unidades menores** (`INT`), nunca `DECIMAL`/`FLOAT` ni texto. USD 15 = `1500`.
 - Moneda: columna `currency` `CHAR(3)` con código ISO 4217 **en mayúsculas** (`USD`). Las órdenes de cursos existentes guardan minúsculas (`usd`); no se tocan, y nada mezcla importes de ambas tablas.
 - Nunca se suman importes de monedas distintas: las utilidades lanzan error (`money.assertSameCurrency`).
-- Prorrateos y repartos (reembolso de la parte no usada, PACK-07 §4): `money.allocate(total, pesos)` con **mayor resto** determinista; ante empate de restos gana el índice menor. La suma de partes es exactamente `total` y ninguna parte es negativa. Reembolso de *k* unidades no usadas de *n*: `money.prorate(pagado, n, k)` = parte de las *k* últimas en `allocate(pagado, [1×n])`, por lo que la suma de todos los reembolsos parciales posibles nunca supera lo pagado.
+- Utilidades generales de prorrateos y repartos (no constituyen una política de devolución automática; P01 §7.7): `money.allocate(total, pesos)` con **mayor resto** determinista; ante empate de restos gana el índice menor. La suma de partes es exactamente `total` y ninguna parte es negativa. Reembolso de *k* unidades no usadas de *n*: `money.prorate(pagado, n, k)` = parte de las *k* últimas en `allocate(pagado, [1×n])`, por lo que la suma de todos los reembolsos parciales posibles nunca supera lo pagado.
 - En API: `{ "amount": 9000, "currency": "USD" }`. El cliente formatea con `Intl.NumberFormat` según su idioma; el idioma no cambia la moneda (I18N-02).
 
 ### 1.2 Tiempo (TZ-01–TZ-06, TZ-16)
@@ -225,7 +225,8 @@ MySQL permite varios `NULL` en un único: por eso los mensajes de sistema (`send
 | `arrivalToleranceMinutes` | `10` | |
 | `maxPauseHours` / `maxPauses` | `720` / `1` | |
 | `renewalSuggestWhenUnitsLeft` / `renewalSuggestHoursBeforeExpiry` | `1` / `168` | Sugerencia, nunca cobro |
-| `refundWindowHours` | `336` | Ver decisión pendiente P01 |
+| `refundWindowHours` | `336` histórico / `360` para nuevas reglas P01 | Históricos intactos; nuevas versiones respetan plazos más favorables (§7.7) |
+| `refundMode` | Ausente histórico / `full_unused_then_review` nuevo | Total voluntario sin consumo en plazo; otras circunstancias a revisión individual |
 | `remindersBeforeStartMinutes` | `[1440, 60]` | |
 | `teacherBufferMinutes` | `10` | Valor por defecto de `teacher_class_settings` |
 | `groupFormingMaxHours` / `groupFormingCutoffBeforeStartHours` | `168` / `2` | GROUP-04 |
@@ -335,7 +336,7 @@ El job `offer.expire` (dedupe `offer.expire:<offerId>`, `runAt = expiresAt`) pas
 
 ### 7.5 A verificar en el sandbox de Hotmart (primer paso de W05)
 
-La [documentación oficial del webhook 2.0.0](https://developers.hotmart.com/docs/en/2.0.0/webhook/purchase-webhook/) enumera `purchase.origin.sck`, `purchase.origin.xcod` y `purchase.offer.code` (verificada el 22/10/2026). Aun falta una compra de prueba autorizada en sandbox con `sck`/`off` y guardar el payload real saneado en `backend/tests/fixtures/`; la fixture actual es explícitamente sintética. Si `sck` no vuelve, usar `xcod`; si ninguno vuelve, la correlación pasa a ser **producto + `offer.code` + email del comprador + única orden `pending` de ese comprador para ese código**, y cualquier ambigüedad cae en `paid_needs_review`. El contrato de tablas no cambia en ningún caso.
+La [documentación oficial del webhook 2.0.0](https://developers.hotmart.com/docs/en/2.0.0/webhook/purchase-webhook/) enumera `purchase.origin.sck`, `purchase.origin.xcod` y `purchase.offer.code` (verificada el 22/10/2026). Aun falta una compra de prueba autorizada en sandbox con `sck`/`off` y guardar el payload real saneado en `backend/tests/fixtures/`; la fixture actual es explícitamente sintética. Se acepta `xcod` como referencia alternativa. Sin referencia persistida comprobable el evento queda en revisión; esta implementación no adjudica una compra por email. La captura autorizada de sandbox deberá validar la correlación antes de cualquier habilitación real. El contrato de tablas no cambia en ningún caso.
 
 ### 7.6 Modo fake (CONTRACT-05)
 
@@ -351,6 +352,26 @@ Con `PAYMENTS_FAKE=1` (prohibido en producción por `config/payments.js`) el che
 - Primero solicitud y confirmación interna auditadas; después trámite manual en Hotmart si falta capacidad de automatización validada. Solo un resultado verificable mueve saldo/estado. El ejecutor automatizado disponible en esta entrega es fake local.
 - Reembolso real posterior al uso: §7.3-5; cancelar compra, retirar disponibles, conservar consumo y revisar reservas. No nace deuda, recobro ni cargo adicional.
 - Nueva configuración versionada y nuevos snapshots; ninguna regla inmutable ni compra anterior se reinterpreta. Cursos digitales intactos. El `refundWindowHours=336` histórico no se transforma en 360 en registros ya guardados ni se trata como garantía Hotmart verificada.
+
+Implementación W05 de cierre (1.6): `classRefundPolicy.current` crea reglas nuevas con `refundMode=full_unused_then_review` y al menos 360 h, preservando las mayores del origen; jamás actualiza filas históricas. Una plantilla histórica debe guardar nueva versión antes de enviar nuevas ofertas. El snapshot declara `refundPolicyStatus=commercial_resolved` y `providerVerification=fake_unverified`. `classPackageProvider.assertSelling` bloquea toda habilitación docente/reapertura, oferta o checkout real con `503 package_provider_verification_required`; no basta configurar un token ni existe bypass por entorno para fingir verificación. Las lecturas y resoluciones de compromisos continúan.
+
+`classRefunds` guarda solicitud y seguimiento en `audit_logs` append-only. Preview incluye importe entero/moneda de la orden, disponibles/reservados/consumidos, clasificación, vencimiento calculado o ampliado con evidencia y `quote` de condiciones actuales. Solicitar requiere comprador, `Idempotency-Key`, `version`, `quote`, `reason` y `type` (`voluntary/service_unavailable/group_incomplete/other`). Otras circunstancias y snapshots históricos siempre pasan a revisión individual, sin rechazo automático. Aprobar exige capacidad, motivo, quote vigente y ausencia de compromisos sin resolver; cancela nuevas reservas y encola solo el proveedor fake, sin devolver dinero todavía. Con Hotmart queda `manual_hotmart`; solo webhook verificado concilia. Las ampliaciones verificadas solo pueden mantener o aumentar el vencimiento aplicable y no editan snapshots. Un aviso de outbox procesado no es un caso resuelto: sigue visible hasta cierre humano con motivo. Grupo incompleto pagado bloquea futuras reservas y deriva a resolución íntegra/humana, conservando dinero y ledger hasta resultado efectivo.
+
+Rutas aditivas de gestión (no cambian `credits.apply` ni requieren migración):
+
+| Ruta | Contrato / capacidad |
+| --- | --- |
+| `GET /api/me/class-packages/:id/refund-preview?type=voluntary` | Comprador; preview y solicitudes propias |
+| `POST /api/me/class-packages/:id/refund-requests` | Comprador; `{ version, quote, reason, type }` + `Idempotency-Key` |
+| `GET /api/admin/class-refund-requests` | `class_payments.review`; cola y seguimiento |
+| `POST /api/admin/class-refund-requests/:id/review` | `{ action: approve/manual_update/needs_information, reason, quote }`; misma capacidad |
+| `GET /api/admin/class-purchases/:id` | `class_payments.review` o `class_credits.adjust`; saldo sin conversación privada |
+| `POST /api/admin/class-purchases/:id/refund-deadline` | `class_payments.review`; `{ deadline, reason }`, solo mantener/ampliar con evidencia |
+| `GET /api/admin/class-payment-jobs` | `class_payments.review`; pendientes/fallidos y avisos aún sin resolver |
+| `POST /api/admin/class-payment-jobs/:id/retry` | Misma capacidad; `{ reason }`, solo fallidos permitidos |
+| `POST /api/admin/class-payment-jobs/:id/acknowledge` | Misma capacidad; `{ reason }`, cerrar aviso de revisión con auditoría |
+| `POST /api/admin/class-payments/:orderId/fake-refund-complete` | Misma capacidad, exclusivamente fake; debe existir trámite previamente encolado |
+| `GET /api/teacher/class-cohorts` | Docente propio; lista e identidades solo para él. El invitado conserva DTO privado |
 
 Fuentes verificadas el 22/10/2026: [garantías 7/15/21/30 y restricciones por formato](https://suportehotmart.zendesk.com/hc/en-us/articles/360034552751-How-to-adjust-the-guarantee-period-for-a-product-I-created), [Compra §3](https://hotmart.com/es/legal/plazo-de-compra), [Uso §5.11](https://hotmart.com/es/legal/terminos-de-uso). El [webhook](https://developers.hotmart.com/docs/en/2.0.0/webhook/purchase-webhook/) lista `PARTIALLY_REFUNDED`; no prueba que nuestra cuenta pueda iniciarlo. La decisión comercial está resuelta; las comprobaciones de integración no habilitan ventas por sí mismas.
 
@@ -594,6 +615,7 @@ Registradas en [COORDINACION.md](COORDINACION.md#decisiones). P01 comercial fue 
 
 | Versión | Fecha | Cambio |
 | --- | --- | --- |
+| 1.6 | 22/10/2026 | W05 cierre: P01 versionada360h, solicitud/seguimiento, revisión/recuperación visual y grupos. Sin migraciones ni API de saldo nueva; ventas reales bloqueadas hasta verificación efectiva. |
 | 1.5 | 22/10/2026 | W05: checkout fake, conciliación/saldo/pausa; mutaciones de compra con versión y ajustes idempotentes. P01 comercial resuelta por delegación de Andrés: nuevas condiciones de 15 días y revisión individual; integración efectiva previa a ventas reales, sin cambios de ledger W06. |
 | 1.4 | 22/10/2026 | W05 (Codex): lectura propia de invitaciones, metadata de ofertas/política. Sin esquema ni cambios de saldo. |
 | 1.3.1 | 22/10/2026 | Correcciones de revisión W05: activación exige versión comercial vista; exclusividad Hotmart serializada entre curso y paquete. Sin cambios de saldo. |

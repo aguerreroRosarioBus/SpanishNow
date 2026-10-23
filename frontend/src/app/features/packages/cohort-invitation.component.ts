@@ -1,11 +1,11 @@
 import {Component,OnInit,computed,inject,signal} from '@angular/core';
-import {ActivatedRoute} from '@angular/router';
+import {ActivatedRoute,RouterLink} from '@angular/router';
 import {TranslatePipe} from '../../core/i18n/translate.pipe';
 import {I18nService} from '../../core/i18n/i18n.service';
 import {ChatFormat} from '../chat/chat-format';
 import {PackagesService} from './packages.service';
 import {ClassCohort} from './packages.model';
-@Component({selector:'app-cohort-invitation',standalone:true,imports:[TranslatePipe],template:`
+@Component({selector:'app-cohort-invitation',standalone:true,imports:[TranslatePipe,RouterLink],template:`
   <div class="page-container"><h1>{{ 'packages.group.invitation' | t }}</h1>
   @if (error()) {<p class="alert alert-danger" role="alert">{{ error() }}</p>}
   @if (cohort(); as c) {
@@ -13,6 +13,8 @@ import {ClassCohort} from './packages.model';
     <p>{{ 'packages.group.deadline' | t:{time:instant(c.formingDeadlineAt),zone:fmt.timeZone()} }}</p>
     <p>{{ 'packages.group.accepted' | t:{count:c.acceptedCount,total:c.groupSize} }}</p>
     <p>{{ 'packages.group.noPayment' | t }}</p>
+    @if(c.members){<p>{{'packages.group.teacherHint'|t}}</p>@for(m of c.members;track m.userId){<p>{{m.name}} · {{('packages.group.status.'+m.status)|t}} @if(c.status==='forming'&&c.acceptedCount===c.groupSize&&m.conversationId){<a routerLink="/teacher/class-offers/new" [queryParams]="{conversationId:m.conversationId,cohortId:c.id}">{{'packages.offer.send'|t}}</a>}</p>}}
+    <button class="btn btn-secondary my-2" [disabled]="busy()" (click)="ngOnInit()">{{'packages.offer.refresh'|t}}</button>
     @if (c.invitation?.status==='invited' && c.status==='forming') {
       <button class="btn btn-primary me-2" [disabled]="busy()" (click)="respond(true)">{{ 'packages.group.accept' | t }}</button>
       <button class="btn btn-secondary" [disabled]="busy()" (click)="respond(false)">{{ 'packages.group.decline' | t }}</button>
