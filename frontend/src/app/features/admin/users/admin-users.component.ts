@@ -1,5 +1,9 @@
+import { I18nService } from '../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
+import { TranslationParams } from '../../../core/i18n/i18n.types';
+import { ADMIN_EN } from '../../../core/i18n/catalogs/admin';
+import { UserPreferencesService } from '../../../core/services/user-preferences.service';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import { AdminService } from '../../../core/services/admin.service';
@@ -15,6 +19,7 @@ import { copyText } from '../../../shared/utils/clipboard';
 const PAGE_SIZE = 25;
 
 interface PendingAction {
+  params?: TranslationParams;
   title: string;
   message: string;
   confirmText: string;
@@ -26,11 +31,13 @@ interface PendingAction {
 @Component({
   selector: 'app-admin-users',
   standalone: true,
-  imports: [DatePipe, IconComponent, ConfirmDialogComponent],
+  imports: [TranslatePipe, IconComponent, ConfirmDialogComponent],
   templateUrl: './admin-users.component.html',
   styleUrl: './admin-users.component.scss'
 })
 export class AdminUsersComponent implements OnInit {
+  private i18n = inject(I18nService);
+  private preferences = inject(UserPreferencesService);
   private admin = inject(AdminService);
   private auth = inject(AuthService);
   private courseService = inject(CourseService);
@@ -47,7 +54,8 @@ export class AdminUsersComponent implements OnInit {
   total = signal(0);
   page = signal(1);
   isLoading = signal(true);
-  errorMessage = signal('');
+  private loadFailure = signal<unknown>(null);
+  errorMessage = computed(() => this.loadFailure() ? this.i18n.errorMessage(this.loadFailure(), 'adminUsers.usersError') : '');
   /** Ids con un cambio en curso (deshabilita los controles de esa fila). */
   busy = signal<Set<number>>(new Set());
 
@@ -80,7 +88,7 @@ export class AdminUsersComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.admin.permissions().subscribe({ next: list => this.permissions.set(list), error: err => this.fail(err, 'No se pudo cargar el catálogo de permisos.') });
+    this.admin.permissions().subscribe({ next: list => this.permissions.set(list), error: err => this.fail(err, 'adminUsers.permissionsError') });
     if (this.canTest() && this.me()?.role === 'teacher') {
       this.courseService.getCourses().subscribe({ next: list => this.courses.set(list), error: () => { /* el curso es opcional */ } });
     }
@@ -89,7 +97,7 @@ export class AdminUsersComponent implements OnInit {
 
   load(): void {
     this.isLoading.set(true);
-    this.errorMessage.set('');
+    this.loadFailure.set(null);
     this.admin.users({
       search: this.search().trim(),
       role: this.roleFilter(),
@@ -100,7 +108,7 @@ export class AdminUsersComponent implements OnInit {
       pageSize: PAGE_SIZE
     }).subscribe({
       next: res => { this.users.set(res.users); this.total.set(res.total); this.isLoading.set(false); },
-      error: err => { this.errorMessage.set(this.message(err, 'No se pudieron cargar los usuarios.')); this.isLoading.set(false); }
+      error: err => { this.loadFailure.set(err); this.isLoading.set(false); }
     });
   }
 
@@ -120,7 +128,14 @@ export class AdminUsersComponent implements OnInit {
 
   // ===== Presentación =====
 
-  roleLabel(role: string): string { return role === 'teacher' ? 'Profesor' : 'Alumno'; }
+  roleLabel(role: string): string { return this.i18n.t(role === 'teacher' ? 'adminUsers.teacher' : 'adminUsers.student'); }
+
+  date(value: string): string { return this.i18n.formatInstant(value, this.preferences.preferences()?.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', {dateStyle: 'medium'}); }
+  number(value: number): string { return this.i18n.formatNumber(value); }
+  permissionText(p: PermissionInfo, field: 'label' | 'description'): string {
+    const key = `adminUsers.permission.${p.key}.${field}`;
+    return Object.hasOwn(ADMIN_EN, key) ? this.i18n.t(key) : p[field] + (this.i18n.locale() === 'en' ? ' [ES]' : '');
+  }
 
   /** Los permisos de una fila se pueden editar. */
   canEditPermissions(u: AdminUser): boolean { return this.canManage() && !u.fixedAdmin && !u.isTestAccount; }
@@ -137,21 +152,21 @@ export class AdminUsersComponent implements OnInit {
 
   changeRole(u: AdminUser, role: string): void {
     if (role === u.role) return;
-    this.patch(u, { role: role as 'teacher' | 'student' }, 'Rol actualizado.');
+    this.patch(u, { role: role as 'teacher' | 'student' }, 'adminUsers.roleUpdated');
   }
 
   togglePermission(u: AdminUser, key: string, checked: boolean): void {
     const next = checked ? [...new Set([...u.permissions, key])] : u.permissions.filter(p => p !== key);
-    this.patch(u, { permissions: next }, 'Permisos actualizados.');
+    this.patch(u, { permissions: next }, 'adminUsers.permissionsUpdated');
   }
 
   askSuspend(u: AdminUser): void {
-    if (u.suspendedAt) { this.patch(u, { suspended: false }, 'Cuenta reactivada.'); return; }
+    if (u.suspendedAt) { this.patch(u, { suspended: false }, 'adminUsers.reactivated'); return; }
     this.pending.set({
-      title: 'Suspender cuenta',
-      message: `${u.name} (${u.email}) no podrá iniciar sesión hasta que la reactives. No se borra ningún dato.`,
-      confirmText: 'Suspender', type: 'warning',
-      run: () => this.patch(u, { suspended: true }, 'Cuenta suspendida.')
+      title: 'adminUsers.suspendTitle',
+      message: 'adminUsers.suspendMessage', params: {name: u.name, email: u.email},
+      confirmText: 'adminUsers.suspend', type: 'warning',
+      run: () => this.patch(u, { suspended: true }, 'adminUsers.suspendedToast')
     });
   }
 
@@ -161,13 +176,13 @@ export class AdminUsersComponent implements OnInit {
       next: updated => {
         this.users.update(list => list.map(x => (x.id === updated.id ? { ...x, ...updated } : x)));
         this.setBusy(u.id, false);
-        this.toast.success(okMessage);
+        this.toast.success(this.i18n.t(okMessage));
         // Cambió mis propios permisos: se refrescan para que el menú los refleje
         if (u.id === this.me()?.id) this.auth.refreshMe();
       },
       error: err => {
         this.setBusy(u.id, false);
-        this.fail(err, 'No se pudo guardar el cambio.');
+        this.fail(err, 'adminUsers.saveError');
         this.load(); // vuelve a mostrar el estado real
       }
     });
@@ -204,50 +219,50 @@ export class AdminUsersComponent implements OnInit {
       next: list => {
         this.created.set(list);
         this.isCreating.set(false);
-        this.toast.success(list.length === 1 ? 'Cuenta de prueba creada.' : `${list.length} cuentas de prueba creadas.`);
+        this.toast.success(this.i18n.t('adminUsers.createdCount', {count: list.length}));
         this.load();
       },
-      error: err => { this.isCreating.set(false); this.fail(err, 'No se pudieron crear las cuentas de prueba.'); }
+      error: err => { this.isCreating.set(false); this.fail(err, 'adminUsers.createError'); }
     });
   }
 
   async copy(text: string, what: string): Promise<void> {
-    if (await copyText(text)) this.toast.success(`${what} copiado.`);
-    else this.toast.warning('No se pudo copiar. Selecciónalo y cópialo a mano.');
+    if (await copyText(text)) this.toast.success(this.i18n.t(what));
+    else this.toast.warning(this.i18n.t('adminUsers.copyError'));
   }
 
   enter(id: number): void {
-    this.auth.impersonate(id).subscribe({ error: err => this.fail(err, 'No se pudo entrar a la cuenta.') });
+    this.auth.impersonate(id).subscribe({ error: err => this.fail(err, 'adminUsers.enterError') });
   }
 
   askDelete(u: AdminUser): void {
     this.pending.set({
-      title: 'Borrar cuenta de prueba',
-      message: `Se borrará ${u.email} con todos sus datos (inscripciones, progreso y, si es profesor, sus cursos). No se puede deshacer.`,
-      confirmText: 'Borrar', type: 'danger',
+      title: 'adminUsers.deleteTitle',
+      message: 'adminUsers.deleteMessage', params: {email: u.email},
+      confirmText: 'adminUsers.delete', type: 'danger',
       run: () => this.admin.deleteTestUser(u.id).subscribe({
         next: () => {
           this.created.update(list => list.filter(c => c.user.id !== u.id));
-          this.toast.success('Cuenta de prueba borrada.');
+          this.toast.success(this.i18n.t('adminUsers.deleted'));
           this.load();
         },
-        error: err => this.fail(err, 'No se pudo borrar la cuenta.')
+        error: err => this.fail(err, 'adminUsers.deleteError')
       })
     });
   }
 
   askDeleteAll(): void {
     this.pending.set({
-      title: 'Borrar todas las cuentas de prueba',
-      message: 'Se borrarán todas las cuentas de prueba con todos sus datos. Las cuentas reales no se tocan. No se puede deshacer.',
-      confirmText: 'Borrar todas', type: 'danger',
+      title: 'adminUsers.deleteAll',
+      message: 'adminUsers.deleteAllMessage',
+      confirmText: 'adminUsers.deleteAllConfirm', type: 'danger',
       run: () => this.admin.deleteAllTestUsers().subscribe({
         next: res => {
           this.created.set([]);
-          this.toast.success(res.deleted === 1 ? 'Se borró 1 cuenta de prueba.' : `Se borraron ${res.deleted} cuentas de prueba.`);
+          this.toast.success(this.i18n.t('adminUsers.deletedCount', {count: res.deleted}));
           this.load();
         },
-        error: err => this.fail(err, 'No se pudieron borrar las cuentas de prueba.')
+        error: err => this.fail(err, 'adminUsers.deleteAllError')
       })
     });
   }
@@ -261,7 +276,7 @@ export class AdminUsersComponent implements OnInit {
   // ===== Errores =====
 
   private message(err: { error?: { error?: string } } | null, fallback: string): string {
-    return err?.error?.error || fallback;
+    return this.i18n.errorMessage(err, fallback);
   }
 
   private fail(err: { error?: { error?: string } } | null, fallback: string): void {

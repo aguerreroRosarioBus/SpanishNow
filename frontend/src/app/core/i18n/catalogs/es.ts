@@ -1,11 +1,13 @@
 import { STUDENT_ES } from './student';
 import { PUBLIC_ES } from './public';
+import { ADMIN_ES } from './admin';
 import { EN } from './en';
 import { TranslationMessage } from '../i18n.types';
 
 export const ES = {
   ...STUDENT_ES,
   ...PUBLIC_ES,
+  ...ADMIN_ES,
   'common.language': 'Idioma',
   'preferences.loadError': 'No pudimos cargar las preferencias de tu cuenta. Intenta de nuevo.',
   'preferences.saveError': 'No pudimos guardar las preferencias en tu cuenta. Intenta de nuevo.',
