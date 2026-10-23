@@ -10,7 +10,7 @@ export interface ClassSession extends TimeInterval {
   status: string; version: number; minutes: number; timeZone: string; localStart: string; utcOffset: string;
   participants: SessionParticipant[]; proposal: SessionProposal | null; proposals: SessionProposal[];
   rules: { freeCancelHours: number; arrivalToleranceMinutes: number } | null; groupResolutionRequired: boolean; timeZoneRulesChanged: boolean;
-  sync: { provider: string; status: string; syncedVersion: number }[]; serverNow: string; replacementSessionId: number | null;
+  sync: { provider: string; status: string; syncedVersion: number; lastError?: string | null }[]; serverNow: string; replacementSessionId: number | null;
   purchases?: { id: number; expiresAt: string; unitsAvailable: number; unitsReserved: number; unitsConsumed: number; extensionEligible?: boolean }[];
   extensionRequests?: { userId: number; purchaseId: number; unavailableMinutes: number }[];
 }
@@ -37,5 +37,7 @@ export class ClassSessionsService {
   adjustment(id: number, body: { version: number; purchaseId: number; kind: string; reason: string; unavailableMinutes?: number }) { return this.http.post<ClassSession>(`${this.api}/${id}/adjustment`, body); }
   requestExtension(id: number, body: { version: number; purchaseId: number; reason: string; unavailableMinutes: number }) { return this.http.post<ClassSession>(`${this.api}/${id}/requestExtension`, body); }
   join(id: number) { return this.http.get<{ joinUrl: string; manual: boolean }>(`${this.api}/${id}/join`); }
+  /** ICS de la versión vigente (W07): sirve sin conectar Google. */
+  ics(id: number) { return this.http.get(`${this.api}/${id}/calendar.ics`, { responseType: 'blob' }); }
   retrySync(id: number) { return this.http.post<ClassSession>(`${this.api}/${id}/sync/retry`, {}); }
 }

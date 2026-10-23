@@ -82,7 +82,7 @@ async function detail(user, sessionId, transaction) {
   const people = await M.User.findAll({ where: { id: [session.teacherId, ...seats.map(p => p.userId)] }, attributes: ['id', 'name', 'timeZone'], transaction });
   const person = userId => people.find(p => p.id === userId);
   const proposals = await M.ClassSessionProposal.findAll({ where: { sessionId: session.id }, order: [['version', 'DESC']], transaction });
-  const refs = await M.ExternalSyncRef.findAll({ where: { sessionId: session.id }, attributes: ['provider', 'status', 'syncedVersion'], transaction });
+  const refs = await M.ExternalSyncRef.findAll({ where: { sessionId: session.id }, attributes: ['provider', 'status', 'syncedVersion', 'lastError'], transaction });
   const purchased = seats.find(s => s.purchaseId);
   const purchase = purchased && await M.ClassPackagePurchase.findByPk(purchased.purchaseId, { transaction });
   const policy = purchase && await M.ClassPolicyVersion.findByPk(purchase.policyVersionId, { transaction });

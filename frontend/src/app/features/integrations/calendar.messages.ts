@@ -1,0 +1,47 @@
+import { TranslationCatalog } from '../../core/i18n/i18n.types';
+// Claves calendar.* (W07). Los códigos de sincronización coinciden con lastError de external_sync_refs.
+const pairs: Record<string, [string, string]> = {
+  nav: ['Integrations', 'Integraciones'],
+  title: ['Integrations', 'Integraciones'],
+  card: ['Google Calendar', 'Google Calendar'],
+  intro: ['Confirmed classes appear in the calendar you choose. SpanishNow stays in charge of the schedule.', 'Las clases confirmadas aparecen en el calendario que elijas. SpanishNow sigue gobernando el horario.'],
+  permissions: ['SpanishNow asks only to create and edit its own class events and to read when you are busy (not titles or guests). Drive and Classroom are not affected.', 'SpanishNow solo pide crear y editar los eventos de sus clases y leer cuándo estás ocupado (sin títulos ni invitados). Drive y Classroom no se tocan.'],
+  privacy: ['Students are invited with the guest list hidden. They can also use an .ics file without connecting Google.', 'Los alumnos reciben la invitación con la lista de invitados oculta. También pueden usar un archivo .ics sin conectar Google.'],
+  unavailable: ['Google Calendar is not available yet.', 'Google Calendar todavía no está disponible.'],
+  loading: ['Loading…', 'Cargando…'],
+  connect: ['Connect Google Calendar', 'Conectar Google Calendar'],
+  reconnect: ['Reconnect', 'Volver a conectar'],
+  disconnect: ['Disconnect', 'Desconectar'],
+  disconnectConfirm: ['Disconnect Google Calendar?', '¿Desconectar Google Calendar?'],
+  disconnectNote: ['Your classes, credits and history stay as they are. Events already created stay in Google but will no longer be updated.', 'Tus clases, saldo e historial no cambian. Los eventos ya creados quedan en Google pero no se actualizarán.'],
+  confirmDisconnect: ['Yes, disconnect', 'Sí, desconectar'],
+  keep: ['Keep connected', 'Mantener conectado'],
+  account: ['Account', 'Cuenta'],
+  target: ['Calendar for your classes', 'Calendario para tus clases'],
+  targetHint: ['New events are created here. Existing events stay where they were created.', 'Los eventos nuevos se crean aquí. Los existentes quedan donde se crearon.'],
+  busy: ['Calendars that make you busy', 'Calendarios que te marcan como ocupado'],
+  busyHint: ['A class cannot be confirmed over these calendars. Only free/busy is read.', 'No se puede confirmar una clase sobre estos calendarios. Solo se lee libre/ocupado.'],
+  readOnly: ['read only', 'solo lectura'],
+  save: ['Save choices', 'Guardar elecciones'],
+  saved: ['Choices saved.', 'Elecciones guardadas.'],
+  calendarsError: ['We could not read your calendars. Try again or reconnect.', 'No pudimos leer tus calendarios. Intenta de nuevo o vuelve a conectar.'],
+  'status.connected': ['Connected', 'Conectado'], 'status.disconnected': ['Not connected', 'Sin conectar'], 'status.pending': ['Connecting…', 'Conectando…'],
+  'status.needs_attention': ['Needs attention', 'Requiere atención'], 'status.revoked': ['Access revoked', 'Acceso revocado'],
+  attention: ['Google access is no longer valid. New classes cannot be confirmed until you reconnect or disconnect.', 'El acceso a Google ya no es válido. No podrás confirmar clases nuevas hasta volver a conectar o desconectar.'],
+  'outcome.connected': ['Google Calendar connected.', 'Google Calendar conectado.'],
+  'outcome.denied': ['You did not grant the permissions. Nothing was connected.', 'No otorgaste los permisos. No se conectó nada.'],
+  'outcome.scopes': ['Some required permissions were missing. Connect again and accept all of them.', 'Faltaron permisos necesarios. Conecta de nuevo y acéptalos todos.'],
+  'outcome.error': ['The connection could not be completed. Try again.', 'No se pudo completar la conexión. Intenta de nuevo.'],
+  'syncError.external_changed': ['The event was changed in Google. The class time in SpanishNow is unchanged; retry to restore it.', 'El evento se cambió en Google. El horario en SpanishNow no cambió; reintenta para restaurarlo.'],
+  'syncError.external_deleted': ['The event was deleted in Google. Retry to create it again.', 'El evento se borró en Google. Reintenta para crearlo otra vez.'],
+  'syncError.integration_not_connected': ['Google Calendar is not connected.', 'Google Calendar no está conectado.'],
+  'syncError.authorization_lost': ['Google access was lost. Reconnect Google Calendar.', 'Se perdió el acceso a Google. Vuelve a conectar Google Calendar.'],
+  'syncError.sync_failed': ['Google could not be reached after several attempts. Retry synchronization.', 'No se pudo contactar a Google tras varios intentos. Reintenta la sincronización.'],
+  'syncError.generic': ['The calendar event could not be updated.', 'No se pudo actualizar el evento del calendario.'],
+  manage: ['Manage integrations', 'Gestionar integraciones'],
+  ics: ['Add to my calendar (.ics)', 'Agregar a mi calendario (.ics)'],
+  icsNote: ['A downloaded file is a copy of this version and does not update by itself if the time changes.', 'El archivo descargado es una copia de esta versión y no se actualiza solo si el horario cambia.']
+};
+const en: Record<string, string> = {}, es: Record<string, string> = {};
+for (const [key, [english, spanish]] of Object.entries(pairs)) { en[`calendar.${key}`] = english; es[`calendar.${key}`] = spanish; }
+export const CALENDAR_MESSAGES: { en: TranslationCatalog; es: TranslationCatalog } = { en, es };
