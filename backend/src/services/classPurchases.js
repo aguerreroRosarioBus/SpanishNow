@@ -32,7 +32,9 @@ async function settleLocked(p,transaction,now){
     await p.reload({transaction});await p.update({status:'expired',version:p.version+1},{transaction});await event(p,'package_expired',transaction);
   }
 }
-async function settle(id){const ref=await Purchase.findByPk(id);if(!ref)return;return sequelize.transaction(async transaction=>{await offers.teacherSettings(ref.teacherId,transaction);const p=await Purchase.findByPk(id,{transaction,lock:transaction.LOCK.UPDATE});await settleLocked(p,transaction,persistedSecond(new Date()));return p;});}
+// Las lecturas no toman locks si no hay nada que liquidar (evita competir con las confirmaciones de agenda).
+const dueSettlement=(p,now)=>p.status==='paused'&&now-p.pausedAt>=Math.max(0,p.snapshot.policy.maxPauseHours-p.pausedHoursUsed)*3600000||['active','exhausted'].includes(p.status)&&p.expiresAt<=now;
+async function settle(id){const ref=await Purchase.findByPk(id);if(!ref)return;if(!dueSettlement(ref,persistedSecond(new Date())))return ref;return sequelize.transaction(async transaction=>{await offers.teacherSettings(ref.teacherId,transaction);const p=await Purchase.findByPk(id,{transaction,lock:transaction.LOCK.UPDATE});await settleLocked(p,transaction,persistedSecond(new Date()));return p;});}
 async function detail(user,id){await load(user,id);const p=await settle(id);return {...present(p),ledger:await Ledger.findAll({where:{purchaseId:p.id},order:[['id','ASC']]})};}
 async function list(user){const refs=await Beneficiary.findAll({where:{userId:user.id},attributes:['purchaseId']});const rows=await Purchase.findAll({where:{[Op.or]:[{buyerId:user.id},{id:refs.map(r=>r.purchaseId)}]},order:[['expiresAt','ASC'],['id','ASC']]});const result=[];for(const row of rows)result.push(present(await settle(row.id)));return result;}
 async function teacherList(user,studentId){
@@ -42,7 +44,7 @@ async function teacherList(user,studentId){
   const result=[];for(const p of rows)result.push(present(await settle(p.id)));return result;
 }
 async function unresolved(p,transaction,now){
-  const participants=await Participant.findAll({where:{purchaseId:p.id},attributes:['sessionId'],transaction});
+  const participants=await Participant.findAll({where:{purchaseId:p.id,status:{[Op.ne]:'cancelled'}},attributes:['sessionId'],transaction});
   const ids=[...new Set(participants.map(x=>x.sessionId))];if(!ids.length)return p.unitsReserved>0;
   const sessions=await Session.findAll({where:{id:ids,status:['draft','forming','proposed','confirmed']},transaction});
   const proposals=await Proposal.findAll({where:{sessionId:ids,status:'pending',expiresAt:{[Op.gt]:now}},transaction});

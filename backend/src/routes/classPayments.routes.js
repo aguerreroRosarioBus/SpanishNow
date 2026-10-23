@@ -11,7 +11,7 @@ const wrap=fn=>(req,res,next)=>Promise.resolve(fn(req,res)).catch(next);
 const secure=[authMiddleware,(req,res,next)=>req.impersonatedBy?next(fail(403,'forbidden',{reason:'impersonation'})):next()];
 router.post('/class-offers/:id/checkout',...secure,requireFeature('class_packages'),wrap(async(req,res)=>res.json(await checkout.start(req.user,req.params.id,req.get('Idempotency-Key'),req.body))));
 router.get('/class-offers/:id/checkout',...secure,wrap(async(req,res)=>res.json(await checkout.status(req.user,req.params.id))));
-router.post('/class-offers/:id/checkout/fake-complete',...secure,wrap(async(req,res)=>res.json(await checkout.completeFake(req.user,req.params.id))));
+router.post('/class-offers/:id/checkout/fake-complete',...secure,requireFeature('class_packages'),wrap(async(req,res)=>res.json(await checkout.completeFake(req.user,req.params.id))));
 router.get('/admin/class-payments',...secure,requirePermission('class_payments.review'),wrap(async(req,res)=>{
   const status=req.query.status||'paid_needs_review';if(!['paid_needs_review','paid','refunded','partially_refunded','pending','failed'].includes(status))throw fail(400,'validation_failed');
   const items=await Order.findAll({where:{status},order:[['id','DESC']],limit:200});

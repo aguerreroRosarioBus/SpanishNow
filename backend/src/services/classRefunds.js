@@ -1,3 +1,4 @@
+const {Op}=require('sequelize');
 // Solicitud, decisión interna y devolución del proveedor son hechos distintos, todos auditables.
 const {createHash}=require('crypto');
 const sequelize=require('../config/database');
@@ -36,6 +37,7 @@ async function request(user,id,body,key){
     await offers.teacherSettings(ref.teacherId,transaction);const p=await purchases.load(user,id,{transaction,lock:true});
     const rows=await history(p,transaction);const previous=rows.find(a=>a.action==='refund.requested'&&a.actorId===user.id&&a.data.key===key);
     if(previous){if(previous.reason!==body.reason.trim()||previous.data.type!==body.type||previous.data.quote!==body.quote)throw fail(409,'operation_key_conflict');return preview(p,{transaction,type:body.type});}
+    if(await AuditLog.findOne({where:{actorId:user.id,action:'refund.requested',entityType,entityId:{[Op.ne]:p.id},'data.key':key},transaction}))throw fail(409,'operation_key_conflict');
     const view=await preview(p,{transaction,type:body.type});
     if(view.version!==body.version||view.quote!==body.quote)throw fail(409,'version_conflict');
     if(view.orderStatus==='refunded')throw fail(409,'refund_already_confirmed');
