@@ -43,7 +43,8 @@ async function beginOAuth(userId, provider) {
   const verifier = crypto.randomBytes(48).toString('base64url');
   const fields = { oauthStateHash: sha256(state), oauthVerifier: encrypt(verifier), oauthExpiresAt: new Date(Date.now() + OAUTH_TTL_MS) };
   const row = await find(userId, provider);
-  if (row) await row.update({ ...fields, status: row.status === 'connected' ? 'connected' : 'pending' });
+  // El estado de una conexión existente no cambia al reconectar: los datos pendientes viven en los campos oauth*.
+  if (row) await row.update(fields);
   else await ExternalConnection.create({ userId, provider, status: 'pending', ...fields });
   return { state, challenge: crypto.createHash('sha256').update(verifier).digest('base64url') };
 }

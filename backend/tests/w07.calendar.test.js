@@ -214,6 +214,23 @@ describe('confirmación con free/busy (CAL-03, AC05)', () => {
     expect(connection.status).toBe('connected');
   });
 
+  test('P2: pulsar «Reconectar» y abandonar no degrada la conexión: sigue exigiendo free/busy', async () => {
+    for (const status of ['needs_attention', 'revoked']) {
+      const { c, connection } = await withConnection();
+      await connection.update({ status });
+      await calendar.connect(c.teacher); // inicia OAuth y se abandona
+      expect((await M.ExternalConnection.findByPk(connection.id)).status).toBe(status);
+      const s = await proposed(c);
+      await expect(sessions.accept(c.students[0], s.id, 1)).rejects.toMatchObject({ code: 'provider_unavailable', params: { reason: 'integration_needs_attention' } });
+      expect((await M.ClassSession.findByPk(s.id)).status).toBe('proposed');
+    }
+    // Una conexión desconectada tampoco queda en pending al volver a empezar.
+    const { c, connection } = await withConnection();
+    await calendar.disconnect(c.teacher);
+    await calendar.connect(c.teacher);
+    expect((await M.ExternalConnection.findByPk(connection.id)).status).toBe('disconnected');
+  });
+
   test('un fallo de lectura nunca confirma a ciegas: 503 recuperable y luego confirma', async () => {
     const { c } = await withConnection();
     const s = await proposed(c);
