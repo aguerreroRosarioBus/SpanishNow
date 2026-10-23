@@ -96,6 +96,8 @@ async function remove(userIds, scope, transaction) {
        OR (aggregateType = 'class_offers' AND aggregateId IN (:O)) OR (aggregateType = 'class_package_orders' AND aggregateId IN (:R))
        OR (aggregateType = 'class_package_purchases' AND aggregateId IN (:P)) OR (aggregateType = 'class_sessions' AND aggregateId IN (:S))`,
     { C, K, O, R, P, S });
+  // W07: jobs de sondeo/notificaciones de las conexiones de estos usuarios (el agregado es external_connections).
+  await run(`DELETE FROM outbox_jobs WHERE aggregateType = 'external_connections' AND aggregateId IN (SELECT id FROM (SELECT id FROM external_connections WHERE userId IN (:T)) own)`, { T });
   await run('DELETE FROM messages WHERE conversationId IN (:C) OR offerId IN (:O) OR classSessionId IN (:S)', { C, O, S });
   await run('DELETE FROM class_sessions WHERE id IN (:S)', { S }); // cascades proposals, participants and sync references
   await run('DELETE FROM class_package_purchases WHERE id IN (:P)', { P }); // cascades ledger and beneficiaries

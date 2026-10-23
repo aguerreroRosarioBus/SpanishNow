@@ -49,6 +49,7 @@ const ClassSessionProposal = require('./ClassSessionProposal');
 const ClassSessionParticipant = require('./ClassSessionParticipant');
 const ExternalConnection = require('./ExternalConnection');
 const ExternalSyncRef = require('./ExternalSyncRef');
+const ExternalCalendarChannel = require('./ExternalCalendarChannel');
 const OutboxJob = require('./OutboxJob');
 const LegalAcceptance = require('./LegalAcceptance');
 const LegalDocument = require('./LegalDocument');
@@ -229,6 +230,7 @@ ExternalConnection.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 ClassSession.hasMany(ExternalSyncRef, { foreignKey: 'sessionId', as: 'syncRefs' });
 ExternalSyncRef.belongsTo(ClassSession, { foreignKey: 'sessionId', as: 'session' });
 ExternalSyncRef.belongsTo(ExternalConnection, { foreignKey: 'connectionId', as: 'connection' });
+ExternalConnection.hasMany(ExternalCalendarChannel, { foreignKey: 'connectionId', as: 'calendarChannels' });
 
 LegalAcceptance.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 AuditLog.belongsTo(User, { foreignKey: 'actorId', as: 'actor' });
@@ -284,6 +286,7 @@ module.exports = {
   ClassSessionParticipant,
   ExternalConnection,
   ExternalSyncRef,
+  ExternalCalendarChannel,
   OutboxJob,
   LegalAcceptance,
   LegalDocument,

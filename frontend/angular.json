@@ -75,6 +75,10 @@
               "fileReplacements": [{ "replace": "src/environments/environment.ts", "with": "src/environments/environment.schedule-e2e.ts" }],
               "optimization": false, "extractLicenses": false, "sourceMap": true
             },
+            "calendar-e2e": {
+              "fileReplacements": [{ "replace": "src/environments/environment.ts", "with": "src/environments/environment.calendar-e2e.ts" }],
+              "optimization": false, "extractLicenses": false, "sourceMap": true
+            },
             "development": {
               "optimization": false,
               "extractLicenses": false,
@@ -107,6 +111,7 @@
               "buildTarget": "frontend:build:e2e"
             },
             "schedule-e2e": { "buildTarget": "frontend:build:schedule-e2e" },
+            "calendar-e2e": { "buildTarget": "frontend:build:calendar-e2e" },
             "lan": {
               "buildTarget": "frontend:build:lan",
               "host": "0.0.0.0",
