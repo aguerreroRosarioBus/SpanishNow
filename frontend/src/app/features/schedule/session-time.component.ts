@@ -3,21 +3,24 @@ import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { TimeInterval, presentSessionTime } from '../../core/time/class-time';
 
+/** Horario de una clase: fecha y hora compactas en la zona de quien mira; la zona queda como texto secundario y el horario del docente solo aparece si es distinto. */
 @Component({
   selector: 'app-session-time', standalone: true, imports: [TranslatePipe],
   template: `@if (view(); as v) {
-    <div class="time-zone"><strong>{{ 'schedule.recipient' | t }}</strong>
-      <time [attr.datetime]="interval().startsAt">{{ v.recipient.startLabel }}</time><span> — </span>
-      <time [attr.datetime]="interval().endsAt">{{ v.recipient.endLabel }}</time>
-      <small>{{ v.recipient.start.timeZone }} · UTC{{ v.recipient.start.offset }} @if (v.recipient.start.offset !== v.recipient.end.offset) { → UTC{{ v.recipient.end.offset }} }</small>
+    <div class="when">
+      <p class="when-main">
+        <time [attr.datetime]="interval().startsAt">{{ v.recipient.day }} · {{ v.recipient.range }}</time>
+      </p>
+      <p class="when-zone">{{ 'schedule.recipient' | t }} · {{ v.recipient.start.timeZone }} · {{ v.recipient.offsetLabel }}</p>
+      @if (v.teacherDiffers) {
+        <p class="when-teacher" data-testid="teacher-time"><span class="when-label">{{ 'schedule.teacherTime' | t }}</span>
+          {{ v.teacher.day }} · {{ v.teacher.range }}
+          <span class="when-zone">{{ v.teacher.start.timeZone }} · {{ v.teacher.offsetLabel }}</span></p>
+        @if (v.differentDates) { <p class="when-zone" role="note">{{ 'schedule.differentDates' | t }}</p> }
+      }
     </div>
-    <div class="time-zone secondary"><strong>{{ 'schedule.teacherTime' | t }}</strong>
-      <span>{{ v.teacher.startLabel }} — {{ v.teacher.endLabel }}</span>
-      <small>{{ v.teacher.start.timeZone }} · UTC{{ v.teacher.start.offset }} @if (v.teacher.start.offset !== v.teacher.end.offset) { → UTC{{ v.teacher.end.offset }} }</small>
-    </div>
-    @if (v.differentDates) { <p class="small mb-0" role="note">{{ 'schedule.differentDates' | t }}</p> }
   }`,
-  styles: [`.time-zone { margin:.5rem 0; overflow-wrap:anywhere } strong, small { display:block } .secondary { color:var(--color-text-muted,#625e59);font-size:.9em }`]
+  styles: [`:host{display:block}.when p{margin:0;overflow-wrap:anywhere}.when-main{font:600 1.125rem/1.3 var(--font-heading);color:var(--color-text)}.when-zone{font-size:.8125rem;color:var(--color-text-light)}.when-teacher{margin-top:var(--spacing-sm)!important;font-size:.875rem}.when-label{display:block;font-size:.75rem;font-weight:700;color:var(--color-text-light)}.when-teacher .when-zone{display:block}`]
 })
 export class SessionTimeComponent {
   interval = input.required<TimeInterval>();

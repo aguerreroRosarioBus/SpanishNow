@@ -98,3 +98,24 @@ describe('Tanda B: URLs que usa la pantalla del catálogo',()=>{
     expect(urls).toEqual([`${environment.apiUrl}/teacher/class-packages`,`${environment.apiUrl}/teacher/class-settings`]);
   });
 });
+describe('Tanda C: catálogo vacío',()=>{
+  const setup=(items:CompleteTemplate[])=>{
+    const importInitial=vi.fn(()=>of([item]));
+    TestBed.configureTestingModule({imports:[PackageCatalogComponent],providers:[{provide:I18N_CATALOGS,multi:true,useValue:PACKAGE_MESSAGES},{provide:PackagesService,useValue:{list:()=>of(items),settings:()=>of({classesEnabledAt:null,salesPausedAt:null,acceptsInquiries:false}),importInitial,error:()=>''}}]});
+    TestBed.inject(I18nService).setLocale('es');
+    const f=TestBed.createComponent(PackageCatalogComponent);f.detectChanges();return {f,importInitial};
+  };
+  it('sin paquetes explica qué hacer y ofrece una única acción con nombre para importar el catálogo inicial',()=>{
+    const {f,importInitial}=setup([]);
+    const empty=f.nativeElement.querySelector('[data-testid="catalog-empty"]') as HTMLElement;
+    expect(empty).toBeTruthy();expect(empty.textContent).toContain('Empiezan pausadas');
+    const buttons=Array.from<HTMLButtonElement>(f.nativeElement.querySelectorAll('button')).filter(b=>b.textContent!.includes('Importar catálogo inicial'));
+    expect(buttons).toHaveLength(1);buttons[0].click();expect(importInitial).toHaveBeenCalled();
+  });
+  it('con paquetes no hay estado vacío y cada acción lleva el nombre del paquete para lectores de pantalla',()=>{
+    const {f}=setup([item]);
+    expect(f.nativeElement.querySelector('[data-testid="catalog-empty"]')).toBeNull();
+    const labels=Array.from<HTMLElement>(f.nativeElement.querySelectorAll('article button')).map(b=>b.getAttribute('aria-label')||'');
+    expect(labels.every(l=>l.includes('Cuatro clases'))).toBe(true);
+  });
+});

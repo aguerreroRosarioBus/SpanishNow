@@ -39,6 +39,19 @@ describe('Tanda B: ofertas con plantillas sin versión',()=>{
     expect(text).toContain('Paquetes sin versión: 2');
     expect(f.nativeElement.querySelector('a[href="/teacher/class-packages"]')).toBeTruthy();
   });
+  it('Tanda C: sin paquete disponible muestra un estado vacío con el requisito, el enlace al catálogo y cómo volver a revisar o a la conversación',()=>{
+    const {f}=setup([]);
+    const empty=f.nativeElement.querySelector('[data-testid="offer-empty"]') as HTMLElement;
+    expect(empty).toBeTruthy();expect(empty.textContent).toContain('No tenés ningún paquete disponible');
+    expect(empty.querySelector('a[href="/teacher/class-packages"]')).toBeTruthy();
+    expect(empty.querySelector('a[href="/messages/9"]')).toBeTruthy();
+    expect(Array.from(empty.querySelectorAll('button')).some(b=>b.textContent!.includes('volver a revisar'))).toBe(true);
+    expect(f.nativeElement.querySelector('#packageChoice')).toBeNull();
+  });
+  it('Tanda C: con paquetes disponibles no se muestra el estado vacío',()=>{
+    const {f}=setup([{id:2,status:'active',templateKey:'individual-4x50',current}]);
+    expect(f.nativeElement.querySelector('[data-testid="offer-empty"]')).toBeNull();expect(f.nativeElement.querySelector('#packageChoice')).toBeTruthy();
+  });
   it('con un paquete individual activo con versión aparece en el selector aunque haya otro sin versión, y la oferta se envía (sandbox)',()=>{
     const {f,c,send}=setup([{id:1,status:'draft',templateKey:'individual-1x30',current:null},{id:2,status:'active',templateKey:'individual-4x50',current}]);
     expect(c.items().map(p=>p.id)).toEqual([2]);

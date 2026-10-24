@@ -1,0 +1,98 @@
+:host { display: block; }
+
+// Tarjeta plana de la plataforma (como .surface): fondo blanco, borde de 1px y sombra mínima.
+.schedule-card {
+  margin: var(--spacing-md) 0;
+  padding: var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg);
+  box-shadow: var(--shadow-sm);
+}
+
+// Clase cancelada, rechazada o vencida: sin opacidad (mantiene el contraste), solo fondo y tinta más suaves.
+.schedule-card.is-inactive {
+  background: var(--color-bg-light);
+  box-shadow: none;
+
+  h2,
+  ::ng-deep .when-main { color: var(--color-text-light); }
+}
+
+.card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.card-title { min-width: 0; }
+h2 { margin: 0; font-size: 1rem; overflow-wrap: anywhere; }
+.card-meta { margin: 0; font-size: 0.8125rem; color: var(--color-text-light); }
+
+// Estado como etiqueta (badge-status global) con color según el tono.
+.badge-status { flex: none; }
+.status-success { background: var(--color-success-soft); color: var(--color-success-text); }
+.status-warning { background: var(--color-warning-soft); color: #6b4a00; }
+.status-danger { background: var(--color-danger-soft); color: var(--color-danger); }
+.status-info { background: var(--color-info-soft); color: var(--color-info); }
+.status-neutral { background: var(--color-bg-dark); color: var(--color-text-light); }
+
+.notice { margin: var(--spacing-sm) 0 0; font-size: 0.8125rem; color: var(--color-text-light); }
+.alert { margin: var(--spacing-sm) 0 0; }
+
+.participants {
+  list-style: none;
+  margin: var(--spacing-sm) 0 0;
+  padding: 0;
+  font-size: 0.875rem;
+  li + li { margin-top: 2px; }
+  .notice { display: inline; margin: 0; }
+}
+
+// Una sola acción principal a la izquierda; cancelar queda al final, discreta.
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+}
+.card-actions-end { margin-left: auto; }
+
+// Desplegables con el mismo estilo: filete superior y resumen del mismo tamaño.
+.card-details {
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--color-divider);
+  font-size: 0.875rem;
+
+  summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--color-text);
+    padding: var(--spacing-xs) 0;
+  }
+  summary:hover { color: var(--color-primary-hover); }
+  label { display: block; margin: var(--spacing-sm) 0; }
+}
+
+.sync-list { list-style: none; margin: var(--spacing-sm) 0 0; padding: 0; }
+.sync-attention { font-weight: 600; color: #6b4a00; }
+.sync-actions { display: flex; flex-wrap: wrap; gap: var(--spacing-sm); margin-top: var(--spacing-sm); }
+
+fieldset {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-light);
+  label { display: block; margin: var(--spacing-sm) 0; }
+}
+legend { float: none; width: auto; margin: 0; padding: 0 var(--spacing-xs); font-size: 1rem; }
+
+@media (max-width: 480px) {
+  .card-actions .btn { flex: 1 1 auto; }
+  .card-actions-end { margin-left: 0; }
+}

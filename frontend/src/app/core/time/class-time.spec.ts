@@ -101,3 +101,28 @@ describe('W06: validación temporal del cliente con los mismos fixtures del serv
     expect(intervalsConflict(a, { ...b, startsAt: '2026-10-22T14:00:00Z' }, 10)).toBe(false);
   });
 });
+
+describe('Tanda C: formato compacto de TZ-07', () => {
+  const crossing = { startsAt: '2027-03-14T06:30:00.000Z', endsAt: '2027-03-14T07:20:00.000Z' };
+  it('incluye día, fecha con año, inicio, fin y desplazamiento, en ambos idiomas', () => {
+    const session = { startsAt: '2026-10-27T13:00:00.000Z', endsAt: '2026-10-27T13:50:00.000Z' };
+    const es = presentSessionTime(session, cordoba, zone, 'es'), en = presentSessionTime(session, cordoba, zone, 'en');
+    expect(es.recipient.day).toBe('mar 27 oct 2026'); expect(es.recipient.range).toBe('10:00–10:50'); expect(es.recipient.offsetLabel).toBe('UTC-03:00');
+    expect(en.recipient.day).toContain('2026'); expect(en.recipient.day).toContain('Oct');
+    expect(es.teacher.range).toBe('09:00–09:50'); expect(es.teacher.offsetLabel).toBe('UTC-04:00');
+  });
+  it('una clase que cruza el cambio de hora muestra ambos desplazamientos, del lado del docente y del destinatario', () => {
+    const view = presentSessionTime(crossing, zone, cordoba, 'es');
+    expect(view.recipient.offsetLabel).toBe('UTC-05:00 → UTC-04:00');
+    expect(view.teacher.offsetLabel).toBe('UTC-03:00');
+    const inverse = presentSessionTime(crossing, cordoba, zone, 'es');
+    expect(inverse.teacher.offsetLabel).toBe('UTC-05:00 → UTC-04:00');
+    expect(inverse.recipient.offsetLabel).toBe('UTC-03:00');
+  });
+  it('el horario del docente solo se oculta con la misma zona IANA; con zona distinta se muestra aunque la hora coincida', () => {
+    const session = { startsAt: '2026-10-27T13:00:00.000Z', endsAt: '2026-10-27T13:50:00.000Z' };
+    expect(presentSessionTime(session, cordoba, cordoba, 'es').teacherDiffers).toBe(false);
+    expect(presentSessionTime(session, cordoba, 'America/Buenos_Aires', 'es').teacherDiffers).toBe(true);
+    expect(presentSessionTime(session, cordoba, zone, 'es').teacherDiffers).toBe(true);
+  });
+});
