@@ -37,16 +37,18 @@
       }
       @if (teacher() && (['forming','proposed','confirmed'].includes(s.status) || (s.kind === 'group' && ['expired','declined'].includes(s.status))) && features.enabled('class_scheduling')) { <a routerLink="/schedule" [queryParams]="{ reschedule: s.id }" class="btn btn-secondary">{{ 'schedule.reschedule' | t }}</a> }
       @if (s.liveClassId && (teacher() || s.whiteboardJoinCode) && !inactive()) { <a class="btn btn-secondary" [routerLink]="teacher() ? ['/live', s.liveClassId] : ['/live/join', s.whiteboardJoinCode]">{{ 'schedule.whiteboard' | t }}</a> }
-      @if (['forming','proposed','confirmed'].includes(s.status)) { <button type="button" class="btn btn-ghost card-actions-end" (click)="startDecision('cancel')" [disabled]="busy()">{{ 'schedule.cancel' | t }}</button> }
+      @if (['forming','proposed','confirmed'].includes(s.status) && !rejectIsEnough()) { <button type="button" class="btn btn-ghost card-actions-end" (click)="startDecision('cancel')" [disabled]="busy()">{{ 'schedule.cancel' | t }}</button> }
     </div>
     @if (meetingNotReady()) { <p class="notice" role="status">{{ 'schedule.meetingNotReady' | t }}</p> }
     @if (decision(); as action) {
       <fieldset data-testid="session-confirmation"><legend>{{ ('schedule.' + action) | t }}</legend>
       @if (action === 'accept' || action === 'decline') {
         @if (selectedProposal(); as p) { <app-session-time [interval]="p" [recipientZone]="zone()" [teacherZone]="s.teacher.timeZone || s.timeZone" /> }
+        @if (action === 'decline') { <p class="notice" data-testid="decline-hint">{{ (selectedProposal()?.kind === 'reschedule' ? 'schedule.declineHintReschedule' : 'schedule.declineHintInitial') | t }}</p> }
         @if (action === 'accept') { <label><input type="checkbox" [(ngModel)]="acknowledge" /> {{ 'schedule.acknowledge' | t }}</label> }
         <button type="button" class="btn btn-primary btn-sm" (click)="respond()" [disabled]="busy() || (action === 'accept' && !acknowledge)">{{ 'schedule.confirm' | t }}</button>
       } @else {
+        @if (cancelHint(); as hint) { <p class="notice" data-testid="cancel-hint">{{ hint | t }}</p> }
         <p>{{ (lateCancel() ? 'schedule.lateCancel' : 'schedule.freeCancellation') | t }}</p>
         @if (lateCancel()) { <label><input type="checkbox" [(ngModel)]="acknowledge" /> {{ 'schedule.acknowledge' | t }}</label> }
         <label>{{ 'schedule.reason' | t }}<textarea class="form-control" [(ngModel)]="reason" maxlength="500"></textarea></label>

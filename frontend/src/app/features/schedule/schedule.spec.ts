@@ -178,6 +178,42 @@ describe('W06: interfaz conectada por contratos de agenda', () => {
       expect(fixture.nativeElement.querySelector('[data-testid="join-button"]')).toBeNull();
       expect(fixture.nativeElement.querySelector('.card-actions .btn-primary')?.textContent).toContain('Aceptar esta propuesta'); fixture.destroy();
     });
+    describe('propuesta pendiente vista por la alumna: «Rechazar» frente a «Cancelar clase»', () => {
+      const cancelButton = (f: { nativeElement: HTMLElement }) => Array.from(f.nativeElement.querySelectorAll<HTMLButtonElement>('.card-actions button')).find(b => b.textContent!.includes('Cancelar clase'));
+      const open = (f: { componentInstance: ClassSessionCardComponent; detectChanges(): void }, action: 'decline' | 'cancel') => { f.componentInstance.startDecision(action); f.detectChanges(); };
+      it('propuesta inicial de clase individual: solo «Rechazar» (cancelar no agrega nada), sin cargo', () => {
+        const fixture = render(session());
+        const labels = Array.from(fixture.nativeElement.querySelectorAll('.card-actions button')).map(b => (b as HTMLElement).textContent!.trim());
+        expect(labels).toContain('Rechazar');
+        expect(cancelButton(fixture)).toBeUndefined();
+        open(fixture, 'decline');
+        expect(fixture.nativeElement.querySelector('[data-testid="decline-hint"]')?.textContent).toContain('no se usa ninguna clase'); fixture.destroy();
+      });
+      it('cambio de horario de una clase confirmada: ambas acciones y el texto explica que cancelar anula la clase confirmada', () => {
+        const base = confirmed(ready);
+        const proposal = { ...session().proposal!, kind: 'reschedule', status: 'pending', version: base.version };
+        const fixture = render({ ...base, proposal, proposals: [proposal] });
+        expect(cancelButton(fixture)).toBeTruthy();
+        expect(fixture.nativeElement.textContent).toContain('Rechazar');
+        open(fixture, 'decline');
+        expect(fixture.nativeElement.querySelector('[data-testid="decline-hint"]')?.textContent).toContain('la clase sigue en su horario actual');
+        open(fixture, 'cancel');
+        expect(fixture.nativeElement.querySelector('[data-testid="cancel-hint"]')?.textContent).toContain('cancela la clase confirmada'); fixture.destroy();
+      });
+      it('propuesta inicial de clase en grupo: ambas acciones, con el texto que explica la diferencia', () => {
+        const group = { ...session(), kind: 'group', status: 'forming' };
+        const fixture = render(group);
+        expect(cancelButton(fixture)).toBeTruthy();
+        open(fixture, 'cancel');
+        expect(fixture.nativeElement.querySelector('[data-testid="cancel-hint"]')?.textContent).toContain('te quita de la clase en grupo'); fixture.destroy();
+      });
+      it('sin propuesta que responder (clase confirmada) «Cancelar clase» sigue disponible y sin texto extra', () => {
+        const fixture = render(confirmed(ready));
+        expect(cancelButton(fixture)).toBeTruthy();
+        open(fixture, 'cancel');
+        expect(fixture.nativeElement.querySelector('[data-testid="cancel-hint"]')).toBeNull(); fixture.destroy();
+      });
+    });
     it('«Reintentar sincronización» solo aparece si falta sincronizar algo, y solo para la docente', () => {
       auth.currentUser.set({ id: 2, role: 'teacher' });
       let fixture = render(confirmed(ready));
