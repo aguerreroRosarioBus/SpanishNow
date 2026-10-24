@@ -80,9 +80,9 @@ async function apply({ purchaseId, operation, units, operationKey, classSessionI
   if (NEEDS_ACTIVE.has(operation) && purchase.status !== 'active') {
     throw new CreditError(409, 'package_not_active', 'El paquete no está activo', { status: purchase.status });
   }
-  // Compra con la orden reembolsada: el saldo no puede volver a «disponible» (ni sumando ni restaurando consumidos).
+  // Compra con la orden reembolsada (total o parcial): el saldo no puede volver a «disponible» (ni sumando ni restaurando consumidos).
   const refundedOrder = purchase.status === 'cancelled' && to === 'available' && (operation === 'release' || operation === 'adjust')
-    && (await ClassPackageOrder.findByPk(purchase.orderId, { transaction }))?.status === 'refunded';
+    && ['refunded', 'partially_refunded'].includes((await ClassPackageOrder.findByPk(purchase.orderId, { transaction }))?.status);
   if (refundedOrder && operation === 'adjust') throw new CreditError(409, 'package_not_active', 'La compra fue reembolsada', { status: purchase.status });
   if (from !== 'none' && purchase[COLUMN[from]] < units) {
     throw new CreditError(409, 'insufficient_credit', 'Saldo insuficiente', { bucket: from, available: purchase[COLUMN[from]], requested: units });

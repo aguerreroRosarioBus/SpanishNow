@@ -23,6 +23,8 @@ module.exports = sequelize.define('ClassPackagePurchase', {
   pausedHoursUsed: { type: D.INTEGER, allowNull: false, defaultValue: 0 },
   pauseCount: { type: D.INTEGER, allowNull: false, defaultValue: 0 },
   cancelledAt: D.DATE,
+  // Estado previo al congelarla por un reembolso en revisión (null si no está congelada o se congeló antes de existir la columna).
+  frozenFromStatus: D.ENUM('active', 'paused', 'exhausted', 'expired'),
   version: { type: D.INTEGER, allowNull: false, defaultValue: 1 },
   unitsGranted: units(), unitsAvailable: units(), unitsReserved: units(), unitsConsumed: units(), unitsExpired: units(), unitsRefunded: units()
 }, { tableName: 'class_package_purchases', timestamps: true });

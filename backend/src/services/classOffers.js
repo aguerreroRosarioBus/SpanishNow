@@ -98,7 +98,7 @@ async function send(user, conversationId, body, idempotencyKey, { replacesOfferI
     const template = await Template.findOne({where:{id:version.templateId,teacherId:user.id},transaction,lock:transaction.LOCK.UPDATE});
     if (!template) throw fail(404,'not_found');
     if (template.status !== 'active' || template.currentVersionId !== version.id) throw fail(409,'version_conflict');
-    require('./classPackageProvider').assertSelling();
+    await require('./classPackageProvider').assertSelling({transaction});
     catalog.assertReady(version);
     const policy = await Policy.findByPk(version.policyVersionId,{transaction});
     if (policy.rules.refundMode !== 'full_unused_then_review' || policy.rules.refundWindowHours < 360) throw fail(409,'refund_policy_update_required');

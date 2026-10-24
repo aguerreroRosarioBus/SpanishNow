@@ -44,7 +44,8 @@ async function freezeForReview(order,offer,n,reason,transaction){
   await markReview(order,offer,n,reason,transaction);
   const purchase=await Purchase.findOne({where:{orderId:order.id},transaction,lock:transaction.LOCK.UPDATE});
   if(!purchase)return;
-  if(purchase.status!=='cancelled')await purchase.update({status:'cancelled',cancelledAt:persistedSecond(new Date()),version:purchase.version+1},{transaction});
+  // Se guarda el estado previo para poder descongelar una falsa alarma; si ya estaba congelada no se pisa.
+  if(purchase.status!=='cancelled')await purchase.update({status:'cancelled',cancelledAt:persistedSecond(new Date()),frozenFromStatus:purchase.frozenFromStatus||purchase.status,version:purchase.version+1},{transaction});
   if(purchase.unitsReserved)await outbox.enqueue({topic:'review.refunded_with_reservations',aggregateType:'class_package_purchases',aggregateId:purchase.id,dedupeKey:`review:purchase:${purchase.id}:reserved-refund`,payload:{orderId:order.id},runAt:new Date()},{transaction});
 }
 async function grant(order,offer,transaction){
@@ -68,6 +69,20 @@ async function grant(order,offer,transaction){
     if(cohort.status==='forming'&&members.length===cohort.groupSize&&members.every(m=>covered.has(m.userId)))await cohort.update({status:'ready'},{transaction});
   }
   return purchase.reload({transaction});
+}
+// Reembolso ya informado por Hotmart (confirmado por el webhook o conciliado a mano tras una revisión): orden reembolsada
+// (total) o parcialmente reembolsada, saldo disponible retirado, compra cancelada y oferta cerrada. No mueve dinero.
+async function applyRefund(order,offer,{refundedAmount,operationKey},transaction){
+  await order.update({status:refundedAmount===order.amount?'refunded':'partially_refunded',refundedAmount,refundedAt:persistedSecond(new Date())},{transaction});
+  await Event.update({outcome:'applied',processedAt:new Date()},{where:{orderId:order.id,providerTransactionId:order.providerTransactionId,outcome:'needs_review'},transaction});
+  const purchase=await Purchase.findOne({where:{orderId:order.id},transaction,lock:transaction.LOCK.UPDATE});
+  if(purchase){
+    if(purchase.unitsAvailable)await credits.apply({purchaseId:purchase.id,operation:'refund',units:purchase.unitsAvailable,operationKey},{transaction});
+    await purchase.update({status:'cancelled',cancelledAt:persistedSecond(new Date()),frozenFromStatus:null,version:purchase.version+1},{transaction});
+    if(purchase.unitsReserved)await outbox.enqueue({topic:'review.refunded_with_reservations',aggregateType:'class_package_purchases',aggregateId:purchase.id,dedupeKey:`review:purchase:${purchase.id}:reserved-refund`,payload:{orderId:order.id},runAt:new Date()},{transaction});
+  }
+  if(offer.status!=='paid')await offer.update({status:'cancelled',cancelledAt:persistedSecond(new Date()),cancelReason:'Reembolso confirmado por el proveedor'},{transaction});
+  await chat.appendSystemMessage(offer.conversationId,{eventCode:'package_payment_refunded',offerId:offer.id,eventParams:{offerId:offer.id},dedupeKey:`order:${order.id}:refunded`},{transaction});
 }
 async function handleEvent(body,{provider='hotmart'}={}){
   const n=normalize(body);
@@ -127,16 +142,7 @@ async function handleEvent(body,{provider='hotmart'}={}){
       const mismatch=n.productId!==offer.hotmartProductId||n.offerCode&&n.offerCode!==offer.hotmartOfferCode?'refund_mapping_mismatch':
         n.reported&&(n.reported.amount!==order.amount||n.reported.currency!==order.currency)?'refund_amount_review':null;
       if(mismatch){await freezeForReview(order,offer,n,mismatch,transaction);return finish('needs_review',{needsReview:true});}
-      await order.update({status:'refunded',refundedAmount:order.amount,refundedAt:persistedSecond(new Date())},{transaction});
-      await Event.update({outcome:'applied',processedAt:new Date()},{where:{orderId:order.id,providerTransactionId:order.providerTransactionId,outcome:'needs_review'},transaction});
-      const purchase=await Purchase.findOne({where:{orderId:order.id},transaction,lock:transaction.LOCK.UPDATE});
-      if(purchase){
-        if(purchase.unitsAvailable)await credits.apply({purchaseId:purchase.id,operation:'refund',units:purchase.unitsAvailable,operationKey:`refund:order:${order.id}:${createHash('sha256').update(n.eventKey).digest('hex').slice(0,24)}`},{transaction});
-        await purchase.update({status:'cancelled',cancelledAt:persistedSecond(new Date()),version:purchase.version+1},{transaction});
-        if(purchase.unitsReserved)await outbox.enqueue({topic:'review.refunded_with_reservations',aggregateType:'class_package_purchases',aggregateId:purchase.id,dedupeKey:`review:purchase:${purchase.id}:reserved-refund`,payload:{orderId:order.id},runAt:new Date()},{transaction});
-      }
-      if(offer.status!=='paid')await offer.update({status:'cancelled',cancelledAt:persistedSecond(new Date()),cancelReason:'Reembolso confirmado por el proveedor'},{transaction});
-      await chat.appendSystemMessage(offer.conversationId,{eventCode:'package_payment_refunded',offerId:offer.id,eventParams:{offerId:offer.id},dedupeKey:`order:${order.id}:refunded`},{transaction});
+      await applyRefund(order,offer,{refundedAmount:order.amount,operationKey:`refund:order:${order.id}:${createHash('sha256').update(n.eventKey).digest('hex').slice(0,24)}`},transaction);
       return finish('applied');
     }
     if(FAILED.has(n.eventType)&&order.status==='pending'){
@@ -149,4 +155,4 @@ async function handleEvent(body,{provider='hotmart'}={}){
     try{return await work();}catch(e){if(attempt>=2||!['ER_LOCK_DEADLOCK','ER_LOCK_WAIT_TIMEOUT','ER_DUP_ENTRY'].includes(e.parent?.code))throw e;}
   }
 }
-module.exports={amountOf,normalize,presentOrder:require('./classCheckout').present,handleEvent,grant,reviewJob};
+module.exports={amountOf,normalize,presentOrder:require('./classCheckout').present,handleEvent,grant,reviewJob,applyRefund};

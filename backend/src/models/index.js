@@ -55,6 +55,7 @@ const LegalAcceptance = require('./LegalAcceptance');
 const LegalDocument = require('./LegalDocument');
 const CourseExpectations = require('./CourseExpectations');
 const CourseCheckoutSnapshot = require('./CourseCheckoutSnapshot');
+const ClassPackageProviderVerification = require('./ClassPackageProviderVerification');
 const AuditLog = require('./AuditLog');
 
 // Define associations
@@ -208,6 +209,8 @@ ClassPackagePurchase.belongsTo(ClassPackageOrder, { foreignKey: 'orderId', as: '
 ClassPackagePurchase.belongsTo(ClassOffer, { foreignKey: 'offerId', as: 'offer' });
 ClassPackagePurchase.belongsTo(User, { foreignKey: 'teacherId', as: 'teacher' });
 ClassPackagePurchase.belongsTo(User, { foreignKey: 'buyerId', as: 'buyer' });
+ClassPackageProviderVerification.belongsTo(User, { foreignKey: 'verifiedById', as: 'verifiedBy' });
+ClassPackageProviderVerification.belongsTo(User, { foreignKey: 'revokedById', as: 'revokedBy' });
 ClassPackagePurchase.hasMany(ClassPackageBeneficiary, { foreignKey: 'purchaseId', as: 'beneficiaries' });
 ClassPackageBeneficiary.belongsTo(ClassPackagePurchase, { foreignKey: 'purchaseId', as: 'purchase' });
 ClassPackageBeneficiary.belongsTo(User, { foreignKey: 'userId', as: 'user' });
@@ -292,5 +295,6 @@ module.exports = {
   LegalDocument,
   CourseExpectations,
   CourseCheckoutSnapshot,
+  ClassPackageProviderVerification,
   AuditLog
 };
