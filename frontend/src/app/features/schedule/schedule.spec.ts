@@ -178,6 +178,15 @@ describe('W06: interfaz conectada por contratos de agenda', () => {
       expect(fixture.nativeElement.querySelector('[data-testid="join-button"]')).toBeNull();
       expect(fixture.nativeElement.querySelector('.card-actions .btn-primary')?.textContent).toContain('Aceptar esta propuesta'); fixture.destroy();
     });
+    it('todos los desplegables comparten el mismo estilo (asistencia, clases compradas, corrección y calendario)', () => {
+      auth.currentUser.set({ id: 2, role: 'teacher' });
+      const base = confirmed(ready);
+      const fixture = render({ ...base, purchases: [{ id: 5, expiresAt: '2027-03-01T00:00:00Z', unitsAvailable: 2, unitsReserved: 0, unitsConsumed: 0 }] });
+      const details = Array.from(fixture.nativeElement.querySelectorAll('details')) as HTMLElement[];
+      expect(details.map(d => d.querySelector('summary')!.textContent!.trim())).toEqual(['Registrar asistencia', 'Clases compradas', 'Calendario y reunión']);
+      expect(details.every(d => d.classList.contains('card-details'))).toBe(true);
+      expect(details.every(d => d.querySelector(':scope > summary')?.getAttribute('class') === null)).toBe(true); fixture.destroy();
+    });
     describe('participantes en la tarjeta', () => {
       it('con una sola participante no se repite «nombre · estado» bajo el encabezado, ni para la docente', () => {
         auth.currentUser.set({ id: 2, role: 'teacher' });
