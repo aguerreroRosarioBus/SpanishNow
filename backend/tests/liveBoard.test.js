@@ -38,7 +38,7 @@ test('delete checks the expected version and preserves unrelated objects', () =>
   board = run([{ id: 'operation_03', type: 'delete', pageId: board.activePageId, elementId: note().id, expectedVersion: 1 }]).board;
   expect(board.pages[0].elements.map(e => e.id)).toEqual(['element_0002']);
 });
-test.each(['page-add', 'page-delete', 'page-clear', 'page-active', 'page-background'])('students cannot administer pages: %s', type => {
+test.each(['page-add', 'page-delete', 'page-clear', 'page-active', 'page-background', 'page-format', 'page-rename', 'page-reorder'])('students cannot administer pages: %s', type => {
   expect(() => run([{ id: 'operation_01', type, pageId: board.activePageId }])).toThrow(/docente/);
 });
 test('pages follow the teacher, support backgrounds and keep at least one page', () => {
@@ -51,17 +51,49 @@ test('pages follow the teacher, support backgrounds and keep at least one page',
   expect(board.activePageId).toBe(firstId);
   expect(() => run([{ id: 'operation_04', type: 'page-delete', pageId: firstId, expectedRevision: 0 }], teacher, true)).toThrow(/al menos/);
 });
+test('page formats are validated and restored for notebooks and portrait pages', () => {
+  board = run([{ id: 'operation_01', type: 'page-format', pageId: board.activePageId, format: 'notebook' }], teacher, true).board;
+  expect(board.pages[0].format).toBe('notebook');
+  expect(() => run([{ id: 'operation_02', type: 'page-format', pageId: board.activePageId, format: 'panorama' }], teacher, true)).toThrow(/Formato/);
+  const restored = restoreBoard({ format: 'spanishnow-live-board', version: 1, board }, 7);
+  expect(restored.pages[0].format).toBe('notebook');
+  const legacy = restoreBoard({ format: 'spanishnow-live-board', version: 1, board: { ...board, pages: [{ ...board.pages[0], format: undefined }] } }, 7);
+  expect(legacy.pages[0].format).toBe('wide');
+});
+test('page names and order are validated, revision guarded and persisted', () => {
+  const firstId = board.activePageId;
+  board = run([{ id: 'operation_01', type: 'page-add', pageId: 'new_page_001', title: 'Actividad' }], teacher, true).board;
+  board = run([{ id: 'operation_02', type: 'page-rename', pageId: firstId, title: 'Inicio', expectedRevision: 1 }], teacher, true, 1).board;
+  expect(board.pages[0].title).toBe('Inicio');
+  board = run([{ id: 'operation_03', type: 'page-reorder', pageId: firstId, index: 1, expectedRevision: 2 }], teacher, true, 2).board;
+  expect(board.pages.map(page => page.id)).toEqual(['new_page_001', firstId]);
+  expect(() => run([{ id: 'operation_04', type: 'page-reorder', pageId: firstId, index: 0, expectedRevision: 1 }], teacher, true, 3)).toThrow(/cambió/);
+  expect(() => run([{ id: 'operation_05', type: 'page-rename', pageId: firstId, title: ' ', expectedRevision: 3 }], teacher, true, 3)).toThrow(/Título/);
+  expect(() => run([{ id: 'operation_06', type: 'page-reorder', pageId: firstId, index: 2, expectedRevision: 3 }], teacher, true, 3)).toThrow(/cambió/);
+});
 test('clearing a stale page is rejected instead of erasing unseen remote changes', () => {
   expect(() => run([{ id: 'operation_01', type: 'page-clear', pageId: board.activePageId, expectedRevision: 0 }], teacher, true, 1)).toThrow(/cambió/);
 });
 test.each([
-  { x: -1 }, { w: Infinity }, { y: NaN }, { x: 1500 }, { text: '' }, { text: 'a'.repeat(1001) }, { color: 'url(https://bad)' }, { id: '<svg>' }, { type: 'html' }
+  { x: -801 }, { w: Infinity }, { y: NaN }, { x: 2400 }, { text: 'a'.repeat(1001) }, { color: 'url(https://bad)' }, { id: '<svg>' }, { type: 'html' }
 ])('rejects invalid elements %j', patch => { expect(() => element({ ...note(), ...patch }, 7, 1)).toThrow(); });
-test('drawing is bounded; line direction and pen points survive serialization', () => {
+test('drawing and resources may sit outside the paper but remain within the workspace', () => {
+  expect(element({ ...note(), x: -500, y: -300 }, 7, 1)).toMatchObject({ x: -500, y: -300 });
+  expect(() => element({ ...note(), x: -801 }, 7, 1)).toThrow();
+  expect(() => element({ ...note(), x: 2350, w: 100 }, 7, 1)).toThrow(/espacio/);
+});
+test('text elements preserve empty drafts and validate font, size and text color', () => {
+  const styled = element({ ...note(), text: '', fontFamily: 'Georgia', fontSize: 36, textColor: '#2f6f9f' }, 7, 1);
+  expect(styled).toMatchObject({ text: '', fontFamily: 'Georgia', fontSize: 36, textColor: '#2f6f9f' });
+  expect(() => element({ ...note(), fontFamily: 'url(https://bad)' }, 7, 1)).toThrow(/Fuente/);
+  expect(() => element({ ...note(), fontSize: 1000 }, 7, 1)).toThrow(/Tamaño de fuente/);
+  expect(() => element({ ...note(), textColor: 'red' }, 7, 1)).toThrow(/Color/);
+});
+test('drawing is bounded by the workspace; line direction and pen points survive serialization', () => {
   const line = { ...note(), type: 'line', points: [{ x: 200, y: 100 }, { x: 100, y: 200 }] };
   expect(element(line, 7, 1).points).toEqual(line.points);
   expect(() => element({ ...line, type: 'pen', points: Array(1201).fill({ x: 0, y: 0 }) }, 7, 1)).toThrow(/Trazo/);
-  expect(() => element({ ...line, points: [{ x: 1700, y: 0 }] }, 7, 1)).toThrow();
+  expect(() => element({ ...line, points: [{ x: 2500, y: 0 }] }, 7, 1)).toThrow();
 });
 test.each(['javascript:alert(1)', 'data:image/svg+xml,<svg/>', 'https://user:password@a.com/x', 'http://example.com/image'])('rejects unsafe URLs: %s', url => expect(() => safeUrl(url)).toThrow());
 test('resource cards accept only Google Drive and Docs HTTPS links', () => {

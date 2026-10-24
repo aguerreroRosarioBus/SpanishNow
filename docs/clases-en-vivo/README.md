@@ -15,7 +15,11 @@ Una sala admite 20 páginas, 500 elementos por página y 1,5 MB de contenido est
 
 La interfaz usa el sistema de [REDISENO_UI.md](../rediseno-ui/REDISENO_UI.md): tokens cálidos, Poppins/Nunito Sans, controles compactos, un botón principal, menús para acciones destructivas y confirmaciones.
 
-La sala tiene una distribución de tablero inspirada en Miro: lienzo a todo el ancho disponible, herramientas en una barra vertical flotante, opciones contextuales de dibujo, paneles superpuestos y páginas con miniaturas. Los botones de zoom permiten acercar/alejar entre 10 % y 200 %; **Ajustar a pantalla** centra el marco. La herramienta **Desplazar lienzo** recorre el espacio alrededor de la página sin modificar su contenido. Zoom y desplazamiento son preferencias locales de la vista; no cambian la página ni la escala de los demás participantes.
+La sala tiene una distribución de tablero inspirada en Miro: lienzo libre, herramientas en una barra vertical flotante, opciones contextuales de dibujo, paneles superpuestos y páginas con miniaturas. Los botones de zoom permiten acercar/alejar entre 10 % y 200 %; **Ajustar a pantalla** centra el marco. La herramienta **Desplazar lienzo** recorre el espacio sin modificar su contenido. Zoom y desplazamiento son preferencias locales de la vista; no cambian la página ni la escala de los demás participantes.
+
+Cada página puede usar un formato y fondo propios. La pizarra permite importar páginas seleccionadas de un PDF en cuadrícula, redimensionar objetos, seleccionar varios a la vez y deshacer/rehacer operaciones. Los cuadros de texto y notas se editan directamente en el lienzo; los controles de formato aparecen al seleccionar texto. El modo cuaderno usa las mismas páginas y guardados colaborativos.
+
+Las referencias consultadas para estas interacciones y el límite de la revisión de Explain Everything están en [PIZARRA-INVESTIGACION.md](PIZARRA-INVESTIGACION.md).
 
 ## Google Classroom y Drive
 
@@ -24,7 +28,7 @@ La integración es **OAuth por docente de la plataforma**. Las conexiones de Goo
 - **Classroom:** listar clases activas donde la cuenta conectada sea docente, vincular un grupo y publicar explícitamente un anuncio con el enlace de la sala. La API comprueba que sea docente del grupo. Una publicación ya confirmada se reutiliza para evitar duplicarla al pulsar nuevamente.
 - **Drive:** guardar todas las páginas como `Título.spanishnow.json`, un archivo editable de SpanishNow. Las siguientes exportaciones actualizan ese archivo. Buscar archivos creados por la aplicación y restaurarlos, con confirmación, cuando la sala no esté en vivo. La restauración valida el formato y no sobrescribe una revisión que cambió mientras se descargaba.
 - **Recursos de Drive:** colocar tarjetas con enlaces HTTPS a Drive, Docs o Slides. Los permisos de esos archivos se administran en Google; agregar el enlace no los vuelve públicos.
-- **Descargas:** copia JSON de todas las páginas y PNG de la página actual desde el menú de la sala. El PNG requiere que las imágenes permitan descarga CORS.
+- **Descargas:** copia JSON editable de todas las páginas, PDF de todas las páginas o PNG de la página actual desde el menú de la sala. El PNG requiere que las imágenes permitan descarga CORS.
 
 No se importan listas de alumnos, tareas ni calificaciones de Classroom en este MVP. Los alumnos acceden con cuentas de SpanishNow. No se incorpora audio, videollamada, grabación, cursores remotos ni una API de Jamboard.
 

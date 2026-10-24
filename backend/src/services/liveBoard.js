@@ -5,6 +5,9 @@ class LiveError extends Error {
 }
 const fail = (message, status = 400, code) => { throw new LiveError(status, message, code); };
 const validId = id => typeof id === 'string' && /^[a-zA-Z0-9_-]{8,64}$/.test(id);
+const BOARD = { left: -800, top: -450, right: 2400, bottom: 1350, width: 3200, height: 1800 };
+const FORMATS = ['wide', 'standard', 'square', 'portrait', 'notebook'];
+const FONT_FAMILIES = ['Nunito Sans', 'Arial', 'Verdana', 'Georgia', 'Courier New'];
 const text = (value, max, label = 'Texto') => {
   if (typeof value !== 'string' || !value.trim() || value.length > max) fail(`${label}: entre 1 y ${max} caracteres.`);
   return value.trim();
@@ -16,7 +19,7 @@ const number = (value, min, max) => {
 const color = value => { if (typeof value !== 'string' || !/^#[a-fA-F0-9]{6}$/.test(value)) fail('Color inválido.'); return value; };
 const blankBoard = () => {
   const id = randomUUID();
-  return { pages: [{ id, title: 'Página 1', background: 'plain', elements: [] }], activePageId: id };
+  return { pages: [{ id, title: 'Página 1', background: 'plain', format: 'wide', elements: [] }], activePageId: id };
 };
 function safeUrl(value, driveOnly = false) {
   try {
@@ -31,16 +34,25 @@ function safeUrl(value, driveOnly = false) {
 function element(raw, userId, version) {
   if (!raw || !validId(raw.id) || !['pen', 'line', 'rect', 'ellipse', 'note', 'text', 'image', 'link'].includes(raw.type)) fail('Elemento inválido.');
   const e = {
-    id: raw.id, type: raw.type, x: number(raw.x, 0, 1600), y: number(raw.y, 0, 900),
-    w: number(raw.w, 1, 1600), h: number(raw.h, 1, 900), color: color(raw.color),
+    id: raw.id, type: raw.type, x: number(raw.x, BOARD.left, BOARD.right), y: number(raw.y, BOARD.top, BOARD.bottom),
+    w: number(raw.w, 1, BOARD.width), h: number(raw.h, 1, BOARD.height), color: color(raw.color),
     width: number(raw.width, 1, 30), authorId: userId, version
   };
-  if (e.x + e.w > 1601 || e.y + e.h > 901) fail('El elemento debe quedar dentro de la pizarra.');
+  if (e.x + e.w > BOARD.right || e.y + e.h > BOARD.bottom) fail('El elemento debe quedar dentro del espacio de trabajo.');
   if (e.type === 'pen' || e.type === 'line') {
     if (!Array.isArray(raw.points) || raw.points.length < 1 || raw.points.length > (e.type === 'line' ? 2 : 1200)) fail('Trazo inválido (máximo 1200 puntos).');
-    e.points = raw.points.map(p => ({ x: number(p?.x, 0, 1600), y: number(p?.y, 0, 900) }));
+    e.points = raw.points.map(p => ({ x: number(p?.x, BOARD.left, BOARD.right), y: number(p?.y, BOARD.top, BOARD.bottom) }));
   }
-  if (['note', 'text', 'link'].includes(e.type)) e.text = text(raw.text, 1000);
+  if (['note', 'text'].includes(e.type)) {
+    if (typeof raw.text !== 'string' || raw.text.length > 1000) fail('Texto: máximo 1000 caracteres.');
+    if (raw.fontFamily !== undefined && !FONT_FAMILIES.includes(raw.fontFamily)) fail('Fuente inválida.');
+    if (raw.fontSize !== undefined && (!Number.isInteger(raw.fontSize) || raw.fontSize < 12 || raw.fontSize > 96)) fail('Tamaño de fuente inválido.');
+    e.text = raw.text;
+    e.fontFamily = raw.fontFamily || 'Nunito Sans';
+    e.fontSize = raw.fontSize || (e.type === 'note' ? 23 : 30);
+    e.textColor = raw.textColor === undefined ? '#2b2b2b' : color(raw.textColor);
+  }
+  if (e.type === 'link') e.text = text(raw.text, 1000);
   if (['image', 'link'].includes(e.type)) e.url = safeUrl(raw.url, e.type === 'link');
   return e;
 }
@@ -78,7 +90,8 @@ function applyOperations(current, recent, ops, user, owner, revision) {
       switch (op.type) {
         case 'page-add':
           if (!validId(op.pageId) || page || board.pages.length >= 20) fail('Puedes tener hasta 20 páginas con identificadores únicos.', 400, 'live_page_limit');
-          board.pages.push({ id: op.pageId, title: text(op.title, 80, 'Título'), background: 'plain', elements: [] });
+          if (op.format && !FORMATS.includes(op.format)) fail('Formato de página inválido.');
+          board.pages.push({ id: op.pageId, title: text(op.title, 80, 'Título'), background: 'plain', format: op.format || 'wide', elements: [] });
           board.activePageId = op.pageId;
           break;
         case 'page-active':
@@ -99,6 +112,22 @@ function applyOperations(current, recent, ops, user, owner, revision) {
           if (!page || !['plain', 'dots', 'grid', 'lines'].includes(op.background)) fail('Fondo inválido.');
           page.background = op.background;
           break;
+        case 'page-format':
+          if (!page || !FORMATS.includes(op.format)) fail('Formato de página inválido.');
+          page.format = op.format;
+          break;
+        case 'page-rename':
+          if (!page || op.expectedRevision !== revision) fail('La pizarra cambió. Actualiza antes de renombrar.', 409, 'live_board_changed');
+          page.title = text(op.title, 80, 'Título');
+          break;
+        case 'page-reorder': {
+          if (!page || op.expectedRevision !== revision || !Number.isInteger(op.index) || op.index < 0 || op.index >= board.pages.length) {
+            fail('La pizarra cambió. Actualiza antes de reordenar.', 409, 'live_board_changed');
+          }
+          const [moved] = board.pages.splice(board.pages.indexOf(page), 1);
+          board.pages.splice(op.index, 0, moved);
+          break;
+        }
         default: fail('Cambio desconocido.');
       }
     }
@@ -111,9 +140,9 @@ function restoreBoard(raw, userId) {
   if (!raw || raw.format !== 'spanishnow-live-board' || raw.version !== 1 || !Array.isArray(raw.board?.pages) || raw.board.pages.length < 1 || raw.board.pages.length > 20) fail('Archivo de pizarra inválido.');
   const ids = new Set();
   const pages = raw.board.pages.map(p => {
-    if (!p || !validId(p.id) || ids.has(p.id) || !Array.isArray(p.elements) || p.elements.length > 500 || !['plain', 'dots', 'grid', 'lines'].includes(p.background)) fail('Página inválida.');
+    if (!p || !validId(p.id) || ids.has(p.id) || !Array.isArray(p.elements) || p.elements.length > 500 || !['plain', 'dots', 'grid', 'lines'].includes(p.background) || (p.format !== undefined && !FORMATS.includes(p.format))) fail('Página inválida.');
     ids.add(p.id);
-    return { id: p.id, title: text(p.title, 80), background: p.background, elements: p.elements.map(e => {
+    return { id: p.id, title: text(p.title, 80), background: p.background, format: p.format || 'wide', elements: p.elements.map(e => {
       if (!e || !validId(e.id)) fail('Elemento inválido.');
       if (ids.has(e.id)) fail('Identificador repetido.');
       ids.add(e.id); return element(e, userId, 1);

@@ -1,15 +1,16 @@
 <div class="board-surface" [class.read-only]="!editable()" [class.selecting]="tool() === 'select'" [class.is-panning]="panning()">
-  <svg class="live-canvas" viewBox="0 0 1600 900" tabindex="0" role="img" [attr.aria-label]="'liveBoard.board.canvasLabel' | t : { title: page().title }"
-       (pointerdown)="pointerDown($event)" (pointermove)="pointerMove($event)" (pointerup)="pointerUp($event)" (pointercancel)="cancel()" (lostpointercapture)="cancel()" (keydown)="keydown($event)">
+  <svg class="live-canvas" viewBox="-800 -450 3200 1800" tabindex="0" role="img" [attr.aria-label]="'liveBoard.board.canvasLabel' | t : { title: page().title }"
+       (pointerdown)="pointerDown($event)" (lostpointercapture)="lostPointerCapture($event)" (dragstart)="preventNativeDrag($event)" (dblclick)="editTextAt($event)" (keydown)="keydown($event)">
     <defs>
       <pattern id="live-dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="12" cy="12" r="1.2" fill="#ccd4df" /></pattern>
       <pattern id="live-grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M 32 0 L 0 0 0 32" fill="none" stroke="#dfe5ed" stroke-width="1" /></pattern>
-      <pattern id="live-lines" width="1600" height="40" patternUnits="userSpaceOnUse"><path d="M 0 40 L 1600 40" fill="none" stroke="#dfe5ed" stroke-width="1" /></pattern>
+      <pattern id="live-lines" [attr.width]="frame().w" height="40" patternUnits="userSpaceOnUse"><path [attr.d]="'M 0 40 L ' + frame().w + ' 40'" fill="none" stroke="#dfe5ed" stroke-width="1" /></pattern>
     </defs>
-    <rect width="1600" height="900" fill="#ffffff" />
-    @if (page().background !== 'plain') { <rect width="1600" height="900" [attr.fill]="'url(#live-' + page().background + ')'" /> }
+    <rect x="-800" y="-450" width="3200" height="1800" fill="url(#live-dots)" />
+    <rect class="page-frame" [attr.x]="frame().x" [attr.y]="frame().y" [attr.width]="frame().w" [attr.height]="frame().h" fill="#ffffff" />
+    @if (page().background !== 'plain') { <rect [attr.x]="frame().x" [attr.y]="frame().y" [attr.width]="frame().w" [attr.height]="frame().h" [attr.fill]="'url(#live-' + page().background + ')'" /> }
     @for (e of visible(); track e.id) {
-      <g [attr.data-element]="e.id" [class.selected]="selectedId() === e.id">
+      <g [attr.data-element]="e.id" [class.selected]="selectedIds().includes(e.id)" [attr.transform]="moveTransform(e.id)">
         @switch (e.type) {
           @case ('pen') { <path [attr.d]="path(e.points)" [attr.stroke]="e.color" [attr.stroke-width]="e.width" fill="none" stroke-linecap="round" stroke-linejoin="round" /> }
           @case ('line') { <path [attr.d]="path(e.points)" [attr.stroke]="e.color" [attr.stroke-width]="e.width" fill="none" stroke-linecap="round" /> }
@@ -23,17 +24,40 @@
           }
           @default {
             <rect [attr.x]="e.x" [attr.y]="e.y" [attr.width]="e.w" [attr.height]="e.h" [attr.fill]="e.type === 'note' ? e.color : 'transparent'" rx="3" />
-            <text [attr.fill]="e.type === 'note' ? '#2b2b2b' : e.color" [attr.font-size]="e.type === 'text' ? 30 : 23" font-family="Nunito Sans, system-ui, sans-serif">
-              @for (line of noteLines(e); track $index) { <tspan [attr.x]="e.x + 15" [attr.y]="e.y + 32 + $index * (e.type === 'text' ? 36 : 28)">{{ line }}</tspan> }
+            <text [attr.visibility]="editingText() !== null && selectedId() === e.id ? 'hidden' : null" [attr.fill]="e.type === 'note' ? (e.textColor || '#2b2b2b') : (e.textColor || e.color)" [attr.font-size]="fontSizeOf(e)" [attr.font-family]="e.fontFamily || defaultFontFamily">
+              @for (line of noteLines(e); track $index) { <tspan [attr.x]="e.x + 15" [attr.y]="e.y + fontSizeOf(e) + 8 + $index * lineHeightOf(e)">{{ line }}</tspan> }
             </text>
+            @if (editingText() !== null && selectedId() === e.id && (e.type === 'note' || e.type === 'text')) {
+              <foreignObject [attr.x]="e.x + 8" [attr.y]="e.y + 8" [attr.width]="e.w - 16" [attr.height]="e.h - 16">
+                <textarea xmlns="http://www.w3.org/1999/xhtml" class="inline-text-editor" [class.is-note]="e.type === 'note'" [attr.data-text-editor]="e.id" [attr.aria-label]="'liveBoard.board.elementText' | t" maxlength="1000" [value]="editingText()" [style.fontFamily]="e.fontFamily || defaultFontFamily" [style.fontSize.px]="fontSizeOf(e)" [style.color]="e.type === 'note' ? (e.textColor || '#2b2b2b') : (e.textColor || e.color)" [style.backgroundColor]="e.type === 'note' ? e.color : 'transparent'" [placeholder]="'liveBoard.board.writeHere' | t" (input)="editingText.set($any($event.target).value)" (blur)="textEditorBlur($event)" (keydown)="textEditorKeydown($event)" (pointerdown)="$event.stopPropagation()" (dblclick)="$event.stopPropagation()"></textarea>
+              </foreignObject>
+            }
           }
         }
         @if (tool() === 'select' || tool() === 'eraser') { <rect class="hit-area" [attr.x]="e.x - 4" [attr.y]="e.y - 4" [attr.width]="e.w + 8" [attr.height]="e.h + 8" fill="transparent" /> }
-        @if (selectedId() === e.id) { <rect class="selection" [attr.x]="e.x - 5" [attr.y]="e.y - 5" [attr.width]="e.w + 10" [attr.height]="e.h + 10" fill="none" stroke="var(--color-primary)" stroke-width="2" stroke-dasharray="7 4" pointer-events="none" /> }
       </g>
     }
-    @if (newDrawing(); as e) {
-      <g pointer-events="none">
+    @if (selected(); as e) {
+      <g class="selection-group" [attr.transform]="selectionTransform()">
+        <rect class="selection" [attr.x]="e.x - 5" [attr.y]="e.y - 5" [attr.width]="e.w + 10" [attr.height]="e.h + 10" fill="none" stroke="var(--color-primary)" stroke-width="2" stroke-dasharray="7 4" pointer-events="none" />
+        <circle class="resize-handle-hit" data-handle="nw" [attr.cx]="e.x - 5" [attr.cy]="e.y - 5" r="12" /><circle class="resize-handle" [attr.cx]="e.x - 5" [attr.cy]="e.y - 5" r="7" />
+        <circle class="resize-handle-hit" data-handle="ne" [attr.cx]="e.x + e.w + 5" [attr.cy]="e.y - 5" r="12" /><circle class="resize-handle" [attr.cx]="e.x + e.w + 5" [attr.cy]="e.y - 5" r="7" />
+        <circle class="resize-handle-hit" data-handle="sw" [attr.cx]="e.x - 5" [attr.cy]="e.y + e.h + 5" r="12" /><circle class="resize-handle" [attr.cx]="e.x - 5" [attr.cy]="e.y + e.h + 5" r="7" />
+        <circle class="resize-handle-hit" data-handle="se" [attr.cx]="e.x + e.w + 5" [attr.cy]="e.y + e.h + 5" r="12" /><circle class="resize-handle" [attr.cx]="e.x + e.w + 5" [attr.cy]="e.y + e.h + 5" r="7" />
+      </g>
+    }
+    @if (selectedIds().length > 1 && selectedBox(); as b) {
+      <g class="selection-group" [attr.transform]="selectionTransform()">
+        <rect class="selection" [attr.x]="b.x - 5" [attr.y]="b.y - 5" [attr.width]="b.w + 10" [attr.height]="b.h + 10" fill="none" stroke="var(--color-primary)" stroke-width="2" stroke-dasharray="7 4" pointer-events="none" />
+        <circle class="resize-handle-hit" data-handle="nw" [attr.cx]="b.x - 5" [attr.cy]="b.y - 5" r="12" /><circle class="resize-handle" [attr.cx]="b.x - 5" [attr.cy]="b.y - 5" r="7" />
+        <circle class="resize-handle-hit" data-handle="ne" [attr.cx]="b.x + b.w + 5" [attr.cy]="b.y - 5" r="12" /><circle class="resize-handle" [attr.cx]="b.x + b.w + 5" [attr.cy]="b.y - 5" r="7" />
+        <circle class="resize-handle-hit" data-handle="sw" [attr.cx]="b.x - 5" [attr.cy]="b.y + b.h + 5" r="12" /><circle class="resize-handle" [attr.cx]="b.x - 5" [attr.cy]="b.y + b.h + 5" r="7" />
+        <circle class="resize-handle-hit" data-handle="se" [attr.cx]="b.x + b.w + 5" [attr.cy]="b.y + b.h + 5" r="12" /><circle class="resize-handle" [attr.cx]="b.x + b.w + 5" [attr.cy]="b.y + b.h + 5" r="7" />
+      </g>
+    }
+    @if (marquee(); as m) { <rect class="marquee" [attr.x]="m.x" [attr.y]="m.y" [attr.width]="m.w" [attr.height]="m.h" /> }
+    @for (e of newDrawings(); track e.id) {
+      <g pointer-events="none" [attr.data-draft]="e.id">
         @switch (e.type) {
           @case ('pen') { <path [attr.d]="path(e.points)" [attr.stroke]="e.color" [attr.stroke-width]="e.width" fill="none" stroke-linecap="round" stroke-linejoin="round" /> }
           @case ('line') { <path [attr.d]="path(e.points)" [attr.stroke]="e.color" [attr.stroke-width]="e.width" fill="none" /> }
@@ -45,18 +69,38 @@
   </svg>
 </div>
 @if (selected(); as e) {
-  <div class="object-editor">
-    <span class="object-label">{{ (e.type === 'note' ? 'liveBoard.board.selNote' : e.type === 'text' ? 'liveBoard.board.selText' : e.type === 'image' ? 'liveBoard.board.selImage' : e.type === 'link' ? 'liveBoard.board.selLink' : 'liveBoard.board.selDrawing') | t }}</span>
-    @if (e.type === 'link') { <a [href]="e.url" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">{{ 'liveBoard.board.openResource' | t }}</a> }
+  <div class="object-editor" [class.link-editor]="e.type === 'link'" [style.left.px]="editorPosition().left" [style.top.px]="editorPosition().top">
+    <span class="object-label visually-hidden">{{ (e.type === 'note' ? 'liveBoard.board.selNote' : e.type === 'text' ? 'liveBoard.board.selText' : e.type === 'image' ? 'liveBoard.board.selImage' : e.type === 'link' ? 'liveBoard.board.selLink' : 'liveBoard.board.selDrawing') | t }}</span>
+    @if (e.type === 'link') { <a [href]="e.url" target="_blank" rel="noopener noreferrer" class="btn-icon link-open" [attr.aria-label]="'liveBoard.board.openResource' | t" [title]="'liveBoard.board.openResource' | t"><app-icon name="link" [size]="16" /></a> }
     @if (canChangeSelected()) {
-      @if (e.type === 'note' || e.type === 'text' || e.type === 'link') {
-        <textarea [attr.aria-label]="'liveBoard.board.elementText' | t" rows="2" maxlength="1000" [value]="editingText() ?? e.text" (input)="editingText.set($any($event.target).value)"></textarea>
-        <button type="button" class="btn btn-secondary btn-sm" (click)="saveText()" [disabled]="!editingText()?.trim()">{{ 'liveBoard.board.saveText' | t }}</button>
+      @if (e.type === 'link') {
+        <input class="link-title-input" type="text" [attr.aria-label]="'liveBoard.board.elementText' | t" maxlength="1000" [value]="editingText() ?? e.text" (input)="editingText.set($any($event.target).value)" (keydown.enter)="$event.preventDefault(); saveText()" />
+        @if (editingText() !== null && editingText() !== e.text) { <button type="button" class="btn-icon object-action link-save" (click)="saveText()" [disabled]="!editingText()?.trim()" [attr.aria-label]="'liveBoard.board.saveText' | t" [title]="'liveBoard.board.saveText' | t"><app-icon name="check" [size]="16" /></button> }
       }
-      <button type="button" class="btn btn-secondary btn-sm" (click)="resize(0.8)" [attr.aria-label]="'liveBoard.board.shrinkLabel' | t">{{ 'liveBoard.board.shrink' | t }}</button>
-      <button type="button" class="btn btn-secondary btn-sm" (click)="resize(1.25)" [attr.aria-label]="'liveBoard.board.growLabel' | t">{{ 'liveBoard.board.grow' | t }}</button>
-      <div ngbDropdown placement="bottom-end"><button type="button" class="btn-icon" ngbDropdownToggle [attr.aria-label]="'liveBoard.board.moreActions' | t"><app-icon name="more" [size]="18" /></button><div ngbDropdownMenu><button ngbDropdownItem type="button" (click)="remove()" class="text-danger"><app-icon name="trash" [size]="16" /> {{ 'liveBoard.board.deleteElement' | t }}</button></div></div>
+      @if (e.type === 'note' || e.type === 'text') {
+        <label class="object-control"><span class="visually-hidden">{{ 'liveBoard.board.fontFamily' | t }}</span><select [attr.aria-label]="'liveBoard.board.fontFamily' | t" [value]="e.fontFamily || defaultFontFamily" (change)="changeFontFamily($event)">@for (font of fontFamilies; track font) { <option [value]="font">{{ font }}</option> }</select></label>
+        <label class="object-control"><span class="visually-hidden">{{ 'liveBoard.board.fontSize' | t }}</span><select [attr.aria-label]="'liveBoard.board.fontSize' | t" [value]="fontSizeOf(e)" (change)="changeFontSize($event)">@for (size of fontSizes; track size) { <option [value]="size">{{ size }} px</option> }</select></label>
+        <div class="element-colors" role="group" [attr.aria-label]="(e.type === 'note' ? 'liveBoard.board.noteColors' : 'liveBoard.board.textColors') | t">
+          @for (color of (e.type === 'note' ? noteColors : textColors); track color) {
+            <button type="button" class="element-color" [style.--swatch]="color" [class.active]="(e.type === 'note' ? e.color : (e.textColor || '#2b2b2b')) === color" [attr.aria-label]="(e.type === 'note' ? 'liveBoard.board.setNoteColor' : 'liveBoard.board.setTextColor') | t : { color }" [attr.aria-pressed]="(e.type === 'note' ? e.color : (e.textColor || '#2b2b2b')) === color" (click)="recolorSelected(color)"></button>
+          }
+        </div>
+      }
+      @if (e.type === 'link') { <span class="link-editor-divider" aria-hidden="true"></span> }
+      <div class="object-actions">
+        <button type="button" class="btn-icon object-action" (click)="resize(0.8)" [attr.aria-label]="'liveBoard.board.shrinkLabel' | t" [title]="'liveBoard.board.shrinkLabel' | t"><app-icon name="minus" [size]="16" /></button>
+        <button type="button" class="btn-icon object-action" (click)="resize(1.25)" [attr.aria-label]="'liveBoard.board.growLabel' | t" [title]="'liveBoard.board.growLabel' | t"><app-icon name="plus" [size]="16" /></button>
+        <div ngbDropdown placement="bottom-end"><button type="button" class="btn-icon" ngbDropdownToggle [attr.aria-label]="'liveBoard.board.moreActions' | t"><app-icon name="more" [size]="18" /></button><div ngbDropdownMenu><button ngbDropdownItem type="button" (click)="remove()" class="text-danger"><app-icon name="trash" [size]="16" /> {{ 'liveBoard.board.deleteElement' | t }}</button></div></div>
+      </div>
     } @else { <span class="text-muted">{{ (editable() ? 'liveBoard.board.notOwner' : 'liveBoard.board.readOnlyMode') | t }}</span> }
+  </div>
+}
+@if (selectedIds().length > 1) {
+  <div class="object-editor group-editor" [style.left.px]="editorPosition().left" [style.top.px]="editorPosition().top" role="group" aria-live="polite">
+    <span>{{ 'liveBoard.board.selectedCount' | t : { count: selectedIds().length } }}</span>
+    @if (selectedIds().length === 40) { <span>{{ 'liveBoard.board.selectionLimit' | t }}</span> }
+    @if (canChangeSelection()) { <button type="button" class="btn btn-secondary btn-sm" (click)="removeSelection()">{{ 'liveBoard.board.deleteSelection' | t }}</button> }
+    <button type="button" class="btn btn-secondary btn-sm" (click)="clearSelection()">{{ 'liveBoard.board.clearSelection' | t }}</button>
   </div>
 }
 @if (deleting(); as e) { <app-confirm-dialog [show]="true" [title]="'liveBoard.board.deleteTitle' | t" [message]="e.text ? ('liveBoard.board.deleteWithText' | t : { text: e.text.slice(0, 60), page: page().title }) : ('liveBoard.board.deleteDrawing' | t : { page: page().title })" [confirmText]="'liveBoard.board.deleteConfirm' | t" (confirmed)="confirmRemove()" (cancelled)="deleting.set(null)" /> }

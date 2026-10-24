@@ -1,12 +1,19 @@
 import { Component, computed, input } from '@angular/core';
 import { BoardPage } from '../../../core/models/live-class.model';
-import { pathOf } from './board.logic';
+import { pageFrame, pathOf } from './board.logic';
 
 /** Lightweight, noninteractive frame previews; never mounts another editor or focus target. */
 @Component({
   selector: 'app-board-preview', standalone: true,
-  template: `<svg viewBox="0 0 1600 900" aria-hidden="true" focusable="false">
-    <rect width="1600" height="900" fill="white" />
+  host: { '[style.aspect-ratio]': "frame().w + ' / ' + frame().h" },
+  template: `<svg [attr.viewBox]="frame().x + ' ' + frame().y + ' ' + frame().w + ' ' + frame().h" aria-hidden="true" focusable="false">
+    <defs>
+      <pattern [attr.id]="'preview-dots-' + page().id" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="12" cy="12" r="1.2" fill="#ccd4df" /></pattern>
+      <pattern [attr.id]="'preview-grid-' + page().id" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M 32 0 L 0 0 0 32" fill="none" stroke="#dfe5ed" stroke-width="1" /></pattern>
+      <pattern [attr.id]="'preview-lines-' + page().id" [attr.width]="frame().w" height="40" patternUnits="userSpaceOnUse"><path [attr.d]="'M 0 40 L ' + frame().w + ' 40'" fill="none" stroke="#dfe5ed" stroke-width="1" /></pattern>
+    </defs>
+    <rect [attr.x]="frame().x" [attr.y]="frame().y" [attr.width]="frame().w" [attr.height]="frame().h" fill="white" />
+    @if (page().background !== 'plain') { <rect [attr.x]="frame().x" [attr.y]="frame().y" [attr.width]="frame().w" [attr.height]="frame().h" [attr.fill]="'url(#preview-' + page().background + '-' + page().id + ')'" /> }
     @for (e of elements(); track e.id) {
       @switch (e.type) {
         @case ('pen') { <path [attr.d]="path(e.points)" [attr.stroke]="e.color" [attr.stroke-width]="e.width + 3" fill="none" stroke-linecap="round" /> }
@@ -18,10 +25,11 @@ import { pathOf } from './board.logic';
       }
     }
   </svg>`,
-  styles: [':host { display: block; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; background: var(--color-bg); } svg { display: block; width: 100%; height: 100%; }']
+  styles: [':host { display: block; width: 100%; overflow: hidden; background: var(--color-bg); } svg { display: block; width: 100%; height: 100%; }']
 })
 export class BoardPreviewComponent {
   page = input.required<BoardPage>();
+  frame = computed(() => pageFrame(this.page()));
   elements = computed(() => this.page().elements.slice(0, 60));
   readonly path = pathOf;
 }

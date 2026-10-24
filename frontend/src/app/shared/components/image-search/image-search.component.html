@@ -1,9 +1,18 @@
-<button type="button" class="btn btn-sm btn-outline-secondary" [disabled]="disabled() || !!importing()"
-        [attr.aria-expanded]="expanded()" (click)="toggle()">
-  <app-icon name="search" [size]="16" /> {{ (expanded() ? 'teacherComposer.imageSearch.close' : 'teacherComposer.imageSearch.open') | t }}
-</button>
+@if (!expanded()) {
+  <button type="button" class="btn btn-sm btn-outline-secondary" [disabled]="disabled() || !!importing()"
+          [attr.aria-expanded]="expanded()" (click)="toggle()">
+    <app-icon name="search" [size]="16" /> {{ 'teacherComposer.imageSearch.open' | t }}
+  </button>
+}
 @if (expanded()) {
   <section class="image-search" [attr.aria-label]="'teacherComposer.imageSearch.section' | t" [attr.aria-busy]="loading() || !!importing()">
+    <div class="image-search-toolbar">
+      <button type="button" class="btn-icon" [disabled]="disabled() || !!importing()"
+              [attr.aria-label]="'teacherComposer.imageSearch.close' | t" [title]="'teacherComposer.imageSearch.close' | t"
+              [attr.aria-expanded]="expanded()" (click)="toggle()">
+        <app-icon name="close" [size]="16" />
+      </button>
+    </div>
     <div class="search-controls">
       <input #queryInput type="search" class="form-control" [attr.aria-label]="'teacherComposer.imageSearch.queryAria' | t" maxlength="100"
              [placeholder]="'teacherComposer.imageSearch.placeholder' | t" [value]="query()" (input)="query.set(queryInput.value)"
