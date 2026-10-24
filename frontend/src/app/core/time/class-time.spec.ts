@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import fixtures from '../../../../../docs/clases-chat-integraciones/fixtures/time.json';
 import {
   Disambiguation, LocalIntent, TimeError, addElapsed, inTimeZone, intervalsConflict,
-  isAtLeastHoursBefore, isTimeZone, normalizeInstant, presentSessionTime, resolveLocalIntent
+  isAtLeastHoursBefore, isTimeZone, normalizeInstant, presentInstant, presentSessionTime, resolveLocalIntent
 } from './class-time';
 
 const zone = 'America/New_York';
@@ -124,5 +124,26 @@ describe('Tanda C: formato compacto de TZ-07', () => {
     expect(presentSessionTime(session, cordoba, cordoba, 'es').teacherDiffers).toBe(false);
     expect(presentSessionTime(session, cordoba, 'America/Buenos_Aires', 'es').teacherDiffers).toBe(true);
     expect(presentSessionTime(session, cordoba, zone, 'es').teacherDiffers).toBe(true);
+  });
+});
+
+describe('Saldo de paquetes: instante suelto (vencimiento)', () => {
+  const expiry = '2027-01-21T19:43:00.000Z';
+  it('devuelve fecha compacta con año, hora exacta, zona IANA y desplazamiento', () => {
+    const es = presentInstant(expiry, cordoba, 'es');
+    expect(es).toEqual({ day: '21 ene 2027', time: '16:43', timeZone: cordoba, offsetLabel: 'UTC-03:00' });
+    const en = presentInstant(expiry, cordoba, 'en');
+    expect(en.day).toContain('2027'); expect(en.day).toContain('Jan'); expect(en.time).toBe('16:43');
+  });
+  it('proyecta sin mover el instante: otra zona cambia la hora local, no el instante', () => {
+    const view = presentInstant(expiry, zone, 'es');
+    expect(view.time).toBe('14:43'); expect(view.offsetLabel).toBe('UTC-05:00');
+  });
+  it('usa el desplazamiento vigente en la fecha del instante (verano)', () => {
+    expect(presentInstant('2026-10-27T13:00:00.000Z', zone, 'es').offsetLabel).toBe('UTC-04:00');
+  });
+  it('rechaza instantes sin zona o zonas inválidas', () => {
+    expect(() => presentInstant('2027-01-21T16:43', cordoba, 'es')).toThrow();
+    expect(() => presentInstant(expiry, 'Mars/Olympus', 'es')).toThrow();
   });
 });

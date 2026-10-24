@@ -218,3 +218,19 @@ export function presentSessionTime(session: TimeInterval, recipientZone: string,
     teacherDiffers: recipientZone !== teacherZone || recipient.start.offset !== teacher.start.offset || recipient.end.offset !== teacher.end.offset
   };
 }
+
+/** Instante suelto (p. ej. un vencimiento): fecha compacta con año, hora exacta, zona IANA y desplazamiento (TZ-07). */
+export function presentInstant(instant: string, timeZone: string, locale: 'en' | 'es') {
+  const zoned = inTimeZone(instant, timeZone);
+  const tag = locale === 'es' ? 'es-AR' : 'en-US';
+  const at = new Date(zoned.startsAt);
+  const dateParts = new Intl.DateTimeFormat(tag, { timeZone, day: 'numeric', month: 'short', year: 'numeric' }).formatToParts(at);
+  const pick = (type: string) => dateParts.find(item => item.type === type)?.value.replace(/\./g, '') ?? '';
+  return {
+    // Día, mes y año sin conectores ("de") ni puntuación, igual que presentSessionTime.
+    day: locale === 'es' ? `${pick('day')} ${pick('month')} ${pick('year')}` : `${pick('month')} ${pick('day')} ${pick('year')}`,
+    time: new Intl.DateTimeFormat(tag, { timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(at),
+    timeZone,
+    offsetLabel: `UTC${zoned.offset}`
+  };
+}
