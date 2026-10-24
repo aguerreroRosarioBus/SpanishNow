@@ -80,18 +80,23 @@ export class SidebarNavComponent {
   /** Ítem del chat (W04), al final del primer grupo. */
   private withChat(groups: NavGroup[]): NavGroup[] {
     if (groups.length) {
-      groups = [{ ...groups[0], items: [...groups[0].items, {label:'packages.purchase.nav',icon:'receipt',link:this.currentUser()?.role==='teacher'?'/teacher/class-purchases':'/class-packages'}] }, ...groups.slice(1)];
+      const teacher = this.currentUser()?.role === 'teacher';
+      groups = [{ ...groups[0], items: [...groups[0].items, {
+        label: teacher ? 'packages.purchase.navTeacher' : 'packages.purchase.navStudent',
+        icon: 'wallet',
+        link: teacher ? '/teacher/class-purchases' : '/class-packages'
+      }] }, ...groups.slice(1)];
     }
     if (this.features.enabled('class_packages') && this.currentUser()?.role === 'teacher' && groups.length) {
-      groups = [{ ...groups[0], items: [...groups[0].items, { label: 'packages.nav', icon: 'shopping-bag', link: '/teacher/class-packages' }, {label:'packages.group.manage',icon:'users',link:'/teacher/class-cohorts'}] }, ...groups.slice(1)];
+      groups = [{ ...groups[0], items: [...groups[0].items, { label: 'packages.nav', icon: 'package', link: '/teacher/class-packages' }, {label:'packages.group.nav',icon:'users',link:'/teacher/class-cohorts'}] }, ...groups.slice(1)];
     }
     if (this.features.enabled('google_calendar') && this.currentUser()?.role === 'teacher' && groups.length) {
-      groups = [{ ...groups[0], items: [...groups[0].items, { label: 'calendar.nav', icon: 'rectangle', link: '/teacher/integrations' }] }, ...groups.slice(1)];
+      groups = [{ ...groups[0], items: [...groups[0].items, { label: 'calendar.nav', icon: 'plug', link: '/teacher/integrations' }] }, ...groups.slice(1)];
     }
     // El acceso de lectura permanece disponible al apagar nuevas propuestas.
-    if (groups.length) groups = [{ ...groups[0], items: [...groups[0].items, { label: 'schedule.nav', icon: 'rectangle', link: '/schedule' }] }, ...groups.slice(1)];
+    if (groups.length) groups = [{ ...groups[0], items: [...groups[0].items, { label: 'schedule.nav', icon: 'calendar', link: '/schedule' }] }, ...groups.slice(1)];
     if (!this.features.enabled('chat') || !groups.length) return groups;
-    const chat: NavItem = { label: 'chat.nav', icon: 'message-square', link: '/messages', badge: 'chat' };
+    const chat: NavItem = { label: 'chat.nav', icon: 'messages-square', link: '/messages', badge: 'chat' };
     return [{ ...groups[0], items: [...groups[0].items, chat] }, ...groups.slice(1)];
   }
 
@@ -109,8 +114,8 @@ export class SidebarNavComponent {
     const groups = this.withChat(this.baseGroups());
     if (!(this.currentUser()?.permissions?.length)) return groups;
     // «Administración» va antes de «Cuenta», que siempre es el último grupo
-    const admin: NavGroup = { title: 'nav.admin', items: [{ label: 'nav.users', icon: 'users', link: '/admin/users' }] };
-    if(['class_payments.review','class_credits.adjust','class_packages.manage_all','class_teachers.manage'].some(p=>this.authService.hasPermission(p))) admin.items.push({label:'packages.admin.title',icon:'receipt',link:'/admin/class-commerce'});
+    const admin: NavGroup = { title: 'nav.admin', items: [{ label: 'nav.users', icon: 'id-card', link: '/admin/users' }] };
+    if(['class_payments.review','class_credits.adjust','class_packages.manage_all','class_teachers.manage'].some(p=>this.authService.hasPermission(p))) admin.items.push({label:'packages.admin.nav',icon:'credit-card',link:'/admin/class-commerce'});
     if (this.authService.hasPermission('legal.manage')) admin.items.push({ label: 'legal.nav', icon: 'file-text', link: '/admin/legal' });
     return [...groups.slice(0, -1), admin, groups[groups.length - 1]];
   });
@@ -124,7 +129,7 @@ export class SidebarNavComponent {
             { label: 'nav.myCourses', icon: 'book-open', link: '/student/dashboard', exactQuery: true, alsoActiveUnder: '/student/course/' },
             { label: 'nav.exploreCourses', icon: 'compass', link: '/student/dashboard', query: { view: 'catalog' }, exactQuery: true },
             { label: 'nav.progress', icon: 'bar-chart', link: '/student/progress' },
-            { label: 'nav.liveClasses', icon: 'rectangle', link: '/live' },
+            { label: 'nav.liveClasses', icon: 'video', link: '/live' },
             { label: 'nav.teachers', icon: 'users', link: '/teachers' }
           ]
         },
@@ -136,14 +141,14 @@ export class SidebarNavComponent {
         title: 'nav.teaching',
         items: [
           { label: 'nav.myCourses', icon: 'book-open', link: '/teacher/dashboard', alsoActiveUnder: '/teacher/course/' },
-          { label: 'nav.liveClasses', icon: 'rectangle', link: '/live' },
+          { label: 'nav.liveClasses', icon: 'video', link: '/live' },
           { label: 'nav.comments', icon: 'message-square', link: '/teacher/comments', badge: 'comments' }
         ]
       },
       {
         title: 'nav.business',
         items: [
-          { label: 'nav.sales', icon: 'shopping-bag', link: '/teacher/sales' },
+          { label: 'nav.sales', icon: 'chart-line', link: '/teacher/sales' },
           { label: 'nav.orders', icon: 'receipt', link: '/teacher/orders' },
           { label: 'nav.coupons', icon: 'tag', link: '/teacher/coupons' },
           { label: 'nav.affiliates', icon: 'share', link: '/teacher/affiliates' }
