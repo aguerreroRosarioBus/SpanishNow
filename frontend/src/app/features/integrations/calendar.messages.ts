@@ -1,7 +1,7 @@
 import { TranslationCatalog } from '../../core/i18n/i18n.types';
 // Claves calendar.* (W07). Los códigos de sincronización coinciden con lastError de external_sync_refs.
 const pairs: Record<string, [string, string]> = {
-  nav: ['Integrations', 'Integraciones'],
+  nav: ['Calendar and Zoom', 'Calendar y Zoom'],
   title: ['Integrations', 'Integraciones'],
   card: ['Google Calendar', 'Google Calendar'],
   intro: ['Confirmed classes appear in the calendar you choose. SpanishNow stays in charge of the schedule.', 'Las clases confirmadas aparecen en el calendario que elijas. SpanishNow sigue gobernando el horario.'],
