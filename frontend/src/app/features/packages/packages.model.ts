@@ -39,7 +39,7 @@ export interface ClassCohort {
 export interface ClassOrder { id:number;offerId:number;provider:'fake'|'hotmart';status:'pending'|'paid'|'failed'|'paid_needs_review'|'partially_refunded'|'refunded';amount:number;currency:string;reviewReason:string|null;reportedAmount?:number|null;reportedCurrency?:string|null;providerTransactionId?:string|null;providerProductId?:string|null;providerOfferCode?:string|null }
 export interface CheckoutState {offer:ClassOffer;order:ClassOrder|null;purchaseId:number|null}
 export interface ClassPurchase {
-  id:number;offerId:number;buyerId:number;teacherId:number;version:number;status:'active'|'paused'|'exhausted'|'expired'|'cancelled';
+  id:number;offerId:number;buyerId:number;/** Solo en la vista docente (GET /api/teacher/class-purchases). */buyerName?:string|null;teacherId:number;version:number;status:'active'|'paused'|'exhausted'|'expired'|'cancelled';
   expiresAt:string;paidAt:string;pausedAt:string|null;pauseCount:number;minutesPerSession:number;seatsCovered:number;
   balance:{granted:number;available:number;reserved:number;consumed:number;expired:number;refunded:number};
   snapshot:ClassOffer['snapshot'];ledger?:{id:number;operation:string;units:number;createdAt:string;reason:string|null}[];
