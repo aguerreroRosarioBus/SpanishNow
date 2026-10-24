@@ -5,12 +5,12 @@ const {Op}=require('sequelize');
 const {parseArgs,assertSafe}=require('../src/db/seedMaster');
 const {validateGraph}=require('../seeds/master/verify');
 const {prepare}=require('../seeds/master/assets');
-const {run,verify,KEY}=require('../seeds/master');
 const originalDatabase=process.env.DB_NAME;
 const SCRATCH_DB='spanishnow_master_jest_test_seed';
 process.env.DB_NAME=SCRATCH_DB;
 const M=require('../src/models');
 const sequelize=require('../src/config/database');
+const {run,verify,KEY}=require('../seeds/master');
 process.env.DB_NAME=originalDatabase;
 const {createScratchDb,dropScratchDb}=require('./helpers/scratchDb');
 const {createMigrator}=require('../src/db/migrator');
@@ -78,6 +78,7 @@ describe('seed maestro persistido',()=>{
     expect((await M.Message.findOne({where:{conversationId:existingConversation.id,seq:1}})).body).toBe('Mensaje previo que se conserva.');
     expect(await existingStudent.comparePassword('existing-test-password')).toBe(true);
     expect(await M.OutboxJob.count()).toBe(0);
+    expect((await require('../src/services/liveClassService').list(existingStudent)).length).toBeGreaterThan(0);
     for(const file of assets.files.filter(f=>f.endsWith('.pdf')))expect(fs.readFileSync(path.join(directory,file)).subarray(0,5).toString()).toBe('%PDF-');
   },120000);
   test('repetir no cambia filas, contraseñas, fechas, progreso ni identidad del dataset',async()=>{

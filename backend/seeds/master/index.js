@@ -364,7 +364,7 @@ async function seedClasses({ teacher, students, policy, historyDay, teacherIndex
         { id: 'master_note_one', type: 'note', x: 100, y: 220, w: 400, h: 220, color: '#f8d685', width: 2, text: 'Primero: ¿quién es el personaje?\nDespués: ¿qué quiere?\nAl final: ¿qué cambia?' },
         { id: 'master_note_two', type: 'note', x: 650, y: 220, w: 500, h: 250, color: '#a6d8ce', width: 2, text: 'Expresiones de hoy\nquiere · encuentra · acuerdan\n\nPara la próxima clase: contar una experiencia del fin de semana.' }
       ] }] } }, teacher.id);
-      const live = await add('LiveClass', { teacherId: teacher.id, courseId: null, title: `Conversación guiada · ${participants.map(s => s.name.split(' ')[0]).join(', ')}`,
+      const live = await add('LiveClass', { teacherId: teacher.id, courseId: courses[0].course.id, title: `Conversación guiada · ${participants.map(s => s.name.split(' ')[0]).join(', ')}`,
         status: 'ended', joinCode: randomBytes(12).toString('base64url'), board, revision: 1 }, startsAt);
       await live.update({ updatedAt: time.endsAt }, { transaction, silent: true });
       await session.update({ liveClassId: live.id, updatedAt: time.endsAt }, { transaction, silent: true });
