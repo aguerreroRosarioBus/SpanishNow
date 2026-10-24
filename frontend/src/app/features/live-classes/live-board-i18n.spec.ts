@@ -205,14 +205,14 @@ describe('clases en vivo y pizarra: idioma', () => {
       const { f, c, i18n, emit } = setup();
       const html = f.nativeElement as HTMLElement;
       c.selectedId.set(element.id); f.detectChanges();
-      expect(text(f)).toContain('Nota seleccionada'); expect(text(f)).toContain('Guardar texto'); expect(text(f)).toContain('− Tamaño');
+      expect(text(f)).toContain('Nota seleccionada'); expect(text(f)).toContain('Tipo de letra'); expect(text(f)).toContain('Tamaño de letra'); expect(text(f)).toContain('− Tamaño');
       expect(html.querySelector('svg')?.getAttribute('aria-label')).toBe('Página uno. Usa Seleccionar para mover elementos y las flechas del teclado para ajustar su posición.');
       c.editingText.set('Texto a medio escribir'); f.detectChanges();
       c.remove(); f.detectChanges();
       expect(text(f)).toContain('Se eliminará «Hola mundo» de Página uno.');
 
       i18n.setLocale('en'); f.detectChanges();
-      expect(text(f)).toContain('Note selected'); expect(text(f)).toContain('Save text'); expect(text(f)).toContain('− Size');
+      expect(text(f)).toContain('Note selected'); expect(text(f)).toContain('Font family'); expect(text(f)).toContain('Font size'); expect(text(f)).toContain('− Size');
       expect(html.querySelector('svg')?.getAttribute('aria-label')).toBe('Página uno. Use Select to move elements and the keyboard arrows to adjust their position.');
       expect(text(f)).toContain('“Hola mundo” will be deleted from Página uno.'); expect(text(f)).toContain('Hola mundo');
       expect(html.querySelector('textarea')?.value).toBe('Texto a medio escribir');
@@ -226,9 +226,10 @@ describe('clases en vivo y pizarra: idioma', () => {
       svg.getBoundingClientRect = () => ({ left: 0, top: 0, width: 1600, height: 900 }) as DOMRect;
       const ev = { currentTarget: svg, target: svg, pointerId: 1, pointerType: 'mouse', button: 0, clientX: 600, clientY: 400, preventDefault() {} } as unknown as PointerEvent;
       i18n.setLocale('en'); c.pointerDown(ev);
-      expect(emit).toHaveBeenCalledWith(expect.objectContaining({ element: expect.objectContaining({ text: 'Your note' }) }));
+      expect(emit).toHaveBeenCalledWith(expect.objectContaining({ element: expect.objectContaining({ type: 'note', text: '', fontFamily: 'Nunito Sans', fontSize: 23 }) }));
       i18n.setLocale('es'); f.detectChanges();
-      expect(emit.mock.calls[0][0].element!.text).toBe('Your note');
+      expect((emit.mock.calls[0][0] as BoardOperation).element!.text).toBe('');
+      expect(c.editingText()).toBe('');
     });
   });
 });

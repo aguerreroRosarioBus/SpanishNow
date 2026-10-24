@@ -9,7 +9,7 @@ import { BoardOperation, GoogleStatus, LiveBoard, LiveSnapshot } from '../../cor
 import { previewBoard } from './board/board.logic';
 import { I18nService } from '../../core/i18n/i18n.service';
 
-const board = (): LiveBoard => ({ pages: [{ id: 'page_0001', title: 'Página 1', elements: [], background: 'plain' }], activePageId: 'page_0001' });
+const board = (): LiveBoard => ({ pages: [{ id: 'page_0001', title: 'Página 1', elements: [], background: 'plain', format: 'wide' }], activePageId: 'page_0001' });
 const snapshot = (owner = true): LiveSnapshot => ({ id: 1, teacherId: 7, courseId: null, title: 'Mi clase', status: 'live', allowStudentEdit: true,
   revision: 0, updatedAt: '', createdAt: '', isOwner: owner, participants: [], board: board() });
 const operation = (): BoardOperation => ({ id: 'operation_01', type: 'put', pageId: 'page_0001', expectedVersion: 0,
@@ -70,6 +70,88 @@ describe('LiveRoomComponent collaboration', () => {
     response.next({ revision: 1, board: previewBoard(board(), [op])! }); response.complete();
     await Promise.resolve(); await Promise.resolve();
     expect(c.pending()).toHaveLength(0); expect(c.room()!.revision).toBe(1); expect(c.board()!.pages[0].elements).toHaveLength(1);
+  });
+  it('undoes and redoes saved object changes through versioned board operations', async () => {
+    const { c, api } = await create(); const op = operation();
+    const added = previewBoard(board(), [op])!;
+    api.change.mockReturnValueOnce(of({ revision: 1, board: added })); c.queue(op);
+    await Promise.resolve(); await Promise.resolve();
+    expect(c.canUndo()).toBe(true); expect(c.undoActions()).toHaveLength(1);
+    const empty = board();
+    api.change.mockReturnValueOnce(of({ revision: 2, board: empty })); c.undo();
+    await Promise.resolve(); await Promise.resolve();
+    expect(c.board()!.pages[0].elements).toHaveLength(0); expect(c.canRedo()).toBe(true); expect(c.canUndo()).toBe(false);
+    const restored = previewBoard(empty, [{ ...op, id: 'operation_002', expectedVersion: 0 }])!;
+    api.change.mockReturnValueOnce(of({ revision: 3, board: restored })); c.redo();
+    await Promise.resolve(); await Promise.resolve();
+    expect(c.board()!.pages[0].elements[0].text).toBe('Aporte local'); expect(c.canUndo()).toBe(true); expect(c.canRedo()).toBe(false);
+    expect(api.change.mock.calls.map(call => call[1][0].type)).toEqual(['put', 'delete', 'put']);
+  });
+  it('undoes and redoes page format and notebook background together', async () => {
+    const { c, api } = await create();
+    const originalRaf = globalThis.requestAnimationFrame;
+    Object.defineProperty(globalThis, 'requestAnimationFrame', { configurable: true, writable: true, value: (callback: FrameRequestCallback) => { callback(0); return 1; } });
+    const notebook: LiveBoard = { ...board(), pages: [{ ...board().pages[0], format: 'notebook', background: 'lines' }] };
+    api.change.mockReturnValueOnce(of({ revision: 1, board: notebook })); c.pageFormat('notebook');
+    await Promise.resolve(); await Promise.resolve();
+    expect(c.currentPage()).toMatchObject({ format: 'notebook', background: 'lines' }); expect(c.canUndo()).toBe(true);
+    api.change.mockReturnValueOnce(of({ revision: 2, board: board() })); c.undo();
+    await Promise.resolve(); await Promise.resolve();
+    expect(c.currentPage()).toMatchObject({ format: 'wide', background: 'plain' }); expect(c.canRedo()).toBe(true);
+    expect(api.change.mock.calls[1][1].map((op: BoardOperation) => op.type)).toEqual(['page-format', 'page-background']);
+    c.ngOnDestroy();
+    if (originalRaf) Object.defineProperty(globalThis, 'requestAnimationFrame', { configurable: true, writable: true, value: originalRaf });
+    else Reflect.deleteProperty(globalThis, 'requestAnimationFrame');
+  });
+  it('undoes and redoes a page rename with revision guarded operations', async () => {
+    const { c, api } = await create();
+    const original = board(), renamed: LiveBoard = { ...board(), pages: [{ ...board().pages[0], title: 'Inicio' }] };
+    api.change.mockReturnValueOnce(of({ revision: 1, board: renamed }));
+    c.pageTitleDraft.set('Inicio'); c.savePageTitle();
+    await Promise.resolve(); await Promise.resolve();
+    expect(c.currentPage()?.title).toBe('Inicio'); expect(c.canUndo()).toBe(true);
+    api.change.mockReturnValueOnce(of({ revision: 2, board: original })); c.undo();
+    await Promise.resolve(); await Promise.resolve();
+    expect(c.currentPage()?.title).toBe('Página 1'); expect(c.canRedo()).toBe(true);
+    api.change.mockReturnValueOnce(of({ revision: 3, board: renamed })); c.redo();
+    await Promise.resolve(); await Promise.resolve();
+    expect(c.currentPage()?.title).toBe('Inicio');
+    expect(api.change.mock.calls.map(call => call[1][0])).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: 'page-rename', title: 'Inicio', expectedRevision: 0 }),
+      expect.objectContaining({ type: 'page-rename', title: 'Página 1', expectedRevision: 1 })
+    ]));
+  });
+  it('reorders a page and can undo the order change', async () => {
+    const { c, api } = await create();
+    const twoPages: LiveBoard = { ...board(), pages: [
+      { ...board().pages[0] }, { id: 'page_0002', title: 'Página 2', elements: [], background: 'plain', format: 'wide' }
+    ] };
+    const reordered: LiveBoard = { ...twoPages, pages: [twoPages.pages[1], twoPages.pages[0]] };
+    (c as any).base.set(twoPages); c.room.update(room => room ? { ...room, revision: 5 } : room);
+    api.change.mockReturnValueOnce(of({ revision: 6, board: reordered })); c.movePage(1);
+    await Promise.resolve(); await Promise.resolve();
+    expect(c.board()?.pages.map(page => page.id)).toEqual(['page_0002', 'page_0001']);
+    api.change.mockReturnValueOnce(of({ revision: 7, board: twoPages })); c.undo();
+    await Promise.resolve(); await Promise.resolve();
+    expect(c.board()?.pages.map(page => page.id)).toEqual(['page_0001', 'page_0002']);
+    expect(api.change.mock.calls[0][1][0]).toMatchObject({ type: 'page-reorder', index: 1, expectedRevision: 5 });
+    expect(api.change.mock.calls[1][1][0]).toMatchObject({ type: 'page-reorder', index: 0, expectedRevision: 6 });
+  });
+  it('keeps normal wheel scrolling separate from modified-wheel and trackpad zoom', async () => {
+    const { c } = await create();
+    const viewport = document.createElement('div');
+    Object.defineProperties(viewport, { scrollWidth: { value: 1000 }, scrollHeight: { value: 900 }, clientWidth: { value: 500 }, clientHeight: { value: 400 }, scrollLeft: { value: 100, writable: true }, scrollTop: { value: 120, writable: true } });
+    viewport.getBoundingClientRect = () => ({ left: 10, top: 20, width: 500, height: 400 }) as DOMRect;
+    viewport.scrollTo = vi.fn(); (c as any).viewportElement = viewport;
+    const wheel = { target: viewport, deltaX: 0, deltaY: -100, ctrlKey: false, metaKey: false, clientX: 260, clientY: 220, preventDefault: vi.fn() } as unknown as WheelEvent;
+    c.zoomWheel(wheel);
+    expect(c.zoom()).toBe(50); expect(wheel.preventDefault).not.toHaveBeenCalled();
+    const pinch = { target: viewport, deltaX: 100, deltaY: -80, ctrlKey: true, metaKey: false, clientX: 260, clientY: 220, preventDefault: vi.fn() } as unknown as WheelEvent;
+    c.zoomWheel(pinch);
+    expect(c.zoom()).toBeGreaterThan(50); expect(pinch.preventDefault).toHaveBeenCalled();
+    const mouseWheel = { target: viewport, deltaX: 0, deltaY: -100, ctrlKey: false, metaKey: true, clientX: 260, clientY: 220, preventDefault: vi.fn() } as unknown as WheelEvent;
+    c.zoomWheel(mouseWheel);
+    expect(c.zoom()).toBeGreaterThan(50); expect(mouseWheel.preventDefault).toHaveBeenCalled();
   });
   it('retains unsaved work on failure and retries with the same operation identifier', async () => {
     const { c, api } = await create(); const op = operation();
