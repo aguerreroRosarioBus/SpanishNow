@@ -48,11 +48,11 @@ describe('W05 proveedor verificado y órdenes congeladas',()=>{
   const f=TestBed.createComponent(CommerceAdminComponent);f.detectChanges();return {f,c:f.componentInstance,api,el:f.nativeElement as HTMLElement,t:(k:string,p?:Record<string,string|number>)=>TestBed.inject(I18nService).t(k,p)};
  };
  it('muestra los tres modos y oculta la tarjeta si el estado da 403',()=>{
-  const fake=setup({state:{mode:'fake',verification:null,lastRevocation:null}});expect(fake.el.querySelector('[data-test=provider-mode]')!.textContent).toContain(fake.t('packages.admin.provider.mode.fake'));
+  const fake=setup({state:{mode:'fake',verification:null,lastRevocation:null}});expect(fake.el.querySelector('[data-test=provider-mode]')!.textContent).toContain(fake.t('packages.pv.mode.fake'));
   TestBed.resetTestingModule();const blocked=setup({state:{mode:'blocked',verification:null,lastRevocation:{id:1,revokedAt:'2026-10-20T12:00:00Z',revokedBy:{id:2,name:'Ana'},reason:'Cambio de cuenta',verifiedAt:'2026-10-10T12:00:00Z'}}});
-  expect(blocked.el.querySelector('[data-test=provider-mode]')!.textContent).toContain(blocked.t('packages.admin.provider.mode.blocked'));expect(blocked.el.querySelector('[data-test=provider-revoked]')!.textContent).toContain('Ana');expect(blocked.el.querySelector('[data-test=provider-revoked]')!.textContent).toContain('Cambio de cuenta');
+  expect(blocked.el.querySelector('[data-test=provider-mode]')!.textContent).toContain(blocked.t('packages.pv.mode.blocked'));expect(blocked.el.querySelector('[data-test=provider-revoked]')!.textContent).toContain('Ana');expect(blocked.el.querySelector('[data-test=provider-revoked]')!.textContent).toContain('Cambio de cuenta');
   TestBed.resetTestingModule();const ver=setup({state:{mode:'verified',verification:{id:3,verifiedAt:'2026-10-21T12:00:00Z',verifiedBy:{id:2,name:'Ana'},guaranteeDays:21,checks:{},reason:'Todo revisado'},lastRevocation:null}});
-  const txt=ver.el.querySelector('[data-test=provider-card]')!.textContent!;expect(txt).toContain('Ana');expect(txt).toContain('21');expect(txt).toContain('Todo revisado');expect(txt).toContain(ver.t('packages.admin.provider.revokeOpen'));expect(txt).not.toContain(ver.t('packages.admin.provider.verifyOpen'));
+  const txt=ver.el.querySelector('[data-test=provider-card]')!.textContent!;expect(txt).toContain('Ana');expect(txt).toContain('21');expect(txt).toContain('Todo revisado');expect(txt).toContain(ver.t('packages.pv.revokeOpen'));expect(txt).not.toContain(ver.t('packages.pv.verifyOpen'));
   TestBed.resetTestingModule();const none=setup({providerError:true});expect(none.el.querySelector('[data-test=provider-card]')).toBeNull();
  });
  it('verificar exige 4 casillas, garantía y motivo, y envía el cuerpo exacto',()=>{
@@ -69,10 +69,10 @@ describe('W05 proveedor verificado y órdenes congeladas',()=>{
  });
  it('orden congelada ofrece confirmar y descongelar con el cuerpo correcto; sin frozenFromStatus no descongela',()=>{
   const {c,api,el,t}=setup({state:{mode:'fake',verification:null,lastRevocation:null},orders:[frozen,{...frozen,id:22,frozenFromStatus:null},{id:23,provider:'hotmart',status:'paid_needs_review',amount:5000,currency:'USD',reviewReason:'manual'}]});
-  const txt=el.textContent!;expect(txt).toContain(t('packages.admin.provider.frozen.refund_amount_review'));expect(txt).toContain(t('packages.admin.provider.purchaseStatus.active'));expect(txt).toContain('3');expect(txt).toContain(t('packages.admin.provider.unfreezeLegacy'));
+  const txt=el.textContent!;expect(txt).toContain(t('packages.pv.frozen.refund_amount_review'));expect(txt).toContain(t('packages.purchase.status.active'));expect(txt).toContain('3');expect(txt).toContain(t('packages.pv.unfreezeLegacy'));
   const btn=(label:string)=>[...el.querySelectorAll('button')].filter(b=>b.textContent!.includes(label)) as HTMLButtonElement[];
-  expect(btn(t('packages.admin.provider.confirmRefund')).length).toBe(2);expect(btn(t('packages.admin.provider.unfreeze')).length).toBe(2);expect(btn(t('packages.admin.credit')).length).toBe(1);
-  expect(btn(t('packages.admin.provider.unfreeze'))[1].disabled).toBe(true);
+  expect(btn(t('packages.pv.confirmRefund')).length).toBe(2);expect(btn(t('packages.pv.unfreeze')).length).toBe(2);expect(btn(t('packages.admin.credit')).length).toBe(1);
+  expect(btn(t('packages.pv.unfreeze'))[1].disabled).toBe(true);
   const o=c.orders()[0];c.reason='Falsa alarma';c.confirmed=true;
   c.resolve(o,'unfreeze');expect(api.resolvePayment.mock.calls[0]).toEqual([21,'unfreeze','Falsa alarma']);
   c.confirmed=true;c.confirmRefund(o);expect(api.resolvePayment.mock.calls[1]).toEqual([21,'confirm_refund','Falsa alarma',undefined]);

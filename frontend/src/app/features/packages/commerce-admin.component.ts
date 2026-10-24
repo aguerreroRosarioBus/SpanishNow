@@ -17,26 +17,26 @@ template:`
 @if(saved()){<p class="alert alert-success mt-3" role="status">{{'packages.admin.saved'|t}}</p>}
 @if(provider();as pv){
 <section class="surface block" aria-labelledby="adminProviderTitle" data-test="provider-card">
-  <h2 id="adminProviderTitle" class="block-title">{{'packages.admin.provider.title'|t}}</h2>
-  <p data-test="provider-mode"><span class="badge-status badge-status--dot status-{{pv.mode==='verified'?'success':pv.mode==='blocked'?'warning':'neutral'}}">{{('packages.admin.provider.mode.'+pv.mode)|t:{name:pv.verification?.verifiedBy?.name||'—',date:pv.verification?i18n.formatInstant(pv.verification.verifiedAt,fmt.timeZone()):'',days:pv.verification?.guaranteeDays||''} }}</span></p>
-  @if(pv.verification){<p class="notice">{{'packages.admin.provider.verifiedReason'|t:{reason:pv.verification.reason} }}</p>}
-  @if(pv.lastRevocation;as lr){<p class="notice" data-test="provider-revoked">{{'packages.admin.provider.revoked'|t:{name:revoker(lr),date:i18n.formatInstant(lr.revokedAt,fmt.timeZone()),reason:lr.reason} }}</p>}
-  @if(pv.mode!=='verified'&&!verifyOpen()){<div class="item-actions"><button type="button" class="btn btn-primary" (click)="verifyOpen.set(true)">{{'packages.admin.provider.verifyOpen'|t}}</button></div>}
+  <h2 id="adminProviderTitle" class="block-title">{{'packages.pv.title'|t}}</h2>
+  <p data-test="provider-mode"><span class="badge-status badge-status--dot status-{{pv.mode==='verified'?'success':pv.mode==='blocked'?'warning':'neutral'}}">{{('packages.pv.mode.'+pv.mode)|t:{name:pv.verification?.verifiedBy?.name||'—',date:pv.verification?i18n.formatInstant(pv.verification.verifiedAt,fmt.timeZone()):'',days:pv.verification?.guaranteeDays||''} }}</span></p>
+  @if(pv.verification){<p class="notice">{{'packages.pv.verifiedReason'|t:{reason:pv.verification.reason} }}</p>}
+  @if(pv.lastRevocation;as lr){<p class="notice" data-test="provider-revoked">{{'packages.pv.revoked'|t:{name:revoker(lr),date:i18n.formatInstant(lr.revokedAt,fmt.timeZone()),reason:lr.reason} }}</p>}
+  @if(pv.mode!=='verified'&&!verifyOpen()){<div class="item-actions"><button type="button" class="btn btn-primary" (click)="verifyOpen.set(true)">{{'packages.pv.verifyOpen'|t}}</button></div>}
   @if(pv.mode!=='verified'&&verifyOpen()){<form class="item" (ngSubmit)="verifyProvider()" aria-labelledby="providerVerifyTitle">
-    <h3 id="providerVerifyTitle" class="sub-title">{{'packages.admin.provider.verifyTitle'|t}}</h3>
-    @for(k of checkKeys;track k){<label class="d-block mt-2"><input type="checkbox" [name]="'check_'+k" [(ngModel)]="vChecks[k]"> {{('packages.admin.provider.check.'+k)|t}}</label>}
-    <label for="providerDays" class="form-label mt-2">{{'packages.admin.provider.guaranteeDays'|t}}</label><select id="providerDays" name="days" class="form-select" [(ngModel)]="vDays"><option [ngValue]="null">{{'packages.admin.provider.guaranteeChoose'|t}}</option>@for(d of guaranteeOptions;track d){<option [ngValue]="d">{{'packages.admin.provider.days'|t:{days:d} }}</option>}</select>
-    <label for="providerReason" class="form-label mt-2">{{'packages.admin.provider.reason'|t}}</label><textarea id="providerReason" name="reason" class="form-control" maxlength="500" [(ngModel)]="vReason"></textarea>
-    <p class="notice">{{'packages.admin.provider.verifyWarn'|t}}</p>
-    <div class="item-actions"><button type="submit" class="btn btn-primary" [disabled]="!verifyReady()">{{'packages.admin.provider.verifySubmit'|t}}</button><button type="button" class="btn btn-secondary" (click)="verifyOpen.set(false)">{{'packages.admin.provider.cancel'|t}}</button></div>
+    <h3 id="providerVerifyTitle" class="sub-title">{{'packages.pv.verifyTitle'|t}}</h3>
+    @for(k of checkKeys;track k){<label class="d-block mt-2"><input type="checkbox" [name]="'check_'+k" [(ngModel)]="vChecks[k]"> {{('packages.pv.check.'+k)|t}}</label>}
+    <label for="providerDays" class="form-label mt-2">{{'packages.pv.guaranteeDays'|t}}</label><select id="providerDays" name="days" class="form-select" [(ngModel)]="vDays"><option [ngValue]="null">{{'packages.pv.guaranteeChoose'|t}}</option>@for(d of guaranteeOptions;track d){<option [ngValue]="d">{{'packages.pv.days'|t:{days:d} }}</option>}</select>
+    <label for="providerReason" class="form-label mt-2">{{'packages.pv.reason'|t}}</label><textarea id="providerReason" name="reason" class="form-control" maxlength="500" [(ngModel)]="vReason"></textarea>
+    <p class="notice">{{'packages.pv.verifyWarn'|t}}</p>
+    <div class="item-actions"><button type="submit" class="btn btn-primary" [disabled]="!verifyReady()">{{'packages.pv.verifySubmit'|t}}</button><button type="button" class="btn btn-secondary" (click)="verifyOpen.set(false)">{{'packages.pv.cancel'|t}}</button></div>
   </form>}
-  @if(pv.mode==='verified'&&!revokeOpen()){<div class="item-actions"><button type="button" class="btn btn-outline-danger" (click)="revokeOpen.set(true)">{{'packages.admin.provider.revokeOpen'|t}}</button></div>}
+  @if(pv.mode==='verified'&&!revokeOpen()){<div class="item-actions"><button type="button" class="btn btn-outline-danger" (click)="revokeOpen.set(true)">{{'packages.pv.revokeOpen'|t}}</button></div>}
   @if(pv.mode==='verified'&&revokeOpen()){<form class="item" (ngSubmit)="revokeProvider()" aria-labelledby="providerRevokeTitle">
-    <h3 id="providerRevokeTitle" class="sub-title">{{'packages.admin.provider.revokeTitle'|t}}</h3>
-    <label for="providerRevokeReason" class="form-label">{{'packages.admin.provider.reason'|t}}</label><textarea id="providerRevokeReason" name="rreason" class="form-control" maxlength="500" [(ngModel)]="rReason"></textarea>
-    <label class="d-block mt-2"><input type="checkbox" name="rconfirm" [(ngModel)]="rConfirmed"> {{'packages.admin.provider.revokeConfirm'|t}}</label>
-    <p class="notice">{{'packages.admin.provider.revokeWarn'|t}}</p>
-    <div class="item-actions"><button type="submit" class="btn btn-outline-danger" [disabled]="!revokeReady()">{{'packages.admin.provider.revokeSubmit'|t}}</button><button type="button" class="btn btn-secondary" (click)="revokeOpen.set(false)">{{'packages.admin.provider.cancel'|t}}</button></div>
+    <h3 id="providerRevokeTitle" class="sub-title">{{'packages.pv.revokeTitle'|t}}</h3>
+    <label for="providerRevokeReason" class="form-label">{{'packages.pv.reason'|t}}</label><textarea id="providerRevokeReason" name="rreason" class="form-control" maxlength="500" [(ngModel)]="rReason"></textarea>
+    <label class="d-block mt-2"><input type="checkbox" name="rconfirm" [(ngModel)]="rConfirmed"> {{'packages.pv.revokeConfirm'|t}}</label>
+    <p class="notice">{{'packages.pv.revokeWarn'|t}}</p>
+    <div class="item-actions"><button type="submit" class="btn btn-outline-danger" [disabled]="!revokeReady()">{{'packages.pv.revokeSubmit'|t}}</button><button type="button" class="btn btn-secondary" (click)="revokeOpen.set(false)">{{'packages.pv.cancel'|t}}</button></div>
   </form>}
 </section>
 }
@@ -55,21 +55,21 @@ template:`
   <label for="paymentFilter" class="form-label">{{'packages.admin.filter'|t}}</label><select id="paymentFilter" class="form-select" [(ngModel)]="filter" (ngModelChange)="loadPayments()">@for(s of statuses;track s){<option [value]="s">{{('packages.admin.orderStatus.'+s)|t}}</option>}</select>
   @for(o of orders();track o.id){<article class="item">
     <div class="item-head"><h4>{{'packages.admin.order'|t}} #{{o.id}} · {{i18n.formatMoney(o.amount,o.currency)}}</h4><span class="badge-status badge-status--dot status-{{orderTone(o.status)}}">{{('packages.admin.orderStatus.'+o.status)|t}}</span></div>
-    @if(frozen(o)){<p data-test="frozen-reason">{{('packages.admin.provider.frozen.'+o.reviewReason)|t}}</p>
-      @if(o.frozenFromStatus){<p class="notice">{{'packages.admin.provider.frozenFrom'|t:{status:purchaseStatus(o.frozenFromStatus)} }}</p>}
-      <p class="notice">{{'packages.admin.provider.balances'|t:{available:o.unitsAvailable??'—',reserved:o.unitsReserved??'—',consumed:o.unitsConsumed??'—'} }}</p>}
+    @if(frozen(o)){<p data-test="frozen-reason">{{('packages.pv.frozen.'+o.reviewReason)|t}}</p>
+      @if(o.frozenFromStatus){<p class="notice">{{'packages.pv.frozenFrom'|t:{status:purchaseStatus(o.frozenFromStatus)} }}</p>}
+      <p class="notice">{{'packages.pv.balances'|t:{available:o.unitsAvailable??'—',reserved:o.unitsReserved??'—',consumed:o.unitsConsumed??'—'} }}</p>}
     @else if(o.reviewReason){<p>{{o.reviewReason}}</p>}
     @if(o.reportedAmount!=null&&o.reportedCurrency){<p>{{'packages.admin.reported'|t:{amount:i18n.formatMoney(o.reportedAmount!,o.reportedCurrency!)} }}</p>}
     <p class="notice">{{'packages.admin.providerIds'|t:{transaction:o.providerTransactionId||'—',product:o.providerProductId||'—',offer:o.providerOfferCode||'—'} }} · {{'packages.offer.open'|t}} #{{o.offerId}}</p>
     @if(frozen(o)){
-      <p class="notice">{{'packages.admin.provider.confirmRefundHint'|t}}</p>
-      <label [for]="'refunded'+o.id" class="form-label mt-2">{{'packages.admin.provider.refundedAmount'|t:{currency:o.currency} }}</label><input [id]="'refunded'+o.id" class="form-control" inputmode="decimal" [ngModel]="refundText(o)" (ngModelChange)="refundInputs[o.id]=$event">
-      <p class="notice">{{'packages.admin.provider.refundedPartial'|t}}</p>
-      @if(refundInvalid(o)){<p class="notice" role="alert">{{'packages.admin.provider.refundedInvalid'|t}}</p>}
-      <div class="item-actions"><button class="btn btn-outline-danger" [disabled]="!ready()||refundInvalid(o)" (click)="confirmRefund(o)">{{'packages.admin.provider.confirmRefund'|t}}</button></div>
-      <p class="notice mt-2">{{'packages.admin.provider.unfreezeHint'|t}}</p>
-      <div class="item-actions"><button class="btn btn-secondary" [disabled]="!ready()||!o.frozenFromStatus" (click)="resolve(o,'unfreeze')">{{'packages.admin.provider.unfreeze'|t}}</button></div>
-      @if(!o.frozenFromStatus){<p class="notice">{{'packages.admin.provider.unfreezeLegacy'|t}}</p>}
+      <p class="notice">{{'packages.pv.confirmRefundHint'|t}}</p>
+      <label [for]="'refunded'+o.id" class="form-label mt-2">{{'packages.pv.refundedAmount'|t:{currency:o.currency} }}</label><input [id]="'refunded'+o.id" class="form-control" inputmode="decimal" [ngModel]="refundText(o)" (ngModelChange)="refundInputs[o.id]=$event">
+      <p class="notice">{{'packages.pv.refundedPartial'|t}}</p>
+      @if(refundInvalid(o)){<p class="notice" role="alert">{{'packages.pv.refundedInvalid'|t}}</p>}
+      <div class="item-actions"><button class="btn btn-outline-danger" [disabled]="!ready()||refundInvalid(o)" (click)="confirmRefund(o)">{{'packages.pv.confirmRefund'|t}}</button></div>
+      <p class="notice mt-2">{{'packages.pv.unfreezeHint'|t}}</p>
+      <div class="item-actions"><button class="btn btn-secondary" [disabled]="!ready()||!o.frozenFromStatus" (click)="resolve(o,'unfreeze')">{{'packages.pv.unfreeze'|t}}</button></div>
+      @if(!o.frozenFromStatus){<p class="notice">{{'packages.pv.unfreezeLegacy'|t}}</p>}
     }@else if(o.status==='paid_needs_review'||o.status==='paid'){<div class="item-actions">
       @if(o.status==='paid_needs_review'){<button class="btn btn-primary" [disabled]="!ready()" (click)="resolve(o,'credit')">{{'packages.admin.credit'|t}}</button>}
       <button class="btn btn-outline-danger" [disabled]="!ready()" (click)="resolve(o,'refund')">{{'packages.admin.approve'|t}}</button></div>}
@@ -147,7 +147,7 @@ export class CommerceAdminComponent implements OnInit{
   orderTone(s:string){return s==='paid'?'success':s==='paid_needs_review'||s==='pending'||s==='partially_refunded'?'warning':s==='failed'?'danger':'neutral';}
   jobTone(s:string){return s==='failed'?'danger':s==='attention'||s==='pending'||s==='running'?'warning':s==='done'?'success':'neutral';}
   frozen(o:ClassOrder){return isFrozenOrder(o);}
-  purchaseStatus(s:string){const k=`packages.admin.provider.purchaseStatus.${s}`;return this.i18n.has(k)?this.i18n.t(k):s;}
+  purchaseStatus(s:string){const k=`packages.purchase.status.${s}`;return this.i18n.has(k)?this.i18n.t(k):s;}
   revoker(r:{revokedBy:{name:string}|number|null}){const b=r.revokedBy;return b&&typeof b==='object'?b.name:b!=null?`#${b}`:'—';}
   verifyReady(){return !this.busy()&&this.checkKeys.every(k=>this.vChecks[k])&&this.guaranteeOptions.includes(this.vDays as number)&&Boolean(this.vReason.trim());}
   revokeReady(){return !this.busy()&&this.rConfirmed&&Boolean(this.rReason.trim());}
