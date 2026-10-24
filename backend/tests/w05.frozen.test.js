@@ -148,3 +148,10 @@ test('regresión: el reembolso que cuadra por webhook sigue igual',async()=>{
   expect(await Ledger.count({where:{purchaseId:w.purchase.id,operation:'refund'}})).toBe(1);
   expect((await Offer.findByPk(w.offer.id)).status).toBe('paid');
 });
+test('tras confirm_refund parcial, liberar una reserva no devuelve saldo disponible a la compra cancelada',async()=>{
+  const w=await paid();await move(w.purchase,'reserve',1);await freeze(w,'partial_refund_pending_validation');
+  expect((await resolve(w,{action:'confirm_refund',reason:'Parcial ficticio',refundedAmount:1})).status).toBe(200);
+  expect((await w.order.reload()).status).toBe('partially_refunded');
+  await move(w.purchase,'release',1);
+  expect(await w.purchase.reload()).toMatchObject({status:'cancelled',unitsAvailable:0,unitsReserved:0,unitsRefunded:4});
+});
