@@ -173,7 +173,7 @@ async function settings(user) {
 }
 async function saveSettings(user, body) {
   if (!only(body, ['salesPaused', 'acceptsInquiries', 'sessionBufferMinutes', 'minLeadTimeHours'])) throw invalid();
-  if (body.salesPaused === false) require('./classPackageProvider').assertSelling();
+  if (body.salesPaused === false) await require('./classPackageProvider').assertSelling();
   const values = {};
   for (const key of ['salesPaused', 'acceptsInquiries']) if (body[key] !== undefined && typeof body[key] !== 'boolean') throw invalid([key]);
   if (body.salesPaused !== undefined) values.salesPausedAt = body.salesPaused ? new Date() : null;

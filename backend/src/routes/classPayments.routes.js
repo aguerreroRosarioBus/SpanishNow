@@ -5,6 +5,7 @@ const {fail}=require('../services/legalDocuments');
 const checkout=require('../services/classCheckout');
 const payments=require('../services/classPayments');
 const review=require('../services/classPaymentReview');
+const provider=require('../services/classPackageProvider');
 require('../services/classPackageJobs');
 const {ClassPackageOrder:Order,PaymentProviderEvent:Event,OutboxJob,AuditLog}=require('../models');
 const wrap=fn=>(req,res,next)=>Promise.resolve(fn(req,res)).catch(next);
@@ -18,6 +19,9 @@ router.get('/admin/class-payments',...secure,requirePermission('class_payments.r
   const events=await Event.findAll({where:{outcome:'needs_review'},order:[['id','DESC']],limit:200});
   res.json({items:items.map(o=>({...checkout.present(o),reportedAmount:o.reportedAmount,reportedCurrency:o.reportedCurrency,providerTransactionId:o.providerTransactionId,providerProductId:o.providerProductId,providerOfferCode:o.providerOfferCode})),events:events.map(e=>({id:Number(e.id),orderId:e.orderId,eventType:e.eventType,payload:e.payload,outcome:e.outcome,createdAt:e.createdAt}))});
 }));
+router.get('/admin/class-provider',...secure,requirePermission('class_provider.verify','class_payments.review'),wrap(async(req,res)=>res.json(await provider.status())));
+router.post('/admin/class-provider/verify',...secure,requirePermission('class_provider.verify'),wrap(async(req,res)=>res.json(await provider.verify(req.user,req.body))));
+router.post('/admin/class-provider/revoke',...secure,requirePermission('class_provider.verify'),wrap(async(req,res)=>res.json(await provider.revoke(req.user,req.body))));
 router.post('/admin/class-payments/:orderId/resolve',...secure,requirePermission('class_payments.review'),wrap(async(req,res)=>res.json(await review.resolve(req.user,req.params.orderId,req.body))));
 const JOB_TOPICS=['payment.refund','review.class_payment','review.package_refund','review.incomplete_group','review.refunded_with_reservations','email.purchase_confirmed'];
 router.get('/admin/class-payment-jobs',...secure,requirePermission('class_payments.review'),wrap(async(req,res)=>{

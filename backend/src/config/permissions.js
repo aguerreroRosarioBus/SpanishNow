@@ -48,6 +48,11 @@ const PERMISSIONS = Object.freeze([
     description: 'Ver el estado de Calendar y Zoom de las clases, reintentar sincronizaciones y reenviar invitaciones. No da el enlace de anfitrión.'
   },
   {
+    key: 'class_provider.verify',
+    label: 'Proveedor de cobro de clases',
+    description: 'Marcar como verificada o revocar la cuenta de Hotmart que cobra los paquetes de clases. Habilita o bloquea las ventas reales.'
+  },
+  {
     key: 'chat.moderate',
     label: 'Moderación del chat',
     description: 'Ver solo los mensajes reportados y ocultarlos con motivo; cada lectura queda registrada. No da acceso general a conversaciones privadas.'

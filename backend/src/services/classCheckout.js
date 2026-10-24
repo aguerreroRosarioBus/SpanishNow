@@ -26,7 +26,7 @@ async function status(user,id){
 async function start(user,id,idempotencyKey,body={}){
   offers.key(idempotencyKey);
   const ref=await buyerOffer(user,id);
-  require('./classPackageProvider').assertSelling();
+  await require('./classPackageProvider').assertSelling();
   payments.assertSafe();
   return sequelize.transaction(async transaction=>{
     await offers.teacherSettings(ref.teacherId,transaction,{selling:true});
