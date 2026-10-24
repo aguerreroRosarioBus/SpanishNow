@@ -1,0 +1,38 @@
+@use '../app/shared/styles/pilot-controls' as pilot;
+
+// Solo las pantallas y overlays del piloto adoptan este contrato de controles.
+.pilot-ui, .pilot-dialog, .pilot-editor { @include pilot.controls; }
+.pilot-dialog, .pilot-editor {
+  font-family: var(--font-body);
+  color: var(--color-text);
+  background: #fff;
+  border: 1px solid var(--color-border);
+  box-shadow: 0 20px 64px #2b211c26;
+  .p-dialog-header, .p-drawer-header { padding: 24px 24px 16px; gap: 16px; }
+  .p-dialog-title, .p-drawer-title { font: 600 1.125rem/1.35 var(--font-heading); }
+  .p-dialog-content, .p-drawer-content { padding: 0 24px 24px; }
+  label:not(.form-label):not(:has(input[type='checkbox'])) { display: grid; gap: 6px; margin: 16px 0; font-size: 0.8125rem; font-weight: 600; }
+  label:has(input[type='checkbox']) { display: flex; align-items: flex-start; gap: 8px; margin: 16px 0; font-size: 0.875rem; }
+  input[type='checkbox'] { margin-top: 4px; flex: none; }
+  .dialog-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--color-divider); }
+  .notice { color: var(--color-text-light); font-size: 0.8125rem; }
+  .alert { font-size: 0.875rem; }
+}
+.pilot-dialog { width: min(560px, calc(100vw - 32px)); border-radius: 16px; max-height: calc(100dvh - 32px); }
+.pilot-editor { width: min(720px, 100vw); }
+.pilot-sheet { margin: 0 !important; height: 100dvh; max-height: 100dvh; border-radius: 0; }
+.pilot-sheet .p-dialog-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 16px 24px; border-top: 1px solid var(--color-divider); }
+.zone-search p-autocomplete, .zone-search .p-autocomplete { display: flex; width: 100%; }
+.zone-search .pilot-zone-input { width: 100%; height: var(--control-height, 48px); padding-left: 40px; font: inherit; font-size: .875rem; }
+.pilot-zone-panel { width: min(440px, calc(100vw - 32px)) !important; min-width: 0 !important; border: 1px solid var(--color-border); border-radius: 10px; box-shadow: var(--shadow-menu); }
+.pilot-zone-panel .p-autocomplete-list { padding: 6px; }
+.pilot-zone-panel .p-autocomplete-option { padding: 10px 12px; min-height: 56px; border-radius: 6px; }
+.pilot-zone-panel .p-autocomplete-option[aria-selected='true'], .pilot-zone-panel .p-autocomplete-option.p-focus { background: var(--color-primary-soft); color: var(--color-text); }
+.pilot-dialog .p-dialog-header-actions { align-self: flex-start; }
+@media (max-width: 600px) {
+  .pilot-dialog .p-dialog-header, .pilot-editor .p-drawer-header { padding: 20px 16px 12px; }
+  .pilot-dialog .p-dialog-content, .pilot-editor .p-drawer-content { padding: 0 16px 20px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pilot-dialog, .pilot-editor, .p-dialog-mask, .p-drawer-mask { animation: none !important; transition: none !important; }
+}

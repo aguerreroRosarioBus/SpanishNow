@@ -223,7 +223,7 @@ describe('W06: interfaz conectada por contratos de agenda', () => {
         expect(labels).toContain('Rechazar');
         expect(cancelButton(fixture)).toBeUndefined();
         open(fixture, 'decline');
-        expect(fixture.nativeElement.querySelector('[data-testid="decline-hint"]')?.textContent).toContain('no se usa ninguna clase'); fixture.destroy();
+        expect(document.body.querySelector('[data-testid="decline-hint"]')?.textContent).toContain('no se usa ninguna clase'); fixture.destroy();
       });
       it('cambio de horario de una clase confirmada: ambas acciones y el texto explica que cancelar anula la clase confirmada', () => {
         const base = confirmed(ready);
@@ -232,22 +232,22 @@ describe('W06: interfaz conectada por contratos de agenda', () => {
         expect(cancelButton(fixture)).toBeTruthy();
         expect(fixture.nativeElement.textContent).toContain('Rechazar');
         open(fixture, 'decline');
-        expect(fixture.nativeElement.querySelector('[data-testid="decline-hint"]')?.textContent).toContain('la clase sigue en su horario actual');
+        expect(document.body.querySelector('[data-testid="decline-hint"]')?.textContent).toContain('la clase sigue en su horario actual');
         open(fixture, 'cancel');
-        expect(fixture.nativeElement.querySelector('[data-testid="cancel-hint"]')?.textContent).toContain('cancela la clase confirmada'); fixture.destroy();
+        expect(document.body.querySelector('[data-testid="cancel-hint"]')?.textContent).toContain('cancela la clase confirmada'); fixture.destroy();
       });
       it('propuesta inicial de clase en grupo: ambas acciones, con el texto que explica la diferencia', () => {
         const group = { ...session(), kind: 'group', status: 'forming' };
         const fixture = render(group);
         expect(cancelButton(fixture)).toBeTruthy();
         open(fixture, 'cancel');
-        expect(fixture.nativeElement.querySelector('[data-testid="cancel-hint"]')?.textContent).toContain('te quita de la clase en grupo'); fixture.destroy();
+        expect(document.body.querySelector('[data-testid="cancel-hint"]')?.textContent).toContain('te quita de la clase en grupo'); fixture.destroy();
       });
       it('sin propuesta que responder (clase confirmada) «Cancelar clase» sigue disponible y sin texto extra', () => {
         const fixture = render(confirmed(ready));
         expect(cancelButton(fixture)).toBeTruthy();
         open(fixture, 'cancel');
-        expect(fixture.nativeElement.querySelector('[data-testid="cancel-hint"]')).toBeNull(); fixture.destroy();
+        expect(document.body.querySelector('[data-testid="cancel-hint"]')).toBeNull(); fixture.destroy();
       });
     });
     it('«Reintentar sincronización» solo aparece si falta sincronizar algo, y solo para la docente', () => {
@@ -278,6 +278,7 @@ describe('W06: interfaz conectada por contratos de agenda', () => {
 
   it('el campo de zona IANA usa el ancho disponible (sin w-auto) para leerse completo en pantallas angostas', () => {
     const fixture = TestBed.createComponent(ScheduleComponent); fixture.detectChanges();
+    fixture.componentInstance.zoneEditorOpen.set(true); fixture.detectChanges();
     const input = fixture.nativeElement.querySelector('#scheduleZone') as HTMLInputElement;
     expect(input.closest('app-time-zone-select')).toBeTruthy(); expect(input.getAttribute('role')).toBe('combobox'); expect(input.classList.contains('w-auto')).toBe(false);
     fixture.destroy();
@@ -295,8 +296,8 @@ describe('W06: interfaz conectada por contratos de agenda', () => {
       const el = fixture.nativeElement as HTMLElement;
       expect(el.querySelector('[data-testid="schedule-form"]')).toBeNull();
       (el.querySelector('[data-testid="open-schedule-form"]') as HTMLButtonElement).click(); fixture.detectChanges();
-      expect(el.querySelector('[data-testid="schedule-form"]')).toBeTruthy();
-      expect(el.querySelector('[data-testid="open-schedule-form"]')).toBeNull();
+      expect(document.body.querySelector('[data-testid="schedule-form"]')).toBeTruthy();
+      expect((el.querySelector('[data-testid="open-schedule-form"]') as HTMLButtonElement).disabled).toBe(true);
       fixture.componentInstance.closeForm(); fixture.detectChanges();
       expect(el.querySelector('[data-testid="schedule-form"]')).toBeNull(); fixture.destroy();
     });

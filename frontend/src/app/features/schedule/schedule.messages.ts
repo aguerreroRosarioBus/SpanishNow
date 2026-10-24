@@ -1,5 +1,10 @@
 import { TranslationCatalog } from '../../core/i18n/i18n.types';
 const pairs: Record<string, [string, string]> = {
+  'ui.changeZone': ['Change', 'Cambiar'],
+  'ui.cancelEdit': ['Cancel', 'Cancelar'],
+  'ui.zoneResults': ['{0} time zones found', '{0} zonas horarias encontradas'],
+  'ui.modality': ['Class type', 'Modalidad'],
+  'ui.proposeHint': ['Choose a student or group, the purchased classes and a time. The proposal is sent for confirmation; it does not confirm the class automatically.', 'Elegí un alumno o grupo, las clases compradas y un horario. La propuesta se envía para confirmar; no confirma la clase automáticamente.'],
   'errors.attendance_charge_review_required': ['This correction would add a charge. Request a reviewed adjustment before changing it.', 'Esta corrección agregaría un cargo. Solicitá un ajuste revisado antes de cambiarla.'],
   'errors.no_session_charge_to_waive': ['This class has no outstanding charge to return.', 'Esta clase no tiene un cargo pendiente de devolución.'],
   'errors.compensation_already_recorded': ['Validity compensation for this class and purchase is already recorded.', 'La compensación de vigencia de esta clase y compra ya está registrada.'],

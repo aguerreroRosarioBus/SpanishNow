@@ -173,7 +173,15 @@ export class TutorialService {
       // del motor. También funciona si no hay un render de Angular (diálogo editor).
       this.focusFrame = view?.requestAnimationFrame(() => {
         this.focusFrame = view.requestAnimationFrame(() => {
-          if (!this.active() && trigger.isConnected) trigger.focus({ preventScroll: true });
+          if (!this.active() && trigger.isConnected) {
+            // Si la práctica abrió un panel modal, la guía termina dentro de ese panel.
+            // No mandar el foco a la ayuda que quedó detrás de su máscara.
+            const modal = visibleTarget(this.document.documentElement, '[role="dialog"][aria-modal="true"]');
+            const destination = modal && !modal.contains(trigger)
+              ? modal.querySelector<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])') ?? modal
+              : trigger;
+            destination.focus({ preventScroll: true });
+          }
         });
       });
     }

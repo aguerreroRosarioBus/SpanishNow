@@ -1,4 +1,4 @@
-<article class="schedule-card" [class.is-inactive]="inactive()" [attr.data-status]="session()?.status" data-testid="session-card">
+<article class="schedule-card pilot-ui" [class.is-inactive]="inactive()" [attr.data-status]="session()?.status" data-testid="session-card">
   @if (loading() && !session()) { <p role="status">{{ 'schedule.loading' | t }}</p> }
   @if (error()) { <div class="alert alert-danger d-flex justify-content-between align-items-center gap-2" role="alert">{{ error() }}<button type="button" class="btn btn-secondary btn-sm" (click)="refresh()" [disabled]="busy()">{{ 'schedule.tryAgain' | t }}</button></div> }
   @if (session(); as s) {
@@ -42,12 +42,15 @@
     </div>
     @if (meetingNotReady()) { <p class="notice" role="status">{{ 'schedule.meetingNotReady' | t }}</p> }
     @if (decision(); as action) {
-      <fieldset data-testid="session-confirmation"><legend>{{ ('schedule.' + action) | t }}</legend>
+      <p-dialog appRestoreFocus [visible]="true" (visibleChange)="!$event && closeDecision()" [header]="('schedule.' + action) | t"
+        [modal]="true" [draggable]="false" [resizable]="false" [blockScroll]="true" [closable]="!busy()" [closeOnEscape]="!busy()"
+        [closeAriaLabel]="'schedule.back' | t" appendTo="body" styleClass="pilot-dialog">
+      <div data-testid="session-confirmation">
+      @if (error()) { <p class="alert alert-danger" role="alert">{{ error() }}</p> }
       @if (action === 'accept' || action === 'decline') {
         @if (selectedProposal(); as p) { <app-session-time [interval]="p" [recipientZone]="zone()" [teacherZone]="s.teacher.timeZone || s.timeZone" /> }
         @if (action === 'decline') { <p class="notice" data-testid="decline-hint">{{ (selectedProposal()?.kind === 'reschedule' ? 'schedule.declineHintReschedule' : 'schedule.declineHintInitial') | t }}</p> }
         @if (action === 'accept') { <label><input type="checkbox" [(ngModel)]="acknowledge" /> {{ 'schedule.acknowledge' | t }}</label> }
-        <button type="button" class="btn btn-primary btn-sm" (click)="respond()" [disabled]="busy() || (action === 'accept' && !acknowledge)">{{ 'schedule.confirm' | t }}</button>
       } @else {
         @if (cancelHint(); as hint) { <p class="notice" data-testid="cancel-hint">{{ hint | t }}</p> }
         <p>{{ (lateCancel() ? 'schedule.lateCancel' : 'schedule.freeCancellation') | t }}</p>
@@ -58,9 +61,17 @@
           <label>{{ 'schedule.waive' | t }}<input class="form-control" [(ngModel)]="waiver" maxlength="500" /></label>
           @if (s.groupResolutionRequired) { <button type="button" class="btn btn-secondary btn-sm me-2" (click)="keepGroup()" [disabled]="busy() || reason.trim().length < 3">{{ 'schedule.keepGroup' | t }}</button> }
         }
-        <button type="button" class="btn btn-secondary btn-sm" (click)="cancel()" [disabled]="busy() || reason.trim().length < 3 || (lateCancel() && !acknowledge)">{{ 'schedule.confirm' | t }}</button>
       }
-      <button type="button" class="btn btn-ghost btn-sm ms-2" (click)="decision.set(null)" [disabled]="busy()">{{ 'schedule.back' | t }}</button></fieldset>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-secondary" (click)="closeDecision()" [disabled]="busy()">{{ 'schedule.back' | t }}</button>
+        @if (action === 'cancel') {
+          <button type="button" class="btn btn-danger" (click)="cancel()" [disabled]="busy() || reason.trim().length < 3 || (lateCancel() && !acknowledge)">{{ 'schedule.cancel' | t }}</button>
+        } @else {
+          <button type="button" class="btn btn-primary" (click)="respond()" [disabled]="busy() || (action === 'accept' && !acknowledge)">{{ 'schedule.confirm' | t }}</button>
+        }
+      </div>
+      </div>
+      </p-dialog>
     }
     @if (teacher() && (s.status === 'confirmed' || (canAdjust() && ['completed','teacher_no_show','student_no_show'].includes(s.status)))) {
       <details class="card-details"><summary>{{ 'schedule.attendance' | t }}</summary>

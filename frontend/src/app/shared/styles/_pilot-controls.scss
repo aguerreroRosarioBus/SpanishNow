@@ -1,0 +1,19 @@
+// Contrato del piloto: misma altura para controles y acciones que comparten fila.
+@mixin controls {
+  --control-height: 40px;
+  --control-label-height: 24px;
+
+  .btn:not(.btn-sm):not(.btn-lg),
+  .form-control:not(textarea),
+  .form-select {
+    height: var(--control-height);
+    min-height: var(--control-height);
+    font-size: 0.875rem;
+  }
+
+  .form-label { font-weight: 600; }
+  .form-control, .form-select { border-color: #d9d2cc; }
+  textarea.form-control { min-height: 88px; font-size: 0.875rem; }
+  .control-row { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 12px; }
+  .control-row__action { margin-top: var(--control-label-height); }
+}

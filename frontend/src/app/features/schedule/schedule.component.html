@@ -1,12 +1,13 @@
-<div class="page-container schedule-page">
+<div class="page-container schedule-page pilot-ui">
   <div class="page-header">
     <h1 class="page-title">{{ 'schedule.title' | t }}</h1>
-    @if (teacher() && features.enabled('class_scheduling') && !formOpen() && !editing()) {
+    @if (teacher() && features.enabled('class_scheduling')) {
       <div class="page-actions">
         <button
           type="button"
           class="btn btn-primary"
           (click)="openForm()"
+          [disabled]="formOpen() || !!editing()"
           data-testid="open-schedule-form"
         >
           {{ 'schedule.new' | t }}
@@ -14,6 +15,18 @@
       </div>
     }
   </div>
+  @if (zoneConfirmed() && !zoneEditorOpen()) {
+    <section class="zone-box zone-saved" aria-labelledby="zoneSummaryTitle">
+      <span class="zone-mark"><app-icon name="clock" [size]="20" /></span>
+      <div class="zone-summary">
+        <h2 id="zoneSummaryTitle">{{ 'visual.zone' | t }}</h2>
+        <p>{{ preferences.preferences()?.timeZone }}</p>
+      </div>
+      <span class="zone-badge"><app-icon name="circle-check" [size]="14" />{{ 'visual.zoneSaved' | t }}</span>
+      <button type="button" class="btn btn-secondary" (click)="zoneEditorOpen.set(true)" data-testid="change-zone">{{ 'schedule.ui.changeZone' | t }}</button>
+    </section>
+  }
+  @if (zoneEditorOpen() || !zoneConfirmed()) {
   <section class="zone-box" aria-labelledby="zoneTitle">
     <div class="zone-heading">
       <span class="zone-mark"><app-icon name="clock" [size]="22" /></span>
@@ -33,18 +46,24 @@
     <div class="zone-controls">
       <app-time-zone-select
         inputId="scheduleZone"
+        variant="pilot"
         [value]="zoneInput()"
         (valueChange)="zoneInput.set($event)"
         [disabled]="preferences.saving()"
       />
+      <div class="zone-edit-actions">
       <button
         type="button"
         class="btn btn-primary"
         (click)="confirmZone()"
-        [disabled]="!zoneInput() || preferences.saving()"
+        [disabled]="!zoneInput() || preferences.saving() || zoneConfirmed()"
       >
         <app-icon name="check" [size]="16" />{{ 'schedule.confirmZone' | t }}
       </button>
+      @if (preferences.preferences()?.timeZoneConfirmedAt) {
+        <button type="button" class="btn btn-secondary" (click)="cancelZoneEdit()" [disabled]="preferences.saving()">{{ 'schedule.ui.cancelEdit' | t }}</button>
+      }
+      </div>
     </div>
     @if (deviceZone && deviceZone !== preferences.preferences()?.timeZone) {
       <button
@@ -63,6 +82,7 @@
       </button>
     }
   </section>
+  }
   @if (error()) {
     <div class="alert alert-danger" role="alert">
       {{ error() }}
@@ -70,12 +90,17 @@
     </div>
   }
   @if (teacher() && features.enabled('class_scheduling') && (formOpen() || editing())) {
-    <form class="schedule-form" (ngSubmit)="submit()" data-testid="schedule-form">
-      <h2>{{ (editing() ? 'schedule.reschedule' : 'schedule.new') | t }}</h2>
+    <p-dialog appRestoreFocus [visible]="true" (visibleChange)="!$event && closeScheduleEditor()" position="right" appendTo="self"
+      [header]="(editing() ? 'schedule.reschedule' : 'schedule.new') | t" [closeAriaLabel]="'schedule.ui.cancelEdit' | t"
+      [modal]="true" [draggable]="false" [resizable]="false" [blockScroll]="true" [closeOnEscape]="!busy()" [closable]="!busy()" styleClass="pilot-editor pilot-sheet">
+    <form id="scheduleProposalForm" class="schedule-form" (ngSubmit)="submit()" data-testid="schedule-form">
+      <p class="editor-hint">{{ 'schedule.ui.proposeHint' | t }}</p>
+      @if (error()) { <p class="alert alert-danger" role="alert">{{ error() }}</p> }
       @if (options(); as opts) {
         @if (!editing()) {
+          <div class="selection-fields">
           <label
-            >{{ 'schedule.group' | t
+            >{{ 'schedule.ui.modality' | t
             }}<select
               class="form-select"
               name="cohort"
@@ -128,6 +153,7 @@
               {{ 'schedule.expires' | t }}: {{ i18n.formatInstant(g.formingDeadlineAt, zone()) }}
             </p>
           }
+          </div>
         }
       }
       <div class="fields">
@@ -144,6 +170,7 @@
         <app-time-zone-select
           class="programming-zone"
           inputId="programmingZone"
+          variant="pilot"
           [label]="'schedule.programmingZone' | t"
           [value]="draft().timeZone"
           (valueChange)="patch({ timeZone: $event })"
@@ -235,9 +262,13 @@
         /></label>
         <p class="small">{{ 'schedule.original' | t }}</p>
       }
+    </form>
+    <ng-template #footer>
+      <button type="button" class="btn btn-secondary" (click)="closeScheduleEditor()" [disabled]="busy()">{{ 'schedule.ui.cancelEdit' | t }}</button>
       <button
         type="submit"
-        class="btn btn-primary btn-sm"
+        form="scheduleProposalForm"
+        class="btn btn-primary"
         [disabled]="
           busy() ||
           !zoneReady() ||
@@ -247,14 +278,8 @@
       >
         {{ (editing() ? 'schedule.reschedule' : 'schedule.new') | t }}
       </button>
-      <button
-        type="button"
-        class="btn btn-ghost btn-sm ms-2"
-        (click)="editing() ? stopEditing() : closeForm()"
-      >
-        {{ 'schedule.back' | t }}
-      </button>
-    </form>
+    </ng-template>
+    </p-dialog>
   }
   @if (notices().length) {
     <section class="zone-box">
@@ -309,9 +334,9 @@
         /></label>
       </div>
       <div class="date-actions">
-        <button type="submit" class="btn btn-primary btn-sm">{{ 'schedule.apply' | t }}</button>
+        <button type="submit" class="btn btn-primary">{{ 'schedule.apply' | t }}</button>
         @if (fromDate || toDate) {
-          <button type="button" class="btn btn-ghost btn-sm" (click)="clearDates()">
+          <button type="button" class="btn btn-ghost" (click)="clearDates()">
             {{ 'visual.clear' | t }}
           </button>
         }

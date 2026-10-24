@@ -7,12 +7,18 @@ import { EXPECTATION_FIELDS } from '../legal/legal.model';
 import { PackagesService } from './packages.service';
 import { ClassSettings, PackageTemplate } from './packages.model';
 import { PackageOrientationComponent } from './package-orientation.component';
+import { DialogModule } from 'primeng/dialog';
+import { NgbDropdownModule } from '@ng-bootstrap/ng-bootstrap';
+import { IconComponent } from '../../shared/components/icon/icon.component';
+import { PilotTheme } from '../../shared/styles/primeng-theme';
+import { RestoreFocusDirective } from '../../shared/directives/restore-focus.directive';
 const editable = ['nameEn','nameEs','descriptionEn','descriptionEs','modality','groupSize','billing','sessionsCount','minutesPerSession','seatsCovered','priceAmount','currency','validityHours','policyVersionId','hotmartProductId','hotmartOfferCode','hotmartCheckoutUrl'] as const;
 @Component({
-  selector:'app-package-catalog', standalone:true, imports:[TranslatePipe,FormsModule,ReactiveFormsModule,PackageOrientationComponent],
-  templateUrl:'./package-catalog.component.html'
+  selector:'app-package-catalog', standalone:true, imports:[TranslatePipe,FormsModule,ReactiveFormsModule,PackageOrientationComponent,DialogModule,NgbDropdownModule,IconComponent,RestoreFocusDirective],
+  templateUrl:'./package-catalog.component.html', styleUrl:'./package-catalog.component.scss'
 })
 export class PackageCatalogComponent implements OnInit {
+  private readonly pilotTheme = inject(PilotTheme);
   private api = inject(PackagesService);
   readonly i18n = inject(I18nService);
   private fb = inject(FormBuilder);
@@ -27,6 +33,7 @@ export class PackageCatalogComponent implements OnInit {
   private failure = signal<unknown>(null);
   error = computed(()=> this.failure() ? this.api.error(this.failure()) : '');
   saved = signal(false);
+  closeEditor() { if (!this.busy()) this.selected.set(null); }
   readonly form: FormGroup = this.fb.group({
     ...Object.fromEntries(editable.map(k=>[k,['',k.startsWith('name') ? Validators.required : []]])),
     expectations:this.fb.group(Object.fromEntries(this.locales.map(l=>[l,this.fb.group(Object.fromEntries(EXPECTATION_FIELDS.map(k=>[k,['',Validators.maxLength(4000)]])))])))

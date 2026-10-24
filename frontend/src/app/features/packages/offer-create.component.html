@@ -1,0 +1,79 @@
+<div class="page-container offer-create-page pilot-ui">
+  <a class="offer-back" [routerLink]="['/messages',conversationId]"><app-icon name="arrow-left" [size]="16" />{{ 'packages.offer.back' | t }}</a>
+  <header class="page-header">
+    <div class="page-header__main">
+      <p class="eyebrow">{{ 'packages.ui.teacherWorkspace' | t }}</p>
+      <h1 class="page-title">{{ 'packages.offer.send' | t }}</h1>
+      <p class="page-summary">{{ 'packages.ui.sendHint' | t }}</p>
+    </div>
+  </header>
+  @if (error()) { <p role="alert" class="alert alert-danger">{{ error() }}</p> }
+  @if (busy() && !loaded()) { <p role="status">{{ 'packages.loading' | t }}</p> }
+  @if (loaded()) {
+    <section class="recipient-strip" aria-labelledby="recipientTitle">
+      <span class="recipient-avatar"><app-icon name="user" [size]="20" /></span>
+      <div><h2 id="recipientTitle">{{ 'packages.ui.offerFor' | t }}</h2><p>{{ recipient() }}</p></div>
+      <span class="recipient-channel"><app-icon name="message-square" [size]="15" />{{ 'packages.ui.privateConversation' | t }}</span>
+    </section>
+    @if (!items().length && !selected()) {
+      <section class="state-box offer-empty" data-testid="offer-empty" role="status">
+        <h2 class="h5 mb-0">{{ 'packages.offer.emptyTitle' | t }}</h2>
+        <p class="mb-0">{{ 'packages.offer.catalogHint' | t }}</p>
+        @if (incomplete()) { <p class="alert alert-warning mb-0" role="status">{{ 'packages.offer.incomplete' | t:{count:incomplete()} }}</p> }
+        <p class="mb-0">{{ 'packages.offer.emptyReturn' | t:{name:recipient()} }}</p>
+        <div class="empty-actions">
+          <a class="btn btn-primary" routerLink="/teacher/class-packages">{{ 'packages.offer.openCatalog' | t }}</a>
+          <button type="button" class="btn btn-secondary" (click)="reload()" [disabled]="busy()">{{ 'packages.offer.reload' | t }}</button>
+          <a class="btn btn-ghost" [routerLink]="['/messages',conversationId]">{{ 'packages.offer.back' | t }}</a>
+        </div>
+      </section>
+    } @else {
+      <section class="package-picker">
+        <label for="packageChoice" class="form-label">{{ 'packages.offer.choose' | t }}</label>
+        <select id="packageChoice" class="form-select" [ngModel]="selectedId()" (ngModelChange)="select($event)" [disabled]="busy()">
+          <option [ngValue]="0">{{ 'packages.offer.choose' | t }}</option>
+          @for (p of items(); track p.id) { <option [ngValue]="p.id">{{ name(p) }}</option> }
+        </select>
+        @if (!selected()) { <p class="picker-hint">{{ 'packages.ui.selectPreview' | t }}</p> }
+      </section>
+    }
+    @if (selected(); as p) {
+      <div class="create-layout">
+        <article class="offer-preview">
+          <header class="preview-heading"><span class="eyebrow">{{ 'packages.ui.packageSummary' | t }}</span><h2>{{ name(p) }}</h2></header>
+          <dl class="preview-facts">
+            <div><dt>{{ 'packages.field.sessionsCount' | t }}</dt><dd>{{ p.current.sessionsCount }} × {{ p.current.minutesPerSession }} min</dd></div>
+            <div><dt>{{ 'packages.ui.seats' | t }}</dt><dd>{{ p.current.seatsCovered }}</dd></div>
+            <div><dt>{{ 'packages.ui.validity' | t }}</dt><dd>{{ i18n.formatNumber(p.current.validityHours) }} h <small>{{ 'packages.ui.fromPayment' | t }}</small></dd></div>
+          </dl>
+          @if (expectationEntries().length) {
+            <section class="preview-section"><h3>{{ 'packages.ui.includes' | t }}</h3>
+              <dl class="preview-expectations">@for (entry of expectationEntries(); track entry.field) {
+                <div><dt>{{ ('packages.expectations.'+entry.field) | t }}</dt><dd>{{ entry.text }}</dd></div>
+              }</dl>
+            </section>
+          }
+          <section class="preview-section"><h3>{{ 'packages.ui.agreedConditions' | t }}</h3>
+            @if (p.policy?.rules?.refundWindowHours; as hours) {
+              <p>{{ (p.policy?.rules?.refundMode==='full_unused_then_review' ? 'packages.refund.policy' : 'packages.refund.legacy') | t:{hours} }}</p>
+            }
+            <p>{{ 'packages.ui.policyOnOffer' | t }}</p>
+            @if(cohortId) { <p>{{ 'packages.group.paymentScope' | t:{seats:p.current.seatsCovered} }}</p> }
+          </section>
+        </article>
+        <aside class="send-summary" aria-labelledby="sendSummaryTitle">
+          <h2 id="sendSummaryTitle">{{ 'packages.ui.beforeSend' | t }}</h2>
+          <p class="summary-label">{{ 'packages.ui.totalPrice' | t }}</p>
+          <p class="summary-price">{{ i18n.formatMoney(p.current.priceAmount,p.current.currency) }}</p>
+          <p class="summary-payment">{{ 'packages.ui.onePayment' | t }}</p>
+          <div class="summary-recipient"><span>{{ 'packages.ui.offerFor' | t }}</span><strong>{{ recipient() }}</strong></div>
+          <p class="send-notice"><app-icon name="info" [size]="16" />{{ 'packages.offer.review' | t }}</p>
+          <div class="send-actions">
+            <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="send()">{{ 'packages.offer.confirmSend' | t }}<app-icon name="arrow-right" [size]="16" /></button>
+            <a class="btn btn-secondary" [routerLink]="['/messages',conversationId]">{{ 'packages.close' | t }}</a>
+          </div>
+        </aside>
+      </div>
+    }
+  }
+</div>

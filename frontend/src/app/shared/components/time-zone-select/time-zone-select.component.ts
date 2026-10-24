@@ -5,6 +5,8 @@ import { Observable, Subject, map, merge } from 'rxjs';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { IconComponent } from '../icon/icon.component';
+import { AutoCompleteModule, AutoCompleteCompleteEvent } from 'primeng/autocomplete';
+import { PilotTheme } from '../../styles/primeng-theme';
 
 /** La selección conserva el identificador IANA. Intl se usa solo para presentación. */
 export function zoneLabel(zone: string): string {
@@ -60,11 +62,24 @@ export function matchingZones(zones: string[], query: string): string[] {
 @Component({
   selector: 'app-time-zone-select',
   standalone: true,
-  imports: [FormsModule, NgbTypeahead, TranslatePipe, IconComponent],
+  imports: [FormsModule, NgbTypeahead, TranslatePipe, IconComponent, AutoCompleteModule],
   template: `
     <label class="form-label" [for]="inputId()">{{ label() || ('visual.zone' | t) }}</label>
     <div class="zone-search">
       <app-icon name="search" [size]="18" />
+      @if (variant() === 'pilot') {
+        <p-autocomplete [inputId]="inputId()" [(ngModel)]="pilotModel" [ngModelOptions]="{ standalone: true }"
+          (ngModelChange)="edit()" [suggestions]="suggestions()" (completeMethod)="completePilot($event)"
+          optionLabel="label" [forceSelection]="true" [completeOnFocus]="true" [minLength]="0" [delay]="120"
+          [disabled]="disabled()" [placeholder]="'visual.zoneSearch' | t" [emptyMessage]="'visual.zoneEmpty' | t"
+          [searchMessage]="'schedule.ui.zoneResults' | t" [emptySelectionMessage]="'visual.zoneSelect' | t"
+          [ariaLabel]="label() || ('visual.zone' | t)" inputStyleClass="form-control pilot-zone-input"
+          (onSelect)="selectPilot($event.value.zone)" appendTo="body" panelStyleClass="pilot-zone-panel" scrollHeight="260px">
+          <ng-template #item let-option>
+            <div class="zone-option"><span class="zone-result"><strong>{{ city(option.zone) }}</strong><span>{{ offset(option.zone) }}</span></span><small class="zone-iana">{{ option.zone }}</small></div>
+          </ng-template>
+        </p-autocomplete>
+      } @else {
       <input
         class="form-control"
         [id]="inputId()"
@@ -86,6 +101,7 @@ export function matchingZones(zones: string[], query: string): string[] {
         container="body"
         [popupClass]="'zone-options'"
       />
+      }
     </div>
     <ng-template #result let-zone="result">
       <span class="zone-result"
@@ -107,6 +123,8 @@ export function matchingZones(zones: string[], query: string): string[] {
       min-width: 0;
     }
     .form-label {
+      display: block;
+      line-height: 18px;
       font-size: 0.8125rem;
       font-weight: 600;
       margin: 0 0 6px;
@@ -117,14 +135,16 @@ export function matchingZones(zones: string[], query: string): string[] {
     .zone-search > app-icon {
       position: absolute;
       left: 13px;
-      top: 15px;
+      top: 50%;
+      transform: translateY(-50%);
       pointer-events: none;
       color: var(--color-text-light);
       z-index: 1;
     }
     input.form-control {
       padding-left: 40px;
-      min-height: 48px;
+      height: var(--control-height, 48px);
+      min-height: var(--control-height, 48px);
       font-size: 0.875rem;
     }
     .zone-help {
@@ -138,6 +158,7 @@ export function matchingZones(zones: string[], query: string): string[] {
       justify-content: space-between;
       font-size: 0.875rem;
     }
+    .zone-option { width: 100%; min-width: 0; }
     .zone-result span {
       color: var(--color-text-light);
       font-size: 0.8125rem;
@@ -150,13 +171,18 @@ export function matchingZones(zones: string[], query: string): string[] {
   `,
 })
 export class TimeZoneSelectComponent {
+  private readonly pilotTheme = inject(PilotTheme);
   readonly i18n = inject(I18nService);
   inputId = input.required<string>();
   label = input('');
   value = input('');
   disabled = input(false);
+  variant = input<'default' | 'pilot'>('default');
   valueChange = output<string>();
   model: string | null = null;
+  pilotModel: { zone: string; label: string } | string | null = null;
+  suggestions = signal<{ zone: string; label: string }[]>([]);
+  private lastSelected = '';
   editing = signal(false);
   hasMatches = signal(true);
   readonly focus = new Subject<string>();
@@ -187,6 +213,8 @@ export class TimeZoneSelectComponent {
       this.i18n.locale();
       if (value) {
         this.model = value;
+        this.lastSelected = value;
+        this.pilotModel = { zone: value, label: this.format(value) };
         this.editing.set(false);
       }
     });
@@ -199,4 +227,14 @@ export class TimeZoneSelectComponent {
     this.editing.set(false);
     this.valueChange.emit(event.item);
   }
+  completePilot(event: AutoCompleteCompleteEvent): void {
+    const query = event.query.trim();
+    const initial = !query || query === this.format(this.lastSelected);
+    const zones = initial
+      ? [...new Set([this.lastSelected, this.deviceZone, ...fallbackZones].filter(Boolean))].slice(0, 8)
+      : matchingZones(this.zones(), query).slice(0, 8);
+    this.hasMatches.set(zones.length > 0);
+    this.suggestions.set(zones.map(zone => ({ zone, label: this.format(zone) })));
+  }
+  selectPilot(zone: string): void { this.editing.set(false); this.valueChange.emit(zone); }
 }
