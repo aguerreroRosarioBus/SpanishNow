@@ -11,12 +11,14 @@ import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { Disambiguation, LocalIntent, TimeError, isTimeZone, resolveLocalIntent } from '../../core/time/class-time';
 import { ClassSessionCardComponent } from './class-session-card.component';
+import { TimeZoneSelectComponent } from '../../shared/components/time-zone-select/time-zone-select.component';
+import { IconComponent } from '../../shared/components/icon/icon.component';
 import { SessionTimeComponent } from './session-time.component';
 
 interface Draft { localStart: string; timeZone: string; offset: string; disambiguation: Disambiguation; minutes: number }
-@Component({ selector: 'app-schedule', standalone: true, imports: [FormsModule, RouterLink, TranslatePipe, ClassSessionCardComponent, SessionTimeComponent],
+@Component({ selector: 'app-schedule', standalone: true, imports: [FormsModule, RouterLink, TranslatePipe, ClassSessionCardComponent, SessionTimeComponent, TimeZoneSelectComponent, IconComponent],
   templateUrl: './schedule.component.html',
-  styles: [`.schedule-page{max-width:1000px;margin:0 auto}.schedule-form,.zone-box{padding:1rem;border:1px solid var(--color-border,#ddd);border-radius:var(--radius-md,10px);margin-bottom:1rem;background:var(--color-surface,#fff)}label{display:block;margin:.75rem 0}.zone-input{flex:1 1 16rem;width:auto;min-width:0;max-width:100%}.zone-box p{overflow-wrap:anywhere}@media(max-width:480px){.zone-input{font-size:.875rem;padding-inline:.5rem}}.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0 1rem}h1{font-size:1.5rem}h2{font-size:1.1rem}.filters{display:flex;gap:.75rem;align-items:end;flex-wrap:wrap}.filters label{margin:0}.list-head{display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;flex-wrap:wrap}.class-list{margin-top:1.5rem}.preview{padding:.75rem;background:var(--color-bg,#faf8f5);border-radius:8px}small{display:block}`]
+  styleUrl: './schedule.component.scss'
 })
 export class ScheduleComponent {
   private api = inject(ClassSessionsService);
@@ -115,6 +117,7 @@ export class ScheduleComponent {
     if (this.teacher()) this.loadOptions();
   }
   private loadOptions(): void { this.read(this.api.options(this.conversationId || undefined), value => { this.options.set(value); if (value.studentId) this.studentId.set(value.studentId); }); }
+  clearDates(): void { this.fromDate = ''; this.toDate = ''; this.reload(); }
   confirmZone(): void { if (isTimeZone(this.zoneInput())) this.preferences.saveTimeZone(this.zoneInput()); else this.failure.set({ error: { code: 'time_zone_invalid' } }); }
   patch(value: Partial<Draft>): void { this.draft.update(d => ({ ...d, ...value, offset: '', disambiguation: 'none' })); }
   choose(offset: string, index: number): void { this.draft.update(d => ({ ...d, offset, disambiguation: index ? 'later' : 'earlier' })); }

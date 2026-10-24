@@ -1,3 +1,4 @@
+import { NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem } from '@ng-bootstrap/ng-bootstrap';
 import { Component, DestroyRef, ElementRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -49,7 +50,7 @@ const newClientMessageId = (): string =>
 @Component({
   selector: 'app-chat-conversation',
   standalone: true,
-  imports: [FormsModule, RouterLink, IconComponent, ConfirmDialogComponent, TranslatePipe, ClassSessionCardComponent],
+  imports: [NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem, FormsModule, RouterLink, IconComponent, ConfirmDialogComponent, TranslatePipe, ClassSessionCardComponent],
   templateUrl: './chat-conversation.component.html',
   styleUrl: './chat-conversation.component.scss'
 })

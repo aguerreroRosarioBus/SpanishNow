@@ -5,7 +5,9 @@
       <p class="page-summary">{{ 'teacherPromotions.affiliateSummary' | t }}</p>
     </div>
     <div class="page-actions">
-      <button type="button" class="btn btn-primary" (click)="openCreate()"><app-icon name="plus" [size]="16" />{{ 'teacherPromotions.newAffiliate' | t }}</button>
+      <button type="button" class="btn btn-primary" (click)="openCreate()">
+        <app-icon name="plus" [size]="16" />{{ 'teacherPromotions.newAffiliate' | t }}
+      </button>
     </div>
   </div>
 
@@ -28,38 +30,132 @@
       <table class="data-table">
         <thead>
           <tr>
-            <th scope="col">{{ 'teacherPromotions.affiliate' | t }}</th><th scope="col">{{ 'teacherPromotions.code' | t }}</th><th scope="col" class="num">{{ 'teacherPromotions.commission' | t }}</th>
-            <th scope="col" class="num">{{ 'teacherPromotions.sales' | t }}</th><th scope="col" class="num">{{ 'teacherPromotions.earned' | t }}</th>
-            <th scope="col" class="num">{{ 'teacherPromotions.paid' | t }}</th><th scope="col" class="num">{{ 'teacherPromotions.owed' | t }}</th>
-            <th scope="col">{{ 'teacherPromotions.status' | t }}</th><th scope="col"><span class="visually-hidden">{{ 'teacherPromotions.actions' | t }}</span></th>
+            <th scope="col">{{ 'teacherPromotions.affiliate' | t }}</th>
+            <th scope="col">{{ 'teacherPromotions.code' | t }}</th>
+            <th scope="col" class="num">{{ 'teacherPromotions.commission' | t }}</th>
+            <th scope="col" class="num">{{ 'teacherPromotions.sales' | t }}</th>
+            <th scope="col" class="num">{{ 'teacherPromotions.earned' | t }}</th>
+            <th scope="col" class="num">{{ 'teacherPromotions.paid' | t }}</th>
+            <th scope="col" class="num">{{ 'teacherPromotions.owed' | t }}</th>
+            <th scope="col">{{ 'teacherPromotions.status' | t }}</th>
+            <th scope="col">
+              <span class="visually-hidden">{{ 'teacherPromotions.actions' | t }}</span>
+            </th>
           </tr>
         </thead>
         <tbody>
           @for (a of affiliates(); track a.id) {
             <tr>
-              <td>{{ a.name }}<small class="d-block text-secondary-ui">{{ a.email }}</small></td>
-              <td><code>{{ a.code }}</code></td>
+              <td>
+                {{ a.name }}<small class="d-block text-secondary-ui">{{ a.email }}</small>
+              </td>
+              <td>
+                <code>{{ a.code }}</code>
+              </td>
               <td class="num">{{ percent(a.commissionPercent) }}</td>
               @if (hasStats(a)) {
-                <td class="num">@for (s of a.stats; track s.currency) { <span class="stat-line">{{ number(s.orders) }} · {{ statValue(s, 'sales') }}</span> }</td>
-                <td class="num">@for (s of a.stats; track s.currency) { <span class="stat-line">{{ statValue(s, 'commission') }}</span> }</td>
-                <td class="num">@for (s of a.stats; track s.currency) { <span class="stat-line">{{ statValue(s, 'paid') }}</span> }</td>
-                <td class="num">@for (s of a.stats; track s.currency) { <span class="stat-line stat-line--owed">{{ statValue(s, 'owed') }}</span> }</td>
+                <td class="num">
+                  @for (s of a.stats; track s.currency) {
+                    <span class="stat-line"
+                      >{{ number(s.orders) }} · {{ statValue(s, 'sales') }}</span
+                    >
+                  }
+                </td>
+                <td class="num">
+                  @for (s of a.stats; track s.currency) {
+                    <span class="stat-line">{{ statValue(s, 'commission') }}</span>
+                  }
+                </td>
+                <td class="num">
+                  @for (s of a.stats; track s.currency) {
+                    <span class="stat-line">{{ statValue(s, 'paid') }}</span>
+                  }
+                </td>
+                <td class="num">
+                  @for (s of a.stats; track s.currency) {
+                    <span class="stat-line stat-line--owed">{{ statValue(s, 'owed') }}</span>
+                  }
+                </td>
               } @else {
-                <td class="num text-secondary-ui" colspan="4">{{ 'teacherPromotions.noSales' | t }}</td>
+                <td class="num text-secondary-ui" colspan="4">
+                  {{ 'teacherPromotions.noSales' | t }}
+                </td>
               }
-              <td><span class="badge-status" [class.badge-status--published]="a.active" [class.badge-status--draft]="!a.active">{{ (a.active ? 'teacherPromotions.active' : 'teacherPromotions.inactive') | t }}</span></td>
-              <td class="actions">
-                <button type="button" class="btn btn-ghost btn-sm" (click)="openDetail(a)" [attr.aria-label]="'teacherPromotions.affiliateDetail' | t: {name: a.name}">{{ 'teacherPromotions.detail' | t }}</button>
-                <button type="button" class="btn btn-ghost btn-sm" (click)="openLinks(a)" [attr.aria-label]="'teacherPromotions.affiliateLinks' | t: {name: a.name}"><app-icon name="link" [size]="15" />{{ 'teacherPromotions.links' | t }}</button>
-                <div ngbDropdown container="body" placement="bottom-end">
-                  <button type="button" ngbDropdownToggle class="btn-icon" [attr.aria-label]="'teacherPromotions.affiliateMore' | t: {name: a.name}"><app-icon name="more" [size]="18" /></button>
-                  <div ngbDropdownMenu role="menu">
-                    <button type="button" ngbDropdownItem role="menuitem" (click)="openEdit(a)">{{ 'teacherPromotions.edit' | t }}</button>
-                    <button type="button" ngbDropdownItem role="menuitem" (click)="toggleActive(a)">{{ (a.active ? 'teacherPromotions.disable' : 'teacherPromotions.enable') | t }}</button>
-                    <button type="button" ngbDropdownItem role="menuitem" (click)="askRegenerate(a)">{{ 'teacherPromotions.regeneratePanel' | t }}</button>
-                    <div class="dropdown-divider"></div>
-                    <button type="button" ngbDropdownItem role="menuitem" class="dropdown-item--danger" (click)="askDelete(a)"><app-icon name="trash" [size]="15" />{{ 'teacherPromotions.delete' | t }}</button>
+              <td>
+                <span
+                  class="badge-status"
+                  [class.badge-status--published]="a.active"
+                  [class.badge-status--draft]="!a.active"
+                  >{{
+                    (a.active ? 'teacherPromotions.active' : 'teacherPromotions.inactive') | t
+                  }}</span
+                >
+              </td>
+              <td>
+                <div class="actions">
+                  <button
+                    type="button"
+                    class="btn-icon action-icon"
+                    (click)="openDetail(a)"
+                    [ngbTooltip]="'teacherPromotions.detail' | t"
+                    container="body"
+                    [attr.aria-label]="'teacherPromotions.affiliateDetail' | t: { name: a.name }"
+                  >
+                    <app-icon name="eye" [size]="18" />
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-icon action-icon"
+                    (click)="openLinks(a)"
+                    [ngbTooltip]="'teacherPromotions.links' | t"
+                    container="body"
+                    [attr.aria-label]="'teacherPromotions.affiliateLinks' | t: { name: a.name }"
+                  >
+                    <app-icon name="link" [size]="18" />
+                  </button>
+                  <div ngbDropdown container="body" placement="bottom-end">
+                    <button
+                      type="button"
+                      ngbDropdownToggle
+                      class="btn-icon action-icon"
+                      [ngbTooltip]="'teacherPromotions.actions' | t"
+                      [attr.aria-label]="'teacherPromotions.affiliateMore' | t: { name: a.name }"
+                    >
+                      <app-icon name="more" [size]="18" />
+                    </button>
+                    <div ngbDropdownMenu role="menu">
+                      <button type="button" ngbDropdownItem role="menuitem" (click)="openEdit(a)">
+                        {{ 'teacherPromotions.edit' | t }}
+                      </button>
+                      <button
+                        type="button"
+                        ngbDropdownItem
+                        role="menuitem"
+                        (click)="toggleActive(a)"
+                      >
+                        {{
+                          (a.active ? 'teacherPromotions.disable' : 'teacherPromotions.enable') | t
+                        }}
+                      </button>
+                      <button
+                        type="button"
+                        ngbDropdownItem
+                        role="menuitem"
+                        (click)="askRegenerate(a)"
+                      >
+                        {{ 'teacherPromotions.regeneratePanel' | t }}
+                      </button>
+                      <div class="dropdown-divider"></div>
+                      <button
+                        type="button"
+                        ngbDropdownItem
+                        role="menuitem"
+                        class="dropdown-item--danger"
+                        (click)="askDelete(a)"
+                      >
+                        <app-icon name="trash" [size]="15" />{{ 'teacherPromotions.delete' | t }}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </td>
@@ -74,49 +170,136 @@
 
 <!-- Alta / edición -->
 @if (showForm()) {
-  <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5)" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="affTitle" (keydown.escape)="closeForm()">
+  <div
+    class="modal fade show"
+    style="display: block; background-color: rgba(0, 0, 0, 0.5)"
+    tabindex="-1"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="affTitle"
+    (keydown.escape)="closeForm()"
+  >
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="affTitle">{{ (editing() ? 'teacherPromotions.editAffiliate' : 'teacherPromotions.newAffiliate') | t }}</h5>
-          <button type="button" class="btn-close" (click)="closeForm()" [attr.aria-label]="'teacherPromotions.close' | t"></button>
+          <h5 class="modal-title" id="affTitle">
+            {{
+              (editing() ? 'teacherPromotions.editAffiliate' : 'teacherPromotions.newAffiliate') | t
+            }}
+          </h5>
+          <button
+            type="button"
+            class="btn-close"
+            (click)="closeForm()"
+            [attr.aria-label]="'teacherPromotions.close' | t"
+          ></button>
         </div>
-        <form [formGroup]="form" (ngSubmit)="save()" class="d-flex flex-column overflow-hidden" novalidate>
+        <form
+          [formGroup]="form"
+          (ngSubmit)="save()"
+          class="d-flex flex-column overflow-hidden"
+          novalidate
+        >
           <div class="modal-body">
-            @if (formError()) { <div class="alert alert-danger" role="alert">{{ formError() }}</div> }
+            @if (formError()) {
+              <div class="alert alert-danger" role="alert">{{ formError() }}</div>
+            }
             <div class="mb-3">
-              <label for="affName" class="form-label">{{ 'teacherPromotions.nameRequired' | t }}</label>
-              <input id="affName" type="text" class="form-control" formControlName="name" maxlength="120" autocomplete="off">
+              <label for="affName" class="form-label">{{
+                'teacherPromotions.nameRequired' | t
+              }}</label>
+              <input
+                id="affName"
+                type="text"
+                class="form-control"
+                formControlName="name"
+                maxlength="120"
+                autocomplete="off"
+              />
             </div>
             <div class="mb-3">
-              <label for="affEmail" class="form-label">{{ 'teacherPromotions.emailRequired' | t }}</label>
-              <input id="affEmail" type="email" class="form-control" formControlName="email" autocomplete="off" aria-describedby="affEmailHelp">
-              <div id="affEmailHelp" class="form-text">{{ 'teacherPromotions.selfPurchaseHint' | t }}</div>
+              <label for="affEmail" class="form-label">{{
+                'teacherPromotions.emailRequired' | t
+              }}</label>
+              <input
+                id="affEmail"
+                type="email"
+                class="form-control"
+                formControlName="email"
+                autocomplete="off"
+                aria-describedby="affEmailHelp"
+              />
+              <div id="affEmailHelp" class="form-text">
+                {{ 'teacherPromotions.selfPurchaseHint' | t }}
+              </div>
             </div>
             <div class="mb-3">
-              <label for="affPercent" class="form-label">{{ 'teacherPromotions.commissionRequired' | t }}</label>
+              <label for="affPercent" class="form-label">{{
+                'teacherPromotions.commissionRequired' | t
+              }}</label>
               <div class="input-group">
-                <input id="affPercent" type="number" class="form-control" formControlName="commissionPercent" min="1" max="90" step="1" aria-describedby="affPercentHelp">
+                <input
+                  id="affPercent"
+                  type="number"
+                  class="form-control"
+                  formControlName="commissionPercent"
+                  min="1"
+                  max="90"
+                  step="1"
+                  aria-describedby="affPercentHelp"
+                />
                 <span class="input-group-text">%</span>
               </div>
-              <div id="affPercentHelp" class="form-text">{{ 'teacherPromotions.commissionHint' | t }}</div>
+              <div id="affPercentHelp" class="form-text">
+                {{ 'teacherPromotions.commissionHint' | t }}
+              </div>
             </div>
             <div class="mb-3">
               <label for="affNotes" class="form-label">{{ 'teacherPromotions.notes' | t }}</label>
-              <textarea id="affNotes" class="form-control" rows="2" formControlName="notes" [placeholder]="'teacherPromotions.privateNotes' | t"></textarea>
+              <textarea
+                id="affNotes"
+                class="form-control"
+                rows="2"
+                formControlName="notes"
+                [placeholder]="'teacherPromotions.privateNotes' | t"
+              ></textarea>
             </div>
             @if (editing()) {
               <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" role="switch" id="affActive" formControlName="active">
-                <label class="form-check-label" for="affActive">{{ 'teacherPromotions.active' | t }}</label>
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  role="switch"
+                  id="affActive"
+                  formControlName="active"
+                />
+                <label class="form-check-label" for="affActive">{{
+                  'teacherPromotions.active' | t
+                }}</label>
               </div>
             }
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" (click)="closeForm()" [disabled]="isSaving()">{{ 'teacherPromotions.cancel' | t }}</button>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              (click)="closeForm()"
+              [disabled]="isSaving()"
+            >
+              {{ 'teacherPromotions.cancel' | t }}
+            </button>
             <button type="submit" class="btn btn-primary" [disabled]="isSaving()">
-              @if (isSaving()) { <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> }
-              {{ (editing() ? 'teacherPromotions.saveChanges' : 'teacherPromotions.createAffiliate') | t }}
+              @if (isSaving()) {
+                <span
+                  class="spinner-border spinner-border-sm"
+                  role="status"
+                  aria-hidden="true"
+                ></span>
+              }
+              {{
+                (editing() ? 'teacherPromotions.saveChanges' : 'teacherPromotions.createAffiliate')
+                  | t
+              }}
             </button>
           </div>
         </form>
@@ -127,27 +310,68 @@
 
 <!-- Links -->
 @if (linksFor(); as a) {
-  <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5)" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="linksTitle" (keydown.escape)="closeLinks()">
+  <div
+    class="modal fade show"
+    style="display: block; background-color: rgba(0, 0, 0, 0.5)"
+    tabindex="-1"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="linksTitle"
+    (keydown.escape)="closeLinks()"
+  >
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="linksTitle">{{ 'teacherPromotions.affiliateLinks' | t: {name: a.name} }}</h5>
-          <button type="button" class="btn-close" (click)="closeLinks()" [attr.aria-label]="'teacherPromotions.close' | t"></button>
+          <h5 class="modal-title" id="linksTitle">
+            {{ 'teacherPromotions.affiliateLinks' | t: { name: a.name } }}
+          </h5>
+          <button
+            type="button"
+            class="btn-close"
+            (click)="closeLinks()"
+            [attr.aria-label]="'teacherPromotions.close' | t"
+          ></button>
         </div>
         <div class="modal-body">
           <section class="mb-4">
             <h6>{{ 'teacherPromotions.saleLink' | t }}</h6>
-            <p class="form-text mt-0">{{ 'teacherPromotions.saleLinkHint' | t: {code: a.code} }}</p>
+            <p class="form-text mt-0">
+              {{ 'teacherPromotions.saleLinkHint' | t: { code: a.code } }}
+            </p>
             @if (coursesWithSlug().length === 0) {
-              <div class="alert alert-warning mb-0" role="note">{{ 'teacherPromotions.noPublishedCourses' | t }}</div>
+              <div class="alert alert-warning mb-0" role="note">
+                {{ 'teacherPromotions.noPublishedCourses' | t }}
+              </div>
             } @else {
-              <label for="linkCourse" class="visually-hidden">{{ 'teacherPromotions.saleLinkCourse' | t }}</label>
-              <select id="linkCourse" class="form-select mb-2" (change)="onLinkCourse($any($event.target).value)">
-                @for (c of coursesWithSlug(); track c.id) { <option [value]="c.id" [selected]="c.id === linkCourseId()">{{ c.title }}</option> }
+              <label for="linkCourse" class="visually-hidden">{{
+                'teacherPromotions.saleLinkCourse' | t
+              }}</label>
+              <select
+                id="linkCourse"
+                class="form-select mb-2"
+                (change)="onLinkCourse($any($event.target).value)"
+              >
+                @for (c of coursesWithSlug(); track c.id) {
+                  <option [value]="c.id" [selected]="c.id === linkCourseId()">{{ c.title }}</option>
+                }
               </select>
               <div class="input-group">
-                <input type="text" class="form-control" readonly [value]="saleLink()" [attr.aria-label]="'teacherPromotions.saleLinkAria' | t" (focus)="$any($event.target).select()">
-                <button type="button" class="btn btn-secondary" (click)="copyLink(saleLink())" [disabled]="!saleLink()"><app-icon name="copy" [size]="15" />{{ 'teacherPromotions.copy' | t }}</button>
+                <input
+                  type="text"
+                  class="form-control"
+                  readonly
+                  [value]="saleLink()"
+                  [attr.aria-label]="'teacherPromotions.saleLinkAria' | t"
+                  (focus)="$any($event.target).select()"
+                />
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  (click)="copyLink(saleLink())"
+                  [disabled]="!saleLink()"
+                >
+                  <app-icon name="copy" [size]="15" />{{ 'teacherPromotions.copy' | t }}
+                </button>
               </div>
             }
           </section>
@@ -156,19 +380,44 @@
             <p class="form-text mt-0">{{ 'teacherPromotions.panelHint' | t }}</p>
             @if (panelLink()) {
               <div class="input-group mb-2">
-                <input type="text" class="form-control" readonly [value]="panelLink()" [attr.aria-label]="'teacherPromotions.panelLinkAria' | t" (focus)="$any($event.target).select()">
-                <button type="button" class="btn btn-secondary" (click)="copyLink(panelLink())"><app-icon name="copy" [size]="15" />{{ 'teacherPromotions.copy' | t }}</button>
+                <input
+                  type="text"
+                  class="form-control"
+                  readonly
+                  [value]="panelLink()"
+                  [attr.aria-label]="'teacherPromotions.panelLinkAria' | t"
+                  (focus)="$any($event.target).select()"
+                />
+                <button type="button" class="btn btn-secondary" (click)="copyLink(panelLink())">
+                  <app-icon name="copy" [size]="15" />{{ 'teacherPromotions.copy' | t }}
+                </button>
               </div>
             } @else {
-              <div class="alert alert-info" role="note">{{ 'teacherPromotions.panelSecretHint' | t }}</div>
+              <div class="alert alert-info" role="note">
+                {{ 'teacherPromotions.panelSecretHint' | t }}
+              </div>
             }
-            <button type="button" class="btn btn-ghost btn-sm" (click)="askRegenerate(a)"><app-icon name="rotate" [size]="15" />{{ (panelLink() ? 'teacherPromotions.regeneratePanel' : 'teacherPromotions.generatePanel') | t }}</button>
+            <button type="button" class="btn btn-ghost btn-sm" (click)="askRegenerate(a)">
+              <app-icon name="rotate" [size]="15" />{{
+                (panelLink()
+                  ? 'teacherPromotions.regeneratePanel'
+                  : 'teacherPromotions.generatePanel'
+                ) | t
+              }}
+            </button>
           </section>
           @if (manualLink()) {
-            <div class="alert alert-warning mt-3 mb-0" role="status">{{ 'teacherPromotions.manualCopy' | t }} <code class="manual">{{ manualLink() }}</code></div>
+            <div class="alert alert-warning mt-3 mb-0" role="status">
+              {{ 'teacherPromotions.manualCopy' | t }}
+              <code class="manual">{{ manualLink() }}</code>
+            </div>
           }
         </div>
-        <div class="modal-footer"><button type="button" class="btn btn-secondary" (click)="closeLinks()">{{ 'teacherPromotions.close' | t }}</button></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="closeLinks()">
+            {{ 'teacherPromotions.close' | t }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -176,27 +425,57 @@
 
 <!-- Detalle -->
 @if (detail(); as a) {
-  <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5)" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="detailTitle" (keydown.escape)="closeDetail()">
+  <div
+    class="modal fade show"
+    style="display: block; background-color: rgba(0, 0, 0, 0.5)"
+    tabindex="-1"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="detailTitle"
+    (keydown.escape)="closeDetail()"
+  >
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="detailTitle">{{ a.name }} <code class="ms-2">{{ a.code }}</code></h5>
-          <button type="button" class="btn-close" (click)="closeDetail()" [attr.aria-label]="'teacherPromotions.close' | t"></button>
+          <h5 class="modal-title" id="detailTitle">
+            {{ a.name }} <code class="ms-2">{{ a.code }}</code>
+          </h5>
+          <button
+            type="button"
+            class="btn-close"
+            (click)="closeDetail()"
+            [attr.aria-label]="'teacherPromotions.close' | t"
+          ></button>
         </div>
         <div class="modal-body">
-          @if (detailError()) { <div class="alert alert-danger" role="alert">{{ detailError() }}</div> }
+          @if (detailError()) {
+            <div class="alert alert-danger" role="alert">{{ detailError() }}</div>
+          }
           @if (detailLoading()) {
-            <div class="text-center py-4" role="status"><div class="spinner-border text-primary" aria-hidden="true"></div><p class="text-muted mt-2 mb-0">{{ 'teacherPromotions.loadingDetail' | t }}</p></div>
+            <div class="text-center py-4" role="status">
+              <div class="spinner-border text-primary" aria-hidden="true"></div>
+              <p class="text-muted mt-2 mb-0">{{ 'teacherPromotions.loadingDetail' | t }}</p>
+            </div>
           } @else {
             @if (hasStats(a)) {
               <div class="summary">
                 @for (s of a.stats; track s.currency) {
                   <div class="summary__item">
                     <span class="summary__cur">{{ s.currency.toUpperCase() }}</span>
-                    <span>{{ 'teacherPromotions.salesValue' | t: {count: number(s.orders), amount: statValue(s, 'sales')} }}</span>
-                    <span>{{ 'teacherPromotions.commissionValue' | t: {amount: statValue(s, 'commission')} }}</span>
-                    <span>{{ 'teacherPromotions.paidValue' | t: {amount: statValue(s, 'paid')} }}</span>
-                    <strong>{{ 'teacherPromotions.owedValue' | t: {amount: statValue(s, 'owed')} }}</strong>
+                    <span>{{
+                      'teacherPromotions.salesValue'
+                        | t: { count: number(s.orders), amount: statValue(s, 'sales') }
+                    }}</span>
+                    <span>{{
+                      'teacherPromotions.commissionValue'
+                        | t: { amount: statValue(s, 'commission') }
+                    }}</span>
+                    <span>{{
+                      'teacherPromotions.paidValue' | t: { amount: statValue(s, 'paid') }
+                    }}</span>
+                    <strong>{{
+                      'teacherPromotions.owedValue' | t: { amount: statValue(s, 'owed') }
+                    }}</strong>
                   </div>
                 }
               </div>
@@ -204,30 +483,93 @@
 
             <h6 class="mt-3">{{ 'teacherPromotions.payments' | t }}</h6>
             <form class="payout-form" [formGroup]="payoutForm" (ngSubmit)="savePayout()" novalidate>
-              <div><label for="payAmount" class="form-label">{{ 'teacherPromotions.amount' | t }}</label><input id="payAmount" type="number" class="form-control" formControlName="amount" min="0.01" step="0.01" placeholder="25.00"></div>
-              <div><label for="payCurrency" class="form-label">{{ 'teacherPromotions.currency' | t }}</label>
-                <select id="payCurrency" class="form-select" formControlName="currency">@for (cur of currencies; track cur.code) { <option [value]="cur.code">{{ cur.label }}</option> }</select></div>
-              <div><label for="payDate" class="form-label">{{ 'teacherPromotions.date' | t }}</label><input id="payDate" type="date" class="form-control" formControlName="paidAt"></div>
-              <div class="payout-form__note"><label for="payNote" class="form-label">{{ 'teacherPromotions.note' | t }}</label><input id="payNote" type="text" class="form-control" formControlName="note" maxlength="300" [placeholder]="'teacherPromotions.notePlaceholder' | t"></div>
+              <div>
+                <label for="payAmount" class="form-label">{{
+                  'teacherPromotions.amount' | t
+                }}</label
+                ><input
+                  id="payAmount"
+                  type="number"
+                  class="form-control"
+                  formControlName="amount"
+                  min="0.01"
+                  step="0.01"
+                  placeholder="25.00"
+                />
+              </div>
+              <div>
+                <label for="payCurrency" class="form-label">{{
+                  'teacherPromotions.currency' | t
+                }}</label>
+                <select id="payCurrency" class="form-select" formControlName="currency">
+                  @for (cur of currencies; track cur.code) {
+                    <option [value]="cur.code">{{ cur.label }}</option>
+                  }
+                </select>
+              </div>
+              <div>
+                <label for="payDate" class="form-label">{{ 'teacherPromotions.date' | t }}</label
+                ><input id="payDate" type="date" class="form-control" formControlName="paidAt" />
+              </div>
+              <div class="payout-form__note">
+                <label for="payNote" class="form-label">{{ 'teacherPromotions.note' | t }}</label
+                ><input
+                  id="payNote"
+                  type="text"
+                  class="form-control"
+                  formControlName="note"
+                  maxlength="300"
+                  [placeholder]="'teacherPromotions.notePlaceholder' | t"
+                />
+              </div>
               <button type="submit" class="btn btn-primary" [disabled]="isPaying()">
-                @if (isPaying()) { <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> }
+                @if (isPaying()) {
+                  <span
+                    class="spinner-border spinner-border-sm"
+                    role="status"
+                    aria-hidden="true"
+                  ></span>
+                }
                 {{ 'teacherPromotions.recordPayment' | t }}
               </button>
             </form>
-            @if (payoutError()) { <div class="alert alert-danger mt-2" role="alert">{{ payoutError() }}</div> }
+            @if (payoutError()) {
+              <div class="alert alert-danger mt-2" role="alert">{{ payoutError() }}</div>
+            }
             @if (payouts().length === 0) {
               <p class="text-secondary-ui mt-2 mb-0">{{ 'teacherPromotions.noPayments' | t }}</p>
             } @else {
               <div class="table-wrap mt-2">
                 <table class="data-table">
-                  <thead><tr><th scope="col">{{ 'teacherPromotions.date' | t }}</th><th scope="col" class="num">{{ 'teacherPromotions.amount' | t }}</th><th scope="col">{{ 'teacherPromotions.note' | t }}</th><th scope="col"><span class="visually-hidden">{{ 'teacherPromotions.actions' | t }}</span></th></tr></thead>
+                  <thead>
+                    <tr>
+                      <th scope="col">{{ 'teacherPromotions.date' | t }}</th>
+                      <th scope="col" class="num">{{ 'teacherPromotions.amount' | t }}</th>
+                      <th scope="col">{{ 'teacherPromotions.note' | t }}</th>
+                      <th scope="col">
+                        <span class="visually-hidden">{{ 'teacherPromotions.actions' | t }}</span>
+                      </th>
+                    </tr>
+                  </thead>
                   <tbody>
                     @for (p of payouts(); track p.id) {
                       <tr>
                         <td>{{ date(p.paidAt) }}</td>
                         <td class="num">{{ money(p.amount, p.currency) }}</td>
                         <td>{{ p.note || '—' }}</td>
-                        <td class="text-end"><button type="button" class="btn btn-ghost btn-sm" (click)="askDeletePayout(p)" [attr.aria-label]="'teacherPromotions.deletePaymentAria' | t: {amount: money(p.amount, p.currency)}">{{ 'teacherPromotions.delete' | t }}</button></td>
+                        <td class="text-end">
+                          <button
+                            type="button"
+                            class="btn btn-ghost btn-sm"
+                            (click)="askDeletePayout(p)"
+                            [attr.aria-label]="
+                              'teacherPromotions.deletePaymentAria'
+                                | t: { amount: money(p.amount, p.currency) }
+                            "
+                          >
+                            {{ 'teacherPromotions.delete' | t }}
+                          </button>
+                        </td>
                       </tr>
                     }
                   </tbody>
@@ -241,16 +583,44 @@
             } @else {
               <div class="table-wrap">
                 <table class="data-table">
-                  <thead><tr><th scope="col">{{ 'teacherPromotions.date' | t }}</th><th scope="col">{{ 'teacherPromotions.buyer' | t }}</th><th scope="col">{{ 'teacherPromotions.course' | t }}</th><th scope="col" class="num">{{ 'teacherPromotions.amount' | t }}</th><th scope="col" class="num">{{ 'teacherPromotions.commission' | t }}</th><th scope="col">{{ 'teacherPromotions.status' | t }}</th></tr></thead>
+                  <thead>
+                    <tr>
+                      <th scope="col">{{ 'teacherPromotions.date' | t }}</th>
+                      <th scope="col">{{ 'teacherPromotions.buyer' | t }}</th>
+                      <th scope="col">{{ 'teacherPromotions.course' | t }}</th>
+                      <th scope="col" class="num">{{ 'teacherPromotions.amount' | t }}</th>
+                      <th scope="col" class="num">{{ 'teacherPromotions.commission' | t }}</th>
+                      <th scope="col">{{ 'teacherPromotions.status' | t }}</th>
+                    </tr>
+                  </thead>
                   <tbody>
                     @for (o of orders(); track o.id) {
                       <tr>
                         <td>{{ orderDate(o) }}</td>
-                        <td>{{ o.buyer.name }}<small class="d-block text-secondary-ui">{{ o.buyer.email }}</small></td>
+                        <td>
+                          {{ o.buyer.name
+                          }}<small class="d-block text-secondary-ui">{{ o.buyer.email }}</small>
+                        </td>
                         <td>{{ o.course.title }}</td>
-                        <td class="num">{{ money(o.amount, o.currency) }}@if (o.refundedAmount > 0) { <small class="d-block text-secondary-ui">{{ 'teacherPromotions.returned' | t: {amount: money(o.refundedAmount, o.currency)} }}</small> }</td>
+                        <td class="num">
+                          {{ money(o.amount, o.currency) }}
+                          @if (o.refundedAmount > 0) {
+                            <small class="d-block text-secondary-ui">{{
+                              'teacherPromotions.returned'
+                                | t: { amount: money(o.refundedAmount, o.currency) }
+                            }}</small>
+                          }
+                        </td>
                         <td class="num">{{ money(o.commissionAmount, o.currency) }}</td>
-                        <td><span class="badge-status" [class.badge-status--published]="o.commissionStatus === 'pending'" [class.badge-status--draft]="o.commissionStatus === 'none'" [class.badge-status--danger]="o.commissionStatus === 'void'">{{ commissionLabel(o) }}</span></td>
+                        <td>
+                          <span
+                            class="badge-status"
+                            [class.badge-status--published]="o.commissionStatus === 'pending'"
+                            [class.badge-status--draft]="o.commissionStatus === 'none'"
+                            [class.badge-status--danger]="o.commissionStatus === 'void'"
+                            >{{ commissionLabel(o) }}</span
+                          >
+                        </td>
                       </tr>
                     }
                   </tbody>
@@ -259,24 +629,48 @@
             }
           }
         </div>
-        <div class="modal-footer"><button type="button" class="btn btn-secondary" (click)="closeDetail()">{{ 'teacherPromotions.close' | t }}</button></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="closeDetail()">
+            {{ 'teacherPromotions.close' | t }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
 }
 
 @if (toRegenerate(); as t) {
-  <app-confirm-dialog [show]="true" [title]="'teacherPromotions.regeneratePanel' | t"
-    [message]="'teacherPromotions.regenerateMessage' | t: {name: t.name}"
-    [confirmText]="'teacherPromotions.regenerate' | t" type="warning" (confirmed)="confirmRegenerate()" (cancelled)="cancelRegenerate()"></app-confirm-dialog>
+  <app-confirm-dialog
+    [show]="true"
+    [title]="'teacherPromotions.regeneratePanel' | t"
+    [message]="'teacherPromotions.regenerateMessage' | t: { name: t.name }"
+    [confirmText]="'teacherPromotions.regenerate' | t"
+    type="warning"
+    (confirmed)="confirmRegenerate()"
+    (cancelled)="cancelRegenerate()"
+  ></app-confirm-dialog>
 }
 @if (toDelete(); as t) {
-  <app-confirm-dialog [show]="true" [title]="'teacherPromotions.deleteAffiliate' | t"
-    [message]="'teacherPromotions.affiliateDeleteMessage' | t: {name: t.name}"
-    [confirmText]="'teacherPromotions.delete' | t" type="danger" (confirmed)="confirmDelete()" (cancelled)="cancelDelete()"></app-confirm-dialog>
+  <app-confirm-dialog
+    [show]="true"
+    [title]="'teacherPromotions.deleteAffiliate' | t"
+    [message]="'teacherPromotions.affiliateDeleteMessage' | t: { name: t.name }"
+    [confirmText]="'teacherPromotions.delete' | t"
+    type="danger"
+    (confirmed)="confirmDelete()"
+    (cancelled)="cancelDelete()"
+  ></app-confirm-dialog>
 }
 @if (payoutToDelete(); as p) {
-  <app-confirm-dialog [show]="true" [title]="'teacherPromotions.deletePayment' | t"
-    [message]="'teacherPromotions.paymentDeleteMessage' | t: {amount: money(p.amount, p.currency)}"
-    [confirmText]="'teacherPromotions.delete' | t" type="danger" (confirmed)="confirmDeletePayout()" (cancelled)="cancelDeletePayout()"></app-confirm-dialog>
+  <app-confirm-dialog
+    [show]="true"
+    [title]="'teacherPromotions.deletePayment' | t"
+    [message]="
+      'teacherPromotions.paymentDeleteMessage' | t: { amount: money(p.amount, p.currency) }
+    "
+    [confirmText]="'teacherPromotions.delete' | t"
+    type="danger"
+    (confirmed)="confirmDeletePayout()"
+    (cancelled)="cancelDeletePayout()"
+  ></app-confirm-dialog>
 }

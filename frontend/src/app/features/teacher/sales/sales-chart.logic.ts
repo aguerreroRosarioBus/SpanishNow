@@ -22,7 +22,7 @@ export interface Bar { month: string; value: number; orders: number; x: number; 
 export function barLayout(points: Array<{ month: string; value: number; orders: number }>, scaleMax: number, width: number, height: number, gap = 0.3): Bar[] {
   if (points.length === 0 || scaleMax <= 0) return [];
   const slot = width / points.length;
-  const barWidth = slot * (1 - gap);
+  const barWidth = Math.min(48, slot * (1 - gap));
   return points.map((p, i) => {
     const h = Math.max(0, Math.min(1, p.value / scaleMax)) * height;
     return { month: p.month, value: p.value, orders: p.orders, x: i * slot + (slot - barWidth) / 2, y: height - h, width: barWidth, height: h };

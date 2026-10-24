@@ -19,7 +19,7 @@
       <div class="integration-mark"><app-icon name="layers" [size]="20" /></div>
       <div><h2>{{ 'liveBoard.list.googleHeading' | t }}</h2>
         <p>{{ google()?.connected ? ('liveBoard.list.googleConnectedAs' | t : { email: google()?.email || ('liveBoard.list.googleFallbackName' | t) }) : ('liveBoard.list.googlePrompt' | t) }}</p>
-        @if (google() && !google()?.configured) { <small>{{ 'liveBoard.list.googleUnavailable' | t }}</small> }
+        @if (google() && !google()?.connected && !google()?.configured) { <small>{{ 'liveBoard.list.googleUnavailable' | t }}</small> }
       </div>
       @if (google()?.connected) {
         <button type="button" class="btn btn-secondary btn-sm" (click)="disconnect()" [disabled]="busy()">{{ 'liveBoard.list.disconnect' | t }}</button>

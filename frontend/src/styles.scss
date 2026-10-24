@@ -1074,3 +1074,14 @@ a {
     order: -1;
   }
 }
+
+/* Componentes con popup en body: zona horaria y administración de usuarios. */
+.zone-options {
+  max-height: 320px;
+  overflow-y: auto;
+  max-width: calc(100vw - 32px);
+  width: min(460px, calc(100vw - 32px));
+  .dropdown-item { padding: 10px 14px; white-space: normal; }
+  .dropdown-item.active { background: var(--color-primary-soft); color: var(--color-text); }
+}
+.user-details-panel.offcanvas { --bs-offcanvas-width: 480px; }

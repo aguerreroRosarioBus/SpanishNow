@@ -198,21 +198,21 @@ describe('clases en vivo y pizarra: idioma', () => {
       f.componentRef.setInput('page', { id: 'page_0001', title: 'Página uno', background: 'plain', elements: [element] });
       f.componentRef.setInput('userId', 7); f.componentRef.setInput('editable', true); f.componentRef.setInput('owner', false);
       f.detectChanges();
-      return { f, c: f.componentInstance, i18n, emit: vi.spyOn(f.componentInstance.change, 'emit') };
+      return { f, c: f.componentInstance, i18n, emit: vi.spyOn(f.componentInstance.boardChange, 'emit') };
     }
 
     it('selección, texto en edición y diálogo de borrado cambian de idioma sin perder el estado', () => {
       const { f, c, i18n, emit } = setup();
       const html = f.nativeElement as HTMLElement;
       c.selectedId.set(element.id); f.detectChanges();
-      expect(text(f)).toContain('Nota seleccionada'); expect(text(f)).toContain('Tipo de letra'); expect(text(f)).toContain('Tamaño de letra'); expect(text(f)).toContain('− Tamaño');
+      expect(text(f)).toContain('Nota seleccionada'); expect(text(f)).toContain('Tipo de letra'); expect(text(f)).toContain('Tamaño de letra'); expect(html.querySelector('select[aria-label="Tamaño de letra"]')).toBeTruthy();
       expect(html.querySelector('svg')?.getAttribute('aria-label')).toBe('Página uno. Usa Seleccionar para mover elementos y las flechas del teclado para ajustar su posición.');
       c.editingText.set('Texto a medio escribir'); f.detectChanges();
       c.remove(); f.detectChanges();
       expect(text(f)).toContain('Se eliminará «Hola mundo» de Página uno.');
 
       i18n.setLocale('en'); f.detectChanges();
-      expect(text(f)).toContain('Note selected'); expect(text(f)).toContain('Font family'); expect(text(f)).toContain('Font size'); expect(text(f)).toContain('− Size');
+      expect(text(f)).toContain('Note selected'); expect(text(f)).toContain('Font family'); expect(text(f)).toContain('Font size'); expect(html.querySelector('select[aria-label="Font size"]')).toBeTruthy();
       expect(html.querySelector('svg')?.getAttribute('aria-label')).toBe('Página uno. Use Select to move elements and the keyboard arrows to adjust their position.');
       expect(text(f)).toContain('“Hola mundo” will be deleted from Página uno.'); expect(text(f)).toContain('Hola mundo');
       expect(html.querySelector('textarea')?.value).toBe('Texto a medio escribir');

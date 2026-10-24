@@ -1,3 +1,4 @@
+import { NgbTooltip } from '@ng-bootstrap/ng-bootstrap';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CouponService } from '../../../core/services/coupon.service';
@@ -17,7 +18,7 @@ type DiscountKind = 'percent' | 'amount';
 @Component({
   selector: 'app-teacher-coupons',
   standalone: true,
-  imports: [ReactiveFormsModule, IconComponent, ConfirmDialogComponent, TranslatePipe],
+  imports: [NgbTooltip, ReactiveFormsModule, IconComponent, ConfirmDialogComponent, TranslatePipe],
   templateUrl: './teacher-coupons.component.html',
   styleUrl: './teacher-coupons.component.scss'
 })

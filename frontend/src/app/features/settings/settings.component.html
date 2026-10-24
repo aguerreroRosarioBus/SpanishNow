@@ -25,40 +25,107 @@
   </section>
 
   <section class="settings__section" aria-labelledby="prefs-title">
-    <h2 id="prefs-title" class="settings__title">{{ 'preferences.title' | t }}</h2>
-    <p class="settings__note">{{ 'preferences.languageHelp' | t }}</p>
+    <div class="preferences-heading">
+      <span class="preferences-icon"><app-icon name="settings" [size]="22" /></span>
+      <div>
+        <h2 id="prefs-title" class="settings__title">{{ 'preferences.title' | t }}</h2>
+        <p class="settings__note">{{ 'visual.preferencesHelp' | t }}</p>
+      </div>
+    </div>
     @if (preferences.loading()) {
       <p role="status">{{ 'preferences.loading' | t }}</p>
     } @else {
-      <p class="settings__note" role="status">
-        {{ preferences.preferences()?.timeZoneConfirmedAt
-          ? ('preferences.savedZone' | t : { zone: preferences.preferences()?.timeZone ?? '' })
-          : ('preferences.noZone' | t) }}
-      </p>
-      <form (submit)="saveZone($event)">
-        <label for="time-zone" class="form-label">{{ 'preferences.timeZone' | t }}</label>
-        <input id="time-zone" class="form-control" list="time-zones" [value]="zoneDraft()"
-               (input)="editZone($any($event.target).value)" aria-describedby="time-zone-help"
-               placeholder="America/Argentina/Cordoba" autocomplete="off" required [disabled]="preferences.saving()">
-        <datalist id="time-zones">
-          <option value="UTC"></option>
-          @for (zone of zones; track zone) { <option [value]="zone"></option> }
-        </datalist>
-        <p id="time-zone-help" class="settings__note mt-2">{{ 'preferences.zoneHelp' | t }}</p>
+      <div class="preference-block">
+        <div class="preference-block__intro">
+          <app-icon name="book-open" [size]="20" />
+          <div>
+            <h3>{{ 'common.language' | t }}</h3>
+            <p>{{ 'visual.languageHelp' | t }}</p>
+          </div>
+        </div>
+        <label for="settings-language" class="visually-hidden">{{ 'common.language' | t }}</label>
+        <select
+          id="settings-language"
+          class="form-select language-field"
+          [value]="i18n.locale()"
+          (change)="selectLanguage($event)"
+        >
+          <option value="es" lang="es">Español</option>
+          <option value="en" lang="en">English</option>
+        </select>
+      </div>
+      <form class="preference-block preference-block--zone" (submit)="saveZone($event)">
+        <div class="preference-block__intro">
+          <app-icon name="clock" [size]="20" />
+          <div>
+            <h3>{{ 'visual.zone' | t }}</h3>
+            <p>{{ 'preferences.zoneHelp' | t }}</p>
+          </div>
+        </div>
+        <div class="zone-status" role="status">
+          <app-icon
+            [name]="preferences.preferences()?.timeZoneConfirmedAt ? 'circle-check' : 'info'"
+            [size]="16"
+          />
+          {{
+            preferences.preferences()?.timeZoneConfirmedAt
+              ? ('preferences.savedZone' | t: { zone: preferences.preferences()?.timeZone ?? '' })
+              : ('preferences.noZone' | t)
+          }}
+        </div>
+        <app-time-zone-select
+          inputId="time-zone"
+          [value]="zoneDraft()"
+          (valueChange)="editZone($event)"
+          [disabled]="preferences.saving()"
+        />
         @if (deviceZone) {
-          <button type="button" class="btn btn-ghost btn-sm mb-3" (click)="editZone(deviceZone)" [disabled]="preferences.saving()">
-            {{ 'preferences.deviceZone' | t : { zone: deviceZone } }}
+          <button
+            type="button"
+            class="btn btn-ghost btn-sm device-zone"
+            (click)="editZone(deviceZone)"
+            [disabled]="preferences.saving()"
+          >
+            <app-icon name="compass" [size]="16" />{{ 'visual.deviceZone' | t
+            }}<span>{{ deviceZone }}</span>
           </button>
         }
-        <div class="form-check mb-3">
-          <input id="confirm-time-zone" class="form-check-input" type="checkbox" [checked]="zoneConfirmed()"
-                 (change)="zoneConfirmed.set($any($event.target).checked)" [disabled]="preferences.saving()">
-          <label for="confirm-time-zone" class="form-check-label">{{ 'preferences.confirmZone' | t }}</label>
+        <div class="zone-confirm">
+          <div class="form-check">
+            <input
+              id="confirm-time-zone"
+              class="form-check-input"
+              type="checkbox"
+              [checked]="zoneConfirmed()"
+              (change)="zoneConfirmed.set($any($event.target).checked)"
+              [disabled]="preferences.saving()"
+            />
+            <label for="confirm-time-zone" class="form-check-label">{{
+              'preferences.confirmZone' | t
+            }}</label>
+          </div>
+          <button
+            type="submit"
+            class="btn btn-primary"
+            [disabled]="!zoneDraft().trim() || !zoneConfirmed() || preferences.saving()"
+          >
+            <app-icon name="check" [size]="16" />{{
+              (preferences.saving() ? 'preferences.saving' : 'preferences.saveZone') | t
+            }}
+          </button>
         </div>
-        <button type="submit" class="btn btn-secondary" [disabled]="!zoneDraft().trim() || !zoneConfirmed() || preferences.saving()">
-          {{ (preferences.saving() ? 'preferences.saving' : 'preferences.saveZone') | t }}
-        </button>
       </form>
+      @if (preferences.saving()) {
+        <p class="settings__note" role="status">{{ 'preferences.saving' | t }}</p>
+      }
+      @if (preferences.errorMessage()) {
+        <div class="alert alert-danger mt-3" role="alert">
+          {{ preferences.errorMessage() }}
+          <button type="button" class="btn btn-secondary btn-sm" (click)="preferences.retry()">
+            {{ 'preferences.retry' | t }}
+          </button>
+        </div>
+      }
     }
   </section>
 
@@ -67,12 +134,22 @@
     <section class="settings__section" aria-labelledby="chat-settings-title">
       <h2 id="chat-settings-title" class="settings__title">{{ 'chat.settings.title' | t }}</h2>
       <div class="form-check">
-        <input id="chat-unread-email" class="form-check-input" type="checkbox" [checked]="prefs.chatUnreadEmail !== false"
-               (change)="preferences.saveChatUnreadEmail($any($event.target).checked)" [disabled]="preferences.saving()"
-               aria-describedby="chat-unread-email-help">
-        <label for="chat-unread-email" class="form-check-label">{{ 'chat.settings.unreadEmail' | t }}</label>
+        <input
+          id="chat-unread-email"
+          class="form-check-input"
+          type="checkbox"
+          [checked]="prefs.chatUnreadEmail !== false"
+          (change)="preferences.saveChatUnreadEmail($any($event.target).checked)"
+          [disabled]="preferences.saving()"
+          aria-describedby="chat-unread-email-help"
+        />
+        <label for="chat-unread-email" class="form-check-label">{{
+          'chat.settings.unreadEmail' | t
+        }}</label>
       </div>
-      <p id="chat-unread-email-help" class="settings__note mt-2">{{ 'chat.settings.unreadEmailHelp' | t }}</p>
+      <p id="chat-unread-email-help" class="settings__note mt-2">
+        {{ 'chat.settings.unreadEmailHelp' | t }}
+      </p>
     </section>
   }
 
