@@ -8,8 +8,10 @@ import {ChatService} from '../../core/services/chat.service';
 import {Conversation} from '../../core/models/chat.model';
 import {PackagesService} from './packages.service';
 import {ClassCohort,CompleteTemplate,hasVersion} from './packages.model';
-@Component({selector:'app-package-groups',standalone:true,imports:[FormsModule,RouterLink,TranslatePipe],template:`
+import {PackageOrientationComponent} from './package-orientation.component';
+@Component({selector:'app-package-groups',standalone:true,imports:[FormsModule,RouterLink,TranslatePipe,PackageOrientationComponent],template:`
 <div class="page-container"><h1>{{'packages.group.manage'|t}}</h1>
+<app-package-orientation section="groups" />
 @if(error()){<p class="alert alert-danger" role="alert">{{error()}}</p>}
 <p>{{'packages.group.agreement'|t}}</p>
 <label for="groupPackage" class="form-label">{{'packages.offer.choose'|t}}</label><select id="groupPackage" class="form-select" [ngModel]="selectedId()" (ngModelChange)="selectedId.set($event)"><option [ngValue]="0">{{'packages.offer.choose'|t}}</option>@for(p of templates();track p.id){<option [ngValue]="p.id">{{name(p)}} · {{i18n.formatMoney(p.current.priceAmount,p.current.currency)}}</option>}</select>

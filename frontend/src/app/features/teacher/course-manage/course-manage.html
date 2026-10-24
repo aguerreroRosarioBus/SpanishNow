@@ -52,7 +52,7 @@
 
     <nav class="filter-chips mb-3" [attr.aria-label]="'teacherManage.page.sections' | t">
       <button type="button" class="filter-chip" [class.is-active]="tab() === 'content'" [attr.aria-pressed]="tab() === 'content'" (click)="tab.set('content')">{{ 'teacherManage.page.tabContent' | t }}</button>
-      <button type="button" class="filter-chip" [class.is-active]="tab() === 'students'" [attr.aria-pressed]="tab() === 'students'" (click)="tab.set('students')">{{ 'teacherManage.page.tabStudents' | t }}</button>
+      <button type="button" class="filter-chip" data-tour="course-students" [class.is-active]="tab() === 'students'" [attr.aria-pressed]="tab() === 'students'" (click)="tab.set('students')">{{ 'teacherManage.page.tabStudents' | t }}</button>
     </nav>
 
     @if (tab() === 'content') {

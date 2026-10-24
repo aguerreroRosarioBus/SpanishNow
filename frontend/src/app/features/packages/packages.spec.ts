@@ -1,3 +1,5 @@
+import { provideRouter } from '@angular/router';
+import { TUTORIAL_MESSAGES } from '../../core/tutorials/tutorial.messages';
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -12,7 +14,7 @@ const item: CompleteTemplate = {id:1,teacherId:2,templateKey:'individual-4x50',s
 describe('W05 catálogo de paquetes',()=>{
   const save = vi.fn();
   const status = vi.fn(()=>of(item));
-  beforeEach(()=>TestBed.configureTestingModule({imports:[PackageCatalogComponent],providers:[{provide:I18N_CATALOGS,multi:true,useValue:PACKAGE_MESSAGES},{provide:PackagesService,useValue:{list:()=>of([item]),settings:()=>of({classesEnabledAt:null,salesPausedAt:'2026-10-22T00:00:00Z',acceptsInquiries:false}),save,status,error:()=> 'Error'}}]}));
+  beforeEach(()=>TestBed.configureTestingModule({imports:[PackageCatalogComponent],providers:[provideRouter([]),{provide:I18N_CATALOGS,multi:true,useValue:TUTORIAL_MESSAGES},{provide:I18N_CATALOGS,multi:true,useValue:PACKAGE_MESSAGES},{provide:PackagesService,useValue:{list:()=>of([item]),settings:()=>of({classesEnabledAt:null,salesPausedAt:'2026-10-22T00:00:00Z',acceptsInquiries:false}),save,status,error:()=> 'Error'}}]}));
   it('catálogos simétricos packages; idioma conserva importe y borrador',()=>{
     expect(Object.keys(PACKAGE_MESSAGES.en).sort()).toEqual(Object.keys(PACKAGE_MESSAGES.es).sort());
     expect(Object.keys(PACKAGE_MESSAGES.en).every(k=>k.startsWith('packages.'))).toBe(true);
@@ -43,7 +45,7 @@ describe('Tanda B: catálogo con plantilla sin versión (current null)',()=>{
   const list = vi.fn();
   beforeEach(()=>{
     save.mockReset().mockReturnValue(of({...item,id:1}));status.mockReset();importInitial.mockReset().mockReturnValue(of([{...item,id:1}]));list.mockReset().mockReturnValue(of([broken]));
-    TestBed.configureTestingModule({imports:[PackageCatalogComponent],providers:[{provide:I18N_CATALOGS,multi:true,useValue:PACKAGE_MESSAGES},{provide:PackagesService,useValue:{list,settings:()=>of(settings),save,status,importInitial,error:()=> 'Error'}}]});
+    TestBed.configureTestingModule({imports:[PackageCatalogComponent],providers:[provideRouter([]),{provide:I18N_CATALOGS,multi:true,useValue:TUTORIAL_MESSAGES},{provide:I18N_CATALOGS,multi:true,useValue:PACKAGE_MESSAGES},{provide:PackagesService,useValue:{list,settings:()=>of(settings),save,status,importInitial,error:()=> 'Error'}}]});
     TestBed.inject(I18nService).setLocale('es');
   });
   it('muestra la tarjeta con qué falta y las acciones en lugar de lanzar TypeError',()=>{
@@ -91,7 +93,7 @@ describe('Tanda B: catálogo con plantilla sin versión (current null)',()=>{
 });
 describe('Tanda B: URLs que usa la pantalla del catálogo',()=>{
   it('solo llama a /teacher/class-packages y /teacher/class-settings (nunca a /api/class-packages)',()=>{
-    TestBed.configureTestingModule({imports:[PackageCatalogComponent],providers:[provideHttpClient(),provideHttpClientTesting(),{provide:I18N_CATALOGS,multi:true,useValue:PACKAGE_MESSAGES}]});
+    TestBed.configureTestingModule({imports:[PackageCatalogComponent],providers:[provideRouter([]),{provide:I18N_CATALOGS,multi:true,useValue:TUTORIAL_MESSAGES},provideHttpClient(),provideHttpClientTesting(),{provide:I18N_CATALOGS,multi:true,useValue:PACKAGE_MESSAGES}]});
     const http=TestBed.inject(HttpTestingController);
     const f=TestBed.createComponent(PackageCatalogComponent);f.detectChanges();
     const urls=http.match(()=>true).map(r=>r.request.url).sort();
@@ -101,7 +103,7 @@ describe('Tanda B: URLs que usa la pantalla del catálogo',()=>{
 describe('Tanda C: catálogo vacío',()=>{
   const setup=(items:CompleteTemplate[])=>{
     const importInitial=vi.fn(()=>of([item]));
-    TestBed.configureTestingModule({imports:[PackageCatalogComponent],providers:[{provide:I18N_CATALOGS,multi:true,useValue:PACKAGE_MESSAGES},{provide:PackagesService,useValue:{list:()=>of(items),settings:()=>of({classesEnabledAt:null,salesPausedAt:null,acceptsInquiries:false}),importInitial,error:()=>''}}]});
+    TestBed.configureTestingModule({imports:[PackageCatalogComponent],providers:[provideRouter([]),{provide:I18N_CATALOGS,multi:true,useValue:TUTORIAL_MESSAGES},{provide:I18N_CATALOGS,multi:true,useValue:PACKAGE_MESSAGES},{provide:PackagesService,useValue:{list:()=>of(items),settings:()=>of({classesEnabledAt:null,salesPausedAt:null,acceptsInquiries:false}),importInitial,error:()=>''}}]});
     TestBed.inject(I18nService).setLocale('es');
     const f=TestBed.createComponent(PackageCatalogComponent);f.detectChanges();return {f,importInitial};
   };

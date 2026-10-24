@@ -1,0 +1,20 @@
+@import 'driver.js/dist/driver.css';
+
+.spanishnow-tour.driver-popover {
+  font-family: var(--font-body, 'Nunito Sans', sans-serif); color: #2b2b2b;
+  border-radius: 14px; padding: 1.25rem; min-width: 0; width: 340px;
+  max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); overflow-y: auto;
+  box-shadow: 0 12px 44px #2b2b2b30;
+  .driver-popover-title { font-size: 1.0625rem; padding-right: 1.25rem; line-height: 1.35; }
+  .driver-popover-description { margin-top: .75rem; font-size: .875rem; line-height: 1.6; }
+  .driver-popover-close-btn { color: #5a514a; min-width: 44px; min-height: 44px; }
+  .driver-popover-footer { gap: .5rem; flex-wrap: wrap; }
+  .driver-popover-progress-text { color: #5a514a; font-size: .75rem; }
+  .driver-popover-footer-btn { min-height: 44px; padding: .5rem .65rem; font: inherit; font-size: .8125rem; text-shadow: none; border-radius: 7px; }
+  .driver-popover-next-btn { background: #c94a14; color: white; border-color: #c94a14; }
+  .driver-popover-next-btn:hover, .driver-popover-next-btn:focus { background: #a53c0f; }
+  button:focus-visible { outline: 3px solid #2f6f9f; outline-offset: 2px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .driver-overlay, .driver-popover { animation: none !important; transition: none !important; }
+}

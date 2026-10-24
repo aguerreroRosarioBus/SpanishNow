@@ -6,9 +6,10 @@ import { I18nService } from '../../core/i18n/i18n.service';
 import { EXPECTATION_FIELDS } from '../legal/legal.model';
 import { PackagesService } from './packages.service';
 import { ClassSettings, PackageTemplate } from './packages.model';
+import { PackageOrientationComponent } from './package-orientation.component';
 const editable = ['nameEn','nameEs','descriptionEn','descriptionEs','modality','groupSize','billing','sessionsCount','minutesPerSession','seatsCovered','priceAmount','currency','validityHours','policyVersionId','hotmartProductId','hotmartOfferCode','hotmartCheckoutUrl'] as const;
 @Component({
-  selector:'app-package-catalog', standalone:true, imports:[TranslatePipe,FormsModule,ReactiveFormsModule],
+  selector:'app-package-catalog', standalone:true, imports:[TranslatePipe,FormsModule,ReactiveFormsModule,PackageOrientationComponent],
   templateUrl:'./package-catalog.component.html'
 })
 export class PackageCatalogComponent implements OnInit {

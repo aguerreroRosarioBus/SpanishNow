@@ -20,6 +20,7 @@ import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { Failure, failureText } from './failure';
+import { TutorialTriggerDirective } from '../../../shared/components/screen-tutorial/tutorial-trigger.directive';
 
 const TUTORIAL_VERSION = '1';
 const PHASES: LessonPhase[] = ['before', 'during', 'after', 'later'];
@@ -27,7 +28,7 @@ const PHASES: LessonPhase[] = ['before', 'during', 'after', 'later'];
 @Component({
   selector: 'app-lesson-composer',
   standalone: true,
-  imports: [CommonModule, FormsModule, KeyframeExtrasComponent, KeyframeIllustrationComponent, WhiteboardComponent, ComposerSidePanelComponent, InlineQuestionFormComponent, InlineVocabularyFormComponent, IconComponent, TranslatePipe],
+  imports: [CommonModule, FormsModule, KeyframeExtrasComponent, KeyframeIllustrationComponent, WhiteboardComponent, ComposerSidePanelComponent, InlineQuestionFormComponent, InlineVocabularyFormComponent, IconComponent, TranslatePipe, TutorialTriggerDirective],
   templateUrl: './lesson-composer.component.html',
   styleUrls: ['./lesson-composer.component.scss', './lesson-composer-tutorial.scss', './lesson-composer-flow.scss']
 })

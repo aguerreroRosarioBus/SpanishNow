@@ -113,6 +113,15 @@
   text-align: center;
 }
 
+.sidebar-description {
+  display: block;
+  margin-top: 3px;
+  font-size: .6875rem;
+  font-weight: 400;
+  line-height: 1.35;
+  color: var(--color-text-light);
+}
+
 .sidebar-badge--dot {
   position: absolute;
   top: 6px;

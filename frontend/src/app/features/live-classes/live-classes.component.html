@@ -1,7 +1,7 @@
 <div class="page-container live-list">
   <header class="page-header">
     <div class="page-header__main"><span class="eyebrow">{{ 'liveBoard.list.eyebrow' | t }}</span><h1 class="page-title">{{ 'liveBoard.list.title' | t }}</h1><p class="page-summary">{{ 'liveBoard.list.summary' | t }}</p></div>
-    <div class="page-actions"><button type="button" class="btn btn-secondary" (click)="load()" [disabled]="loading()"><app-icon name="rotate" [size]="16" />{{ 'liveBoard.list.refresh' | t }}</button>@if (teacher && !showCreate()) { <button type="button" class="btn btn-primary" (click)="showCreate.set(true)"><app-icon name="plus" [size]="16" /> {{ 'liveBoard.list.newClass' | t }}</button> }</div>
+    <div class="page-actions"><button type="button" class="btn btn-secondary" (click)="load()" [disabled]="loading()"><app-icon name="rotate" [size]="16" />{{ 'liveBoard.list.refresh' | t }}</button>@if (teacher && !showCreate()) { <button type="button" class="btn btn-primary" data-tour="live-create" (click)="showCreate.set(true)"><app-icon name="plus" [size]="16" /> {{ 'liveBoard.list.newClass' | t }}</button> }</div>
   </header>
   @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
   @if (info()) { <div class="alert alert-info" role="status">{{ info() }}</div> }

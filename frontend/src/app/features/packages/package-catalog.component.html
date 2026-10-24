@@ -1,5 +1,6 @@
 <div class="page-container">
   <h1>{{ 'packages.catalog.title' | t }}</h1>
+  <app-package-orientation section="catalog" />
   <p>{{ 'packages.catalog.hint' | t }}</p>
   @if (error()) { <p class="alert alert-danger" role="alert">{{ error() }}</p> }
   @if (settings(); as s) {
@@ -23,7 +24,7 @@
           <p>{{ i18n.formatMoney(current.priceAmount,current.currency) }} · {{ 'packages.summary' | t:{count:current.sessionsCount,minutes:current.minutesPerSession,seats:current.seatsCovered,hours:current.validityHours} }}</p>
           <p>{{ 'packages.version' | t:{version:current.version} }} · {{ ('packages.status.'+item.status) | t }}</p>
           <div class="d-flex flex-wrap gap-2">
-            <button class="btn btn-outline-primary" [disabled]="busy() || item.status==='archived'" (click)="edit(item)" [attr.aria-label]="('packages.edit' | t) + ' — ' + name(item)">{{ 'packages.edit' | t }}</button>
+            <button class="btn btn-outline-primary" [disabled]="busy() || item.status==='archived'" data-tour="catalog-edit" (click)="edit(item)" [attr.aria-label]="('packages.edit' | t) + ' — ' + name(item)">{{ 'packages.edit' | t }}</button>
             <button class="btn btn-secondary" [disabled]="busy() || item.status==='archived'" (click)="status(item,item.status==='active'?'paused':'active')" [attr.aria-label]="((item.status==='active'?'packages.pause':'packages.activate') | t) + ' — ' + name(item)">{{ (item.status==='active'?'packages.pause':'packages.activate') | t }}</button>
             <button class="btn btn-ghost" [disabled]="busy() || item.status==='archived'" (click)="status(item,'archived')" [attr.aria-label]="('packages.archive' | t) + ' — ' + name(item)">{{ 'packages.archive' | t }}</button>
           </div>
@@ -31,7 +32,7 @@
           <p>{{ ('packages.status.'+item.status) | t }}</p>
           <p class="alert alert-warning" role="status">{{ 'packages.catalog.missingVersion' | t }}</p>
           <div class="d-flex flex-wrap gap-2">
-            <button class="btn btn-primary" [disabled]="busy() || item.status==='archived'" (click)="edit(item)">{{ 'packages.catalog.complete' | t }}</button>
+            <button class="btn btn-primary" [disabled]="busy() || item.status==='archived'" data-tour="catalog-edit" (click)="edit(item)">{{ 'packages.catalog.complete' | t }}</button>
             <button class="btn btn-outline-primary" [disabled]="busy()" (click)="importInitial()">{{ 'packages.catalog.repair' | t }}</button>
           </div>
         }
@@ -47,7 +48,7 @@
     }
   </div>
   @if (selected(); as item) {
-    <section class="card p-3 mt-4">
+    <section class="card p-3 mt-4" data-tour="catalog-editor">
       <h2 class="h4">{{ 'packages.edit' | t }} — {{ name(item) }}</h2>
       <p>{{ (item.current ? 'packages.catalog.immutable' : 'packages.catalog.completeHint') | t }}</p>
       <form [formGroup]="form" (ngSubmit)="save()">
