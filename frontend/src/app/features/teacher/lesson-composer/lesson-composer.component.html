@@ -3,6 +3,7 @@
     <header class="composer-header">
       <div><p class="eyebrow">{{ unit.title }}</p><h2>{{ 'teacherComposer.composer.heading' | t:{ title: story.title } }}</h2><p class="subhead">{{ (plan()?.status === 'published' ? 'teacherComposer.composer.subheadNewRevision' : 'teacherComposer.composer.subheadDraft') | t:{ revision: plan()?.revision ?? '' } }}</p></div>
       <div class="header-actions">
+        <button type="button" class="text-button" appTutorial="composer">{{ 'tutorial.help' | t }}</button>
         <a href="#" class="tutorial-link" (click)="$event.preventDefault(); openTutorial()">{{ 'teacherComposer.composer.tutorialLink' | t }}</a>
         <button #closeButton type="button" class="icon-button" [attr.aria-label]="'teacherComposer.composer.closeAria' | t" (click)="close()">×</button>
       </div>
@@ -55,7 +56,7 @@
         </main>
         <app-composer-side-panel [blocks]="blocks()" [questions]="questions()" [vocabulary]="vocabulary()" [storyId]="story.id" [audioNormalUrl]="plan()?.audioNormalUrl" [(tab)]="sideTab" [activeBlockKey]="activeBlockKey()" (navigate)="navigateToBlock($event)" />
       </div>
-      <footer class="composer-footer"><span class="validation-hint" *ngIf="dirty()">{{ 'teacherComposer.composer.unsaved' | t }}</span><span class="validation-hint" *ngIf="!isPhaseValid()">{{ 'teacherComposer.composer.phaseOrderHint' | t }}</span><div class="footer-actions"><button type="button" class="secondary-button" (click)="sideTab.set(sideTab() === 'preview' ? 'story' : 'preview')">{{ (sideTab() === 'preview' ? 'teacherComposer.composer.closePreview' : 'teacherComposer.composer.preview') | t }}</button><button type="button" class="secondary-button" [disabled]="saving() || exampleMode()" (click)="save()">{{ (saving() ? 'teacherComposer.composer.saving' : 'teacherComposer.composer.saveDraft') | t }}</button><button type="button" class="primary-button" [disabled]="publishing() || exampleMode()" (click)="publish()">{{ (publishing() ? 'teacherComposer.composer.publishing' : 'teacherComposer.composer.publish') | t }}</button></div></footer>
+      <footer class="composer-footer"><span class="validation-hint" *ngIf="dirty()">{{ 'teacherComposer.composer.unsaved' | t }}</span><span class="validation-hint" *ngIf="!isPhaseValid()">{{ 'teacherComposer.composer.phaseOrderHint' | t }}</span><div class="footer-actions"><button type="button" class="secondary-button" data-tour="composer-preview" (click)="sideTab.set(sideTab() === 'preview' ? 'story' : 'preview')">{{ (sideTab() === 'preview' ? 'teacherComposer.composer.closePreview' : 'teacherComposer.composer.preview') | t }}</button><button type="button" class="secondary-button" [disabled]="saving() || exampleMode()" (click)="save()">{{ (saving() ? 'teacherComposer.composer.saving' : 'teacherComposer.composer.saveDraft') | t }}</button><button type="button" class="primary-button" [disabled]="publishing() || exampleMode()" (click)="publish()">{{ (publishing() ? 'teacherComposer.composer.publishing' : 'teacherComposer.composer.publish') | t }}</button></div></footer>
     </ng-container>
   </section>
 </div>

@@ -6,11 +6,12 @@ import { filter, map } from 'rxjs/operators';
 import { NavbarTopComponent } from '../navbar-top/navbar-top.component';
 import { SidebarNavComponent } from '../sidebar-nav/sidebar-nav.component';
 import { AuthService } from '../../../core/services/auth.service';
+import { ScreenTutorialComponent } from '../screen-tutorial/screen-tutorial.component';
 
 @Component({
   selector: 'app-layout',
   standalone: true,
-  imports: [TranslatePipe, RouterOutlet, RouterLink, NavbarTopComponent, SidebarNavComponent],
+  imports: [TranslatePipe, RouterOutlet, RouterLink, NavbarTopComponent, SidebarNavComponent, ScreenTutorialComponent],
   templateUrl: './layout.component.html',
   styleUrl: './layout.component.scss'
 })

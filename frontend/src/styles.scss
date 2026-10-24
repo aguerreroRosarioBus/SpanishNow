@@ -3,6 +3,8 @@
    Cálido, claro y editorial. Paleta tomada del logo.
    ============================================ */
 
+@use './app/core/tutorials/tutorial';
+
 /* ---- Bootstrap: variables (antes del import) ---- */
 $primary: #c94a14; // naranja de marca oscurecido: texto blanco con contraste AA
 $secondary: #6b625b;

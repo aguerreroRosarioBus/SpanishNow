@@ -46,6 +46,8 @@
     </main>
   </div>
 
+  @defer (on idle) { <app-screen-tutorial /> }
+
   @if (showSidebar() && sidebarOpen()) {
     <div class="sidebar-overlay" (click)="toggleSidebar()"></div>
   }

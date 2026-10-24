@@ -11,6 +11,7 @@ import { IconComponent } from '../icon/icon.component';
 
 interface NavItem {
   label: string;
+  description?: string;
   icon: string;
   link: string;
   query?: Record<string, string>;
@@ -83,12 +84,13 @@ export class SidebarNavComponent {
       const teacher = this.currentUser()?.role === 'teacher';
       groups = [{ ...groups[0], items: [...groups[0].items, {
         label: teacher ? 'packages.purchase.navTeacher' : 'packages.purchase.navStudent',
+        description: teacher ? 'tutorial.nav.purchases' : undefined,
         icon: 'wallet',
         link: teacher ? '/teacher/class-purchases' : '/class-packages'
       }] }, ...groups.slice(1)];
     }
     if (this.features.enabled('class_packages') && this.currentUser()?.role === 'teacher' && groups.length) {
-      groups = [{ ...groups[0], items: [...groups[0].items, { label: 'packages.nav', icon: 'package', link: '/teacher/class-packages' }, {label:'packages.group.nav',icon:'users',link:'/teacher/class-cohorts'}] }, ...groups.slice(1)];
+      groups = [{ ...groups[0], items: [...groups[0].items, { label: 'packages.nav', description: 'tutorial.nav.catalog', icon: 'package', link: '/teacher/class-packages' }, {label:'packages.group.nav',description:'tutorial.nav.groups',icon:'users',link:'/teacher/class-cohorts'}] }, ...groups.slice(1)];
     }
     if (this.features.enabled('google_calendar') && this.currentUser()?.role === 'teacher' && groups.length) {
       groups = [{ ...groups[0], items: [...groups[0].items, { label: 'calendar.nav', icon: 'plug', link: '/teacher/integrations' }] }, ...groups.slice(1)];

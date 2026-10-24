@@ -11,8 +11,10 @@ import { PackagesService } from './packages.service';
 import { RefundRequestComponent } from './refund-request.component';
 import { ClassPurchase } from './packages.model';
 import { presentInstant } from '../../core/time/class-time';
-@Component({selector:'app-class-purchases',standalone:true,imports:[FormsModule,RouterLink,TranslatePipe,RefundRequestComponent],styleUrl:'./purchases.component.scss',template:`
+import { PackageOrientationComponent } from './package-orientation.component';
+@Component({selector:'app-class-purchases',standalone:true,imports:[FormsModule,RouterLink,TranslatePipe,RefundRequestComponent,PackageOrientationComponent],styleUrl:'./purchases.component.scss',template:`
 <div class="page-container"><h1>{{ 'packages.purchase.title' | t }}</h1>
+@if(teacher){<app-package-orientation section="purchases" />}
 @if(error()){<div class="alert alert-danger d-flex justify-content-between align-items-center gap-2" role="alert">{{error()}}<button type="button" class="btn btn-secondary btn-sm" [disabled]="busy()" (click)="read()">{{'packages.purchase.retry'|t}}</button></div>}
 @if(busy()){<p role="status">{{ 'packages.loading' | t }}</p>}
 @for(p of items();track p.id){
