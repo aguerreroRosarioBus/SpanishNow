@@ -34,3 +34,7 @@ nul
 
 # Copia fija de main (scripts/run-main.sh)
 .run/
+
+# Artefactos generados por el seed maestro local
+frontend/public/seed-master/
+backend/.seed-master-backups/
