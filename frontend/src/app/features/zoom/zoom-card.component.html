@@ -4,10 +4,10 @@
   @if (status(); as s) {
     @if (s.fake) { <p class="test-notice">{{ 'zoom.fake' | t }}</p> }
     <div class="zoom-panel">
-      <p><strong>{{ ('zoom.status.' + s.status) | t }}</strong> @if (s.accountEmail) { · {{ s.accountEmail }} }</p>
-      @if (s.lastError) { <p role="alert">{{ api.error({ error: { code: s.lastError } }) }}</p> }
-      @if (s.capabilities; as c) { <p>{{ 'zoom.capacity' | t:{ minutes: c.maxMinutes, participants: c.maxParticipants } }}</p><p>{{ 'zoom.protection' | t }}</p> }
-      @else if (s.status === 'connected') { <p>{{ 'zoom.unknownCapacity' | t }}</p> }
+      <div class="zoom-head"><p class="zoom-meta">@if (s.accountEmail) { {{ 'zoom.accountLine' | t:{ email: s.accountEmail } }} }</p><span class="badge-status badge-status--dot status-{{ tone(s) }}" data-testid="zoom-status">{{ ('zoom.status.' + s.status) | t }}</span></div>
+      @if (s.lastError) { <p class="alert alert-warning" role="alert">{{ api.error({ error: { code: s.lastError } }) }}</p> }
+      @if (s.capabilities; as c) { <p class="zoom-meta">{{ 'zoom.capacity' | t:{ minutes: c.maxMinutes, participants: c.maxParticipants } }}</p><p class="zoom-meta">{{ 'zoom.protection' | t }}</p> }
+      @else if (s.status === 'connected') { <p class="zoom-meta">{{ 'zoom.unknownCapacity' | t }}</p> }
       <div class="zoom-actions">
         <!-- La acción principal depende del estado: conectada → Actualizar; sin conectar → Conectar; con problema → Reconectar. -->
         @if (features.enabled('zoom')) { <button type="button" class="btn" [class.btn-primary]="!isConnected(s)" [class.btn-secondary]="isConnected(s)" (click)="connect()" [disabled]="busy()">{{ (hasAccount(s) ? 'zoom.reconnect' : 'zoom.connect') | t }}</button> }

@@ -121,6 +121,16 @@ describe('Integraciones: resumen de Zoom', () => {
     expect(f.nativeElement.textContent).toContain('docente@zoom.invalid');
     expect(f.nativeElement.querySelector('a').getAttribute('href')).toBe('/teacher/integrations/zoom');
   });
+  it('estado como etiqueta, cuenta y capacidad como texto secundario y un solo botón principal', () => {
+    TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: ZoomApi, useValue: { status: () => of(account) } }] });
+    TestBed.inject(I18nService).setLocale('es');
+    const f = TestBed.createComponent(ZoomSummaryComponent); f.detectChanges();
+    const el = f.nativeElement as HTMLElement;
+    expect(el.querySelector('[data-testid=zoom-status]')?.classList).toContain('status-success');
+    expect(el.querySelector('.int-meta')?.textContent).toContain('Cuenta: docente@zoom.invalid');
+    expect(el.textContent).toContain('hasta 120 minutos y 100 personas');
+    expect(el.querySelectorAll('.btn-primary').length).toBe(1);
+  });
 });
 
 describe('Tanda B: acción principal de la tarjeta de Zoom según el estado', () => {

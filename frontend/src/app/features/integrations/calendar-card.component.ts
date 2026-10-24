@@ -12,49 +12,59 @@ const OUTCOMES = ['connected', 'denied', 'scopes', 'error', 'mismatch'];
 /** Tarjeta de Google Calendar de la pantalla común de integraciones (W07). W08 agrega la suya aparte. */
 @Component({
   selector: 'app-calendar-card', standalone: true, imports: [FormsModule, TranslatePipe],
-  styles: [`:host{display:block}.card-box{padding:1rem;border:1px solid var(--color-border,#ddd);border-radius:var(--radius-md,10px);background:var(--color-surface,#fff);margin-bottom:1rem}.notice{font-size:.9em;color:var(--color-text-muted,#625e59)}label{display:block;margin:.5rem 0}.cal{display:flex;gap:.5rem;align-items:center}.actions{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.75rem}`],
+  styleUrl: './integration-card.scss',
   template: `
-<section class="card-box" aria-labelledby="calendarCardTitle">
-  <h2 id="calendarCardTitle" class="h5">{{ 'calendar.card' | t }}</h2>
+<section class="int-card" aria-labelledby="calendarCardTitle">
+  <header class="int-head">
+    <h3 id="calendarCardTitle">{{ 'calendar.card' | t }}</h3>
+    @if (state(); as s) { <span class="badge-status badge-status--dot status-{{ tone(s.status) }}" data-testid="calendar-status">{{ ('calendar.status.' + s.status) | t }}</span> }
+  </header>
   @if (!features.enabled('google_calendar')) { <p class="notice">{{ 'calendar.unavailable' | t }}</p> }
-  @else if (loading()) { <p>{{ 'calendar.loading' | t }}</p> }
+  @else if (loading()) { <p class="notice" role="status">{{ 'calendar.loading' | t }}</p> }
   @else {
+    @if (state(); as s) { @if (s.accountEmail) { <p class="int-meta">{{ 'calendar.accountLine' | t:{ email: s.accountEmail } }}</p> } }
     @if (outcome(); as o) { <p class="alert" [class.alert-success]="o === 'connected'" [class.alert-warning]="o !== 'connected' && o !== 'confirming'" [class.alert-info]="o === 'confirming'" role="status">{{ ('calendar.outcome.' + o) | t }}</p> }
     @if (error()) { <p class="alert alert-danger" role="alert">{{ error() }}</p> }
     @if (saved()) { <p class="alert alert-success" role="status">{{ 'calendar.saved' | t }}</p> }
     @if (state(); as s) {
-      <p><strong>{{ ('calendar.status.' + s.status) | t }}</strong>@if (s.accountEmail) { · {{ s.accountEmail }} }</p>
       @if (s.status === 'disconnected' || s.status === 'pending') {
-        <p>{{ 'calendar.intro' | t }}</p>
-        <p class="notice">{{ 'calendar.permissions' | t }}</p>
-        <p class="notice">{{ 'calendar.privacy' | t }}</p>
-        <div class="actions"><button class="btn btn-primary" (click)="connect()" [disabled]="busy()">{{ 'calendar.connect' | t }}</button></div>
+        <div class="int-body">
+          <p>{{ 'calendar.intro' | t }}</p>
+          <p class="notice">{{ 'calendar.permissions' | t }}</p>
+          <p class="notice">{{ 'calendar.privacy' | t }}</p>
+        </div>
+        <div class="int-actions"><button class="btn btn-primary" (click)="connect()" [disabled]="busy()">{{ 'calendar.connect' | t }}</button></div>
       } @else {
         @if (s.status !== 'connected') {
           <p class="alert alert-warning" role="alert">{{ 'calendar.attention' | t }}</p>
-          <div class="actions"><button class="btn btn-primary" (click)="connect()" [disabled]="busy()">{{ 'calendar.reconnect' | t }}</button></div>
         } @else {
+          <div class="int-body">
           @if (s.calendarsError) { <p class="alert alert-warning" role="alert">{{ 'calendar.calendarsError' | t }}</p> }
           <label for="calendarTarget">{{ 'calendar.target' | t }}
             <select id="calendarTarget" class="form-select" [ngModel]="target()" (ngModelChange)="target.set($event)">
               @for (c of writable(); track c.id) { <option [value]="c.id">{{ c.summary }}</option> }
             </select></label>
           <p class="notice">{{ 'calendar.targetHint' | t }}</p>
-          <fieldset><legend class="h6">{{ 'calendar.busy' | t }}</legend>
+          <fieldset><legend>{{ 'calendar.busy' | t }}</legend>
             @for (c of s.calendars; track c.id) {
               <label class="cal"><input type="checkbox" [checked]="busyIds().includes(c.id)" [disabled]="c.id === target()" (change)="toggle(c.id)" />
                 {{ c.summary }}@if (c.accessRole !== 'owner') { <span class="notice">({{ 'calendar.readOnly' | t }})</span> }</label>
             }
             <p class="notice">{{ 'calendar.busyHint' | t }}</p>
           </fieldset>
-          <div class="actions"><button class="btn btn-primary" (click)="save()" [disabled]="busy() || !target()">{{ 'calendar.save' | t }}</button></div>
+          </div>
         }
-        @if (!confirming()) { <div class="actions"><button class="btn btn-ghost" (click)="confirming.set(true)" [disabled]="busy()">{{ 'calendar.disconnect' | t }}</button></div> }
-        @else {
-          <div role="alertdialog" aria-labelledby="calendarDisconnectTitle" class="mt-3">
+        @if (!confirming()) {
+          <div class="int-actions">
+            @if (s.status !== 'connected') { <button class="btn btn-primary" (click)="connect()" [disabled]="busy()">{{ 'calendar.reconnect' | t }}</button> }
+            @else { <button class="btn btn-primary" (click)="save()" [disabled]="busy() || !target()">{{ 'calendar.save' | t }}</button> }
+            <button class="btn btn-ghost int-actions-end" (click)="confirming.set(true)" [disabled]="busy()">{{ 'calendar.disconnect' | t }}</button>
+          </div>
+        } @else {
+          <div role="alertdialog" aria-labelledby="calendarDisconnectTitle" class="int-body">
             <p id="calendarDisconnectTitle"><strong>{{ 'calendar.disconnectConfirm' | t }}</strong></p>
             <p class="notice">{{ 'calendar.disconnectNote' | t }}</p>
-            <div class="actions"><button class="btn btn-danger" (click)="disconnect()" [disabled]="busy()">{{ 'calendar.confirmDisconnect' | t }}</button>
+            <div class="int-actions"><button class="btn btn-danger" (click)="disconnect()" [disabled]="busy()">{{ 'calendar.confirmDisconnect' | t }}</button>
               <button class="btn btn-ghost" (click)="confirming.set(false)">{{ 'calendar.keep' | t }}</button></div>
           </div>
         }
@@ -68,6 +78,8 @@ export class CalendarCardComponent implements OnInit {
   private route = inject(ActivatedRoute); private router = inject(Router); private destroyRef = inject(DestroyRef);
   private document = inject(DOCUMENT);
   readonly features = inject(FeaturesService);
+  /** Tono de la etiqueta de estado. */
+  tone(status: string): string { return status === 'connected' ? 'success' : status === 'revoked' ? 'danger' : status === 'needs_attention' || status === 'pending' ? 'warning' : 'neutral'; }
   readonly i18n = inject(I18nService);
   state = signal<GoogleCalendarStatus | null>(null);
   loading = signal(true); busy = signal(false); saved = signal(false); confirming = signal(false);

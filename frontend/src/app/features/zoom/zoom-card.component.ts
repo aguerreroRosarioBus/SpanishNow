@@ -38,6 +38,8 @@ export class ZoomCardComponent {
   }
   /** Cuenta ya vinculada (aunque con problemas): ofrecer «Reconectar» y no «Conectar». */
   hasAccount(s: ZoomStatus): boolean { return !['disconnected', 'pending'].includes(s.status); }
+  /** Tono de la etiqueta de estado. */
+  tone(s: ZoomStatus): string { return s.status === 'connected' ? 'success' : s.status === 'revoked' ? 'danger' : s.status === 'needs_attention' || s.status === 'pending' ? 'warning' : 'neutral'; }
   isConnected(s: ZoomStatus): boolean { return s.status === 'connected'; }
   refresh(): void {
     if (this.busy()) return;
