@@ -152,11 +152,11 @@ describe('W06: interfaz conectada por contratos de agenda', () => {
     const text = (f: { nativeElement: HTMLElement }) => f.nativeElement.textContent || '';
     const ready = [{ provider: 'zoom', status: 'ready', syncedVersion: 1 }, { provider: 'google_calendar', status: 'ready', syncedVersion: 1 }];
 
-    it('muestra la fecha una sola vez y en formato compacto, con la zona como texto secundario', () => {
+    it('muestra la fecha (con año) una sola vez y en formato compacto, con la zona como texto secundario', () => {
       const fixture = render(confirmed(ready));
       const main = fixture.nativeElement.querySelector('.when-main') as HTMLElement;
       expect(main.textContent).toMatch(/\d{2}:\d{2}–\d{2}:\d{2}/);
-      expect(main.textContent).not.toContain('2027');
+      expect(main.textContent).toContain('2027'); expect((main.textContent!.match(/2027/g) || []).length).toBe(1);
       expect(text(fixture)).toContain('America/Argentina/Cordoba'); fixture.destroy();
     });
     it('el horario del docente solo aparece cuando difiere del de quien mira', () => {

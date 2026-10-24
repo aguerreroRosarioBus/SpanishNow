@@ -193,17 +193,28 @@ export function intervalsConflict(a: TimeInterval, b: TimeInterval, bufferMinute
 /** Datos para TZ-07/08: cada extremo conserva su offset, incluso cruzando DST. */
 export function presentSessionTime(session: TimeInterval, recipientZone: string, teacherZone: string, locale: 'en' | 'es') {
   interval(session);
+  const tag = locale === 'es' ? 'es-AR' : 'en-US';
   const project = (zone: string) => {
     const start = inTimeZone(session.startsAt, zone), end = inTimeZone(session.endsAt, zone);
-    const format = new Intl.DateTimeFormat(locale === 'es' ? 'es-AR' : 'en-US', {
+    const format = new Intl.DateTimeFormat(tag, {
       timeZone: zone, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
       hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
     });
-    return { start, end, startLabel: format.format(new Date(start.startsAt)), endLabel: format.format(new Date(end.startsAt)) };
+    // Formato compacto (TZ-07 conserva día, fecha con año, inicio, fin, zona y desplazamiento).
+    const part = (instant: string, options: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat(tag, { timeZone: zone, ...options }).format(new Date(instant));
+    const dayOf = (instant: string) => part(instant, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }).replace(/[,.]/g, '');
+    const timeOf = (instant: string) => part(instant, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+    const range = start.date === end.date ? `${timeOf(start.startsAt)}–${timeOf(end.startsAt)}`
+      : `${timeOf(start.startsAt)} – ${dayOf(end.startsAt)} ${timeOf(end.startsAt)}`;
+    const offsetLabel = `UTC${start.offset}${start.offset !== end.offset ? ` → UTC${end.offset}` : ''}`;
+    return { start, end, startLabel: format.format(new Date(start.startsAt)), endLabel: format.format(new Date(end.startsAt)),
+      day: dayOf(start.startsAt), range, offsetLabel };
   };
   const recipient = project(recipientZone), teacher = project(teacherZone);
   return {
     recipient, teacher,
-    differentDates: recipient.start.date !== teacher.start.date || recipient.end.date !== teacher.end.date
+    differentDates: recipient.start.date !== teacher.start.date || recipient.end.date !== teacher.end.date,
+    // El horario del docente solo se oculta cuando es la misma zona IANA con los mismos desplazamientos.
+    teacherDiffers: recipientZone !== teacherZone || recipient.start.offset !== teacher.start.offset || recipient.end.offset !== teacher.end.offset
   };
 }
