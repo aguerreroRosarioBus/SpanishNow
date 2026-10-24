@@ -36,7 +36,7 @@ export interface ClassCohort {
   status:'forming'|'ready'|'cancelled'|'completed'; formingDeadlineAt:string; tentativeStartsAt:string;
   members?:{userId:number;status:string;name?:string;conversationId?:number}[]; invitation?:{status:string};
 }
-export interface ClassOrder { id:number;offerId:number;provider:'fake'|'hotmart';status:'pending'|'paid'|'failed'|'paid_needs_review'|'partially_refunded'|'refunded';amount:number;currency:string;reviewReason:string|null;reportedAmount?:number|null;reportedCurrency?:string|null;providerTransactionId?:string|null;providerProductId?:string|null;providerOfferCode?:string|null }
+export interface ClassOrder { id:number;offerId:number;provider:'fake'|'hotmart';status:'pending'|'paid'|'failed'|'paid_needs_review'|'partially_refunded'|'refunded';amount:number;currency:string;reviewReason:string|null;reportedAmount?:number|null;reportedCurrency?:string|null;providerTransactionId?:string|null;providerProductId?:string|null;providerOfferCode?:string|null;purchaseStatus?:string|null;frozenFromStatus?:string|null;unitsAvailable?:number|null;unitsReserved?:number|null;unitsConsumed?:number|null }
 export interface CheckoutState {offer:ClassOffer;order:ClassOrder|null;purchaseId:number|null}
 export interface ClassPurchase {
   id:number;offerId:number;buyerId:number;/** Solo en la vista docente (GET /api/teacher/class-purchases). */buyerName?:string|null;teacherId:number;version:number;status:'active'|'paused'|'exhausted'|'expired'|'cancelled';
@@ -52,3 +52,10 @@ export interface RefundPreview {
   requests:{id:number;type:string;classification:string;reason:string;createdAt:string;amount:number;currency:string;status:string;updates:{reason:string;status:string;createdAt:string}[]}[];
 }
 export interface PaymentJob{id:number;topic:string;aggregateId:number;purchaseIds:number[];status:string;attempts:number;lastError:string|null;runAt:string}
+
+export const FROZEN_REASONS=['refund_mapping_mismatch','refund_amount_review','partial_refund_pending_validation'] as const;
+export const isFrozenOrder=(o:ClassOrder)=>o.status==='paid_needs_review'&&!!o.reviewReason&&(FROZEN_REASONS as readonly string[]).includes(o.reviewReason);
+export interface ProviderVerification{id:number;verifiedAt:string;verifiedBy:{id:number;name:string};guaranteeDays:number;checks:Record<string,boolean>;reason:string}
+export interface ProviderRevocation{id:number;revokedAt:string;revokedBy:{id:number;name:string}|number|null;reason:string;verifiedAt:string}
+export interface ClassProviderState{mode:'fake'|'verified'|'blocked';verification:ProviderVerification|null;lastRevocation:ProviderRevocation|null}
+export interface ProviderVerifyBody{checks:{account:true;format:true;guarantee:true;mapping:true};guaranteeDays:number;reason:string}

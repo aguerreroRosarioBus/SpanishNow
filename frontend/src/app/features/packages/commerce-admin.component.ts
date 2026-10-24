@@ -7,7 +7,7 @@ import {I18nService} from '../../core/i18n/i18n.service';
 import {AuthService} from '../../core/services/auth.service';
 import {ChatFormat} from '../chat/chat-format';
 import {PackagesService} from './packages.service';
-import {ClassOrder,ClassPurchase,ClassSettings,RefundPreview,PaymentJob} from './packages.model';
+import {ClassOrder,ClassPurchase,ClassSettings,RefundPreview,PaymentJob,ClassProviderState,isFrozenOrder} from './packages.model';
 @Component({selector:'app-commerce-admin',standalone:true,imports:[FormsModule,TranslatePipe],
 styles:[`.commerce{max-width:960px}.block{margin:var(--spacing-md) 0}.block-title{margin:0 0 var(--spacing-xs);font-size:1.125rem}.sub-title{margin:var(--spacing-md) 0 var(--spacing-sm);font-size:.9375rem;font-weight:700}.notice{margin:var(--spacing-xs) 0 0;font-size:.8125rem;color:var(--color-text-light);overflow-wrap:anywhere}.item{margin:var(--spacing-sm) 0;padding:var(--spacing-md);border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-bg)}.item-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--spacing-sm)}.item-head h4,.item-head h3{margin:0;font-size:1rem}.item p{margin:var(--spacing-xs) 0 0}.item-actions{display:flex;flex-wrap:wrap;gap:var(--spacing-sm);margin-top:var(--spacing-sm)}.empty{padding:var(--spacing-md);border:1px dashed var(--color-border);border-radius:var(--radius-md);background:var(--color-bg-light)}.empty p{margin:0 0 var(--spacing-sm)}.badge-status{flex:none;white-space:normal}.status-success{background:var(--color-success-soft);color:var(--color-success-text)}.status-warning{background:var(--color-warning-soft);color:#6b4a00}.status-danger{background:var(--color-danger-soft);color:var(--color-danger)}.status-neutral{background:var(--color-bg-dark);color:var(--color-text-light)}@media (max-width:480px){.item-actions .btn{flex:1 1 auto}}`],
 template:`
@@ -15,6 +15,31 @@ template:`
 <p class="notice">{{'packages.admin.realBlocked'|t}}</p>
 @if(error()){<p class="alert alert-danger mt-3" role="alert">{{error()}}</p>}
 @if(saved()){<p class="alert alert-success mt-3" role="status">{{'packages.admin.saved'|t}}</p>}
+@if(provider();as pv){
+<section class="surface block" aria-labelledby="adminProviderTitle" data-test="provider-card">
+  <h2 id="adminProviderTitle" class="block-title">{{'packages.admin.provider.title'|t}}</h2>
+  <p data-test="provider-mode"><span class="badge-status badge-status--dot status-{{pv.mode==='verified'?'success':pv.mode==='blocked'?'warning':'neutral'}}">{{('packages.admin.provider.mode.'+pv.mode)|t:{name:pv.verification?.verifiedBy?.name||'—',date:pv.verification?i18n.formatInstant(pv.verification.verifiedAt,fmt.timeZone()):'',days:pv.verification?.guaranteeDays||''} }}</span></p>
+  @if(pv.verification){<p class="notice">{{'packages.admin.provider.verifiedReason'|t:{reason:pv.verification.reason} }}</p>}
+  @if(pv.lastRevocation;as lr){<p class="notice" data-test="provider-revoked">{{'packages.admin.provider.revoked'|t:{name:revoker(lr),date:i18n.formatInstant(lr.revokedAt,fmt.timeZone()),reason:lr.reason} }}</p>}
+  @if(pv.mode!=='verified'&&!verifyOpen()){<div class="item-actions"><button type="button" class="btn btn-primary" (click)="verifyOpen.set(true)">{{'packages.admin.provider.verifyOpen'|t}}</button></div>}
+  @if(pv.mode!=='verified'&&verifyOpen()){<form class="item" (ngSubmit)="verifyProvider()" aria-labelledby="providerVerifyTitle">
+    <h3 id="providerVerifyTitle" class="sub-title">{{'packages.admin.provider.verifyTitle'|t}}</h3>
+    @for(k of checkKeys;track k){<label class="d-block mt-2"><input type="checkbox" [name]="'check_'+k" [(ngModel)]="vChecks[k]"> {{('packages.admin.provider.check.'+k)|t}}</label>}
+    <label for="providerDays" class="form-label mt-2">{{'packages.admin.provider.guaranteeDays'|t}}</label><select id="providerDays" name="days" class="form-select" [(ngModel)]="vDays"><option [ngValue]="null">{{'packages.admin.provider.guaranteeChoose'|t}}</option>@for(d of guaranteeOptions;track d){<option [ngValue]="d">{{'packages.admin.provider.days'|t:{days:d} }}</option>}</select>
+    <label for="providerReason" class="form-label mt-2">{{'packages.admin.provider.reason'|t}}</label><textarea id="providerReason" name="reason" class="form-control" maxlength="500" [(ngModel)]="vReason"></textarea>
+    <p class="notice">{{'packages.admin.provider.verifyWarn'|t}}</p>
+    <div class="item-actions"><button type="submit" class="btn btn-primary" [disabled]="!verifyReady()">{{'packages.admin.provider.verifySubmit'|t}}</button><button type="button" class="btn btn-secondary" (click)="verifyOpen.set(false)">{{'packages.admin.provider.cancel'|t}}</button></div>
+  </form>}
+  @if(pv.mode==='verified'&&!revokeOpen()){<div class="item-actions"><button type="button" class="btn btn-outline-danger" (click)="revokeOpen.set(true)">{{'packages.admin.provider.revokeOpen'|t}}</button></div>}
+  @if(pv.mode==='verified'&&revokeOpen()){<form class="item" (ngSubmit)="revokeProvider()" aria-labelledby="providerRevokeTitle">
+    <h3 id="providerRevokeTitle" class="sub-title">{{'packages.admin.provider.revokeTitle'|t}}</h3>
+    <label for="providerRevokeReason" class="form-label">{{'packages.admin.provider.reason'|t}}</label><textarea id="providerRevokeReason" name="rreason" class="form-control" maxlength="500" [(ngModel)]="rReason"></textarea>
+    <label class="d-block mt-2"><input type="checkbox" name="rconfirm" [(ngModel)]="rConfirmed"> {{'packages.admin.provider.revokeConfirm'|t}}</label>
+    <p class="notice">{{'packages.admin.provider.revokeWarn'|t}}</p>
+    <div class="item-actions"><button type="submit" class="btn btn-outline-danger" [disabled]="!revokeReady()">{{'packages.admin.provider.revokeSubmit'|t}}</button><button type="button" class="btn btn-secondary" (click)="revokeOpen.set(false)">{{'packages.admin.provider.cancel'|t}}</button></div>
+  </form>}
+</section>
+}
 @if(can('class_payments.review')||can('class_credits.adjust')){
 <section class="surface block" aria-labelledby="adminConfirmTitle">
   <h2 id="adminConfirmTitle" class="block-title">{{'packages.admin.confirmTitle'|t}}</h2>
@@ -30,10 +55,22 @@ template:`
   <label for="paymentFilter" class="form-label">{{'packages.admin.filter'|t}}</label><select id="paymentFilter" class="form-select" [(ngModel)]="filter" (ngModelChange)="loadPayments()">@for(s of statuses;track s){<option [value]="s">{{('packages.admin.orderStatus.'+s)|t}}</option>}</select>
   @for(o of orders();track o.id){<article class="item">
     <div class="item-head"><h4>{{'packages.admin.order'|t}} #{{o.id}} · {{i18n.formatMoney(o.amount,o.currency)}}</h4><span class="badge-status badge-status--dot status-{{orderTone(o.status)}}">{{('packages.admin.orderStatus.'+o.status)|t}}</span></div>
-    @if(o.reviewReason){<p>{{o.reviewReason}}</p>}
+    @if(frozen(o)){<p data-test="frozen-reason">{{('packages.admin.provider.frozen.'+o.reviewReason)|t}}</p>
+      @if(o.frozenFromStatus){<p class="notice">{{'packages.admin.provider.frozenFrom'|t:{status:purchaseStatus(o.frozenFromStatus)} }}</p>}
+      <p class="notice">{{'packages.admin.provider.balances'|t:{available:o.unitsAvailable??'—',reserved:o.unitsReserved??'—',consumed:o.unitsConsumed??'—'} }}</p>}
+    @else if(o.reviewReason){<p>{{o.reviewReason}}</p>}
     @if(o.reportedAmount!=null&&o.reportedCurrency){<p>{{'packages.admin.reported'|t:{amount:i18n.formatMoney(o.reportedAmount!,o.reportedCurrency!)} }}</p>}
     <p class="notice">{{'packages.admin.providerIds'|t:{transaction:o.providerTransactionId||'—',product:o.providerProductId||'—',offer:o.providerOfferCode||'—'} }} · {{'packages.offer.open'|t}} #{{o.offerId}}</p>
-    @if(o.status==='paid_needs_review'||o.status==='paid'){<div class="item-actions">
+    @if(frozen(o)){
+      <p class="notice">{{'packages.admin.provider.confirmRefundHint'|t}}</p>
+      <label [for]="'refunded'+o.id" class="form-label mt-2">{{'packages.admin.provider.refundedAmount'|t:{currency:o.currency} }}</label><input [id]="'refunded'+o.id" class="form-control" inputmode="decimal" [ngModel]="refundText(o)" (ngModelChange)="refundInputs[o.id]=$event">
+      <p class="notice">{{'packages.admin.provider.refundedPartial'|t}}</p>
+      @if(refundInvalid(o)){<p class="notice" role="alert">{{'packages.admin.provider.refundedInvalid'|t}}</p>}
+      <div class="item-actions"><button class="btn btn-outline-danger" [disabled]="!ready()||refundInvalid(o)" (click)="confirmRefund(o)">{{'packages.admin.provider.confirmRefund'|t}}</button></div>
+      <p class="notice mt-2">{{'packages.admin.provider.unfreezeHint'|t}}</p>
+      <div class="item-actions"><button class="btn btn-secondary" [disabled]="!ready()||!o.frozenFromStatus" (click)="resolve(o,'unfreeze')">{{'packages.admin.provider.unfreeze'|t}}</button></div>
+      @if(!o.frozenFromStatus){<p class="notice">{{'packages.admin.provider.unfreezeLegacy'|t}}</p>}
+    }@else if(o.status==='paid_needs_review'||o.status==='paid'){<div class="item-actions">
       @if(o.status==='paid_needs_review'){<button class="btn btn-primary" [disabled]="!ready()" (click)="resolve(o,'credit')">{{'packages.admin.credit'|t}}</button>}
       <button class="btn btn-outline-danger" [disabled]="!ready()" (click)="resolve(o,'refund')">{{'packages.admin.approve'|t}}</button></div>}
   </article>}@empty{<div class="empty mt-2"><p>{{'packages.admin.paymentsEmpty'|t}}</p><button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="loadPayments()">{{'packages.admin.reload'|t}}</button></div>}
@@ -101,17 +138,33 @@ template:`
 </div>`})
 export class CommerceAdminComponent implements OnInit{
   private api=inject(PackagesService);private auth=inject(AuthService);private destroy=inject(DestroyRef);readonly i18n=inject(I18nService);readonly fmt=inject(ChatFormat);
-  refunds=signal<RefundPreview[]>([]);orders=signal<ClassOrder[]>([]);events=signal<{id:number;orderId:number|null;eventType:string;createdAt:string}[]>([]);jobs=signal<PaymentJob[]>([]);jobsFailed=signal(false);teachers=signal<{id:number;name:string;settings:ClassSettings|null}[]>([]);policy=signal<{version:number;rules:Record<string,unknown>}|null>(null);purchase=signal<ClassPurchase|null>(null);
+  refunds=signal<RefundPreview[]>([]);orders=signal<ClassOrder[]>([]);provider=signal<ClassProviderState|null>(null);verifyOpen=signal(false);revokeOpen=signal(false);events=signal<{id:number;orderId:number|null;eventType:string;createdAt:string}[]>([]);jobs=signal<PaymentJob[]>([]);jobsFailed=signal(false);teachers=signal<{id:number;name:string;settings:ClassSettings|null}[]>([]);policy=signal<{version:number;rules:Record<string,unknown>}|null>(null);purchase=signal<ClassPurchase|null>(null);
   busy=signal(false);saved=signal(false);private failure=signal<unknown>(null);error=computed(()=>this.failure()?this.api.error(this.failure()):'');
+  vChecks:Record<string,boolean>={account:false,format:false,guarantee:false,mapping:false};vDays:number|null=null;vReason='';rReason='';rConfirmed=false;refundInputs:Record<number,string>={};
+  readonly checkKeys=['account','format','guarantee','mapping'] as const;readonly guaranteeOptions=[7,15,21,30];
   reason='';deadline='';confirmed=false;filter='paid_needs_review';refundHours=360;pauseHours=720;ttlHours=168;purchaseId=0;direction='add';units=1;private adjustKey=crypto.randomUUID();private adjustAttempt='';
   readonly statuses=['paid_needs_review','paid','partially_refunded','refunded','pending','failed'];readonly directions=['add','remove','restore'];
   orderTone(s:string){return s==='paid'?'success':s==='paid_needs_review'||s==='pending'||s==='partially_refunded'?'warning':s==='failed'?'danger':'neutral';}
   jobTone(s:string){return s==='failed'?'danger':s==='attention'||s==='pending'||s==='running'?'warning':s==='done'?'success':'neutral';}
-  ngOnInit(){this.load();}can(p:string){return this.auth.hasPermission(p);}ready(){return !this.busy()&&this.confirmed&&Boolean(this.reason.trim());}
+  frozen(o:ClassOrder){return isFrozenOrder(o);}
+  purchaseStatus(s:string){const k=`packages.admin.provider.purchaseStatus.${s}`;return this.i18n.has(k)?this.i18n.t(k):s;}
+  revoker(r:{revokedBy:{name:string}|number|null}){const b=r.revokedBy;return b&&typeof b==='object'?b.name:b!=null?`#${b}`:'—';}
+  verifyReady(){return !this.busy()&&this.checkKeys.every(k=>this.vChecks[k])&&this.guaranteeOptions.includes(this.vDays as number)&&Boolean(this.vReason.trim());}
+  revokeReady(){return !this.busy()&&this.rConfirmed&&Boolean(this.rReason.trim());}
+  loadProvider(){this.api.providerState().pipe(takeUntilDestroyed(this.destroy)).subscribe({next:v=>this.provider.set(v),error:()=>this.provider.set(null)});}
+  verifyProvider(){if(!this.verifyReady())return;this.act(this.api.verifyProvider({checks:{account:true,format:true,guarantee:true,mapping:true},guaranteeDays:this.vDays as number,reason:this.vReason.trim()}),()=>{this.verifyOpen.set(false);this.vChecks={account:false,format:false,guarantee:false,mapping:false};this.vDays=null;this.vReason='';});}
+  revokeProvider(){if(!this.revokeReady())return;this.act(this.api.revokeProvider(this.rReason.trim()),()=>{this.revokeOpen.set(false);this.rReason='';this.rConfirmed=false;});}
+  private fractionDigits(c:string){return new Intl.NumberFormat('en',{style:'currency',currency:c.toUpperCase()}).resolvedOptions().maximumFractionDigits??2;}
+  refundText(o:ClassOrder){return this.refundInputs[o.id]??(o.amount/10**this.fractionDigits(o.currency)).toFixed(this.fractionDigits(o.currency));}
+  /** Convierte lo escrito (unidades mayores) a unidades menores enteras; null si no es un importe válido. */
+  refundMinor(o:ClassOrder){const t=this.refundText(o).trim().replace(',','.');const d=this.fractionDigits(o.currency);if(!/^\d+(\.\d+)?$/.test(t))return null;const [,f='']=t.split('.');if(f.length>d)return null;const n=Math.round(Number(t)*10**d);return Number.isSafeInteger(n)&&n>=1&&n<=o.amount?n:null;}
+  refundInvalid(o:ClassOrder){return this.refundMinor(o)===null;}
+  confirmRefund(o:ClassOrder){const n=this.refundMinor(o);if(n===null||!this.ready())return;this.act(this.api.resolvePayment(o.id,'confirm_refund',this.reason.trim(),n===o.amount?undefined:n));}
+  ngOnInit(){this.load();this.loadProvider();}can(p:string){return this.auth.hasPermission(p);}ready(){return !this.busy()&&this.confirmed&&Boolean(this.reason.trim());}
   private read<T>(o:Observable<T>,next:(v:T)=>void){o.pipe(takeUntilDestroyed(this.destroy)).subscribe({next,error:e=>this.failure.set(e)});}
   load(){if(this.can('class_payments.review')){this.read(this.api.refundRequests(),v=>this.refunds.set(v));this.loadPayments();this.jobsFailed.set(false);this.api.paymentJobs().pipe(takeUntilDestroyed(this.destroy)).subscribe({next:v=>this.jobs.set(v),error:()=>this.jobsFailed.set(true)});}if(this.can('class_teachers.manage'))this.read(this.api.teachers(),v=>this.teachers.set(v));if(this.can('class_packages.manage_all'))this.read(this.api.policies(),v=>{this.policy.set(v[0]||null);if(v[0]){this.refundHours=Math.max(360,Number(v[0].rules['refundWindowHours']));this.pauseHours=Number(v[0].rules['maxPauseHours']);this.ttlHours=Number(v[0].rules['offerTtlHours']);}});}
   loadPayments(){this.read(this.api.paymentList(this.filter),v=>{this.orders.set(v.items);this.events.set(v.events);});}
-  private act<T>(o:Observable<T>,done?:(v:T)=>void){if(this.busy())return;this.busy.set(true);this.saved.set(false);this.failure.set(null);o.pipe(takeUntilDestroyed(this.destroy)).subscribe({next:v=>{done?.(v);this.busy.set(false);this.saved.set(true);this.confirmed=false;this.load();},error:e=>{this.busy.set(false);this.failure.set(e);}});}
+  private act<T>(o:Observable<T>,done?:(v:T)=>void){if(this.busy())return;this.busy.set(true);this.saved.set(false);this.failure.set(null);o.pipe(takeUntilDestroyed(this.destroy)).subscribe({next:v=>{done?.(v);this.busy.set(false);this.saved.set(true);this.confirmed=false;this.load();this.loadProvider();},error:e=>{this.busy.set(false);this.failure.set(e);}});}
   reviewRefund(v:RefundPreview,id:number,action:string){if(this.ready())this.act(this.api.reviewRefund(id,{action,reason:this.reason.trim(),quote:v.quote}));}
   resolve(o:ClassOrder,action:string){if(this.ready())this.act(this.api.resolvePayment(o.id,action,this.reason.trim()));}
   acknowledge(id:number){if(this.ready())this.act(this.api.acknowledgePaymentJob(id,this.reason.trim()));}

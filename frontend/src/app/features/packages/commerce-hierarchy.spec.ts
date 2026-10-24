@@ -1,6 +1,6 @@
 import {TestBed} from '@angular/core/testing';
 import {provideRouter} from '@angular/router';
-import {of} from 'rxjs';
+import {of,throwError} from 'rxjs';
 import {describe,expect,it,vi} from 'vitest';
 import {CommerceAdminComponent} from './commerce-admin.component';
 import {PackagesService} from './packages.service';
@@ -10,7 +10,7 @@ import {PACKAGE_MESSAGES} from './packages.i18n';
 
 const order={id:12,offerId:30,provider:'hotmart',status:'paid_needs_review',amount:120,currency:'USD',reviewReason:'Importe distinto',providerTransactionId:'HP1',providerProductId:'55',providerOfferCode:'x7'};
 function render(permissions:string[],api:Record<string,unknown>={}){
-  const service={refundRequests:()=>of([]),paymentList:()=>of({items:[],events:[]}),paymentJobs:()=>of([]),teachers:()=>of([]),policies:()=>of([{version:4,rules:{refundWindowHours:360,maxPauseHours:720,offerTtlHours:168}}]),error:()=>'',...api};
+  const service={providerState:()=>throwError(()=>({status:403})),refundRequests:()=>of([]),paymentList:()=>of({items:[],events:[]}),paymentJobs:()=>of([]),teachers:()=>of([]),policies:()=>of([{version:4,rules:{refundWindowHours:360,maxPauseHours:720,offerTtlHours:168}}]),error:()=>'',...api};
   TestBed.configureTestingModule({imports:[CommerceAdminComponent],providers:[provideRouter([]),{provide:I18N_CATALOGS,multi:true,useValue:PACKAGE_MESSAGES},
     {provide:AuthService,useValue:{currentUser:()=>null,hasPermission:(k:string)=>permissions.includes(k)}},{provide:PackagesService,useValue:service}]});
   TestBed.inject(I18nService).setLocale('es');

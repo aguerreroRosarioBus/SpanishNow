@@ -9,7 +9,7 @@ import {PACKAGE_MESSAGES} from './packages.i18n';
 function render(paymentJobs:()=>unknown){
   TestBed.configureTestingModule({imports:[CommerceAdminComponent],providers:[provideRouter([]),{provide:I18N_CATALOGS,multi:true,useValue:PACKAGE_MESSAGES},
     {provide:AuthService,useValue:{currentUser:()=>null,hasPermission:(k:string)=>k==='class_payments.review'}},
-    {provide:PackagesService,useValue:{refundRequests:()=>of([]),paymentList:()=>of({items:[],events:[]}),paymentJobs,error:()=>''}}]});
+    {provide:PackagesService,useValue:{providerState:()=>throwError(()=>({status:403})),refundRequests:()=>of([]),paymentList:()=>of({items:[],events:[]}),paymentJobs,error:()=>''}}]});
   TestBed.inject(I18nService).setLocale('es');
   const f=TestBed.createComponent(CommerceAdminComponent);f.detectChanges();return f.nativeElement.textContent as string;
 }

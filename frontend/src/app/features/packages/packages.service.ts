@@ -2,7 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { I18nService } from '../../core/i18n/i18n.service';
-import { ClassCohort, ClassOffer, ClassSettings, PackageTemplate, ClassOrder, CheckoutState, ClassPurchase, RefundPreview, PaymentJob } from './packages.model';
+import { ClassCohort, ClassOffer, ClassSettings, PackageTemplate, ClassOrder, CheckoutState, ClassPurchase, RefundPreview, PaymentJob, ClassProviderState, ProviderVerifyBody } from './packages.model';
 @Injectable({providedIn:'root'})
 export class PackagesService {
   private http = inject(HttpClient);
@@ -13,7 +13,10 @@ export class PackagesService {
   refundRequests(){return this.http.get<RefundPreview[]>(`${this.base}/admin/class-refund-requests`);}
   reviewRefund(id:number,body:unknown){return this.http.post<RefundPreview>(`${this.base}/admin/class-refund-requests/${id}/review`,body);}
   paymentList(status:string){return this.http.get<{items:ClassOrder[];events:{id:number;orderId:number|null;eventType:string;createdAt:string}[]}>(`${this.base}/admin/class-payments`,{params:{status}});}
-  resolvePayment(id:number,action:string,reason:string){return this.http.post<{manualRequired?:boolean}>(`${this.base}/admin/class-payments/${id}/resolve`,{action,reason});}
+  resolvePayment(id:number,action:string,reason:string,refundedAmount?:number){return this.http.post<{manualRequired?:boolean}>(`${this.base}/admin/class-payments/${id}/resolve`,{action,reason,...(refundedAmount!=null?{refundedAmount}:{})});}
+  providerState(){return this.http.get<ClassProviderState>(`${this.base}/admin/class-provider`);}
+  verifyProvider(body:ProviderVerifyBody){return this.http.post(`${this.base}/admin/class-provider/verify`,body);}
+  revokeProvider(reason:string){return this.http.post(`${this.base}/admin/class-provider/revoke`,{reason});}
   paymentJobs(){return this.http.get<PaymentJob[]>(`${this.base}/admin/class-payment-jobs`);}
   acknowledgePaymentJob(id:number,reason:string){return this.http.post(`${this.base}/admin/class-payment-jobs/${id}/acknowledge`,{reason});}
   verifyRefundDeadline(id:number,deadline:string,reason:string){return this.http.post(`${this.base}/admin/class-purchases/${id}/refund-deadline`,{deadline,reason});}
