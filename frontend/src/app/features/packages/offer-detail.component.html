@@ -1,45 +1,92 @@
-<div class="page-container">
+<div class="page-container offer-page pilot-ui">
   @if (error()) { <p class="alert alert-danger" role="alert">{{ error() }}</p> }
   @if (offer(); as o) {
-    <a [routerLink]="['/messages',o.conversationId]">{{ 'packages.offer.back' | t }}</a>
-    <article class="card p-4 mt-3">
-      <h1>{{ name() }}</h1>
-      @if (o.snapshot.teacherName) { <p>{{ 'packages.offer.teacher' | t:{name:o.snapshot.teacherName} }}</p> }
-      <p class="h4">{{ i18n.formatMoney(o.amount,o.currency) }}</p>
-      <p>{{ 'packages.summary' | t:{count:o.sessionsCount,minutes:o.minutesPerSession,seats:o.seatsCovered,hours:o.snapshot.validityHours} }}</p>
-      <p>{{ ('packages.offer.status.'+o.status) | t }}</p>
-      <p>{{ 'packages.offer.expires' | t:{time:instant(o.expiresAt),zone:fmt.timeZone()} }}</p>
-      <p>{{ 'packages.offer.versions' | t:{template:o.snapshot.templateVersion,policy:o.snapshot.policyVersion} }}</p>
-      @if (o.replacesOfferId) { <a [routerLink]="['/class-offers',o.replacesOfferId]">{{ 'packages.offer.previous' | t }}</a> }
-      <p>{{ 'packages.offer.immutable' | t }}</p>
-      <dl>@for (field of fields; track field) { <dt>{{ ('packages.expectations.'+field) | t }}</dt><dd class="text-break">{{ o.snapshot.expectations?.[i18n.locale()]?.[field] }}</dd> }</dl>
-      <h2 class="h5">{{ 'packages.offer.rules' | t }}</h2>
-      <p>{{ 'packages.offer.rulesText' | t:{cancel:o.snapshot.policy.freeCancelHours,pause:o.snapshot.policy.maxPauseHours,pauses:o.snapshot.policy.maxPauses} }}</p>
-      <p>{{(o.snapshot.policy.refundMode==='full_unused_then_review'?'packages.refund.policy':'packages.refund.legacy')|t:{hours:o.snapshot.policy.refundWindowHours} }}</p>
-      <p>{{'packages.refund.beforePay'|t}}</p>
-      <p>{{ 'packages.offer.validity' | t }}</p>
-      @for (doc of o.snapshot.legalDocuments; track doc.documentKey) {
-        <a [routerLink]="['/legal',doc.documentKey]" [queryParams]="{version:doc.version}" target="_blank" rel="noopener">{{ doc.content[i18n.locale()].title }} ({{ doc.version }})</a>
-      }
-      @if (order(); as order) {
-        <p role="status">{{ ('packages.payment.'+order.status) | t }}</p>
-      }
-      @if (purchaseId(); as id) { <a [routerLink]="['/class-packages',id]">{{ 'packages.purchase.open' | t }}</a> }
-      @if (payable()) {
-        @if (documents().length) { <app-legal-consent [documents]="documents()" [(accepted)]="accepted" /> }
-        <button class="btn btn-primary mt-3 align-self-start" [disabled]="busy() || (needsConsent() && !accepted())" (click)="pay()">{{ 'packages.payment.continue' | t }}</button>
-        @if (order()?.provider==='fake' && order()?.status==='pending') {
-          <p class="mt-3">{{ 'packages.payment.fakeNote' | t }}</p>
-          <button class="btn btn-secondary align-self-start" [disabled]="busy()" (click)="completeFake()">{{ 'packages.payment.fakeComplete' | t }}</button>
+    <a class="offer-back" [routerLink]="['/messages',o.conversationId]"><app-icon name="arrow-left" [size]="16" />{{ 'packages.offer.back' | t }}</a>
+    <div class="offer-layout">
+      <article class="offer-content">
+        <header class="offer-header">
+          <p class="eyebrow">{{ 'packages.ui.classOffer' | t }}</p>
+          <h1>{{ name() }}</h1>
+          @if (o.snapshot.teacherName) { <p class="offer-teacher">{{ 'packages.offer.teacher' | t:{name:o.snapshot.teacherName} }}</p> }
+          <dl class="offer-facts">
+            <div><dt>{{ 'packages.field.sessionsCount' | t }}</dt><dd>{{ o.sessionsCount }} × {{ o.minutesPerSession }} min</dd></div>
+            <div><dt>{{ 'packages.ui.seats' | t }}</dt><dd>{{ o.seatsCovered }}</dd></div>
+            @if (o.snapshot.validityHours != null) {
+              <div><dt>{{ 'packages.ui.validity' | t }}</dt><dd>{{ i18n.formatNumber(o.snapshot.validityHours) }} h <small>{{ 'packages.ui.fromPayment' | t }}</small></dd></div>
+            }
+          </dl>
+        </header>
+        @if (!conditionsComplete()) {
+          <p class="alert alert-warning" role="alert" data-testid="incomplete-offer">{{ 'packages.ui.incompleteOffer' | t }}</p>
         }
-      }
-      @if (o.canManage && (o.status==='sent' || o.status==='checkout_pending')) {
-        <label for="cancelReason" class="form-label mt-3">{{ 'packages.offer.cancelReason' | t }}</label>
-        <input id="cancelReason" class="form-control" maxlength="500" [ngModel]="reason()" (ngModelChange)="reason.set($event)">
-        <button class="btn btn-outline-danger mt-2 align-self-start" [disabled]="busy() || !reason().trim()" (click)="cancel()">{{ 'packages.offer.cancel' | t }}</button>
-        <a routerLink="/teacher/class-offers/new" [queryParams]="{conversationId:o.conversationId,replacesOfferId:o.id,cohortId:o.cohortId}" class="mt-2">{{ 'packages.offer.replace' | t }}</a>
-      }
-      <button class="btn btn-secondary mt-3 align-self-start" (click)="reload()">{{ 'packages.offer.refresh' | t }}</button>
-    </article>
+        @if (expectationEntries().length) {
+          <section class="offer-section" aria-labelledby="offerIncludes">
+            <h2 id="offerIncludes">{{ 'packages.ui.includes' | t }}</h2>
+            <dl class="offer-expectations">
+              @for (entry of expectationEntries(); track entry.field) {
+                <div><dt>{{ ('packages.expectations.'+entry.field) | t }}</dt><dd>{{ entry.text }}</dd></div>
+              }
+            </dl>
+          </section>
+        }
+        <section class="offer-section" aria-labelledby="offerRules">
+          <h2 id="offerRules">{{ 'packages.offer.rules' | t }}</h2>
+          @if (policyDetails(); as policy) {
+            <p>{{ 'packages.offer.rulesText' | t:{cancel:policy.freeCancelHours,pause:policy.maxPauseHours,pauses:policy.maxPauses} }}</p>
+            <p>{{ (policy.refundMode==='full_unused_then_review'?'packages.refund.policy':'packages.refund.legacy') | t:{hours:policy.refundWindowHours} }}</p>
+            <p>{{ 'packages.refund.beforePay' | t }}</p>
+          }
+          <p>{{ 'packages.offer.validity' | t }}</p>
+        </section>
+        <section class="offer-section offer-record" aria-labelledby="offerConditions">
+          <h2 id="offerConditions"><app-icon name="check" [size]="18" />{{ 'packages.ui.agreedConditions' | t }}</h2>
+          <p>{{ 'packages.offer.immutable' | t }}</p>
+          @if (versionsAvailable()) {
+            <p class="offer-version">{{ 'packages.offer.versions' | t:{template:o.snapshot.templateVersion,policy:o.snapshot.policyVersion} }}</p>
+          }
+          <div class="legal-links">
+            @for (doc of o.snapshot.legalDocuments || []; track doc.documentKey) {
+              <a [routerLink]="['/legal',doc.documentKey]" [queryParams]="{version:doc.version}" target="_blank" rel="noopener">{{ doc.content[i18n.locale()].title }} ({{ doc.version }})<app-icon name="chevron-right" [size]="13" /></a>
+            }
+            @if (o.replacesOfferId) { <a [routerLink]="['/class-offers',o.replacesOfferId]">{{ 'packages.offer.previous' | t }}</a> }
+          </div>
+        </section>
+      </article>
+      <aside class="offer-checkout" aria-labelledby="offerPrice">
+        <span class="offer-status" [attr.data-status]="o.status">{{ ('packages.offer.status.'+o.status) | t }}</span>
+        <p id="offerPrice" class="offer-price">{{ i18n.formatMoney(o.amount,o.currency) }}</p>
+        <p class="offer-payment-kind">{{ 'packages.ui.onePayment' | t }}</p>
+        @if (o.status==='sent' || o.status==='checkout_pending') {
+          <p class="offer-deadline">{{ 'packages.offer.expires' | t:{time:instant(o.expiresAt),zone:fmt.timeZone()} }}</p>
+        }
+        @if (order(); as order) { <p class="payment-state" role="status">{{ ('packages.payment.'+order.status) | t }}</p> }
+        @if (purchaseId(); as id) {
+          <a class="btn btn-primary" [routerLink]="['/class-packages',id]">{{ 'packages.purchase.open' | t }}<app-icon name="arrow-right" [size]="16" /></a>
+        }
+        @if (payable()) {
+          @if (documents().length) { <app-legal-consent [documents]="documents()" [(accepted)]="accepted" /> }
+          <button type="button" class="btn btn-primary" [disabled]="busy() || !conditionsComplete() || (needsConsent() && !accepted())" (click)="pay()">{{ 'packages.payment.continue' | t }}<app-icon name="arrow-right" [size]="16" /></button>
+          @if (order()?.provider==='fake' && order()?.status==='pending') {
+            <p class="fake-note">{{ 'packages.payment.fakeNote' | t }}</p>
+            <button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="completeFake()">{{ 'packages.payment.fakeComplete' | t }}</button>
+          }
+        }
+        @if (o.canManage && (o.status==='sent' || o.status==='checkout_pending')) {
+          <details class="offer-management">
+            <summary>{{ 'packages.ui.manageOffer' | t }}</summary>
+            <label for="cancelReason" class="form-label">{{ 'packages.offer.cancelReason' | t }}</label>
+            <input id="cancelReason" class="form-control" maxlength="500" [ngModel]="reason()" (ngModelChange)="reason.set($event)">
+            <button type="button" class="btn btn-outline-danger" [disabled]="busy() || !reason().trim()" (click)="cancel()">{{ 'packages.offer.cancel' | t }}</button>
+            <a routerLink="/teacher/class-offers/new" [queryParams]="{conversationId:o.conversationId,replacesOfferId:o.id,cohortId:o.cohortId}">{{ 'packages.offer.replace' | t }}</a>
+          </details>
+        }
+        <button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="reload()"><app-icon name="rotate" [size]="16" />{{ 'packages.offer.refresh' | t }}</button>
+        @if (o.status!=='sent' && o.status!=='checkout_pending') {
+          <p class="offer-deadline">{{ 'packages.offer.expires' | t:{time:instant(o.expiresAt),zone:fmt.timeZone()} }}</p>
+        }
+      </aside>
+    </div>
+  } @else if (!error()) {
+    <p class="state-box" role="status">{{ 'packages.loading' | t }}</p>
   }
 </div>

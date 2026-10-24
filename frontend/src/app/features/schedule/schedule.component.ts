@@ -14,9 +14,11 @@ import { ClassSessionCardComponent } from './class-session-card.component';
 import { TimeZoneSelectComponent } from '../../shared/components/time-zone-select/time-zone-select.component';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { SessionTimeComponent } from './session-time.component';
+import { DialogModule } from 'primeng/dialog';
+import { RestoreFocusDirective } from '../../shared/directives/restore-focus.directive';
 
 interface Draft { localStart: string; timeZone: string; offset: string; disambiguation: Disambiguation; minutes: number }
-@Component({ selector: 'app-schedule', standalone: true, imports: [FormsModule, RouterLink, TranslatePipe, ClassSessionCardComponent, SessionTimeComponent, TimeZoneSelectComponent, IconComponent],
+@Component({ selector: 'app-schedule', standalone: true, imports: [FormsModule, RouterLink, TranslatePipe, ClassSessionCardComponent, SessionTimeComponent, TimeZoneSelectComponent, IconComponent, DialogModule, RestoreFocusDirective],
   templateUrl: './schedule.component.html',
   styleUrl: './schedule.component.scss'
 })
@@ -31,6 +33,8 @@ export class ScheduleComponent {
   notices = signal<{ id: string; sessionId: number; startsAt: string; minutes: number }[]>([]);
   loading = signal(false); busy = signal(false); failure = signal<unknown>(null); truncated = signal(false);
   formOpen = signal(false);
+  zoneEditorOpen = signal(false);
+  zoneConfirmed = computed(() => !!this.preferences.preferences()?.timeZoneConfirmedAt && this.zoneInput() === this.preferences.preferences()?.timeZone);
   selected = signal<ClassSession | null>(null); editing = signal<ClassSession | null>(null);
   zoneInput = signal(''); private suggested = Intl.DateTimeFormat().resolvedOptions().timeZone;
   readonly deviceZone = this.suggested;
@@ -41,6 +45,7 @@ export class ScheduleComponent {
   draft = signal<Draft>({ localStart: '', timeZone: '', offset: '', disambiguation: 'none', minutes: 50 });
   private key = crypto.randomUUID(); private submittedHash = '';
   private lastSavedZone: string | null | undefined;
+  private zoneWasSaving = false;
   private generation = 0; private reads = new Subscription(); private write?: Subscription;
   error = computed(() => this.failure() ? this.i18n.errorMessage(this.failure()) : '');
   teacher = computed(() => this.auth.currentUser()?.role === 'teacher');
@@ -67,6 +72,11 @@ export class ScheduleComponent {
 
   constructor() {
     this.features.load();
+    effect(() => {
+      const saving = this.preferences.saving();
+      if (this.zoneWasSaving && !saving && !this.preferences.errorMessage() && this.zoneConfirmed()) this.zoneEditorOpen.set(false);
+      this.zoneWasSaving = saving;
+    });
     effect(() => { const account = this.auth.currentUser()?.id; untracked(() => {
       this.generation++; this.reads.unsubscribe(); this.reads = new Subscription(); this.write?.unsubscribe();
       this.sessions.set([]); this.selected.set(null); this.editing.set(null); this.options.set(null); this.busy.set(false);
@@ -118,7 +128,8 @@ export class ScheduleComponent {
   }
   private loadOptions(): void { this.read(this.api.options(this.conversationId || undefined), value => { this.options.set(value); if (value.studentId) this.studentId.set(value.studentId); }); }
   clearDates(): void { this.fromDate = ''; this.toDate = ''; this.reload(); }
-  confirmZone(): void { if (isTimeZone(this.zoneInput())) this.preferences.saveTimeZone(this.zoneInput()); else this.failure.set({ error: { code: 'time_zone_invalid' } }); }
+  cancelZoneEdit(): void { this.zoneInput.set(this.preferences.preferences()?.timeZone || this.deviceZone); this.zoneEditorOpen.set(false); }
+  confirmZone(): void { if (isTimeZone(this.zoneInput())) { this.preferences.saveTimeZone(this.zoneInput()); } else this.failure.set({ error: { code: 'time_zone_invalid' } }); }
   patch(value: Partial<Draft>): void { this.draft.update(d => ({ ...d, ...value, offset: '', disambiguation: 'none' })); }
   choose(offset: string, index: number): void { this.draft.update(d => ({ ...d, offset, disambiguation: index ? 'later' : 'earlier' })); }
   useAlternative(localStart: string, timeZone: string, offset: string): void { this.draft.update(d => ({ ...d, localStart, timeZone, offset, disambiguation: 'none' })); }
@@ -163,5 +174,6 @@ export class ScheduleComponent {
   updated(session: ClassSession): void { if (this.selected()?.id === session.id) this.selected.set(session); this.reload(); }
   openForm(): void { this.formOpen.set(true); }
   closeForm(): void { this.formOpen.set(false); }
+  closeScheduleEditor(): void { if (!this.busy()) { if (this.editing()) this.stopEditing(); else this.closeForm(); } }
   stopEditing(): void { this.editing.set(null); void this.router.navigate(['/schedule']); }
 }

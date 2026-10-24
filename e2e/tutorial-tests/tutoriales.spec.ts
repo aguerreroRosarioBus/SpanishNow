@@ -128,10 +128,13 @@ test('agenda docente: práctica real, teclado, cierre, repetición y ninguna esc
   await expect(page.getByTestId('schedule-form')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(popover(page)).toHaveCount(0);
-  await expect(help).toBeFocused();
+  const proposalPanel = page.locator('.pilot-sheet');
+  await expect.poll(() => proposalPanel.evaluate(panel => panel.contains(document.activeElement))).toBe(true);
   await expect(page.getByRole('heading', { name: 'Agenda de clases', exact: true })).toBeVisible();
   await expect(page.getByTestId('schedule-form')).toBeVisible();
   expect(writes).toEqual([]);
+  await page.keyboard.press('Escape');
+  await expect(proposalPanel).toHaveCount(0);
   await help.click(); await finish(page);
   expect(await page.evaluate(() => localStorage.getItem('spanishnow.tutorial.701.teacher.schedule.v1'))).toBe('completed');
   await expect(help).toBeVisible();

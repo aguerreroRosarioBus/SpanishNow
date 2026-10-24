@@ -11,12 +11,16 @@ import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { isAtLeastHoursBefore, isTimeZone } from '../../core/time/class-time';
 import { SessionTimeComponent } from './session-time.component';
+import { DialogModule } from 'primeng/dialog';
+import { PilotTheme } from '../../shared/styles/primeng-theme';
+import { RestoreFocusDirective } from '../../shared/directives/restore-focus.directive';
 
-@Component({ selector: 'app-class-session-card', standalone: true, imports: [FormsModule, RouterLink, TranslatePipe, SessionTimeComponent],
+@Component({ selector: 'app-class-session-card', standalone: true, imports: [FormsModule, RouterLink, TranslatePipe, SessionTimeComponent, DialogModule, RestoreFocusDirective],
   templateUrl: './class-session-card.component.html',
   styleUrl: './class-session-card.component.scss'
 })
 export class ClassSessionCardComponent {
+  private readonly pilotTheme = inject(PilotTheme);
   sessionId = input.required<number>();
   proposalVersion = input<number | null>(null);
   changed = output<ClassSession>();
@@ -120,6 +124,7 @@ export class ClassSessionCardComponent {
     }, error: err => { if (generation === this.generation) { this.failure.set(err); this.loading.set(false); } } });
   }
   startDecision(action: 'accept' | 'decline' | 'cancel'): void { this.decision.set(action); this.acknowledge = false; this.failure.set(null); }
+  closeDecision(): void { if (!this.busy()) this.decision.set(null); }
   private act(request: Observable<ClassSession>): void {
     if (this.busy()) return;
     const generation = this.generation; this.request?.unsubscribe(); this.busy.set(true); this.failure.set(null);

@@ -65,11 +65,11 @@ describe('Tanda B: catálogo con plantilla sin versión (current null)',()=>{
     expect(importInitial).toHaveBeenCalledTimes(1);
     expect(f.nativeElement.textContent).toContain('Cuatro clases');expect(f.nativeElement.textContent).not.toContain('no tiene versión vigente');
   });
-  it('«Completar datos» abre el formulario y guarda con version 0 sin enviar política vacía',()=>{
+  it('«Completar datos» abre el formulario y guarda con version 0 sin enviar política vacía',async()=>{
     const f=TestBed.createComponent(PackageCatalogComponent);f.detectChanges();const c=f.componentInstance;
-    c.edit(broken);f.detectChanges();
+    c.edit(broken);f.detectChanges();await f.whenStable();f.detectChanges();
     expect(c.form.get('modality')!.value).toBe('individual');
-    expect(f.nativeElement.textContent).toContain('Este paquete se quedó sin versión');
+    expect(document.body.textContent).toContain('Este paquete se quedó sin versión');
     // Nada se inventa: sin nombre, importes ni duración el formulario no es válido.
     expect(c.form.invalid).toBe(true);
     c.form.patchValue({nameEn:'One class',nameEs:'Una clase',sessionsCount:1,minutesPerSession:30,priceAmount:1500,validityHours:720});

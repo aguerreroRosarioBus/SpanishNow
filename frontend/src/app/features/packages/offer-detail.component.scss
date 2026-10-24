@@ -1,0 +1,41 @@
+.offer-page { max-width: 1100px; }
+.offer-back { display: inline-flex; align-items: center; gap: 8px; color: var(--color-text-light); font-size: .8125rem; margin: 0 0 20px; text-decoration: none; }
+.offer-back:hover { color: var(--color-primary-hover); }
+.offer-layout { display: grid; grid-template-columns: minmax(0,1fr) 310px; align-items: start; gap: 24px; }
+.offer-content, .offer-checkout { background: #fff; border: 1px solid var(--color-border); border-radius: 12px; min-width: 0; }
+.offer-content { padding: 28px; }
+.eyebrow { margin: 0 0 10px; }
+h1 { font-size: 1.625rem; line-height: 1.3; margin: 0 0 8px; overflow-wrap: anywhere; }
+.offer-teacher { font-size: .875rem; color: var(--color-text-light); margin: 0; }
+.offer-facts { display: flex; flex-wrap: wrap; gap: 20px 36px; padding: 24px 0; margin: 0; }
+.offer-facts dt { font-size: .75rem; font-weight: 400; color: var(--color-text-light); margin-bottom: 4px; }
+.offer-facts dd { margin: 0; font-size: .875rem; font-weight: 600; }
+.offer-facts small { display: block; font-size: .75rem; font-weight: 400; color: var(--color-text-light); margin-top: 2px; }
+.offer-section { padding-top: 24px; border-top: 1px solid var(--color-divider); }
+.offer-section + .offer-section { margin-top: 24px; }
+.offer-section h2 { display: flex; align-items: center; gap: 8px; font-size: 1rem; margin: 0 0 16px; }
+.offer-section p { font-size: .875rem; line-height: 1.7; margin: 0 0 12px; }
+.offer-section p:last-child { margin-bottom: 0; }
+.offer-expectations { margin: 0; }
+.offer-expectations > div + div { margin-top: 16px; }
+.offer-expectations dt { font-size: .8125rem; margin-bottom: 4px; }
+.offer-expectations dd { margin: 0; font-size: .875rem; color: var(--color-text-light); white-space: pre-line; overflow-wrap: anywhere; }
+.offer-record p, .offer-record .offer-version { color: var(--color-text-light); font-size: .8125rem; }
+.legal-links { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+.legal-links a { display: inline-flex; gap: 5px; align-items: center; font-size: .8125rem; }
+.offer-checkout { padding: 24px; position: sticky; top: 76px; display: flex; flex-direction: column; gap: 16px; }
+.offer-status { align-self: flex-start; font-size: .75rem; padding: 4px 8px; border-radius: 6px; background: var(--color-bg-dark); color: var(--color-text-light); font-weight: 600; }
+.offer-status[data-status='paid'] { background: var(--color-success-soft); color: var(--color-success-text); }
+.offer-status[data-status='sent'], .offer-status[data-status='checkout_pending'] { background: var(--color-warning-soft); color: #6b4a00; }
+.offer-price { font: 600 1.75rem/1.2 var(--font-heading); margin: 4px 0 0; }
+.offer-payment-kind { margin: -8px 0 0; font-size: .8125rem; color: var(--color-text-light); }
+.offer-deadline, .fake-note, .payment-state { margin: 0; font-size: .75rem; line-height: 1.6; color: var(--color-text-light); overflow-wrap: anywhere; }
+.offer-management { padding-top: 16px; border-top: 1px solid var(--color-divider); }
+.offer-management summary { font-size: .8125rem; font-weight: 600; margin-bottom: 12px; cursor: pointer; }
+.offer-management .btn { margin-top: 12px; }
+.offer-management a { display: block; font-size: .8125rem; margin-top: 12px; }
+@media (max-width: 900px) {
+  .offer-layout { grid-template-columns: 1fr; gap: 20px; }
+  .offer-checkout { position: static; }
+  .offer-content { padding: 20px; }
+}
