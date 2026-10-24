@@ -29,6 +29,7 @@ const pairs: Record<string, [string, string]> = {
   declineHintInitial: ['Declining this proposal does not use any class. The teacher can make a new proposal.', 'Al rechazar esta propuesta no se usa ninguna clase. La docente puede hacer otra propuesta.'],
   cancelHintReschedule: ['This cancels the confirmed class, not just the new proposal. To keep the current time, decline the proposal instead.', 'Esto cancela la clase confirmada, no solo la propuesta nueva. Para conservar el horario actual, rechazá la propuesta.'],
   cancelHintGroup: ['This removes you from the group class; the other participants stay in it. To only answer this time proposal, decline it instead.', 'Esto te quita de la clase en grupo; las demás personas siguen en ella. Para responder solo a esta propuesta de horario, rechazala.'],
+  attendanceRecorded: ['Attendance: {value}', 'Asistencia registrada: {value}'],
   freeCancellation: ['The reserved credit will be returned.', 'El crédito reservado se devolverá.'],
   stale: ['This proposal was replaced or resolved. Review the latest schedule before responding.', 'Esta propuesta fue reemplazada o resuelta. Revisá la agenda vigente antes de responder.'],
   rulesChanged: ['Time zone rules differ from the saved intention. The confirmed instant stays unchanged; ask the teacher to review or propose a new time.', 'Las reglas de zona difieren de la intención guardada. El instante confirmado se conserva; pedí al docente revisar o proponer otro horario.'],

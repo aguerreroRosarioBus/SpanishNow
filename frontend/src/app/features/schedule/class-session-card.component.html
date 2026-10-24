@@ -23,9 +23,10 @@
     @if (s.groupResolutionRequired) { <p class="alert alert-warning">{{ 'schedule.groupDecision' | t }}</p> }
     @if (!zoneReady()) { <p class="notice">{{ 'schedule.zoneHint' | t }} <a routerLink="/schedule">{{ 'schedule.confirmZone' | t }}</a></p> }
     @if (s.replacementSessionId) { <p class="notice">{{ 'schedule.replaced' | t }} <a routerLink="/schedule" [queryParams]="{ sessionId: s.replacementSessionId }">{{ 'schedule.open' | t }}</a></p> }
-    @if (teacher() || s.participants.length > 1) {
+    @if (s.participants.length > 1) {
       <ul class="participants" [attr.aria-label]="'schedule.participants' | t">@for (p of s.participants; track p.userId) { <li>{{ p.name }} <span class="notice">· {{ ('schedule.status.' + p.status) | t }}@if (p.attendance !== 'pending') { · {{ ('schedule.status.' + p.attendance) | t }} }</span></li> }</ul>
     }
+    @if (s.participants.length === 1 && s.participants[0].attendance !== 'pending') { <p class="notice" data-testid="attendance-recorded">{{ 'schedule.attendanceRecorded' | t:{ value: ('schedule.status.' + s.participants[0].attendance) | t } }}</p> }
     @if (s.rules && !inactive()) { <p class="notice">{{ 'schedule.freeCancel' | t:{ hours: s.rules.freeCancelHours } }}</p> }
     <div class="card-actions">
       @if (canRespond()) {

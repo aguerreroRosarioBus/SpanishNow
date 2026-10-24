@@ -178,6 +178,33 @@ describe('W06: interfaz conectada por contratos de agenda', () => {
       expect(fixture.nativeElement.querySelector('[data-testid="join-button"]')).toBeNull();
       expect(fixture.nativeElement.querySelector('.card-actions .btn-primary')?.textContent).toContain('Aceptar esta propuesta'); fixture.destroy();
     });
+    describe('participantes en la tarjeta', () => {
+      it('con una sola participante no se repite «nombre · estado» bajo el encabezado, ni para la docente', () => {
+        auth.currentUser.set({ id: 2, role: 'teacher' });
+        const fixture = render(confirmed(ready));
+        expect(fixture.nativeElement.querySelector('.participants')).toBeNull();
+        expect(fixture.nativeElement.querySelector('.card-title h2')?.textContent).toContain('Alumno');
+        expect(fixture.nativeElement.querySelector('[data-testid="session-status"]')?.textContent).toContain('Confirmada');
+        expect(fixture.nativeElement.querySelector('[data-testid="attendance-recorded"]')).toBeNull(); fixture.destroy();
+      });
+      it('si la asistencia de la única participante ya se registró, queda como texto secundario', () => {
+        auth.currentUser.set({ id: 2, role: 'teacher' });
+        const base = confirmed(ready);
+        const fixture = render({ ...base, status: 'completed', participants: [{ ...base.participants[0], status: 'confirmed', attendance: 'attended' }] });
+        expect(fixture.nativeElement.querySelector('.participants')).toBeNull();
+        expect(fixture.nativeElement.querySelector('[data-testid="attendance-recorded"]')?.textContent).toContain('Asistencia registrada: Asistió'); fixture.destroy();
+      });
+      it('en un grupo sí se lista cada participante con su estado, para la docente y para la alumna', () => {
+        const base = confirmed(ready);
+        const group = { ...base, kind: 'group', participants: [base.participants[0], { userId: 3, name: 'Otra Alumna', status: 'confirmed', acceptedVersion: 1, attendance: 'pending' }] };
+        for (const user of [{ id: 2, role: 'teacher' }, { id: 1, role: 'student' }]) {
+          auth.currentUser.set(user);
+          const fixture = render(group);
+          const items = Array.from(fixture.nativeElement.querySelectorAll('.participants li')).map(li => (li as HTMLElement).textContent!.trim().replace(/\s+/g, ' '));
+          expect(items.length).toBe(2); expect(items[1]).toContain('Otra Alumna · Confirmada'); fixture.destroy();
+        }
+      });
+    });
     describe('propuesta pendiente vista por la alumna: «Rechazar» frente a «Cancelar clase»', () => {
       const cancelButton = (f: { nativeElement: HTMLElement }) => Array.from(f.nativeElement.querySelectorAll<HTMLButtonElement>('.card-actions button')).find(b => b.textContent!.includes('Cancelar clase'));
       const open = (f: { componentInstance: ClassSessionCardComponent; detectChanges(): void }, action: 'decline' | 'cancel') => { f.componentInstance.startDecision(action); f.detectChanges(); };
