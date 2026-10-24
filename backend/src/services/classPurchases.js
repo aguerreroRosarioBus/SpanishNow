@@ -1,6 +1,6 @@
 const {Op}=require('sequelize');
 const sequelize=require('../config/database');
-const {ClassPackagePurchase:Purchase,ClassPackageBeneficiary:Beneficiary,ClassCreditLedger:Ledger,ClassSession:Session,ClassSessionParticipant:Participant,ClassSessionProposal:Proposal,ClassOffer:Offer,AuditLog}=require('../models');
+const {ClassPackagePurchase:Purchase,ClassPackageBeneficiary:Beneficiary,ClassCreditLedger:Ledger,ClassSession:Session,ClassSessionParticipant:Participant,ClassSessionProposal:Proposal,ClassOffer:Offer,AuditLog,User}=require('../models');
 const {fail,invalid,only,validId,persistedSecond}=require('./legalDocuments');
 const credits=require('./classCredits');
 const offers=require('./classOffers');
@@ -41,7 +41,9 @@ async function teacherList(user,studentId){
   if(user.role!=='teacher')throw fail(403,'forbidden');if(studentId!==undefined&&!validId(studentId))throw invalid(['studentId']);
   let ids=[];if(studentId!==undefined)ids=(await Beneficiary.findAll({where:{userId:studentId},attributes:['purchaseId']})).map(b=>b.purchaseId);
   const rows=await Purchase.findAll({where:{teacherId:user.id,...(studentId===undefined?{}:{[Op.or]:[{buyerId:studentId},{id:ids}]})},order:[['expiresAt','ASC'],['id','ASC']]});
-  const result=[];for(const p of rows)result.push(present(await settle(p.id)));return result;
+  // Solo el nombre visible de la compradora (sin email ni otros datos) para identificar de quién es cada compra.
+  const buyers=new Map((await User.findAll({where:{id:[...new Set(rows.map(r=>r.buyerId))]},attributes:['id','name']})).map(u=>[u.id,u.name]));
+  const result=[];for(const p of rows)result.push({...present(await settle(p.id)),buyerName:buyers.get(p.buyerId)??null});return result;
 }
 async function unresolved(p,transaction,now){
   const participants=await Participant.findAll({where:{purchaseId:p.id,status:{[Op.ne]:'cancelled'}},attributes:['sessionId'],transaction});

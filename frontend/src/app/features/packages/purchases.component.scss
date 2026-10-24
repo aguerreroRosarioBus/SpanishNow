@@ -1,0 +1,74 @@
+:host { display: block; }
+
+// Misma tarjeta plana que la clase de la Agenda (#69): borde de 1px, sombra mínima y estado como etiqueta.
+.purchase-card {
+  margin: var(--spacing-md) 0;
+  padding: var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg);
+  box-shadow: var(--shadow-sm);
+}
+.purchase-card.is-inactive {
+  background: var(--color-bg-light);
+  box-shadow: none;
+  h2, .balance { color: var(--color-text-light); }
+}
+
+.card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+.card-title { min-width: 0; }
+h2 { margin: 0; font-size: 1rem; overflow-wrap: anywhere; }
+.buyer { margin: 2px 0 0; font-weight: 600; overflow-wrap: anywhere; }
+.badge-status { flex: none; }
+.status-success { background: var(--color-success-soft); color: var(--color-success-text); }
+.status-warning { background: var(--color-warning-soft); color: #6b4a00; }
+.status-danger { background: var(--color-danger-soft); color: var(--color-danger); }
+.status-neutral { background: var(--color-bg-dark); color: var(--color-text-light); }
+
+p { margin: 0; }
+.muted { margin-top: 2px; font-size: 0.8125rem; color: var(--color-text-light); overflow-wrap: anywhere; }
+.balance { font-size: 1rem; }
+.balance-num { font-size: 1.75rem; line-height: 1.1; font-weight: 700; }
+.expiry { margin-top: var(--spacing-sm); font-weight: 600; }
+.conditions { margin-top: var(--spacing-sm); }
+
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+}
+.card-actions-end { margin-left: auto; }
+
+.confirm {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-light);
+}
+
+.card-details {
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--color-divider);
+  font-size: 0.875rem;
+
+  summary { cursor: pointer; font-weight: 600; color: var(--color-text); padding: var(--spacing-xs) 0; }
+  summary:hover { text-decoration: underline; text-underline-offset: 2px; }
+}
+.ledger { margin: var(--spacing-xs) 0 0; padding-left: var(--spacing-lg); }
+
+.page-actions { margin-top: var(--spacing-md); }
+
+@media (max-width: 480px) {
+  .card-actions .btn { flex: 1 1 auto; }
+  .card-actions-end { margin-left: 0; }
+}

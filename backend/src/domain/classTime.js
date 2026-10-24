@@ -1,6 +1,6 @@
 // GENERADO desde frontend/src/app/core/time/class-time.ts.
 // Ejecutar node scripts/generate-class-time.cjs; no editar a mano.
-// Fuente SHA256: 4661e31540b9e1468199ea5c91c53c2c38b54f123443d288f4aa8e1f1da9825a
+// Fuente SHA256: 21e73d97bc7ddd0bc2c583fcb4418a5d213a949a596f03aa2eb0d2853453efdf
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TimeError = void 0;
@@ -12,6 +12,7 @@ exports.addElapsed = addElapsed;
 exports.isAtLeastHoursBefore = isAtLeastHoursBefore;
 exports.intervalsConflict = intervalsConflict;
 exports.presentSessionTime = presentSessionTime;
+exports.presentInstant = presentInstant;
 const polyfill_1 = require("@js-temporal/polyfill");
 class TimeError extends Error {
     code;
@@ -225,5 +226,20 @@ function presentSessionTime(session, recipientZone, teacherZone, locale) {
         differentDates: recipient.start.date !== teacher.start.date || recipient.end.date !== teacher.end.date,
         // El horario del docente solo se oculta cuando es la misma zona IANA con los mismos desplazamientos.
         teacherDiffers: recipientZone !== teacherZone || recipient.start.offset !== teacher.start.offset || recipient.end.offset !== teacher.end.offset
+    };
+}
+/** Instante suelto (p. ej. un vencimiento): fecha compacta con año, hora exacta, zona IANA y desplazamiento (TZ-07). */
+function presentInstant(instant, timeZone, locale) {
+    const zoned = inTimeZone(instant, timeZone);
+    const tag = locale === 'es' ? 'es-AR' : 'en-US';
+    const at = new Date(zoned.startsAt);
+    const dateParts = new Intl.DateTimeFormat(tag, { timeZone, day: 'numeric', month: 'short', year: 'numeric' }).formatToParts(at);
+    const pick = (type) => dateParts.find(item => item.type === type)?.value.replace(/\./g, '') ?? '';
+    return {
+        // Día, mes y año sin conectores ("de") ni puntuación, igual que presentSessionTime.
+        day: locale === 'es' ? `${pick('day')} ${pick('month')} ${pick('year')}` : `${pick('month')} ${pick('day')} ${pick('year')}`,
+        time: new Intl.DateTimeFormat(tag, { timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(at),
+        timeZone,
+        offsetLabel: `UTC${zoned.offset}`
     };
 }

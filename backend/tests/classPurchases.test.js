@@ -16,6 +16,8 @@ test('saldo y ledger visibles solo a comprador/beneficiarios; lectura y compromi
   const r=await as(w.buyer).get(`/api/me/class-packages/${w.p.id}`);expect(r.status).toBe(200);expect(r.body.balance).toEqual({granted:4,available:4,reserved:0,consumed:0,expired:0,refunded:0});expect(r.body.ledger).toHaveLength(1);
   expect(r.body.snapshot.hotmartCheckoutUrl).toBeUndefined();expect((await as(w.other).get(`/api/me/class-packages/${w.p.id}`)).status).toBe(404);
   expect((await as(w.teacher).get(`/api/teacher/class-purchases?studentId=${w.buyer.id}`)).body.map(p=>p.id)).toContain(w.p.id);
+  const listed=(await as(w.teacher).get(`/api/teacher/class-purchases?studentId=${w.buyer.id}`)).body.find(p=>p.id===w.p.id);
+  expect(listed.buyerName).toBe(w.buyer.name);expect(JSON.stringify(listed)).not.toContain(w.buyer.email);expect(listed.buyer).toBeUndefined();
   expect((await change(w,'pause',{version:w.p.version})).status).toBe(200);
 });
 test('pausa/reanudación extiende vigencia por tiempo real, preserva saldo y no permite otra pausa',async()=>{
