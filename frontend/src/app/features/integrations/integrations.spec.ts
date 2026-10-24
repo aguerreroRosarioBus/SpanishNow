@@ -124,4 +124,27 @@ describe('W07: tarjeta de Google Calendar', () => {
     const select = fixture.nativeElement.querySelector('#calendarTarget') as HTMLSelectElement;
     return fixture.whenStable().then(() => { fixture.detectChanges(); expect(select.selectedOptions[0]?.textContent).toContain('Principal'); });
   });
+
+  it('jerarquía: estado como etiqueta en el encabezado, cuenta como texto secundario y una sola acción principal', () => {
+    api.status.mockReturnValue(of(connected()));
+    const fixture = create();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.int-head h3')?.textContent).toContain('Google Calendar');
+    expect(el.querySelector('[data-testid=calendar-status]')?.textContent).toContain('Conectado');
+    expect(el.querySelector('[data-testid=calendar-status]')?.classList).toContain('status-success');
+    expect(el.querySelector('.int-meta')?.textContent).toContain('Cuenta: docente@example.test');
+    expect(el.querySelectorAll('button.btn-primary').length).toBe(1);
+    expect(el.querySelector('button.btn-ghost')?.textContent).toContain('Desconectar');
+  });
+
+  it('sin conexión la etiqueta es neutra y la acción principal es conectar; con atención la etiqueta es de advertencia', () => {
+    let fixture = create();
+    expect(fixture.nativeElement.querySelector('[data-testid=calendar-status]').classList).toContain('status-neutral');
+    expect(fixture.nativeElement.querySelectorAll('button.btn-primary').length).toBe(1);
+    TestBed.resetTestingModule();
+    api.status.mockReturnValue(of({ ...connected(), status: 'needs_attention', connected: false }));
+    fixture = create();
+    expect(fixture.nativeElement.querySelector('[data-testid=calendar-status]').classList).toContain('status-warning');
+    expect(fixture.nativeElement.querySelectorAll('button.btn-primary').length).toBe(1);
+  });
 });

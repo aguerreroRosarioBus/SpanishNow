@@ -61,7 +61,7 @@ h2 { margin: 0; font-size: 1rem; overflow-wrap: anywhere; }
 }
 .card-actions-end { margin-left: auto; }
 
-// Desplegables con el mismo estilo: filete superior y resumen del mismo tamaño.
+// Desplegables con el mismo estilo: filete superior y resumen del mismo tamaño y color.
 .card-details {
   margin-top: var(--spacing-md);
   padding-top: var(--spacing-sm);
@@ -74,7 +74,8 @@ h2 { margin: 0; font-size: 1rem; overflow-wrap: anywhere; }
     color: var(--color-text);
     padding: var(--spacing-xs) 0;
   }
-  summary:hover { color: var(--color-primary-hover); }
+  // Al pasar el mouse solo se subraya: el color del texto es el mismo en todos los desplegables (antes cambiaba a naranja y parecía otro color).
+  summary:hover { text-decoration: underline; text-underline-offset: 2px; }
   label { display: block; margin: var(--spacing-sm) 0; }
 }
 

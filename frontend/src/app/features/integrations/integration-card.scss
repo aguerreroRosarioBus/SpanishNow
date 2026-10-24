@@ -1,0 +1,50 @@
+// Tarjeta de integración: mismo lenguaje que la tarjeta de clase (encabezado, estado como etiqueta,
+// datos técnicos como texto secundario y una acción principal). La comparten Google Calendar y Zoom.
+:host { display: block; }
+
+.int-card {
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg);
+  box-shadow: var(--shadow-sm);
+}
+
+.int-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  h3 { margin: 0; font-size: 1rem; overflow-wrap: anywhere; }
+}
+
+.badge-status { flex: none; }
+.status-success { background: var(--color-success-soft); color: var(--color-success-text); }
+.status-warning { background: var(--color-warning-soft); color: #6b4a00; }
+.status-danger { background: var(--color-danger-soft); color: var(--color-danger); }
+.status-neutral { background: var(--color-bg-dark); color: var(--color-text-light); }
+
+// Datos técnicos (cuenta, capacidad) y explicaciones: texto secundario discreto.
+.int-meta, .notice { margin: var(--spacing-xs) 0 0; font-size: 0.8125rem; color: var(--color-text-light); overflow-wrap: anywhere; }
+.int-body { margin-top: var(--spacing-md); }
+.int-body label { display: block; margin: var(--spacing-sm) 0; }
+.int-body .cal { display: flex; gap: var(--spacing-sm); align-items: center; }
+.int-body fieldset { margin-top: var(--spacing-md); padding: 0; border: 0; }
+.int-body legend { float: none; width: auto; margin: 0 0 var(--spacing-xs); font-size: 0.875rem; font-weight: 600; }
+.alert { margin: var(--spacing-sm) 0 0; }
+
+// Una acción principal a la izquierda; las acciones discretas (Desconectar) quedan al final.
+.int-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+}
+.int-actions-end { margin-left: auto; }
+
+@media (max-width: 480px) {
+  .int-actions .btn { flex: 1 1 auto; }
+  .int-actions-end { margin-left: 0; }
+}

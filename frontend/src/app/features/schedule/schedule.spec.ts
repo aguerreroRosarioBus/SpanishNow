@@ -178,6 +178,78 @@ describe('W06: interfaz conectada por contratos de agenda', () => {
       expect(fixture.nativeElement.querySelector('[data-testid="join-button"]')).toBeNull();
       expect(fixture.nativeElement.querySelector('.card-actions .btn-primary')?.textContent).toContain('Aceptar esta propuesta'); fixture.destroy();
     });
+    it('todos los desplegables comparten el mismo estilo (asistencia, clases compradas, corrección y calendario)', () => {
+      auth.currentUser.set({ id: 2, role: 'teacher' });
+      const base = confirmed(ready);
+      const fixture = render({ ...base, purchases: [{ id: 5, expiresAt: '2027-03-01T00:00:00Z', unitsAvailable: 2, unitsReserved: 0, unitsConsumed: 0 }] });
+      const details = Array.from(fixture.nativeElement.querySelectorAll('details')) as HTMLElement[];
+      expect(details.map(d => d.querySelector('summary')!.textContent!.trim())).toEqual(['Registrar asistencia', 'Clases compradas', 'Calendario y reunión']);
+      expect(details.every(d => d.classList.contains('card-details'))).toBe(true);
+      expect(details.every(d => d.querySelector(':scope > summary')?.getAttribute('class') === null)).toBe(true); fixture.destroy();
+    });
+    describe('participantes en la tarjeta', () => {
+      it('con una sola participante no se repite «nombre · estado» bajo el encabezado, ni para la docente', () => {
+        auth.currentUser.set({ id: 2, role: 'teacher' });
+        const fixture = render(confirmed(ready));
+        expect(fixture.nativeElement.querySelector('.participants')).toBeNull();
+        expect(fixture.nativeElement.querySelector('.card-title h2')?.textContent).toContain('Alumno');
+        expect(fixture.nativeElement.querySelector('[data-testid="session-status"]')?.textContent).toContain('Confirmada');
+        expect(fixture.nativeElement.querySelector('[data-testid="attendance-recorded"]')).toBeNull(); fixture.destroy();
+      });
+      it('si la asistencia de la única participante ya se registró, queda como texto secundario', () => {
+        auth.currentUser.set({ id: 2, role: 'teacher' });
+        const base = confirmed(ready);
+        const fixture = render({ ...base, status: 'completed', participants: [{ ...base.participants[0], status: 'confirmed', attendance: 'attended' }] });
+        expect(fixture.nativeElement.querySelector('.participants')).toBeNull();
+        expect(fixture.nativeElement.querySelector('[data-testid="attendance-recorded"]')?.textContent).toContain('Asistencia registrada: Asistió'); fixture.destroy();
+      });
+      it('en un grupo sí se lista cada participante con su estado, para la docente y para la alumna', () => {
+        const base = confirmed(ready);
+        const group = { ...base, kind: 'group', participants: [base.participants[0], { userId: 3, name: 'Otra Alumna', status: 'confirmed', acceptedVersion: 1, attendance: 'pending' }] };
+        for (const user of [{ id: 2, role: 'teacher' }, { id: 1, role: 'student' }]) {
+          auth.currentUser.set(user);
+          const fixture = render(group);
+          const items = Array.from(fixture.nativeElement.querySelectorAll('.participants li')).map(li => (li as HTMLElement).textContent!.trim().replace(/\s+/g, ' '));
+          expect(items.length).toBe(2); expect(items[1]).toContain('Otra Alumna · Confirmada'); fixture.destroy();
+        }
+      });
+    });
+    describe('propuesta pendiente vista por la alumna: «Rechazar» frente a «Cancelar clase»', () => {
+      const cancelButton = (f: { nativeElement: HTMLElement }) => Array.from(f.nativeElement.querySelectorAll<HTMLButtonElement>('.card-actions button')).find(b => b.textContent!.includes('Cancelar clase'));
+      const open = (f: { componentInstance: ClassSessionCardComponent; detectChanges(): void }, action: 'decline' | 'cancel') => { f.componentInstance.startDecision(action); f.detectChanges(); };
+      it('propuesta inicial de clase individual: solo «Rechazar» (cancelar no agrega nada), sin cargo', () => {
+        const fixture = render(session());
+        const labels = Array.from(fixture.nativeElement.querySelectorAll('.card-actions button')).map(b => (b as HTMLElement).textContent!.trim());
+        expect(labels).toContain('Rechazar');
+        expect(cancelButton(fixture)).toBeUndefined();
+        open(fixture, 'decline');
+        expect(fixture.nativeElement.querySelector('[data-testid="decline-hint"]')?.textContent).toContain('no se usa ninguna clase'); fixture.destroy();
+      });
+      it('cambio de horario de una clase confirmada: ambas acciones y el texto explica que cancelar anula la clase confirmada', () => {
+        const base = confirmed(ready);
+        const proposal = { ...session().proposal!, kind: 'reschedule', status: 'pending', version: base.version };
+        const fixture = render({ ...base, proposal, proposals: [proposal] });
+        expect(cancelButton(fixture)).toBeTruthy();
+        expect(fixture.nativeElement.textContent).toContain('Rechazar');
+        open(fixture, 'decline');
+        expect(fixture.nativeElement.querySelector('[data-testid="decline-hint"]')?.textContent).toContain('la clase sigue en su horario actual');
+        open(fixture, 'cancel');
+        expect(fixture.nativeElement.querySelector('[data-testid="cancel-hint"]')?.textContent).toContain('cancela la clase confirmada'); fixture.destroy();
+      });
+      it('propuesta inicial de clase en grupo: ambas acciones, con el texto que explica la diferencia', () => {
+        const group = { ...session(), kind: 'group', status: 'forming' };
+        const fixture = render(group);
+        expect(cancelButton(fixture)).toBeTruthy();
+        open(fixture, 'cancel');
+        expect(fixture.nativeElement.querySelector('[data-testid="cancel-hint"]')?.textContent).toContain('te quita de la clase en grupo'); fixture.destroy();
+      });
+      it('sin propuesta que responder (clase confirmada) «Cancelar clase» sigue disponible y sin texto extra', () => {
+        const fixture = render(confirmed(ready));
+        expect(cancelButton(fixture)).toBeTruthy();
+        open(fixture, 'cancel');
+        expect(fixture.nativeElement.querySelector('[data-testid="cancel-hint"]')).toBeNull(); fixture.destroy();
+      });
+    });
     it('«Reintentar sincronización» solo aparece si falta sincronizar algo, y solo para la docente', () => {
       auth.currentUser.set({ id: 2, role: 'teacher' });
       let fixture = render(confirmed(ready));

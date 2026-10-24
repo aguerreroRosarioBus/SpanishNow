@@ -57,6 +57,21 @@ export class ClassSessionCardComponent {
       && s.participants.some(a => a.userId === this.auth.currentUser()?.id && a.status !== 'cancelled')
       && this.features.enabled('class_scheduling');
   });
+  /**
+   * Propuesta inicial de clase individual vista por la alumna: rechazarla ya anula la clase sin ningún cargo
+   * (no hay créditos reservados todavía), así que «Cancelar clase» no agrega nada y se oculta.
+   * En cambio, ante un cambio de horario de una clase confirmada o una clase en grupo no son equivalentes.
+   */
+  rejectIsEnough = computed(() => {
+    const s = this.session(), p = this.selectedProposal();
+    return this.canRespond() && !!s && p?.kind === 'initial' && s.kind === 'individual';
+  });
+  /** Texto que explica qué diferencia a «Cancelar clase» de «Rechazar» cuando ambas están disponibles para la alumna. */
+  cancelHint = computed(() => {
+    const s = this.session(), p = this.selectedProposal();
+    if (!s || !p || !this.canRespond()) return '';
+    return p.kind === 'reschedule' ? 'schedule.cancelHintReschedule' : s.kind === 'group' ? 'schedule.cancelHintGroup' : '';
+  });
   proposalView = computed(() => {
     const p = this.selectedProposal(), s = this.session();
     return p?.status === 'pending' ? p : s;

@@ -23,9 +23,10 @@
     @if (s.groupResolutionRequired) { <p class="alert alert-warning">{{ 'schedule.groupDecision' | t }}</p> }
     @if (!zoneReady()) { <p class="notice">{{ 'schedule.zoneHint' | t }} <a routerLink="/schedule">{{ 'schedule.confirmZone' | t }}</a></p> }
     @if (s.replacementSessionId) { <p class="notice">{{ 'schedule.replaced' | t }} <a routerLink="/schedule" [queryParams]="{ sessionId: s.replacementSessionId }">{{ 'schedule.open' | t }}</a></p> }
-    @if (teacher() || s.participants.length > 1) {
+    @if (s.participants.length > 1) {
       <ul class="participants" [attr.aria-label]="'schedule.participants' | t">@for (p of s.participants; track p.userId) { <li>{{ p.name }} <span class="notice">· {{ ('schedule.status.' + p.status) | t }}@if (p.attendance !== 'pending') { · {{ ('schedule.status.' + p.attendance) | t }} }</span></li> }</ul>
     }
+    @if (s.participants.length === 1 && s.participants[0].attendance !== 'pending') { <p class="notice" data-testid="attendance-recorded">{{ 'schedule.attendanceRecorded' | t:{ value: ('schedule.status.' + s.participants[0].attendance) | t } }}</p> }
     @if (s.rules && !inactive()) { <p class="notice">{{ 'schedule.freeCancel' | t:{ hours: s.rules.freeCancelHours } }}</p> }
     <div class="card-actions">
       @if (canRespond()) {
@@ -37,16 +38,18 @@
       }
       @if (teacher() && (['forming','proposed','confirmed'].includes(s.status) || (s.kind === 'group' && ['expired','declined'].includes(s.status))) && features.enabled('class_scheduling')) { <a routerLink="/schedule" [queryParams]="{ reschedule: s.id }" class="btn btn-secondary">{{ 'schedule.reschedule' | t }}</a> }
       @if (s.liveClassId && (teacher() || s.whiteboardJoinCode) && !inactive()) { <a class="btn btn-secondary" [routerLink]="teacher() ? ['/live', s.liveClassId] : ['/live/join', s.whiteboardJoinCode]">{{ 'schedule.whiteboard' | t }}</a> }
-      @if (['forming','proposed','confirmed'].includes(s.status)) { <button type="button" class="btn btn-ghost card-actions-end" (click)="startDecision('cancel')" [disabled]="busy()">{{ 'schedule.cancel' | t }}</button> }
+      @if (['forming','proposed','confirmed'].includes(s.status) && !rejectIsEnough()) { <button type="button" class="btn btn-ghost card-actions-end" (click)="startDecision('cancel')" [disabled]="busy()">{{ 'schedule.cancel' | t }}</button> }
     </div>
     @if (meetingNotReady()) { <p class="notice" role="status">{{ 'schedule.meetingNotReady' | t }}</p> }
     @if (decision(); as action) {
       <fieldset data-testid="session-confirmation"><legend>{{ ('schedule.' + action) | t }}</legend>
       @if (action === 'accept' || action === 'decline') {
         @if (selectedProposal(); as p) { <app-session-time [interval]="p" [recipientZone]="zone()" [teacherZone]="s.teacher.timeZone || s.timeZone" /> }
+        @if (action === 'decline') { <p class="notice" data-testid="decline-hint">{{ (selectedProposal()?.kind === 'reschedule' ? 'schedule.declineHintReschedule' : 'schedule.declineHintInitial') | t }}</p> }
         @if (action === 'accept') { <label><input type="checkbox" [(ngModel)]="acknowledge" /> {{ 'schedule.acknowledge' | t }}</label> }
         <button type="button" class="btn btn-primary btn-sm" (click)="respond()" [disabled]="busy() || (action === 'accept' && !acknowledge)">{{ 'schedule.confirm' | t }}</button>
       } @else {
+        @if (cancelHint(); as hint) { <p class="notice" data-testid="cancel-hint">{{ hint | t }}</p> }
         <p>{{ (lateCancel() ? 'schedule.lateCancel' : 'schedule.freeCancellation') | t }}</p>
         @if (lateCancel()) { <label><input type="checkbox" [(ngModel)]="acknowledge" /> {{ 'schedule.acknowledge' | t }}</label> }
         <label>{{ 'schedule.reason' | t }}<textarea class="form-control" [(ngModel)]="reason" maxlength="500"></textarea></label>
