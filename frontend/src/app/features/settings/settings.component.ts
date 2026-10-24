@@ -4,11 +4,14 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
 import { ChangePasswordModalComponent } from '../../shared/components/change-password-modal/change-password-modal.component';
 import { UserPreferencesService } from '../../core/services/user-preferences.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { I18nService } from '../../core/i18n/i18n.service';
+import { isLocale } from '../../core/i18n/i18n.types';
+import { TimeZoneSelectComponent } from '../../shared/components/time-zone-select/time-zone-select.component';
 
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [TranslatePipe, IconComponent, ChangePasswordModalComponent],
+  imports: [TranslatePipe, IconComponent, ChangePasswordModalComponent, TimeZoneSelectComponent],
   templateUrl: './settings.component.html',
   styleUrl: './settings.component.scss'
 })
@@ -16,10 +19,10 @@ export class SettingsComponent {
   private authService = inject(AuthService);
   currentUser = this.authService.currentUser;
   readonly preferences = inject(UserPreferencesService);
+  readonly i18n = inject(I18nService);
   readonly zoneDraft = signal('');
   readonly zoneConfirmed = signal(false);
   readonly deviceZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  readonly zones = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : [];
   private editedZone = false;
   showChangePasswordModal = signal<boolean>(false);
 
@@ -34,6 +37,11 @@ export class SettingsComponent {
     this.editedZone = true;
     this.zoneDraft.set(zone);
     this.zoneConfirmed.set(false);
+  }
+
+  selectLanguage(event: Event): void {
+    const locale = (event.target as HTMLSelectElement).value;
+    if (isLocale(locale)) this.i18n.setLocale(locale);
   }
 
   saveZone(event: Event): void {

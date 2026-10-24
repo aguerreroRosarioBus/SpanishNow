@@ -3,6 +3,7 @@ import { DomSanitizer } from '@angular/platform-browser';
 
 /** Iconos de trazo (rejilla 24x24, estilo Lucide). Cada entrada es el contenido SVG interno. */
 const ICONS: Record<string, string> = {
+  power: '<path d="M12 2v10"/><path d="M18.4 5.6a9 9 0 1 1-12.8 0"/>',
   hand: '<path d="M18 11V7a2 2 0 0 0-4 0v4M14 10V5a2 2 0 0 0-4 0v6M10 10V7a2 2 0 0 0-4 0v8l-1-1a2 2 0 0 0-3 3l4 4a5 5 0 0 0 4 2h4a7 7 0 0 0 7-7v-3a2 2 0 0 0-3 0"/>',
   'maximize': '<path d="M8 3H3v5M16 3h5v5M21 16v5h-5M3 16v5h5"/>',
   minus: '<path d="M5 12h14"/>',

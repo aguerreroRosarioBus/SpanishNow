@@ -21,8 +21,14 @@
   tbody tr:hover { background: var(--color-row-hover); }
 }
 
-.actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 4px; }
-.link-select { width: 160px; }
+.actions { display: flex; flex-wrap: nowrap; justify-content: flex-end; align-items: center; gap: 4px; }
+.link-select { width:100%;min-width:140px;max-width:220px;margin-top:6px;font-size:.75rem; }
 
 fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 legend { float: none; font-size: 1rem; padding: 0; }
+
+.action-icon {width:38px;height:38px;border:1px solid var(--color-border);background:var(--color-bg);border-radius:9px}
+.action-icon:hover {border-color:var(--color-primary);color:var(--color-primary-hover);background:var(--color-primary-soft)}
+.action-icon--active {color:var(--color-success)}
+.action-icon--danger:hover {color:var(--color-danger);border-color:var(--color-danger);background:var(--color-danger-soft)}
+.actions>span {display:inline-flex}

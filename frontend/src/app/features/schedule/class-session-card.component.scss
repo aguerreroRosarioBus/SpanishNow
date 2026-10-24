@@ -10,14 +10,19 @@
   box-shadow: var(--shadow-sm);
 }
 
-// Clase cancelada, rechazada o vencida: sin opacidad (mantiene el contraste), solo fondo y tinta más suaves.
+// Los estados finales conservan la legibilidad; borde y etiqueta comunican el estado.
 .schedule-card.is-inactive {
-  background: var(--color-bg-light);
+  background: #fffaf7;
+  border-color: #c8b7a7;
+  border-left: 4px solid #8f7c6b;
   box-shadow: none;
-
-  h2,
-  ::ng-deep .when-main { color: var(--color-text-light); }
 }
+.schedule-card[data-status="cancelled"], .schedule-card[data-status="declined"] {
+  background: #fff8f5;
+  border-color: #d2a298;
+  border-left-color: #a34232;
+}
+.schedule-card.is-inactive h2 { color: var(--color-text); }
 
 .card-head {
   display: flex;
@@ -52,6 +57,7 @@ h2 { margin: 0; font-size: 1rem; overflow-wrap: anywhere; }
 }
 
 // Una sola acción principal a la izquierda; cancelar queda al final, discreta.
+.card-actions:empty {display:none}
 .card-actions {
   display: flex;
   flex-wrap: wrap;

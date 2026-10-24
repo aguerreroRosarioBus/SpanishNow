@@ -11,7 +11,9 @@ describe('LiveBoardComponent', () => {
     const fixture = TestBed.createComponent(LiveBoardComponent);
     fixture.componentRef.setInput('page', structuredClone(page)); fixture.componentRef.setInput('userId', userId);
     fixture.componentRef.setInput('owner', owner); fixture.componentRef.setInput('editable', editable);
-    fixture.detectChanges(); return { fixture, c: fixture.componentInstance, emit: vi.spyOn(fixture.componentInstance.boardChange, 'emit') };
+    fixture.detectChanges();
+    fixture.nativeElement.querySelector('svg.live-canvas').hasPointerCapture = () => false;
+    return { fixture, c: fixture.componentInstance, emit: vi.spyOn(fixture.componentInstance.boardChange, 'emit') };
   }
   it('renders teacher text as text, not markup', () => {
     const { fixture } = create(); fixture.componentRef.setInput('page', { ...page, elements: [{ ...e, text: '<script>alert(1)</script>' }] }); fixture.detectChanges();

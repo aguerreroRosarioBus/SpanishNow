@@ -1,3 +1,4 @@
+import { VISUAL_EN } from './visual';
 import { ZOOM_EN } from './zoom';
 import { STUDENT_EN } from './student';
 import { PUBLIC_EN } from './public';
@@ -14,6 +15,7 @@ import { LIVE_BOARD_EN } from './live-board';
 import { TranslationCatalog } from '../i18n.types';
 
 export const EN = {
+  ...VISUAL_EN,
   ...ZOOM_EN,
   ...STUDENT_EN,
   ...PUBLIC_EN,

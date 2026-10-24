@@ -18,6 +18,18 @@ describe('niceScale', () => {
 });
 
 describe('barLayout', () => {
+  it('limita y centra las barras con uno o dos meses sin modificar sus valores', () => {
+    for (const count of [1, 2]) {
+      const points = Array.from({length: count}, (_, i) => ({month: `2026-0${i + 1}`, value: 50, orders: 2}));
+      const bars = barLayout(points, 100, 640, 220);
+      for (const [i, bar] of bars.entries()) {
+        expect(bar.width).toBe(48);
+        expect(bar.x + bar.width / 2).toBe((i + .5) * 640 / count);
+        expect(bar.height).toBe(110);
+        expect(bar.value).toBe(50);
+      }
+    }
+  });
   it('escala las alturas al máximo de la escala', () => {
     const bars = barLayout([{ month: '2026-01', value: 50, orders: 1 }, { month: '2026-02', value: 100, orders: 2 }], 100, 200, 100);
     expect(bars[0].height).toBe(50);

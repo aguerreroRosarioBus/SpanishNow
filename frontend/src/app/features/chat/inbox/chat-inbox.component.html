@@ -1,7 +1,7 @@
 <div class="page-container">
   <div class="page-header">
     <div class="page-header__main">
-      <h1 class="page-title">{{ 'chat.inbox.title' | t }}</h1>
+      <h1 class="page-title"><app-icon name="message-square" [size]="28" />{{ 'chat.inbox.title' | t }}</h1>
       <p class="page-summary">{{ (isStudent() ? 'chat.inbox.summaryStudent' : 'chat.inbox.summaryTeacher') | t }}</p>
     </div>
   </div>

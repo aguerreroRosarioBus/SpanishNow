@@ -1,4 +1,4 @@
-<article class="schedule-card" [class.is-inactive]="inactive()" data-testid="session-card">
+<article class="schedule-card" [class.is-inactive]="inactive()" [attr.data-status]="session()?.status" data-testid="session-card">
   @if (loading() && !session()) { <p role="status">{{ 'schedule.loading' | t }}</p> }
   @if (error()) { <div class="alert alert-danger d-flex justify-content-between align-items-center gap-2" role="alert">{{ error() }}<button type="button" class="btn btn-secondary btn-sm" (click)="refresh()" [disabled]="busy()">{{ 'schedule.tryAgain' | t }}</button></div> }
   @if (session(); as s) {

@@ -279,7 +279,7 @@ describe('W06: interfaz conectada por contratos de agenda', () => {
   it('el campo de zona IANA usa el ancho disponible (sin w-auto) para leerse completo en pantallas angostas', () => {
     const fixture = TestBed.createComponent(ScheduleComponent); fixture.detectChanges();
     const input = fixture.nativeElement.querySelector('#scheduleZone') as HTMLInputElement;
-    expect(input.classList.contains('zone-input')).toBe(true); expect(input.classList.contains('w-auto')).toBe(false);
+    expect(input.closest('app-time-zone-select')).toBeTruthy(); expect(input.getAttribute('role')).toBe('combobox'); expect(input.classList.contains('w-auto')).toBe(false);
     fixture.destroy();
   });
 
@@ -304,7 +304,7 @@ describe('W06: interfaz conectada por contratos de agenda', () => {
       const fixture = TestBed.createComponent(ScheduleComponent); fixture.detectChanges();
       const el = fixture.nativeElement as HTMLElement;
       expect(el.querySelector('[data-testid="open-schedule-form"]')).toBeNull();
-      expect(el.querySelector('section.class-list form.filters')).toBeTruthy(); fixture.destroy();
+      expect(el.querySelector('section.class-list form.date-filters')).toBeTruthy(); fixture.destroy();
     });
   });
 

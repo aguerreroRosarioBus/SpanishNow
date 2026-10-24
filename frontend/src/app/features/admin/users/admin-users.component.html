@@ -3,99 +3,72 @@
     <div class="page-header__main">
       <h1 class="page-title">{{ 'adminUsers.title' | t }}</h1>
       <p class="page-summary">
-        @if (canManage()) { {{ 'adminUsers.summary' | t }} }
-        @else { {{ 'adminUsers.testSummary' | t }} }
+        @if (canManage()) {
+          {{ 'adminUsers.summary' | t }}
+        } @else {
+          {{ 'adminUsers.testSummary' | t }}
+        }
       </p>
     </div>
   </div>
 
-  @if (canTest()) {
-    <section class="panel" aria-labelledby="testTitle">
-      <h2 class="panel__title" id="testTitle">{{ 'adminUsers.createTitle' | t }}</h2>
-      <p class="panel__hint">{{ 'adminUsers.fakeHelp' | t }}</p>
-      <form class="create-form" (submit)="$event.preventDefault(); createTestUsers()">
-        <div class="field">
-          <label for="testRole">{{ 'adminUsers.role' | t }}</label>
-          <select id="testRole" class="form-select" [value]="testRole()" (change)="setTestRole($any($event.target).value)">
-            <option value="student">{{ 'adminUsers.student' | t }}</option>
-            <option value="teacher">{{ 'adminUsers.teacher' | t }}</option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="testName">{{ 'adminUsers.nameOptional' | t }}</label>
-          <input id="testName" class="form-control" type="text" maxlength="80" [value]="testName()" (input)="testName.set($any($event.target).value)">
-        </div>
-        @if (testRole() === 'student' && courses().length > 0) {
-          <div class="field">
-            <label for="testCourse">{{ 'adminUsers.courseOptional' | t }}</label>
-            <select id="testCourse" class="form-select" [value]="testCourseId() ?? ''" (change)="setTestCourse($any($event.target).value)">
-              <option value="">{{ 'adminUsers.noEnrollment' | t }}</option>
-              @for (c of courses(); track c.id) { <option [value]="c.id">{{ c.title }}</option> }
-            </select>
-          </div>
-        }
-        <div class="field field--count">
-          <label for="testCount">{{ 'adminUsers.count' | t }}</label>
-          <input id="testCount" class="form-control" type="number" min="1" max="10" [value]="testCount()" (change)="setTestCount($any($event.target).value)">
-        </div>
-        <div class="field field--submit">
-          <button type="submit" class="btn btn-primary" [disabled]="isCreating()">
-            <app-icon name="plus" [size]="16" />{{ (isCreating() ? 'adminUsers.creating' : 'adminUsers.create') | t }}
-          </button>
-        </div>
-      </form>
-
-      @if (created().length > 0) {
-        <div class="created" role="status" aria-live="polite">
-          <p class="created__warn"><app-icon name="alert-triangle" [size]="16" />{{ 'adminUsers.savePasswords' | t }}</p>
-          <ul class="created__list">
-            @for (c of created(); track c.user.id) {
-              <li class="created__item">
-                <div class="created__creds">
-                  <span class="created__label">{{ roleLabel(c.user.role) }} · {{ c.user.name }}</span>
-                  <div class="cred"><code>{{ c.user.email }}</code>
-                    <button type="button" class="btn btn-ghost btn-sm" (click)="copy(c.user.email, 'adminUsers.emailCopied')" [attr.aria-label]="'adminUsers.copyEmail' | t: {email: c.user.email}"><app-icon name="copy" [size]="15" />{{ 'adminUsers.copy' | t }}</button></div>
-                  <div class="cred"><code>{{ c.password }}</code>
-                    <button type="button" class="btn btn-ghost btn-sm" (click)="copy(c.password, 'adminUsers.passwordCopied')" [attr.aria-label]="'adminUsers.copyPassword' | t: {email: c.user.email}"><app-icon name="copy" [size]="15" />{{ 'adminUsers.copy' | t }}</button></div>
-                </div>
-                <button type="button" class="btn btn-secondary btn-sm" (click)="enter(c.user.id)">{{ 'adminUsers.enter' | t }}</button>
-              </li>
-            }
-          </ul>
-        </div>
-      }
-    </section>
-  }
-
   <section class="filters" [attr.aria-label]="'adminUsers.filters' | t">
     <div class="field field--grow">
       <label for="fSearch">{{ 'adminUsers.search' | t }}</label>
-      <input id="fSearch" class="form-control" type="search" [placeholder]="'adminUsers.searchPlaceholder' | t" [value]="search()" (input)="onSearch($any($event.target).value)">
+      <input
+        id="fSearch"
+        class="form-control"
+        type="search"
+        [placeholder]="'adminUsers.searchPlaceholder' | t"
+        [value]="search()"
+        (input)="onSearch($any($event.target).value)"
+      />
     </div>
     @if (canManage()) {
       <div class="field">
         <label for="fRole">{{ 'adminUsers.role' | t }}</label>
-        <select id="fRole" class="form-select" [value]="roleFilter()" (change)="setRole($any($event.target).value)">
-          <option value="">{{ 'adminUsers.all' | t }}</option><option value="teacher">{{ 'adminUsers.teachers' | t }}</option><option value="student">{{ 'adminUsers.students' | t }}</option>
+        <select
+          id="fRole"
+          class="form-select"
+          [value]="roleFilter()"
+          (change)="setRole($any($event.target).value)"
+        >
+          <option value="">{{ 'adminUsers.all' | t }}</option>
+          <option value="teacher">{{ 'adminUsers.teachers' | t }}</option>
+          <option value="student">{{ 'adminUsers.students' | t }}</option>
         </select>
       </div>
       <div class="field">
         <label for="fKind">{{ 'adminUsers.kind' | t }}</label>
-        <select id="fKind" class="form-select" [value]="kindFilter()" (change)="setKind($any($event.target).value)">
-          <option value="">{{ 'adminUsers.realAndTest' | t }}</option><option value="real">{{ 'adminUsers.real' | t }}</option><option value="test">{{ 'adminUsers.testAccounts' | t }}</option>
+        <select
+          id="fKind"
+          class="form-select"
+          [value]="kindFilter()"
+          (change)="setKind($any($event.target).value)"
+        >
+          <option value="">{{ 'adminUsers.realAndTest' | t }}</option>
+          <option value="real">{{ 'adminUsers.real' | t }}</option>
+          <option value="test">{{ 'adminUsers.testAccounts' | t }}</option>
         </select>
       </div>
     }
     <div class="field">
       <label for="fStatus">{{ 'adminUsers.status' | t }}</label>
-      <select id="fStatus" class="form-select" [value]="statusFilter()" (change)="setStatus($any($event.target).value)">
-        <option value="">{{ 'adminUsers.all' | t }}</option><option value="active">{{ 'adminUsers.active' | t }}</option><option value="suspended">{{ 'adminUsers.suspendedPlural' | t }}</option>
+      <select
+        id="fStatus"
+        class="form-select"
+        [value]="statusFilter()"
+        (change)="setStatus($any($event.target).value)"
+      >
+        <option value="">{{ 'adminUsers.all' | t }}</option>
+        <option value="active">{{ 'adminUsers.active' | t }}</option>
+        <option value="suspended">{{ 'adminUsers.suspendedPlural' | t }}</option>
       </select>
     </div>
-    @if (canTest()) {
-      <div class="field field--submit">
-        <button type="button" class="btn btn-ghost btn-danger-text" (click)="askDeleteAll()"><app-icon name="trash" [size]="16" />{{ 'adminUsers.deleteAll' | t }}</button>
-      </div>
+    @if (search() || roleFilter() || kindFilter() || statusFilter()) {
+      <button type="button" class="btn btn-ghost btn-sm" (click)="resetFilters()">
+        {{ 'visual.clear' | t }}
+      </button>
     }
   </section>
 
@@ -114,77 +87,377 @@
       <span>{{ 'adminUsers.emptyHelp' | t }}</span>
     </div>
   } @else if (users().length > 0) {
-    <p class="result-count" aria-live="polite">{{ 'adminUsers.users' | t: {count: total()} }}</p>
-    <ul class="user-list">
-      @for (u of users(); track u.id) {
-        <li class="user-card" [class.user-card--suspended]="u.suspendedAt">
-          <div class="user-card__head">
-            <div class="user-card__id">
-              <strong class="user-card__name">{{ u.name }}</strong>
-              <span class="user-card__email">{{ u.email }}</span>
-            </div>
-            <div class="badges">
-              <span class="badge-status badge-status--draft">{{ roleLabel(u.role) }}</span>
-              @if (u.isTestAccount) { <span class="badge-level">{{ 'adminUsers.testBadge' | t }}</span> }
-              @if (u.suspendedAt) { <span class="badge-status badge-status--suspended">{{ 'adminUsers.suspended' | t }}</span> }
-              @if (u.fixedAdmin) { <span class="badge-status badge-status--published" [title]="'adminUsers.fixedTitle' | t">{{ 'adminUsers.fixed' | t }}</span> }
-            </div>
-          </div>
-          <p class="user-card__meta">
-            {{ 'adminUsers.createdDate' | t: {date: date(u.createdAt)} }} ·
-            @if (u.role === 'teacher') { {{ 'adminUsers.courses' | t: {count: u.coursesCount} }} }
-            @else { {{ 'adminUsers.enrollments' | t: {count: u.enrollmentsCount} }} }
-          </p>
-
-          <div class="user-card__controls">
-            @if (canManage()) {
-              <div class="field field--role">
-                <label [for]="'role-' + u.id">{{ 'adminUsers.role' | t }}</label>
-                <select [id]="'role-' + u.id" class="form-select form-select-sm" [value]="u.role" [disabled]="busy().has(u.id)" (change)="changeRole(u, $any($event.target).value)">
-                  <option value="student">{{ 'adminUsers.student' | t }}</option>
-                  <option value="teacher">{{ 'adminUsers.teacher' | t }}</option>
-                </select>
-              </div>
-              <fieldset class="perms" [disabled]="!canEditPermissions(u)">
-                <legend>{{ 'adminUsers.permissions' | t }}@if (u.fixedAdmin) { <small>{{ 'adminUsers.fixedHelp' | t }}</small> } @else if (u.isTestAccount) { <small>{{ 'adminUsers.noPermissions' | t }}</small> }</legend>
-                @for (p of permissions(); track p.key) {
-                  <label class="perm" [title]="permissionText(p, 'description')">
-                    <input type="checkbox" [checked]="hasPermission(u, p.key)" [disabled]="permissionDisabled(u, p.key)"
-                           (change)="togglePermission(u, p.key, $any($event.target).checked)">
-                    <span>{{ permissionText(p, 'label') }}</span>
-                  </label>
-                }
-              </fieldset>
+    <section class="directory" aria-labelledby="directoryTitle">
+      <div class="directory__heading">
+        <div>
+          <h2 id="directoryTitle">{{ 'visual.directory' | t }}</h2>
+          <p>{{ 'visual.directoryHelp' | t }}</p>
+        </div>
+        <span class="result-count" aria-live="polite">{{
+          'adminUsers.users' | t: { count: total() }
+        }}</span>
+      </div>
+      <div class="table-wrap">
+        <table class="user-table">
+          <thead>
+            <tr>
+              <th scope="col">{{ 'visual.user' | t }}</th>
+              <th scope="col">{{ 'adminUsers.role' | t }}</th>
+              <th scope="col">{{ 'adminUsers.status' | t }}</th>
+              <th scope="col">{{ 'visual.access' | t }}</th>
+              <th scope="col">{{ 'visual.activity' | t }}</th>
+              <th scope="col">
+                <span class="visually-hidden">{{ 'visual.manage' | t }}</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (u of users(); track u.id) {
+              <tr [class.user-row--suspended]="u.suspendedAt">
+                <td>
+                  <div class="user-identity">
+                    <span class="user-avatar" aria-hidden="true">{{ initials(u.name) }}</span>
+                    <div>
+                      <button type="button" class="user-name" (click)="openDetails(u, userDetails)">
+                        {{ u.name }}</button
+                      ><span class="user-email">{{ u.email }}</span
+                      ><span class="mobile-role">{{ roleLabel(u.role) }}</span>
+                      <div class="user-tags">
+                        @if (u.id === me()?.id) {
+                          <span>{{ 'visual.you' | t }}</span>
+                        }
+                        @if (u.isTestAccount) {
+                          <span>{{ 'adminUsers.testBadge' | t }}</span>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <span class="role-badge"
+                    ><app-icon
+                      [name]="u.role === 'teacher' ? 'book-open' : 'graduation-cap'"
+                      [size]="15"
+                    />{{ roleLabel(u.role) }}</span
+                  >
+                </td>
+                <td>
+                  <span class="status-pill" [class.status-pill--suspended]="u.suspendedAt"
+                    ><span aria-hidden="true"></span
+                    >{{
+                      (u.suspendedAt ? 'adminUsers.suspended' : 'visual.accountActive') | t
+                    }}</span
+                  >
+                </td>
+                <td>
+                  <span class="access-summary">{{
+                    (u.fixedAdmin
+                      ? 'visual.allPermissions'
+                      : u.permissions.length
+                        ? 'visual.permissionCount'
+                        : 'visual.noPermissions'
+                    ) | t: { count: u.permissions.length }
+                  }}</span>
+                </td>
+                <td>
+                  <span class="activity-count">
+                    @if (u.role === 'teacher') {
+                      {{ 'adminUsers.courses' | t: { count: u.coursesCount } }}
+                    } @else {
+                      {{ 'adminUsers.enrollments' | t: { count: u.enrollmentsCount } }}
+                    }</span
+                  ><small class="user-date">{{
+                    'adminUsers.createdDate' | t: { date: date(u.createdAt) }
+                  }}</small>
+                </td>
+                <td>
+                  <button
+                    type="button"
+                    class="btn-icon manage-button"
+                    (click)="openDetails(u, userDetails)"
+                    [ngbTooltip]="'visual.manage' | t"
+                    container="body"
+                    [attr.aria-label]="('visual.manage' | t) + ': ' + u.name"
+                  >
+                    <app-icon name="settings" [size]="18" />
+                  </button>
+                </td>
+              </tr>
             }
-            <div class="user-card__actions">
-              @if (canSuspend(u)) {
-                <button type="button" class="btn btn-ghost btn-sm" [disabled]="busy().has(u.id)" (click)="askSuspend(u)">{{ (u.suspendedAt ? 'adminUsers.reactivate' : 'adminUsers.suspend') | t }}</button>
-              }
-              @if (canTest() && u.isTestAccount) {
-                <button type="button" class="btn btn-secondary btn-sm" [disabled]="!!u.suspendedAt" (click)="enter(u.id)" [attr.aria-label]="'adminUsers.enterAs' | t: {name: u.name}">{{ 'adminUsers.enter' | t }}</button>
-                <button type="button" class="btn btn-ghost btn-sm btn-danger-text" (click)="askDelete(u)" [attr.aria-label]="'adminUsers.deleteAccount' | t: {email: u.email}">{{ 'adminUsers.delete' | t }}</button>
-              }
-            </div>
-          </div>
-        </li>
-      }
-    </ul>
-
+          </tbody>
+        </table>
+      </div>
+    </section>
     @if (totalPages() > 1) {
       <nav class="pager" [attr.aria-label]="'adminUsers.pagination' | t">
-        <button type="button" class="btn btn-ghost btn-sm" [disabled]="page() <= 1" (click)="goTo(page() - 1)"><app-icon name="chevron-left" [size]="16" />{{ 'adminUsers.previous' | t }}</button>
-        <span>{{ 'adminUsers.page' | t: {page: number(page()), total: number(totalPages())} }}</span>
-        <button type="button" class="btn btn-ghost btn-sm" [disabled]="page() >= totalPages()" (click)="goTo(page() + 1)">{{ 'adminUsers.next' | t }}<app-icon name="chevron-right" [size]="16" /></button>
+        <button
+          type="button"
+          class="btn btn-ghost btn-sm"
+          [disabled]="page() <= 1"
+          (click)="goTo(page() - 1)"
+        >
+          <app-icon name="chevron-left" [size]="16" />{{ 'adminUsers.previous' | t }}
+        </button>
+        <span>{{
+          'adminUsers.page' | t: { page: number(page()), total: number(totalPages()) }
+        }}</span>
+        <button
+          type="button"
+          class="btn btn-ghost btn-sm"
+          [disabled]="page() >= totalPages()"
+          (click)="goTo(page() + 1)"
+        >
+          {{ 'adminUsers.next' | t }}<app-icon name="chevron-right" [size]="16" />
+        </button>
       </nav>
     }
   }
+  @if (canTest()) {
+    <details class="panel test-tools">
+      <summary>
+        <span class="test-tools__icon"><app-icon name="compass" [size]="20" /></span
+        ><span
+          ><strong>{{ 'visual.testTools' | t }}</strong
+          ><small>{{ 'visual.testToolsHelp' | t }}</small></span
+        ><app-icon name="chevron-down" [size]="18" />
+      </summary>
+      <div class="test-tools__body">
+        <h2 class="panel__title" id="testTitle">{{ 'adminUsers.createTitle' | t }}</h2>
+        <p class="panel__hint">{{ 'adminUsers.fakeHelp' | t }}</p>
+        <form class="create-form" (submit)="$event.preventDefault(); createTestUsers()">
+          <div class="field">
+            <label for="testRole">{{ 'adminUsers.role' | t }}</label>
+            <select
+              id="testRole"
+              class="form-select"
+              [value]="testRole()"
+              (change)="setTestRole($any($event.target).value)"
+            >
+              <option value="student">{{ 'adminUsers.student' | t }}</option>
+              <option value="teacher">{{ 'adminUsers.teacher' | t }}</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="testName">{{ 'adminUsers.nameOptional' | t }}</label>
+            <input
+              id="testName"
+              class="form-control"
+              type="text"
+              maxlength="80"
+              [value]="testName()"
+              (input)="testName.set($any($event.target).value)"
+            />
+          </div>
+          @if (testRole() === 'student' && courses().length > 0) {
+            <div class="field">
+              <label for="testCourse">{{ 'adminUsers.courseOptional' | t }}</label>
+              <select
+                id="testCourse"
+                class="form-select"
+                [value]="testCourseId() ?? ''"
+                (change)="setTestCourse($any($event.target).value)"
+              >
+                <option value="">{{ 'adminUsers.noEnrollment' | t }}</option>
+                @for (c of courses(); track c.id) {
+                  <option [value]="c.id">{{ c.title }}</option>
+                }
+              </select>
+            </div>
+          }
+          <div class="field field--count">
+            <label for="testCount">{{ 'adminUsers.count' | t }}</label>
+            <input
+              id="testCount"
+              class="form-control"
+              type="number"
+              min="1"
+              max="10"
+              [value]="testCount()"
+              (change)="setTestCount($any($event.target).value)"
+            />
+          </div>
+          <div class="field field--submit">
+            <button type="submit" class="btn btn-primary" [disabled]="isCreating()">
+              <app-icon name="plus" [size]="16" />{{
+                (isCreating() ? 'adminUsers.creating' : 'adminUsers.create') | t
+              }}
+            </button>
+          </div>
+        </form>
+
+        @if (created().length > 0) {
+          <div class="created" role="status" aria-live="polite">
+            <p class="created__warn">
+              <app-icon name="alert-triangle" [size]="16" />{{ 'adminUsers.savePasswords' | t }}
+            </p>
+            <ul class="created__list">
+              @for (c of created(); track c.user.id) {
+                <li class="created__item">
+                  <div class="created__creds">
+                    <span class="created__label"
+                      >{{ roleLabel(c.user.role) }} · {{ c.user.name }}</span
+                    >
+                    <div class="cred">
+                      <code>{{ c.user.email }}</code>
+                      <button
+                        type="button"
+                        class="btn btn-ghost btn-sm"
+                        (click)="copy(c.user.email, 'adminUsers.emailCopied')"
+                        [attr.aria-label]="'adminUsers.copyEmail' | t: { email: c.user.email }"
+                      >
+                        <app-icon name="copy" [size]="15" />{{ 'adminUsers.copy' | t }}
+                      </button>
+                    </div>
+                    <div class="cred">
+                      <code>{{ c.password }}</code>
+                      <button
+                        type="button"
+                        class="btn btn-ghost btn-sm"
+                        (click)="copy(c.password, 'adminUsers.passwordCopied')"
+                        [attr.aria-label]="'adminUsers.copyPassword' | t: { email: c.user.email }"
+                      >
+                        <app-icon name="copy" [size]="15" />{{ 'adminUsers.copy' | t }}
+                      </button>
+                    </div>
+                  </div>
+                  <button type="button" class="btn btn-secondary btn-sm" (click)="enter(c.user.id)">
+                    {{ 'adminUsers.enter' | t }}
+                  </button>
+                </li>
+              }
+            </ul>
+          </div>
+        }
+        <div class="test-tools__danger">
+          <button
+            type="button"
+            class="btn btn-ghost btn-sm btn-danger-text"
+            (click)="askDeleteAll()"
+          >
+            <app-icon name="trash" [size]="16" />{{ 'adminUsers.deleteAll' | t }}
+          </button>
+        </div>
+      </div>
+    </details>
+  }
 </div>
+
+<ng-template #userDetails let-panel>
+  @if (selectedUser(); as u) {
+    <div class="offcanvas-header">
+      <div>
+        <span class="detail-eyebrow">{{ 'visual.manage' | t }}</span>
+        <h2 id="userDetailsTitle" class="offcanvas-title">{{ u.name }}</h2>
+      </div>
+      <button
+        type="button"
+        class="btn-close"
+        (click)="panel.dismiss()"
+        [attr.aria-label]="'common.close' | t"
+      ></button>
+    </div>
+    <div class="offcanvas-body user-detail">
+      <div class="detail-identity">
+        <span class="user-avatar user-avatar--large" aria-hidden="true">{{
+          initials(u.name)
+        }}</span>
+        <div>
+          <strong>{{ u.name }}</strong
+          ><span class="user-email">{{ u.email }}</span
+          ><small>{{ 'adminUsers.createdDate' | t: { date: date(u.createdAt) } }}</small>
+        </div>
+      </div>
+      <div class="detail-status">
+        <span class="status-pill" [class.status-pill--suspended]="u.suspendedAt"
+          ><span aria-hidden="true"></span
+          >{{ (u.suspendedAt ? 'adminUsers.suspended' : 'visual.accountActive') | t }}</span
+        >
+        @if (u.isTestAccount) {
+          <span class="badge-level">{{ 'adminUsers.testBadge' | t }}</span>
+        }
+        @if (u.fixedAdmin) {
+          <span class="badge-status badge-status--published">{{ 'adminUsers.fixed' | t }}</span>
+        }
+      </div>
+      @if (canManage()) {
+        <section class="detail-section">
+          <h3>{{ 'adminUsers.role' | t }}</h3>
+          <p>{{ 'visual.manageHelp' | t }}</p>
+          <label [for]="'role-' + u.id" class="visually-hidden">{{ 'adminUsers.role' | t }}</label
+          ><select
+            [id]="'role-' + u.id"
+            class="form-select"
+            [value]="u.role"
+            [disabled]="busy().has(u.id)"
+            (change)="changeRole(u, $any($event.target).value)"
+          >
+            <option value="student">{{ 'adminUsers.student' | t }}</option>
+            <option value="teacher">{{ 'adminUsers.teacher' | t }}</option>
+          </select>
+        </section>
+        <fieldset class="detail-section permissions" [disabled]="!canEditPermissions(u)">
+          <legend>{{ 'adminUsers.permissions' | t }}</legend>
+          <p>{{ 'visual.permissionsHelp' | t }}</p>
+          @if (u.fixedAdmin) {
+            <p class="detail-notice">{{ 'adminUsers.fixedHelp' | t }}</p>
+          } @else if (u.isTestAccount) {
+            <p class="detail-notice">{{ 'adminUsers.noPermissions' | t }}</p>
+          }
+          @for (p of permissions(); track p.key) {
+            <label class="permission" [class.permission--enabled]="hasPermission(u, p.key)"
+              ><span
+                ><strong>{{ permissionText(p, 'label') }}</strong
+                ><small>{{ permissionText(p, 'description') }}</small></span
+              ><input
+                type="checkbox"
+                [checked]="hasPermission(u, p.key)"
+                [disabled]="permissionDisabled(u, p.key)"
+                (change)="togglePermission(u, p.key, $any($event.target).checked)"
+            /></label>
+          }
+        </fieldset>
+      }
+      @if (canSuspend(u) || (canTest() && u.isTestAccount)) {
+        <section class="detail-section">
+          <h3>{{ 'visual.access' | t }}</h3>
+          <div class="detail-actions">
+            @if (canSuspend(u)) {
+              <button
+                type="button"
+                class="btn btn-secondary"
+                [disabled]="busy().has(u.id)"
+                (click)="askSuspend(u)"
+              >
+                <app-icon name="power" [size]="16" />{{
+                  (u.suspendedAt ? 'adminUsers.reactivate' : 'adminUsers.suspend') | t
+                }}
+              </button>
+            }
+            @if (canTest() && u.isTestAccount) {
+              <button
+                type="button"
+                class="btn btn-secondary"
+                [disabled]="!!u.suspendedAt"
+                (click)="enter(u.id)"
+              >
+                {{ 'adminUsers.enter' | t }}</button
+              ><button type="button" class="btn btn-ghost btn-danger-text" (click)="askDelete(u)">
+                <app-icon name="trash" [size]="16" />{{ 'adminUsers.delete' | t }}
+              </button>
+            }
+          </div>
+        </section>
+      }
+    </div>
+  }
+</ng-template>
 
 <app-confirm-dialog
   [show]="!!pending()"
-  [title]="(pending()?.title ?? 'adminUsers.confirm') | t: pending()?.params"
-  [message]="(pending()?.message ?? 'adminUsers.confirm') | t: pending()?.params"
-  [confirmText]="(pending()?.confirmText ?? 'adminUsers.confirm') | t: pending()?.params"
+  [title]="pending()?.title ?? 'adminUsers.confirm' | t: pending()?.params"
+  [message]="pending()?.message ?? 'adminUsers.confirm' | t: pending()?.params"
+  [confirmText]="pending()?.confirmText ?? 'adminUsers.confirm' | t: pending()?.params"
   [type]="pending()?.type ?? 'danger'"
   (confirmed)="confirmPending()"
-  (cancelled)="pending.set(null)"></app-confirm-dialog>
+  (cancelled)="pending.set(null)"
+></app-confirm-dialog>
