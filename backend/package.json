@@ -21,7 +21,8 @@
     "db:seed": "node src/utils/seedData.js",
     "db:migrate:tprs:test": "node src/utils/migrateLessonPlansTest.js",
     "test": "jest --runInBand",
-    "test:time": "jest --config jest.time.config.js --runInBand"
+    "test:time": "jest --config jest.time.config.js --runInBand",
+    "db:seed:master": "node src/db/seedMaster.js"
   },
   "keywords": [],
   "author": "",
