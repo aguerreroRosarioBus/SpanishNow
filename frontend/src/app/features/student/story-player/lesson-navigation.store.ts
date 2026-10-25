@@ -28,9 +28,10 @@ export class LessonNavigationStore {
   /** Mejor resultado de quiz por unidad (viene del progreso y se actualiza al enviar un intento). */
   quizResults = signal<Record<number, { bestScore: number | null; passed: boolean }>>({});
   introSeen = signal(false);
-  /** Historia pedida por `?story=` (links de los emails): se abre y se baja a sus comentarios. */
+  /** Destino de comentarios explícito (`?story=…&focus=comments`); elegir historia no implica bajar. */
   focusCommentsStoryId = signal<number | null>(null);
   private requestedStoryId: number | null = null;
+  private requestedCommentsFocus = false;
   /** Curso siguiente de la serie (viene del progreso de la inscripción). */
   nextCourse = signal<NextCourseOffer | null>(null);
   /** Curso terminado: todas las historias leídas y los quizzes de las unidades aprobados. */
@@ -100,8 +101,10 @@ export class LessonNavigationStore {
     return this.canGoNextUnit() ? 'unit' : 'courses';
   });
 
-  load(courseId: number, requestedStoryId: number | null = null): void {
+  load(courseId: number, requestedStoryId: number | null = null, focusComments = false): void {
     this.requestedStoryId = requestedStoryId;
+    this.requestedCommentsFocus = focusComments;
+    this.focusCommentsStoryId.set(null);
     this.isLoading.set(true);
     this.failure.set(null);
     this.enrollmentService.getMyCourses().subscribe({
@@ -179,6 +182,7 @@ export class LessonNavigationStore {
   }
 
   selectUnit(unit: Unit): void {
+    this.focusCommentsStoryId.set(null);
     this.currentUnit.set(unit);
     this.buildItems();
     const items = this.items();
@@ -191,7 +195,9 @@ export class LessonNavigationStore {
   /** Abre la historia de `?story=` si es accesible; si no, queda el comportamiento habitual. */
   private openRequestedStory(units: Unit[]): void {
     const storyId = this.requestedStoryId;
+    const focusComments = this.requestedCommentsFocus;
     this.requestedStoryId = null;
+    this.requestedCommentsFocus = false;
     if (storyId === null) return;
     const unit = units.find(u => (u.stories ?? []).some(s => s.id === storyId));
     if (!unit || unit.locked) return;
@@ -203,7 +209,7 @@ export class LessonNavigationStore {
       return;
     }
     this.currentIndex.set(index);
-    this.focusCommentsStoryId.set(storyId);
+    if (focusComments) this.focusCommentsStoryId.set(storyId);
   }
 
   goToPreviousUnit(): void { this.moveUnit(-1); }
@@ -328,6 +334,7 @@ export class LessonNavigationStore {
     if (!item.canAccess) return false;
     const index = this.items().findIndex(i => i.id === item.id);
     if (index < 0) return false;
+    this.focusCommentsStoryId.set(null);
     this.currentIndex.set(index);
     return true;
   }
