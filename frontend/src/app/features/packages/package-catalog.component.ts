@@ -1,3 +1,4 @@
+import { parseMoneyInput, moneyInputValue } from '../../shared/utils/money-input';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { forkJoin } from 'rxjs';
@@ -24,8 +25,21 @@ export class PackageCatalogComponent implements OnInit {
   private fb = inject(FormBuilder);
   readonly fields = EXPECTATION_FIELDS;
   readonly locales = ['en','es'] as const;
-  readonly textFields = ['nameEn','nameEs','descriptionEn','descriptionEs','hotmartProductId','hotmartOfferCode','hotmartCheckoutUrl'] as const;
-  readonly numberFields = ['sessionsCount','minutesPerSession','priceAmount','validityHours','policyVersionId'] as const;
+  readonly textFields = ['nameEn','nameEs'] as const;
+  readonly providerFields=['hotmartProductId','hotmartOfferCode','hotmartCheckoutUrl'] as const;
+  readonly descriptionFields=['descriptionEn','descriptionEs'] as const;
+  readonly numberFields = ['sessionsCount','minutesPerSession'] as const;
+  readonly currencies=['USD','ARS','EUR','GBP','BRL','MXN','JPY'];
+  currencyName(code:string){try{return new Intl.DisplayNames([this.i18n.intlLocale()],{type:'currency'}).of(code.toUpperCase())||code;}catch{return code;}}
+  priceText=signal(''); validityInDays=signal(true);
+  priceValid(){return parseMoneyInput(this.priceText(),this.form.get('currency')?.value||'USD')!==null;}
+  setPrice(text:string){this.priceText.set(text);this.form.patchValue({priceAmount:parseMoneyInput(text,this.form.get('currency')?.value||'USD')});}
+  setCurrency(value:string){this.form.patchValue({currency:value});this.setPrice(this.priceText());}
+  validityValue(){const hours=this.form.get('validityHours')?.value;return hours?(this.validityInDays()?hours/24:hours):'';}
+  setValidity(value:string){const n=Number(value);this.form.patchValue({validityHours:Number.isSafeInteger(n)&&n>0?n*(this.validityInDays()?24:1):null});}
+  statusFilter=signal('all');
+  visibleItems=computed(()=>this.items().filter(t=>this.statusFilter()==='all'||t.status===this.statusFilter()).slice().sort((a,b)=>({active:0,draft:1,paused:2,archived:3}[a.status]-{active:0,draft:1,paused:2,archived:3}[b.status])));
+
   items = signal<PackageTemplate[]>([]);
   settings = signal<ClassSettings|null>(null);
   selected = signal<PackageTemplate|null>(null);
@@ -59,9 +73,11 @@ export class PackageCatalogComponent implements OnInit {
     const base = t.current ?? t.lastVersion;
     this.form.patchValue(base ? { ...base, expectations: base.expectations ?? blank }
       : { modality:'individual', groupSize:1, billing:'per_buyer', seatsCovered:1, currency:'USD', expectations: blank });
+    this.priceText.set(base?.priceAmount?moneyInputValue(base.priceAmount,base.currency):'');
+    this.validityInDays.set(!base?.validityHours||base.validityHours%24===0);
   }
   save() {
-    const t=this.selected(); if(!t || this.busy() || this.form.invalid) return;
+    const t=this.selected(); if(!t || this.busy() || this.form.invalid || !this.priceValid() || !Number.isSafeInteger(this.form.get('validityHours')?.value) || this.form.get('validityHours')?.value<1) return;
     this.busy.set(true); this.failure.set(null); this.saved.set(false);
     const body = this.form.getRawValue();
     if (body.policyVersionId == null || body.policyVersionId === '') delete body.policyVersionId; // el backend usa la política vigente

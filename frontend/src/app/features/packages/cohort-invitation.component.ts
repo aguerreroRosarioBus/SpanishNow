@@ -14,11 +14,11 @@ import {ClassCohort} from './packages.model';
     <p>{{ 'packages.group.accepted' | t:{count:c.acceptedCount,total:c.groupSize} }}</p>
     <p>{{ 'packages.group.noPayment' | t }}</p>
     @if(c.members){<p>{{'packages.group.teacherHint'|t}}</p>@for(m of c.members;track m.userId){<p>{{m.name}} · {{('packages.group.status.'+m.status)|t}} @if(c.status==='forming'&&c.acceptedCount===c.groupSize&&m.conversationId){<a routerLink="/teacher/class-offers/new" [queryParams]="{conversationId:m.conversationId,cohortId:c.id}">{{'packages.offer.send'|t}}</a>}</p>}}
-    <button class="btn btn-secondary my-2" [disabled]="busy()" (click)="ngOnInit()">{{'packages.offer.refresh'|t}}</button>
+    <div class="d-flex flex-wrap gap-2 align-items-center my-3"><button class="btn btn-ghost" [disabled]="busy()" (click)="ngOnInit()">{{'packages.offer.refresh'|t}}</button>
     @if (c.invitation?.status==='invited' && c.status==='forming') {
-      <button class="btn btn-primary me-2" [disabled]="busy()" (click)="respond(true)">{{ 'packages.group.accept' | t }}</button>
+      <button class="btn btn-primary" [disabled]="busy()" (click)="respond(true)">{{ 'packages.group.accept' | t }}</button>
       <button class="btn btn-secondary" [disabled]="busy()" (click)="respond(false)">{{ 'packages.group.decline' | t }}</button>
-    } @else {<p>{{ ('packages.group.status.'+(c.invitation?.status ?? c.status)) | t }}</p>}
+    } @else {<p>{{ ('packages.group.status.'+(c.invitation?.status ?? c.status)) | t }}</p>}</div>
   }</div>
 `})
 export class CohortInvitationComponent implements OnInit{

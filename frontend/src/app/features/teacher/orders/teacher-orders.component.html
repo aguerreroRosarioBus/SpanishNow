@@ -54,8 +54,7 @@
         <thead>
           <tr>
             <th scope="col">{{ 'teacherCommerce.date' | t }}</th><th scope="col">{{ 'teacherCommerce.buyer' | t }}</th><th scope="col">{{ 'teacherCommerce.course' | t }}</th>
-            <th scope="col" class="num">{{ 'teacherCommerce.amount' | t }}</th><th scope="col">{{ 'teacherCommerce.status' | t }}</th><th scope="col">{{ 'teacherCommerce.provider' | t }}</th><th scope="col">{{ 'teacherCommerce.coupon' | t }}</th><th scope="col">{{ 'teacherCommerce.affiliate' | t }}</th>
-            <th scope="col">{{ 'teacherCommerce.receipt' | t }}</th><th scope="col"><span class="visually-hidden">{{ 'teacherCommerce.actions' | t }}</span></th>
+            <th scope="col" class="num">{{ 'teacherCommerce.amount' | t }}</th><th scope="col">{{ 'teacherCommerce.status' | t }}</th><th scope="col"><span class="visually-hidden">{{'teacherCommerce.actions'|t}}</span></th>
           </tr>
         </thead>
         <tbody>
@@ -77,19 +76,14 @@
                 <span class="badge-status" [class.badge-status--published]="badge(o) === 'paid'" [class.badge-status--draft]="badge(o) !== 'paid' && badge(o) !== 'refunded' && badge(o) !== 'partial'"
                       [class.badge-status--warn]="badge(o) === 'partial'" [class.badge-status--danger]="badge(o) === 'refunded' || badge(o) === 'failed'">{{ badgeLabel(o) }}</span>
               </td>
-              <td>{{ providerLabel(o.provider) }}</td>
-              <td>@if (o.coupon) { <code>{{ o.coupon.code }}</code> } @else { <span class="text-secondary-ui" [attr.aria-label]="'teacherCommerce.noCoupon' | t">—</span> }</td>
-              <td>
-                @if (o.affiliate) {
-                  {{ o.affiliate.name }}<small class="d-block text-secondary-ui"><code>{{ o.affiliate.code }}</code> · {{ 'teacherCommerce.commission' | t: {amount: money(o.commissionAmount ?? 0, o.currency)} }}</small>
-                } @else { <span class="text-secondary-ui" [attr.aria-label]="'teacherCommerce.noAffiliate' | t">—</span> }
-              </td>
-              <td>@if (o.receiptUrl) { <a [href]="o.receiptUrl" target="_blank" rel="noopener">{{ 'teacherCommerce.receipt' | t }}</a> } @else { <span class="text-secondary-ui" [attr.aria-label]="'teacherCommerce.noReceipt' | t">—</span> }</td>
-              <td class="text-end">
-                @if (canRefund(o)) {
-                  <button type="button" class="btn btn-ghost btn-sm" (click)="askRefund(o)" [attr.aria-label]="'teacherCommerce.refundAria' | t: {name: o.buyer.name}">{{ 'teacherCommerce.markRefund' | t }}</button>
-                }
-              </td>
+              <td><div ngbDropdown container="body" placement="bottom-end"><button type="button" class="btn btn-ghost btn-sm" ngbDropdownToggle [attr.aria-label]="('refine.details'|t)+' — '+o.buyer.name">{{'refine.details'|t}}</button><div ngbDropdownMenu>
+                <div class="order-menu-detail"><strong>{{o.course.title}}</strong><p>{{'teacherCommerce.provider'|t}}: {{providerLabel(o.provider)}}</p>
+                @if(o.coupon){<p>{{'teacherCommerce.coupon'|t}}: <code>{{o.coupon.code}}</code></p>}
+                @if(o.affiliate){<p>{{'teacherCommerce.affiliate'|t}}: {{o.affiliate.name}} · <code>{{o.affiliate.code}}</code></p><p>{{'teacherCommerce.commission'|t:{amount:money(o.commissionAmount??0,o.currency)} }}</p>}
+                </div>
+                @if(o.receiptUrl){<a ngbDropdownItem [href]="o.receiptUrl" target="_blank" rel="noopener">{{'teacherCommerce.receipt'|t}}</a>}
+                @if(canRefund(o)){<button type="button" ngbDropdownItem (click)="askRefund(o)" [attr.aria-label]="'teacherCommerce.refundAria'|t:{name:o.buyer.name}">{{'teacherCommerce.markRefund'|t}}</button>}
+              </div></div></td>
             </tr>
           }
         </tbody>

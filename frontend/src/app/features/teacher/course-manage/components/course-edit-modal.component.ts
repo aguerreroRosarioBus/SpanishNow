@@ -1,3 +1,4 @@
+import { ModalFocusDirective } from '../../../../shared/directives/modal-focus.directive';
 import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CourseService } from '../../../../core/services/course.service';
@@ -17,7 +18,7 @@ import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 @Component({
   selector: 'app-course-edit-modal',
   standalone: true,
-  imports: [ReactiveFormsModule, VideoEmbedComponent, ImageSearchComponent, TranslatePipe],
+  imports: [ModalFocusDirective, ReactiveFormsModule, VideoEmbedComponent, ImageSearchComponent, TranslatePipe],
   templateUrl: './course-edit-modal.component.html'
 })
 export class CourseEditModalComponent implements OnDestroy {

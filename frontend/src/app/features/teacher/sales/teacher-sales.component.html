@@ -56,23 +56,21 @@
         @if (chartFor(currency); as chart) {
           <div class="panel-block">
             <h3 class="panel-block__title">{{ 'teacherCommerce.monthly' | t }}</h3>
-            <svg class="chart" [attr.viewBox]="'0 0 ' + (chartW + 96) + ' ' + (chartH + 36)" role="img"
-                 [attr.aria-label]="'teacherCommerce.chartAria' | t: {currency: currency.toUpperCase()}">
-              <g transform="translate(88 8)">
+            <div class="chart" role="img" [attr.aria-label]="'teacherCommerce.chartAria' | t: {currency: currency.toUpperCase()}">
+              <div class="chart__plot">
                 @for (tick of chart.ticks; track tick.value) {
-                  <line class="chart__grid" x1="0" [attr.x2]="chartW" [attr.y1]="tick.y" [attr.y2]="tick.y" />
-                  <text class="chart__tick" x="-8" [attr.y]="tick.y + 4" text-anchor="end">{{ tick.label }}</text>
+                  <div class="chart__grid" [style.bottom.%]="100 - tick.y / chartH * 100"><span class="chart__tick">{{ tick.label }}</span></div>
                 }
-                @for (bar of chart.bars; track bar.month; let i = $index) {
-                  <rect class="chart__bar" [attr.x]="bar.x" [attr.y]="bar.y" [attr.width]="bar.width" [attr.height]="bar.height" rx="3">
-                    <title>{{ bar.label }}: {{ bar.valueLabel }} ({{ 'teacherCommerce.orderCount' | t: {count: bar.orders} }})</title>
-                  </rect>
-                  @if (i % chart.labelEvery === 0) {
-                    <text class="chart__tick" [attr.x]="bar.x + bar.width / 2" [attr.y]="chartH + 20" text-anchor="middle">{{ bar.label }}</text>
+                <div class="chart__bars">
+                  @for (bar of chart.bars; track bar.month; let i = $index) {
+                    <div class="chart__slot">
+                      <div class="chart__bar" [style.height.%]="bar.height / chartH * 100" [attr.title]="bar.label + ': ' + bar.valueLabel"></div>
+                      @if (i % chart.labelEvery === 0) { <span class="chart__month">{{ bar.label }}</span> }
+                    </div>
                   }
-                }
-              </g>
-            </svg>
+                </div>
+              </div>
+            </div>
             <details class="chart-table">
               <summary>{{ 'teacherCommerce.table' | t }}</summary>
               <div class="table-wrap">

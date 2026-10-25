@@ -29,7 +29,10 @@ export class ScheduleComponent {
   readonly preferences = inject(UserPreferencesService);
   readonly i18n = inject(I18nService);
   private route = inject(ActivatedRoute); private router = inject(Router); private destroyRef = inject(DestroyRef);
-  sessions = signal<ClassSession[]>([]); options = signal<ScheduleOptions | null>(null);
+  listView=signal('upcoming');
+  sessions = signal<ClassSession[]>([]);
+  visibleSessions=computed(()=>this.sessions().filter(s=>this.listView()==='all'||(this.listView()==='upcoming'?Date.parse(s.endsAt)>=Date.now()&&!['completed','cancelled','declined','expired','student_no_show','teacher_no_show'].includes(s.status):Date.parse(s.endsAt)<Date.now()||['completed','cancelled','declined','expired','student_no_show','teacher_no_show'].includes(s.status))).slice().sort((a,b)=>this.listView()==='history'?Date.parse(b.startsAt)-Date.parse(a.startsAt):Date.parse(a.startsAt)-Date.parse(b.startsAt)));
+ options = signal<ScheduleOptions | null>(null);
   notices = signal<{ id: string; sessionId: number; startsAt: string; minutes: number }[]>([]);
   loading = signal(false); busy = signal(false); failure = signal<unknown>(null); truncated = signal(false);
   formOpen = signal(false);

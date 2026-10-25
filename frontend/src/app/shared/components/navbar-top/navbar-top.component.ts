@@ -1,3 +1,4 @@
+import { ScreenTutorialComponent } from '../screen-tutorial/screen-tutorial.component';
 import { LanguageSelectorComponent } from '../language-selector/language-selector.component';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { Component, inject, input, output, signal } from '@angular/core';
@@ -10,7 +11,7 @@ import { IconComponent } from '../icon/icon.component';
 @Component({
   selector: 'app-navbar-top',
   standalone: true,
-  imports: [LanguageSelectorComponent, TranslatePipe, RouterLink, NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem, IconComponent],
+  imports: [ScreenTutorialComponent, LanguageSelectorComponent, TranslatePipe, RouterLink, NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem, IconComponent],
   templateUrl: './navbar-top.component.html',
   styleUrl: './navbar-top.component.scss'
 })

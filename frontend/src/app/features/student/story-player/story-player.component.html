@@ -1,5 +1,8 @@
 <div class="player">
-  <app-player-sidebar class="player__index" />
+  <div class="player__index" [class.is-expanded]="indexOpen()">
+    <button type="button" class="btn btn-secondary player__index-toggle" [attr.aria-expanded]="indexOpen()" aria-controls="playerIndex" (click)="indexOpen.set(!indexOpen())">{{'refine.courseIndex'|t}} <span aria-hidden="true">{{indexOpen()?'−':'+'}}</span></button>
+    <app-player-sidebar id="playerIndex" />
+  </div>
 
   <div class="player__main">
     @if (nav.errorMessage()) {

@@ -30,7 +30,7 @@ export class CourseSalesComponent implements OnInit {
   private affiliates = inject(AffiliateService);
   private enrollments = inject(EnrollmentService);
   private auth = inject(AuthService);
-  private i18n = inject(I18nService);
+  readonly i18n = inject(I18nService);
   private legal = inject(LegalService);
 
   course = signal<PublicCourseDetail | null>(null);

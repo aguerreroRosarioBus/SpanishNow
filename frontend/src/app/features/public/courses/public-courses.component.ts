@@ -19,7 +19,11 @@ export class PublicCoursesComponent implements OnInit {
   private catalog = inject(PublicCatalogService);
   private auth = inject(AuthService);
 
+  readonly levels=['A1','A2','B1','B2','C1','C2'];
+  level=signal('');
   courses = signal<PublicCourse[]>([]);
+  visibleCourses=computed(()=>this.courses().filter(c=>!this.level()||c.level===this.level()).slice().sort((a,b)=>this.levels.indexOf(a.level)-this.levels.indexOf(b.level)));
+
   isLoading = signal(true);
   private failure = signal<unknown>(null);
   errorMessage = computed(() => this.failure() ? this.i18n.errorMessage(this.failure(), 'catalog.loadError') : '');

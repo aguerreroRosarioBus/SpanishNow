@@ -15,3 +15,5 @@
   font: 600 1rem var(--font-heading);
   color: var(--color-text);
 }
+
+.library-meta { display: grid; gap: 8px; width: 100%; } .library-meta .badge-status { justify-self: start; }

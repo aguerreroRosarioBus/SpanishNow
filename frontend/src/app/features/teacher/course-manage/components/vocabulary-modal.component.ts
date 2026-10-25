@@ -1,3 +1,4 @@
+import { ModalFocusDirective } from '../../../../shared/directives/modal-focus.directive';
 import { Component, OnInit, OnDestroy, inject, input, signal, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -17,7 +18,7 @@ import { imageFileErrorKey, IMAGE_ACCEPT } from '../../lesson-composer/image-fil
 @Component({
   selector: 'app-vocabulary-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, AudioInputComponent, IconComponent, ImageSearchComponent, TranslatePipe],
+  imports: [ModalFocusDirective, CommonModule, ReactiveFormsModule, AudioInputComponent, IconComponent, ImageSearchComponent, TranslatePipe],
   templateUrl: './vocabulary-modal.component.html'
 })
 export class VocabularyModalComponent implements OnInit, OnDestroy {

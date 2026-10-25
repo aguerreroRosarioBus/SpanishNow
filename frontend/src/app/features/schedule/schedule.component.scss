@@ -54,3 +54,5 @@ h2 { font-size: 1rem; }
   .date-fields input { width: 100%; min-width: 0; }
   .date-actions { margin-top: 0; }
 }
+
+.date-range { margin: 12px 0 20px; } .date-range > summary { min-height: 44px; padding: 12px 0; cursor: pointer; font-size: .875rem; color: var(--color-text-light); }

@@ -46,7 +46,7 @@
         @if (c.salesDescription) {
           <section class="sales-section" aria-labelledby="about-heading">
             <h2 id="about-heading" class="sales-heading">{{ 'publicCourse.about' | t }}</h2>
-            <p class="sales-text">{{ c.salesDescription }}</p>
+            @if(i18n.locale()==='es'){<p class="small text-secondary-ui">{{'refine.originalEnglish'|t}}</p>}<p class="sales-text" lang="en">{{ c.salesDescription }}</p>
           </section>
         }
 

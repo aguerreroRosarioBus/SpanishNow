@@ -13,8 +13,8 @@
       <button type="button" class="btn btn-secondary" (click)="audio.toggle(url())" [attr.aria-pressed]="audio.isPlaying()">
         {{ text(audio.isPlaying() ? 'audio.pause' : 'audio.play') }}
       </button>
-      <button type="button" class="btn btn-secondary" (click)="audio.skip(-10)" [disabled]="!audio.canSeek()">{{ text('audio.back') }}</button>
-      <button type="button" class="btn btn-secondary" (click)="audio.skip(10)" [disabled]="!audio.canSeek()">{{ text('audio.forward') }}</button>
+      <button type="button" class="btn btn-secondary" (click)="audio.skip(-10)" [disabled]="!audio.canSeek()" [attr.aria-label]="text('audio.back')" [attr.title]="text('audio.back')"><span aria-hidden="true">↶ 10 s</span></button>
+      <button type="button" class="btn btn-secondary" (click)="audio.skip(10)" [disabled]="!audio.canSeek()" [attr.aria-label]="text('audio.forward')" [attr.title]="text('audio.forward')"><span aria-hidden="true">10 s ↷</span></button>
     </div>
     <div class="timeline">
       <span class="time" aria-hidden="true">{{ time(audio.currentTime()) }} / {{ time(audio.duration()) }}</span>

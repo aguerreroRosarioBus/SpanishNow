@@ -86,3 +86,5 @@
 
   .progress { flex: 1; height: 6px; }
 }
+
+.student-tools summary { cursor: pointer; min-height: 44px; font-weight: 600; padding-block: 10px; } .student-tools[open] summary { margin-bottom: 12px; }

@@ -15,6 +15,7 @@
   </a>
 
   <app-language-selector />
+  @if (showUser() && currentUser()) { @defer (on idle) { <app-screen-tutorial /> } }
 
   @if (showUser() && currentUser(); as user) {
     <div ngbDropdown placement="bottom-end" container="body" class="navbar-user">

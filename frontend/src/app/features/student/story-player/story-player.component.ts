@@ -1,4 +1,5 @@
-import { Component, OnDestroy, OnInit, effect, inject, untracked } from '@angular/core';
+import { Component, OnDestroy, OnInit, effect, signal, inject, untracked } from '@angular/core';
+import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { LessonAudioService } from './lesson-audio.service';
@@ -14,7 +15,7 @@ import { UnitLockedViewComponent } from './components/unit-locked-view.component
 @Component({
   selector: 'app-story-player',
   standalone: true,
-  imports: [PlayerSidebarComponent, LessonViewComponent, IntroViewComponent, QuizViewComponent, UnitLockedViewComponent],
+  imports: [TranslatePipe, PlayerSidebarComponent, LessonViewComponent, IntroViewComponent, QuizViewComponent, UnitLockedViewComponent],
   providers: [LessonNavigationStore, LessonSessionStore, LessonAudioService],
   templateUrl: './story-player.component.html',
   styleUrl: './story-player.component.scss'
@@ -24,6 +25,7 @@ export class StoryPlayerComponent implements OnInit, OnDestroy {
   private router = inject(Router);
   private authService = inject(AuthService);
   nav = inject(LessonNavigationStore);
+  indexOpen=signal(false);
   private session = inject(LessonSessionStore);
   private audio = inject(LessonAudioService);
 

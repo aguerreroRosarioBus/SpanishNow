@@ -27,7 +27,7 @@
               <h2>{{ course.enrollment.course?.title }}</h2>
               <span class="badge-level">{{ course.enrollment.course?.level }}</span>
             </div>
-            <a [routerLink]="['/student/course', course.enrollment.courseId, 'play']" class="btn btn-secondary btn-sm">{{ 'student.continue' | t }}</a>
+            <a [routerLink]="['/student/course', course.enrollment.courseId, 'play']" class="btn btn-secondary btn-sm">{{ (isFinished(course) ? 'refine.review' : 'student.continue') | t }}</a>
           </header>
 
           @if (course.failed) {
@@ -100,7 +100,7 @@
             }
 
             @if (course.stories.length > 0) {
-              <table class="progress-table">
+              <details class="progress-disclosure"><summary>{{ 'refine.storyDetails' | t }}</summary><table class="progress-table">
                 <thead>
                   <tr>
                     <th scope="col">{{ 'student.story' | t }}</th>
@@ -137,7 +137,7 @@
                     </tr>
                   }
                 </tbody>
-              </table>
+              </table></details>
             }
           }
         </section>

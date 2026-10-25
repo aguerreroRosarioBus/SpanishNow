@@ -13,15 +13,9 @@ import { TUTORIALS } from '../../../core/tutorials/tutorials';
   template: `
     @if (current(); as screen) {
       <aside class="screen-help" [class.in-editor]="screen.tour.id === 'composer'" [hidden]="tutorial.active()" [attr.aria-label]="'tutorial.help' | t">
-        @if (!tutorial.status(screen.tour)) {
-          <div class="screen-help__hint">
-            <p>{{ 'tutorial.invitation' | t }}</p>
-            <button type="button" class="screen-help__dismiss" [attr.aria-label]="'tutorial.dismiss' | t" (click)="tutorial.dismiss(screen.tour)">×</button>
-          </div>
-        }
         <button #start type="button" class="btn btn-secondary btn-sm screen-help__button" data-testid="screen-help"
-          [disabled]="tutorial.loading()" (click)="tutorial.start(screen.tour, screen.root, start)">
-          <span aria-hidden="true">?</span>{{ 'tutorial.help' | t }}
+          [attr.aria-label]="'tutorial.help' | t" [attr.title]="'tutorial.help' | t" [disabled]="tutorial.loading()" (click)="tutorial.start(screen.tour, screen.root, start)">
+          <span aria-hidden="true">?</span><span class="screen-help__label">{{ 'tutorial.help' | t }}</span>
           <small>{{ (tutorial.status(screen.tour) === 'completed' ? 'tutorial.repeat' : 'tutorial.start') | t }}</small>
         </button>
         @if (tutorial.error()) { <p class="screen-help__error" role="alert">{{ 'tutorial.unavailable' | t }}</p> }

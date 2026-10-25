@@ -1,3 +1,4 @@
+import { ModalFocusDirective } from '../../shared/directives/modal-focus.directive';
 import {Component,OnInit,DestroyRef,computed,inject,signal} from '@angular/core';
 import {FormsModule} from '@angular/forms';
 import {Observable} from 'rxjs';
@@ -8,7 +9,7 @@ import {AuthService} from '../../core/services/auth.service';
 import {ChatFormat} from '../chat/chat-format';
 import {PackagesService} from './packages.service';
 import {ClassOrder,ClassPurchase,ClassSettings,RefundPreview,PaymentJob,ClassProviderState,isFrozenOrder} from './packages.model';
-@Component({selector:'app-commerce-admin',standalone:true,imports:[FormsModule,TranslatePipe],
+@Component({selector:'app-commerce-admin',standalone:true,imports:[FormsModule,TranslatePipe,ModalFocusDirective],
 styles:[`.commerce{max-width:960px}.block{margin:var(--spacing-md) 0}.block-title{margin:0 0 var(--spacing-xs);font-size:1.125rem}.sub-title{margin:var(--spacing-md) 0 var(--spacing-sm);font-size:.9375rem;font-weight:700}.notice{margin:var(--spacing-xs) 0 0;font-size:.8125rem;color:var(--color-text-light);overflow-wrap:anywhere}.item{margin:var(--spacing-sm) 0;padding:var(--spacing-md);border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-bg)}.item-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--spacing-sm)}.item-head h4,.item-head h3{margin:0;font-size:1rem}.item p{margin:var(--spacing-xs) 0 0}.item-actions{display:flex;flex-wrap:wrap;gap:var(--spacing-sm);margin-top:var(--spacing-sm)}.empty{padding:var(--spacing-md);border:1px dashed var(--color-border);border-radius:var(--radius-md);background:var(--color-bg-light)}.empty p{margin:0 0 var(--spacing-sm)}.badge-status{flex:none;white-space:normal}.status-success{background:var(--color-success-soft);color:var(--color-success-text)}.status-warning{background:var(--color-warning-soft);color:#6b4a00}.status-danger{background:var(--color-danger-soft);color:var(--color-danger)}.status-neutral{background:var(--color-bg-dark);color:var(--color-text-light)}@media (max-width:480px){.item-actions .btn{flex:1 1 auto}}`],
 template:`
 <div class="page-container commerce"><h1>{{'packages.admin.title'|t}}</h1>
@@ -40,14 +41,6 @@ template:`
   </form>}
 </section>
 }
-@if(can('class_payments.review')||can('class_credits.adjust')){
-<section class="surface block" aria-labelledby="adminConfirmTitle">
-  <h2 id="adminConfirmTitle" class="block-title">{{'packages.admin.confirmTitle'|t}}</h2>
-  <p class="notice">{{'packages.admin.confirmHint'|t}}</p>
-  <label for="adminReason" class="form-label mt-2">{{'packages.offer.cancelReason'|t}}</label><textarea id="adminReason" class="form-control" maxlength="500" [(ngModel)]="reason"></textarea>
-  <label class="d-block mt-2"><input type="checkbox" [(ngModel)]="confirmed"> {{'packages.admin.confirm'|t}}</label>
-</section>
-}
 @if(can('class_payments.review')){
 <section class="surface block" aria-labelledby="adminSalesTitle">
   <h2 id="adminSalesTitle" class="block-title">{{'packages.admin.salesTitle'|t}}</h2>
@@ -58,7 +51,7 @@ template:`
     @if(frozen(o)){<p data-test="frozen-reason">{{('packages.pv.frozen.'+o.reviewReason)|t}}</p>
       @if(o.frozenFromStatus){<p class="notice">{{'packages.pv.frozenFrom'|t:{status:purchaseStatus(o.frozenFromStatus)} }}</p>}
       <p class="notice">{{'packages.pv.balances'|t:{available:o.unitsAvailable??'—',reserved:o.unitsReserved??'—',consumed:o.unitsConsumed??'—'} }}</p>}
-    @else if(o.reviewReason){<p>{{o.reviewReason}}</p>}
+    @else if(o.reviewReason){<p>{{reviewReason(o.reviewReason)}}</p><details><summary>{{'refine.details'|t}}</summary><code>{{o.reviewReason}}</code></details>}
     @if(o.reportedAmount!=null&&o.reportedCurrency){<p>{{'packages.admin.reported'|t:{amount:i18n.formatMoney(o.reportedAmount!,o.reportedCurrency!)} }}</p>}
     <p class="notice">{{'packages.admin.providerIds'|t:{transaction:o.providerTransactionId||'—',product:o.providerProductId||'—',offer:o.providerOfferCode||'—'} }} · {{'packages.offer.open'|t}} #{{o.offerId}}</p>
     @if(frozen(o)){
@@ -135,6 +128,19 @@ template:`
   @if(can('class_credits.adjust')){<label for="adjustDirection" class="form-label mt-2">{{'packages.admin.direction'|t}}</label><select id="adjustDirection" class="form-select" [(ngModel)]="direction">@for(d of directions;track d){<option [value]="d">{{('packages.admin.adjust.'+d)|t}}</option>}</select><label for="adjustUnits" class="form-label mt-2">{{'packages.admin.units'|t}}</label><input id="adjustUnits" class="form-control" type="number" min="1" [(ngModel)]="units"><div class="item-actions"><button class="btn btn-outline-danger" [disabled]="!ready()||units<1" (click)="adjust()">{{'packages.admin.confirmAdjust'|t}}</button></div>}}
 </section>}
 <button class="btn btn-secondary mt-3" [disabled]="busy()" (click)="load()">{{'packages.offer.refresh'|t}}</button>
+@if(pending();as op){
+<div class="modal fade show" style="display:block;background:#2b1a0e80" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="operationTitle" appModalFocus (modalDismiss)="cancelOperation()">
+  <div class="modal-dialog modal-dialog-centered"><form class="modal-content" (ngSubmit)="confirmOperation()">
+    <div class="modal-header"><h2 id="operationTitle" class="modal-title h5">{{'refine.operation'|t}}</h2><button type="button" class="btn-close" [disabled]="busy()" [attr.aria-label]="'common.close'|t" (click)="cancelOperation()"></button></div>
+    <div class="modal-body"><p class="fw-bold">{{op.context}}</p><p>{{'refine.operationHint'|t}}</p>
+      <label for="operationReason" class="form-label">{{'packages.offer.cancelReason'|t}}</label><textarea id="operationReason" name="operationReason" class="form-control" maxlength="500" [(ngModel)]="reason" [disabled]="busy()" required></textarea>
+      <label class="d-flex align-items-start gap-2 mt-3"><input type="checkbox" name="operationConfirmed" [(ngModel)]="confirmed" [disabled]="busy()">{{'packages.admin.confirm'|t}}</label>
+      @if(error()){<p class="alert alert-danger mt-3" role="alert">{{error()}}</p>}
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="cancelOperation()">{{'common.cancel'|t}}</button><button type="submit" class="btn btn-primary" [disabled]="busy()||!confirmed||!reason.trim()">{{'refine.confirmOperation'|t}}</button></div>
+  </form></div>
+</div>}
+
 </div>`})
 export class CommerceAdminComponent implements OnInit{
   private api=inject(PackagesService);private auth=inject(AuthService);private destroy=inject(DestroyRef);readonly i18n=inject(I18nService);readonly fmt=inject(ChatFormat);
@@ -159,20 +165,27 @@ export class CommerceAdminComponent implements OnInit{
   /** Convierte lo escrito (unidades mayores) a unidades menores enteras; null si no es un importe válido. */
   refundMinor(o:ClassOrder){const t=this.refundText(o).trim().replace(',','.');const d=this.fractionDigits(o.currency);if(!/^\d+(\.\d+)?$/.test(t))return null;const [,f='']=t.split('.');if(f.length>d)return null;const n=Math.round(Number(t)*10**d);return Number.isSafeInteger(n)&&n>=1&&n<=o.amount?n:null;}
   refundInvalid(o:ClassOrder){return this.refundMinor(o)===null;}
-  confirmRefund(o:ClassOrder){const n=this.refundMinor(o);if(n===null||!this.ready())return;this.act(this.api.resolvePayment(o.id,'confirm_refund',this.reason.trim(),n===o.amount?undefined:n));}
-  ngOnInit(){this.load();this.loadProvider();}can(p:string){return this.auth.hasPermission(p);}ready(){return !this.busy()&&this.confirmed&&Boolean(this.reason.trim());}
+  confirmRefund(o:ClassOrder){const n=this.refundMinor(o);if(n===null||!this.ready())return;const context=this.orderContext(o,'confirm_refund')+' · '+this.i18n.formatMoney(n,o.currency);this.requestOperation(context,reason=>this.api.resolvePayment(o.id,'confirm_refund',reason,n===o.amount?undefined:n));}
+  ngOnInit(){this.load();this.loadProvider();}can(p:string){return this.auth.hasPermission(p);}ready(){return !this.busy();}
+  pending=signal<{context:string;execute:(reason:string)=>Observable<unknown>;done?:(value:any)=>void}|null>(null);
+  requestOperation(context:string,execute:(reason:string)=>Observable<unknown>,done?:(value:any)=>void){if(this.busy())return;this.reason='';this.confirmed=false;this.failure.set(null);this.pending.set({context,execute,done});}
+  cancelOperation(){if(!this.busy()){this.pending.set(null);this.reason='';this.confirmed=false;}}
+  confirmOperation(){const op=this.pending();if(!op||this.busy()||!this.confirmed||!this.reason.trim())return;this.act(op.execute(this.reason.trim()),value=>{op.done?.(value);this.pending.set(null);this.reason='';this.confirmed=false;});}
+  reviewReason(code:string){return this.i18n.t(code==='amount_mismatch'?'refine.amountMismatch':'refine.reviewReason');}
+  orderContext(o:ClassOrder,action:string){const labels:Record<string,string>={credit:'packages.admin.credit',refund:'packages.admin.approve',confirm_refund:'packages.pv.confirmRefund',unfreeze:'packages.pv.unfreeze'};return this.i18n.t('refine.orderAction',{id:o.id,amount:this.i18n.formatMoney(o.amount,o.currency),action:this.i18n.t(labels[action])});}
+
   private read<T>(o:Observable<T>,next:(v:T)=>void){o.pipe(takeUntilDestroyed(this.destroy)).subscribe({next,error:e=>this.failure.set(e)});}
   load(){if(this.can('class_payments.review')){this.read(this.api.refundRequests(),v=>this.refunds.set(v));this.loadPayments();this.jobsFailed.set(false);this.api.paymentJobs().pipe(takeUntilDestroyed(this.destroy)).subscribe({next:v=>this.jobs.set(v),error:()=>this.jobsFailed.set(true)});}if(this.can('class_teachers.manage'))this.read(this.api.teachers(),v=>this.teachers.set(v));if(this.can('class_packages.manage_all'))this.read(this.api.policies(),v=>{this.policy.set(v[0]||null);if(v[0]){this.refundHours=Math.max(360,Number(v[0].rules['refundWindowHours']));this.pauseHours=Number(v[0].rules['maxPauseHours']);this.ttlHours=Number(v[0].rules['offerTtlHours']);}});}
   loadPayments(){this.read(this.api.paymentList(this.filter),v=>{this.orders.set(v.items);this.events.set(v.events);});}
   private act<T>(o:Observable<T>,done?:(v:T)=>void){if(this.busy())return;this.busy.set(true);this.saved.set(false);this.failure.set(null);o.pipe(takeUntilDestroyed(this.destroy)).subscribe({next:v=>{done?.(v);this.busy.set(false);this.saved.set(true);this.confirmed=false;this.load();this.loadProvider();},error:e=>{this.busy.set(false);this.failure.set(e);}});}
-  reviewRefund(v:RefundPreview,id:number,action:string){if(this.ready())this.act(this.api.reviewRefund(id,{action,reason:this.reason.trim(),quote:v.quote}));}
-  resolve(o:ClassOrder,action:string){if(this.ready())this.act(this.api.resolvePayment(o.id,action,this.reason.trim()));}
-  acknowledge(id:number){if(this.ready())this.act(this.api.acknowledgePaymentJob(id,this.reason.trim()));}
-  verifyDeadline(){const p=this.purchase();if(p&&this.ready())this.act(this.api.verifyRefundDeadline(p.id,this.deadline.trim(),this.reason.trim()));}
-  retry(id:number){if(this.ready())this.act(this.api.retryPaymentJob(id,this.reason.trim()));}
+  reviewRefund(v:RefundPreview,id:number,action:string){const label=this.i18n.t(action==='approve'?'packages.admin.approve':action==='needs_information'?'packages.admin.information':'packages.admin.followup');this.requestOperation(this.i18n.t('refine.purchaseAction',{id:v.purchaseId,action:label})+' · '+this.i18n.formatMoney(v.amount,v.currency),reason=>this.api.reviewRefund(id,{action,reason,quote:v.quote}));}
+  resolve(o:ClassOrder,action:string){this.requestOperation(this.orderContext(o,action),reason=>this.api.resolvePayment(o.id,action,reason));}
+  acknowledge(id:number){this.requestOperation(this.i18n.t('refine.taskAction',{id,action:this.i18n.t('packages.admin.acknowledge')}),reason=>this.api.acknowledgePaymentJob(id,reason));}
+  verifyDeadline(){const p=this.purchase();if(!p||!this.ready())return;const deadline=this.deadline.trim();this.requestOperation(this.i18n.t('refine.purchaseAction',{id:p.id,action:this.i18n.t('packages.admin.verifyDeadline')})+' · '+deadline,reason=>this.api.verifyRefundDeadline(p.id,deadline,reason));}
+  retry(id:number){this.requestOperation(this.i18n.t('refine.taskAction',{id,action:this.i18n.t('packages.admin.retry')}),reason=>this.api.retryPaymentJob(id,reason));}
   fake(id:number){this.act(this.api.fakeRefundComplete(id));}
   enable(id:number,enabled:boolean){this.act(this.api.enableTeacher(id,enabled));}
   publishPolicy(){const p=this.policy();if(p)this.act(this.api.createPolicy({version:p.version+1,rules:{...p.rules,refundMode:'full_unused_then_review',refundWindowHours:this.refundHours,maxPauseHours:this.pauseHours,offerTtlHours:this.ttlHours}}));}
   loadPurchase(){this.purchase.set(null);this.read(this.api.adjustmentPurchase(this.purchaseId),p=>{this.purchase.set(p);this.adjustKey=crypto.randomUUID();this.adjustAttempt='';});}
-  adjust(){const p=this.purchase();if(!p||!this.ready())return;const body={version:p.version,units:this.units,direction:this.direction,reason:this.reason.trim()};const request=JSON.stringify(body);if(this.adjustAttempt&&this.adjustAttempt!==request)this.adjustKey=crypto.randomUUID();this.adjustAttempt=request;this.act(this.api.adjustPurchase(p.id,body,this.adjustKey),v=>{this.purchase.set(v);this.adjustKey=crypto.randomUUID();this.adjustAttempt='';});}
+  adjust(){const p=this.purchase();if(!p||!this.ready())return;const units=this.units,direction=this.direction;this.requestOperation(this.i18n.t('refine.purchaseAction',{id:p.id,action:this.i18n.t('packages.admin.adjust.'+direction)})+' · '+units,reason=>{const body={version:p.version,units,direction,reason};const request=JSON.stringify(body);if(this.adjustAttempt&&this.adjustAttempt!==request)this.adjustKey=crypto.randomUUID();this.adjustAttempt=request;return this.api.adjustPurchase(p.id,body,this.adjustKey);},v=>{this.purchase.set(v);this.adjustKey=crypto.randomUUID();this.adjustAttempt='';});}
 }

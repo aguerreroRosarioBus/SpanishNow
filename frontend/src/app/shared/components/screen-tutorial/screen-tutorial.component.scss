@@ -1,18 +1,11 @@
 :host { display: block; }
-.screen-help {
-  position: fixed; z-index: 1040; right: 1rem; bottom: calc(1rem + env(safe-area-inset-bottom));
-  max-width: min(340px, calc(100vw - 2rem));
-  &.in-editor { z-index: 2100; }
-  &[hidden] { display: none; }
-}
-.screen-help__button { box-shadow: 0 3px 14px #2b2b2b20; background: var(--color-surface, #fff); display: flex; gap: .5rem; align-items: center; min-height: 44px; }
-.screen-help__button > span { display: grid; place-items: center; border: 1px solid currentColor; border-radius: 50%; width: 20px; height: 20px; }
-.screen-help__button small { font-size: .7rem; color: var(--color-text-light); }
-.screen-help__hint { position: relative; padding: .85rem 2.5rem .85rem 1rem; background: #fff; border: 1px solid var(--color-border); border-radius: 12px; margin-bottom: .5rem; box-shadow: 0 3px 14px #2b2b2b15; font-size: .8125rem; }
-.screen-help__hint p { margin: 0; }
-.screen-help__dismiss { position: absolute; right: .15rem; top: .15rem; width: 36px; height: 36px; border: 0; background: transparent; color: var(--color-text); font-size: 1.25rem; }
-.screen-help__error { padding: .75rem; background: #fff; color: var(--color-danger, #b3372f); font-size: .8125rem; }
-@media (max-width: 600px) {
-  .screen-help { right: .5rem; bottom: calc(.5rem + env(safe-area-inset-bottom)); }
-  .screen-help__button small { display: none; }
+.screen-help { position: relative; }
+.screen-help[hidden] { display: none; }
+.screen-help__button { display: flex; align-items: center; gap: .5rem; min-height: 44px; box-shadow: none; }
+.screen-help__button > span:first-child { display: grid; place-items: center; border: 1px solid currentColor; border-radius: 50%; width: 20px; height: 20px; }
+.screen-help__button small { display: none; }
+.screen-help__error { position: absolute; top: 100%; right: 0; width: 260px; padding: .75rem; background: var(--color-bg); color: var(--color-danger); border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+@media (max-width: 1199px) {
+  .screen-help__label { display: none; }
+  .screen-help__button { width: 44px; padding: 0; justify-content: center; }
 }

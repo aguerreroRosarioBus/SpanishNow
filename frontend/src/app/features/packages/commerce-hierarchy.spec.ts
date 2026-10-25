@@ -20,7 +20,7 @@ const headings=(f:{nativeElement:HTMLElement})=>[...f.nativeElement.querySelecto
 describe('Gestión comercial: jerarquía visual',()=>{
   it('agrupa en secciones con encabezado: ventas y proveedor, trámites, docentes y política',()=>{
     const f=render(['class_payments.review','class_teachers.manage','class_packages.manage_all','class_credits.adjust']);
-    expect(headings(f)).toEqual(['Motivo y confirmación','Ventas y proveedor','Trámites y reembolsos','Docentes habilitados para clases','Política para ventas futuras','Ajuste de créditos auditado']);
+    expect(headings(f)).toEqual(['Ventas y proveedor','Trámites y reembolsos','Docentes habilitados para clases','Política para ventas futuras','Ajuste de créditos auditado']);
   });
   it('sin permiso de pagos no muestra ventas ni trámites',()=>{
     const f=render(['class_teachers.manage']);

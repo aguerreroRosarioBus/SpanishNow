@@ -7,8 +7,8 @@
   </div>
 
   @if (isStudent()) {
-    <form class="new-chat" (ngSubmit)="start()" aria-labelledby="newChatTitle">
-      <h2 id="newChatTitle" class="new-chat__title">{{ 'chat.new.title' | t }}</h2>
+    <details class="new-chat-disclosure" [open]="!items().length"><summary>{{'chat.new.title'|t}}</summary><form class="new-chat" (ngSubmit)="start()" aria-labelledby="newChatTitle">
+      <h2 id="newChatTitle" class="visually-hidden">{{ 'chat.new.title' | t }}</h2>
       @if (teachersLoaded() && teachers().length === 0) {
         <p class="text-secondary-ui mb-0">{{ 'chat.new.none' | t }}</p>
       } @else {
@@ -26,7 +26,7 @@
         </div>
       }
       @if (startError()) { <div class="alert alert-danger mt-2 mb-0" role="alert">{{ startError() }}</div> }
-    </form>
+    </form></details>
   }
 
   @if (errorMessage()) {

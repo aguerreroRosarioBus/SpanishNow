@@ -73,7 +73,7 @@ describe('Tanda B: catálogo con plantilla sin versión (current null)',()=>{
     // Nada se inventa: sin nombre, importes ni duración el formulario no es válido.
     expect(c.form.invalid).toBe(true);
     c.form.patchValue({nameEn:'One class',nameEs:'Una clase',sessionsCount:1,minutesPerSession:30,priceAmount:1500,validityHours:720});
-    c.save();
+    c.setPrice('15.00');c.save();
     expect(save).toHaveBeenCalledTimes(1);
     const body=save.mock.calls[0][1];
     expect(body).toMatchObject({version:0,nameEs:'Una clase',sessionsCount:1,currency:'USD',groupSize:1,billing:'per_buyer'});

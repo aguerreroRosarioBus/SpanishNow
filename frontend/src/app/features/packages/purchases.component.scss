@@ -72,3 +72,16 @@ p { margin: 0; }
   .card-actions .btn { flex: 1 1 auto; }
   .card-actions-end { margin-left: 0; }
 }
+
+.purchase-filters { display: flex; flex-wrap: wrap; gap: 16px; align-items: end; margin: 16px 0 24px; }
+.purchase-filters label { display: grid; gap: 6px; flex: 1 1 220px; font-size: .875rem; }
+.purchase-conditions { margin-top: 12px; border-top: 1px solid var(--color-divider); }
+.purchase-conditions summary { cursor: pointer; min-height: 44px; padding: 12px 0; font-size: .875rem; font-weight: 600; }
+
+@media(min-width:1000px) {
+ .purchase-card.is-teacher { display: grid; grid-template-columns: minmax(240px, 1.4fr) minmax(220px, 1fr) auto; gap: 0 24px; }
+ .is-teacher .card-head { grid-column: 1; grid-row: 1; flex-direction: column; justify-content: flex-start; gap: 8px; }
+ .is-teacher .purchase-meta { grid-column: 2; grid-row: 1; }
+ .is-teacher .primary-action { grid-column: 3; grid-row: 1; margin-top: 0; align-items: start; }
+ .is-teacher .purchase-conditions, .is-teacher .card-details, .is-teacher .confirm { grid-column: 1 / -1; }
+}
