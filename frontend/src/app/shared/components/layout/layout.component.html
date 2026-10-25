@@ -1,3 +1,4 @@
+<a class="skip-content" href="#contenido">{{'refine.skip'|t}}</a>
 <div class="app-layout">
   <app-navbar-top
     [showUser]="!isAuthPage()"
@@ -20,7 +21,7 @@
         (collapseToggle)="toggleCollapse()"></app-sidebar-nav>
     }
 
-    <main class="main-content" id="contenido" [class.is-board]="isLiveRoom()">
+    <main class="main-content" id="contenido" tabindex="-1" [class.is-board]="isLiveRoom()">
       <div class="content-wrapper" [class.is-wide]="isWorkspace()" [class.is-board]="isLiveRoom()" [class.is-bare]="isAuthPage()">
         <router-outlet></router-outlet>
       </div>
@@ -46,7 +47,7 @@
     </main>
   </div>
 
-  @defer (on idle) { <app-screen-tutorial /> }
+
 
   @if (showSidebar() && sidebarOpen()) {
     <div class="sidebar-overlay" (click)="toggleSidebar()"></div>

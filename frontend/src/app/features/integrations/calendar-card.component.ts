@@ -38,7 +38,8 @@ const OUTCOMES = ['connected', 'denied', 'scopes', 'error', 'mismatch'];
         @if (s.status !== 'connected') {
           <p class="alert alert-warning" role="alert">{{ 'calendar.attention' | t }}</p>
         } @else {
-          <div class="int-body">
+          <p class="notice">{{'refine.calendarSummary'|t:{name:targetName(),count:s.busyCalendarIds?.length||0} }}</p>
+          <details class="calendar-editor" [open]="!s.targetCalendarId || !!s.calendarsError"><summary>{{'refine.editSelection'|t}}</summary><div class="int-body">
           @if (s.calendarsError) { <p class="alert alert-warning" role="alert">{{ 'calendar.calendarsError' | t }}</p> }
           <label for="calendarTarget">{{ 'calendar.target' | t }}
             <select id="calendarTarget" class="form-select" [ngModel]="target()" (ngModelChange)="target.set($event)">
@@ -52,12 +53,12 @@ const OUTCOMES = ['connected', 'denied', 'scopes', 'error', 'mismatch'];
             }
             <p class="notice">{{ 'calendar.busyHint' | t }}</p>
           </fieldset>
-          </div>
+          </div><button type="button" class="btn btn-primary my-2" (click)="save()" [disabled]="busy() || !target()">{{ 'calendar.save' | t }}</button></details>
         }
         @if (!confirming()) {
           <div class="int-actions">
             @if (s.status !== 'connected') { <button class="btn btn-primary" (click)="connect()" [disabled]="busy()">{{ 'calendar.reconnect' | t }}</button> }
-            @else { <button class="btn btn-primary" (click)="save()" [disabled]="busy() || !target()">{{ 'calendar.save' | t }}</button> }
+
             <button class="btn btn-ghost int-actions-end" (click)="confirming.set(true)" [disabled]="busy()">{{ 'calendar.disconnect' | t }}</button>
           </div>
         } @else {
@@ -86,6 +87,7 @@ export class CalendarCardComponent implements OnInit {
   failure = signal<unknown>(null); outcome = signal<string | null>(null);
   target = signal(''); busyIds = signal<string[]>([]);
   error = computed(() => this.failure() ? this.i18n.errorMessage(this.failure()) : '');
+  targetName(){const s=this.state();return s?.calendars.find(c=>c.id===s.targetCalendarId||(s.targetCalendarId==='primary'&&c.primary))?.summary||s?.targetCalendarId||'—';}
   writable = computed(() => (this.state()?.calendars ?? []).filter(c => c.accessRole === 'owner'));
 
   ngOnInit(): void {

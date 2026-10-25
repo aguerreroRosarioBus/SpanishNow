@@ -54,10 +54,10 @@ describe('Controles de audio compartidos', () => {
     media().metadata(); fixture.detectChanges();
     expect(input('range').getAttribute('aria-label')).toBe('Posición del audio en segundos');
     change(input('range'), '25');
-    button('Avanzar 10 segundos').click(); fixture.detectChanges();
+    (el().querySelector('[aria-label="Avanzar 10 segundos"]') as HTMLButtonElement).click(); fixture.detectChanges();
     expect(audio.currentTime()).toBe(35);
     expect(input('range').getAttribute('aria-valuetext')).toBe('0:35 / 1:00');
-    button('Retroceder 10 segundos').click();
+    (el().querySelector('[aria-label="Retroceder 10 segundos"]') as HTMLButtonElement).click();
     expect(audio.currentTime()).toBe(25);
   });
 

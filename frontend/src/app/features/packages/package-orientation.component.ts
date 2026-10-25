@@ -8,8 +8,8 @@ type Section = 'catalog' | 'purchases' | 'groups';
 @Component({
   selector: 'app-package-orientation', standalone: true, imports: [RouterLink, TranslatePipe],
   template: `
-    <section class="package-orientation" [attr.aria-labelledby]="'package-purpose-' + section()">
-      <p class="eyebrow">{{ 'tutorial.packages.orientation' | t }}</p>
+    <details class="package-orientation" [attr.aria-labelledby]="'package-purpose-' + section()">
+      <summary>{{ 'refine.help' | t }}</summary>
       <h2 [id]="'package-purpose-' + section()">{{ 'tutorial.packages.' + section() + '.heading' | t }}</h2>
       <p class="purpose">{{ 'tutorial.packages.' + section() + '.purpose' | t }}</p>
       <nav [attr.aria-label]="'tutorial.packages.related' | t">
@@ -19,11 +19,11 @@ type Section = 'catalog' | 'purchases' | 'groups';
           }
         }
       </nav>
-    </section>
+    </details>
   `,
   styles: [`
-    :host{display:block;margin:1rem 0 1.5rem}
-    .package-orientation{padding:1.25rem;border:1px solid var(--color-border);border-left:4px solid var(--color-primary);border-radius:12px;background:#fffdfa}
+    :host{display:block;margin:.5rem 0 1rem}
+    .package-orientation{font-size:.875rem}.package-orientation[open]{padding:1rem;border:1px solid var(--color-border);border-radius:8px;background:var(--color-bg)}summary{cursor:pointer;min-height:36px;padding:6px 0;color:var(--color-text-light)}
     h2{font-size:1.125rem;margin:0 0 .5rem}.eyebrow{margin:0 0 .4rem;font-size:.6875rem;letter-spacing:.06em;color:var(--color-text-light);font-weight:700}
     .purpose{max-width:75ch;line-height:1.6;margin:0;color:var(--color-text-light)}
     nav{display:flex;flex-wrap:wrap;gap:.25rem 1.25rem;margin-top:.5rem}a{display:inline-flex;align-items:center;gap:.5rem;min-height:44px;font-size:.8125rem;font-weight:700;text-decoration:none}a:hover{text-decoration:underline}a:focus-visible{outline:3px solid #2f6f9f;outline-offset:2px}

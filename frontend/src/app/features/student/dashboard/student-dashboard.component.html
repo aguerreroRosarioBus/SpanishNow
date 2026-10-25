@@ -78,9 +78,13 @@
     } @else {
       <div class="card-grid">
         @for (enrollment of myCourses(); track enrollment.id) {
-          <app-course-card [title]="enrollment.course?.title ?? ('student.course' | t)" [level]="enrollment.course?.level" [description]="enrollment.course?.description" [imageUrl]="enrollment.course?.imageUrl">
-            <small card-meta class="text-secondary-ui">{{ 'student.enrolledOn' | t : { date: (enrollment.createdAt | localeDate : timeZone() : { dateStyle: 'medium' }) } }}</small>
-            <a [routerLink]="['/student/course', enrollment.courseId, 'play']" class="btn btn-primary flex-grow-1">{{ 'student.continue' | t }}</a>
+          <app-course-card [title]="enrollment.course?.title ?? ('student.course' | t)" [level]="enrollment.course?.level" [description]="null" [imageUrl]="enrollment.course?.imageUrl">
+            <div card-meta class="library-meta">
+              @if (teacherName(enrollment); as teacher) { <small>{{ 'catalog.byTeacher' | t:{ name: teacher } }}</small> }
+              <span class="badge-status" [class.badge-status--published]="courseState(enrollment) === 'refine.completed'" [class.badge-status--draft]="courseState(enrollment) !== 'refine.completed'">{{ courseState(enrollment) | t }}</span>
+              @if (progressPercent(enrollment); as percent) { <div class="progress" role="progressbar" [attr.aria-valuenow]="percent" aria-valuemin="0" aria-valuemax="100" [attr.aria-label]="'student.progress' | t"><div class="progress-bar" [class.is-complete]="courseState(enrollment)==='refine.completed'" [style.width.%]="percent"></div></div> }
+            </div>
+            <a [routerLink]="['/student/course', enrollment.courseId, 'play']" [queryParams]="{ story: resumeStory(enrollment) }" class="btn btn-primary flex-grow-1">{{ courseAction(enrollment) | t }}</a>
             <div ngbDropdown container="body" placement="bottom-end">
               <button type="button" ngbDropdownToggle class="btn-icon" [attr.aria-label]="'student.moreActions' | t">
                 <app-icon name="more" [size]="18" />

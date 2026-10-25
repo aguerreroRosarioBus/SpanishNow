@@ -28,8 +28,13 @@
       <span>{{ 'catalog.checkBack' | t }}</span>
     </div>
   } @else {
+    <nav class="filter-chips" [attr.aria-label]="'student.filterLevel' | t">
+      <button type="button" class="filter-chip" [class.is-active]="!level()" [attr.aria-pressed]="!level()" (click)="level.set('')">{{'refine.all'|t}}</button>
+      @for(l of levels;track l){<button type="button" class="filter-chip" [class.is-active]="level()===l" [attr.aria-pressed]="level()===l" (click)="level.set(l)">{{l}}</button>}
+    </nav>
+    @if(!visibleCourses().length){<p role="status">{{'refine.noResults'|t}}</p>}
     <div class="card-grid">
-      @for (course of courses(); track course.id) {
+      @for (course of visibleCourses(); track course.id) {
         <app-course-card [title]="course.title" [level]="course.level" [description]="course.description" [imageUrl]="course.imageUrl">
           @if (course.teacher) {
             <small card-meta class="text-secondary-ui">{{ 'catalog.byTeacher' | t : { name: course.teacher.name } }}</small>

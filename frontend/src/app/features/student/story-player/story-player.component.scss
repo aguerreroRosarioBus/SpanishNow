@@ -23,3 +23,12 @@
     max-width: none;
   }
 }
+
+.player__index-toggle { display: none; }
+@media (max-width: 800px) {
+  .player { gap: 16px; }
+  .player__index { flex: 1 1 100%; max-width: none; min-width: 0; }
+  .player__index-toggle { display: flex; justify-content: space-between; width: 100%; min-height: 44px; }
+  .player__index:not(.is-expanded) app-player-sidebar { display: none; }
+  .player__index.is-expanded app-player-sidebar { margin-top: 12px; }
+}

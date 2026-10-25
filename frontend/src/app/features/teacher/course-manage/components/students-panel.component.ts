@@ -46,7 +46,9 @@ export class StudentsPanelComponent implements OnInit {
   private i18n = inject(I18nService);
   private preferences = inject(UserPreferencesService);
 
+  search=signal('');
   students = signal<CourseStudent[]>([]);
+  visibleStudents=computed(()=>{const q=this.search().trim().toLocaleLowerCase(this.i18n.intlLocale());return this.students().filter(s=>!q||[s.user.name,s.user.email].some(v=>v.toLocaleLowerCase(this.i18n.intlLocale()).includes(q)));});
   isLoading = signal(false);
   // Se guardan clave y error (no el texto) para traducir al leer y no repetir peticiones al cambiar de idioma.
   private loadFailure = signal<{ key: string; error?: unknown } | null>(null);

@@ -35,8 +35,13 @@ describe('W05 ofertas grupales',()=>{
 describe('W05 revisión comercial',()=>{
  it('requiere confirmación y motivo; reserva impide aprobación en la pantalla',()=>{
   const reviewRefund=vi.fn((..._args:unknown[])=>of(preview));TestBed.configureTestingModule({imports:[CommerceAdminComponent],providers:[...providers,{provide:AuthService,useValue:{currentUser:()=>null,hasPermission:(key:string)=>key==='class_payments.review'}},{provide:PackagesService,useValue:{providerState:()=>throwError(()=>({status:403})),refundRequests:()=>of([{...preview,reservationsPending:true,requests:[{id:3,status:'requested',reason:'Ficticio',updates:[]}]}]),paymentList:()=>of({items:[],events:[]}),paymentJobs:()=>of([]),reviewRefund,error:()=>''}}]});
-  const f=TestBed.createComponent(CommerceAdminComponent);f.detectChanges();const c=f.componentInstance;c.reviewRefund(preview,3,'approve');expect(reviewRefund).not.toHaveBeenCalled();f.nativeElement.querySelector('#adminReason').value='Revisión ficticia';f.nativeElement.querySelector('#adminReason').dispatchEvent(new Event('input'));c.confirmed=true;f.changeDetectorRef.markForCheck();f.detectChanges();const approve=[...f.nativeElement.querySelectorAll('button')].find((b:any)=>b.textContent.includes(TestBed.inject(I18nService).t('packages.admin.approve'))) as HTMLButtonElement;expect(approve.disabled).toBe(true);
-  c.reviewRefund(preview,3,'needs_information');expect(reviewRefund.mock.calls[0]).toEqual([3,{action:'needs_information',reason:'Revisión ficticia',quote:'server-quote'}]);
+  const f=TestBed.createComponent(CommerceAdminComponent);f.detectChanges();const c=f.componentInstance;
+  const approve=[...f.nativeElement.querySelectorAll('button')].find((b:any)=>b.textContent.includes(TestBed.inject(I18nService).t('packages.admin.approve'))) as HTMLButtonElement;expect(approve.disabled).toBe(true);
+  c.reviewRefund(preview,3,'needs_information');expect(reviewRefund).not.toHaveBeenCalled();
+  c.confirmOperation();expect(reviewRefund).not.toHaveBeenCalled();c.reason='Revisión ficticia';c.confirmOperation();expect(reviewRefund).not.toHaveBeenCalled();
+  c.confirmed=true;c.confirmOperation();expect(reviewRefund.mock.calls[0]).toEqual([3,{action:'needs_information',reason:'Revisión ficticia',quote:'server-quote'}]);
+  expect(c.pending()).toBeNull();expect(c.confirmed).toBe(false);
+
  });
 });
 describe('W05 proveedor verificado y órdenes congeladas',()=>{
@@ -74,9 +79,16 @@ describe('W05 proveedor verificado y órdenes congeladas',()=>{
   expect(btn(t('packages.pv.confirmRefund')).length).toBe(2);expect(btn(t('packages.pv.unfreeze')).length).toBe(2);expect(btn(t('packages.admin.credit')).length).toBe(1);
   expect(btn(t('packages.pv.unfreeze'))[1].disabled).toBe(true);
   const o=c.orders()[0];c.reason='Falsa alarma';c.confirmed=true;
-  c.resolve(o,'unfreeze');expect(api.resolvePayment.mock.calls[0]).toEqual([21,'unfreeze','Falsa alarma']);
-  c.confirmed=true;c.confirmRefund(o);expect(api.resolvePayment.mock.calls[1]).toEqual([21,'confirm_refund','Falsa alarma',undefined]);
-  c.confirmed=true;c.refundInputs[21]='45,50';c.confirmRefund(o);expect(api.resolvePayment.mock.calls[2]).toEqual([21,'confirm_refund','Falsa alarma',4550]);
+  c.resolve(o,'unfreeze');expect(api.resolvePayment).not.toHaveBeenCalled();c.reason='Falsa alarma';c.confirmed=true;c.confirmOperation();expect(api.resolvePayment.mock.calls[0]).toEqual([21,'unfreeze','Falsa alarma']);
+  c.confirmRefund(o);c.reason='Falsa alarma';c.confirmed=true;c.confirmOperation();expect(api.resolvePayment.mock.calls[1]).toEqual([21,'confirm_refund','Falsa alarma',undefined]);
+  c.refundInputs[21]='45,50';c.confirmRefund(o);c.reason='Falsa alarma';c.confirmed=true;c.confirmOperation();expect(api.resolvePayment.mock.calls[2]).toEqual([21,'confirm_refund','Falsa alarma',4550]);
   c.confirmed=true;c.refundInputs[21]='90.01';expect(c.refundInvalid(o)).toBe(true);c.refundInputs[21]='0';expect(c.refundInvalid(o)).toBe(true);
  });
+ it('cambiar de orden descarta el motivo y confirmación anteriores; cancelar no ejecuta',()=>{
+   const {c,api}=setup({state:{mode:'fake',verification:null,lastRevocation:null},orders:[frozen]});
+   c.resolve(c.orders()[0],'credit');c.reason='Orden anterior';c.confirmed=true;
+   c.resolve({...c.orders()[0],id:22},'refund');expect(c.reason).toBe('');expect(c.confirmed).toBe(false);c.confirmOperation();expect(api.resolvePayment).not.toHaveBeenCalled();
+   c.cancelOperation();expect(c.pending()).toBeNull();expect(api.resolvePayment).not.toHaveBeenCalled();
+ });
+
 });

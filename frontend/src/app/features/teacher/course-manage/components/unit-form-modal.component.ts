@@ -1,3 +1,4 @@
+import { ModalFocusDirective } from '../../../../shared/directives/modal-focus.directive';
 import { Component, inject, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -13,7 +14,7 @@ import { CourseManageStore } from '../course-manage.store';
 @Component({
   selector: 'app-unit-form-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, TranslatePipe],
+  imports: [ModalFocusDirective, CommonModule, ReactiveFormsModule, TranslatePipe],
   templateUrl: './unit-form-modal.component.html'
 })
 export class UnitFormModalComponent {

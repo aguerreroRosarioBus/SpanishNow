@@ -1,4 +1,3 @@
-import { LocaleDatePipe } from '../../../core/i18n/locale-format.pipe';
 import { UserPreferencesService } from '../../../core/services/user-preferences.service';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
@@ -9,7 +8,8 @@ import { AuthService } from '../../../core/services/auth.service';
 import { CourseService } from '../../../core/services/course.service';
 import { EnrollmentService } from '../../../core/services/enrollment.service';
 import { ToastService } from '../../../core/services/toast.service';
-import { Course, Enrollment } from '../../../core/models/course.model';
+import { catchError, forkJoin, of } from 'rxjs';
+import { Course, Enrollment, EnrollmentProgress } from '../../../core/models/course.model';
 import { NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem } from '@ng-bootstrap/ng-bootstrap';
 import { CourseCardComponent } from '../../../shared/components/course-card/course-card.component';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
@@ -18,7 +18,7 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
 @Component({
   selector: 'app-student-dashboard',
   standalone: true,
-  imports: [LocaleDatePipe, TranslatePipe, CommonModule, RouterLink, NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem, CourseCardComponent, IconComponent, ConfirmDialogComponent],
+  imports: [ TranslatePipe, CommonModule, RouterLink, NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem, CourseCardComponent, IconComponent, ConfirmDialogComponent],
   templateUrl: './student-dashboard.component.html',
   styleUrl: './student-dashboard.component.scss'
 })
@@ -40,6 +40,28 @@ export class StudentDashboardComponent implements OnInit {
 
   // Cursos en los que el estudiante está inscrito
   myCourses = signal<Enrollment[]>([]);
+
+  progressByEnrollment = signal<Record<number, EnrollmentProgress | null>>({});
+  teacherName(e:Enrollment):string{return e.course?.teacher?.name||this.allCourses().find(c=>c.id===e.courseId)?.teacher?.name||'';}
+  courseState(e: Enrollment): string {
+    const p = this.progressByEnrollment()[e.id];
+    if (p === undefined) return 'refine.progressLoading';
+    if (p === null) return 'refine.progressUnavailable';
+    if (p.certificate?.eligible || p.certificate?.code) return 'refine.completed';
+    return p.stories.some(s => s.narrativeCompleted || s.lastBlockKey) ? 'refine.inProgress' : 'refine.notStarted';
+  }
+  courseAction(e: Enrollment): string {
+    const state = this.courseState(e);
+    return state === 'refine.completed' ? 'refine.review' : state === 'refine.notStarted' ? 'refine.start' : 'student.continue';
+  }
+  progressPercent(e: Enrollment): number | null {
+    const p = this.progressByEnrollment()[e.id];
+    return p && p.stories.length ? Math.round(p.stories.filter(s => s.narrativeCompleted).length / p.stories.length * 100) : null;
+  }
+  resumeStory(e: Enrollment): number | null {
+    const stories = this.progressByEnrollment()[e.id]?.stories ?? [];
+    return stories.find(s => !s.narrativeCompleted && s.lastBlockKey)?.storyId ?? stories.find(s => !s.narrativeCompleted)?.storyId ?? null;
+  }
 
   // Estados de carga
   isLoadingCatalog = signal<boolean>(false);
@@ -124,6 +146,10 @@ export class StudentDashboardComponent implements OnInit {
     this.enrollmentService.getMyCourses().subscribe({
       next: (enrollments) => {
         this.myCourses.set(enrollments);
+        this.progressByEnrollment.set({});
+        if (enrollments.length) forkJoin(enrollments.map(e => this.enrollmentService.getProgressSummary(e.id).pipe(catchError(() => of(null))))).subscribe(results => {
+          this.progressByEnrollment.set(Object.fromEntries(enrollments.map((e, i) => [e.id, results[i]])));
+        });
         this.isLoadingMyCourses.set(false);
       },
       error: (error) => {

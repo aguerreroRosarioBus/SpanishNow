@@ -35,7 +35,7 @@ describe('I18N: integración sin destruir formularios ni datos', () => {
   beforeEach(() => {
     localStorage.removeItem('user'); localStorage.removeItem('token');
     localStorage.setItem(LOCALE_STORAGE_KEY, 'es');
-    TestBed.configureTestingModule({ providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()] });
+    TestBed.configureTestingModule({ imports: [NavbarTopComponent], providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()] });
   });
   afterEach(() => { localStorage.removeItem(LOCALE_STORAGE_KEY); localStorage.removeItem('user'); localStorage.removeItem('token'); });
 
@@ -120,7 +120,8 @@ describe('I18N: integración sin destruir formularios ni datos', () => {
   });
 
   for (const role of ['student', 'teacher'] as const) {
-    it(`ofrece un único selector global para ${role} y mantiene el nombre propio`, () => {
+    it(`ofrece un único selector global para ${role} y mantiene el nombre propio`, async () => {
+      await TestBed.compileComponents();
       TestBed.inject(AuthService).currentUser.set({ id: 1, name: 'Ángela', email: 'a@example.test', role });
       const fixture = TestBed.createComponent(NavbarTopComponent);
       fixture.detectChanges();

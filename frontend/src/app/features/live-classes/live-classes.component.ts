@@ -43,6 +43,7 @@ export class LiveClassesComponent implements OnInit {
   title = '';
   courseId: number | null = null;
   code = '';
+  courseName(c:LiveClass):string {return c.classroomCourseName||this.courses().find(course=>course.id===c.courseId)?.title||this.i18n.t(c.courseId?'liveBoard.list.linkedCourse':'liveBoard.list.standaloneRoom');}
   filter = signal('all');
   filtered = computed(() => this.classes().filter(c => this.filter() === 'all' || c.status === this.filter()));
   readonly statusLabel = (status: string) => liveStatusText(this.i18n, status);

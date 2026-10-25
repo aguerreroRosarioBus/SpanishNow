@@ -30,7 +30,7 @@ const PHASES: LessonPhase[] = ['before', 'during', 'after', 'later'];
   standalone: true,
   imports: [CommonModule, FormsModule, KeyframeExtrasComponent, KeyframeIllustrationComponent, WhiteboardComponent, ComposerSidePanelComponent, InlineQuestionFormComponent, InlineVocabularyFormComponent, IconComponent, TranslatePipe, TutorialTriggerDirective],
   templateUrl: './lesson-composer.component.html',
-  styleUrls: ['./lesson-composer.component.scss', './lesson-composer-tutorial.scss', './lesson-composer-flow.scss']
+  styleUrls: ['./lesson-composer.component.scss', './lesson-composer-tutorial.scss', './lesson-composer-flow.scss', './lesson-composer-refinement.scss']
 })
 export class LessonComposerComponent implements OnInit, OnDestroy {
   @Input({ required: true }) story!: Story;
@@ -68,6 +68,14 @@ export class LessonComposerComponent implements OnInit, OnDestroy {
   sideTab = signal<SidePanelTab>('story');
   /** Último bloque enfocado/editado/añadido (no cambia al desplazar); el panel lateral lo resalta. */
   activeBlockKey = signal<string | null>(null);
+  expandedBlock=signal<string|null>(null);
+  toggleBlockEditor(key:string){this.expandedBlock.update(k=>k===key?null:key);this.setActive(key);}
+  blockSummary(block:LessonBlock):string {
+    if(block.type==='expression')return this.vocabWord(block)||'';
+    if(block.type==='question')return this.questions().find(q=>q.id===block.questionId)?.questionText||'';
+    return block.text?.slice(0,100)||'';
+  }
+
   /** Bloque de pregunta / de expresión con el formulario de creación abierto. */
   newQuestionFor = signal<string | null>(null);
   newExpressionFor = signal<string | null>(null);
@@ -164,6 +172,7 @@ export class LessonComposerComponent implements OnInit, OnDestroy {
     }
     this.insertByPhase(block);
     this.setActive(block.blockKey);
+    this.expandedBlock.set(block.blockKey);
     this.changed();
   }
 
@@ -180,12 +189,14 @@ export class LessonComposerComponent implements OnInit, OnDestroy {
     list.splice(index, 0, block);
     this.blocks.set(list);
     this.setActive(block.blockKey);
+    this.expandedBlock.set(block.blockKey);
     this.changed();
   }
   setActive(key: string | null): void { if (this.activeBlockKey() !== key) this.activeBlockKey.set(key); }
 
   /** Desde el panel: lleva el bloque a la vista, enfoca su campo principal y lo marca activo. */
   navigateToBlock(key: string): void {
+    this.expandedBlock.set(key);
     this.setActive(key);
     const root = this.host.nativeElement as HTMLElement;
     const card = [...root.querySelectorAll<HTMLElement>('[data-block-key]')].find(el => el.dataset['blockKey'] === key && el.tagName === 'ARTICLE');

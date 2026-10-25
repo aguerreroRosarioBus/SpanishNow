@@ -116,3 +116,13 @@
 }
 
 .unit__quiz { flex: none; }
+@media (max-width: 767.98px) {
+  .unit__header { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 8px; padding: 12px 8px; align-items: start; }
+  .unit__grip { display: none; }
+  .unit__header > .btn-icon { width: 40px; height: 44px; }
+  .unit__title-row { flex-wrap: wrap; gap: 6px; }
+  .unit__title { flex-basis: 100%; white-space: normal; overflow: visible; overflow-wrap: anywhere; font-size: 1rem; }
+  .unit__flag { display: inline-flex; white-space: normal; }
+  .unit__actions { gap: 0; }
+  .unit__actions button { min-width: 40px; min-height: 44px; }
+}

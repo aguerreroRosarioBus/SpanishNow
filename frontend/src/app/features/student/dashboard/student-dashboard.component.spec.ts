@@ -13,7 +13,7 @@ describe('StudentDashboardComponent (reiniciar progreso)', () => {
   afterEach(() => localStorage.removeItem(LOCALE_STORAGE_KEY));
 
   async function create() {
-    const enrollments = { getMyCourses: vi.fn(() => of([enrollment])), resetCourseProgress: vi.fn(() => of({ message: 'ok', deleted: { progress: 1, answers: 2, reinforcements: 0 } })), enroll: vi.fn() };
+    const enrollments = { getProgressSummary:vi.fn(()=>of({stories:[],quizzes:[],certificate:null,next:null})), getMyCourses: vi.fn(() => of([enrollment])), resetCourseProgress: vi.fn(() => of({ message: 'ok', deleted: { progress: 1, answers: 2, reinforcements: 0 } })), enroll: vi.fn() };
     await TestBed.configureTestingModule({
       imports: [StudentDashboardComponent],
       providers: [

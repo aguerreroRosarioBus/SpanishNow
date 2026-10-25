@@ -300,7 +300,8 @@
     <div class="list-head">
       <h2 id="classListTitle">{{ 'schedule.classes' | t }}</h2>
     </div>
-    <form class="date-filters" (ngSubmit)="reload()">
+    <nav class="filter-chips" [attr.aria-label]="'schedule.classes'|t">@for(v of ['upcoming','history','all'];track v){<button type="button" class="filter-chip" [class.is-active]="listView()===v" [attr.aria-pressed]="listView()===v" (click)="listView.set(v)">{{('refine.'+v)|t}}</button>}</nav>
+    <details class="date-range"><summary>{{'visual.dates'|t}}</summary><form class="date-filters" (ngSubmit)="reload()">
       <div class="date-filters__title">
         <app-icon name="clock" [size]="18" />
         <div>
@@ -341,19 +342,19 @@
           </button>
         }
       </div>
-    </form>
+    </form></details>
     @if (loading()) {
       <p role="status">{{ 'schedule.loading' | t }}</p>
     }
     @if (truncated()) {
       <p>{{ 'schedule.truncated' | t }}</p>
     }
-    @for (s of sessions(); track s.id) {
+    @for (s of visibleSessions(); track s.id) {
       @if (s.id !== selected()?.id) {
         <app-class-session-card [sessionId]="s.id" (changed)="updated($event)" />
       }
     }
-    @if (!loading() && !sessions().length) {
+    @if (!loading() && !visibleSessions().length) {
       <p class="state-box">{{ 'schedule.empty' | t }}</p>
     }
   </section>

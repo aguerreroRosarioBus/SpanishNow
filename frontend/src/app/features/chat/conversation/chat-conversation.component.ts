@@ -340,7 +340,7 @@ export class ChatConversationComponent implements OnInit {
     if (!p || typeof p['amount'] !== 'number' || !Number.isSafeInteger(p['amount']) || typeof p['currency'] !== 'string' || !/^[A-Z]{3}$/.test(p['currency'])) return '';
     const count=p['sessionsCount'], minutes=p['minutesPerSession'], seats=p['seatsCovered'];
     if (typeof count !== 'number' || typeof minutes !== 'number' || typeof seats !== 'number') return '';
-    return this.i18n.t('packages.offer.cardSummary',{price:this.i18n.formatMoney(p['amount'],p['currency']),count,minutes,seats});
+    return this.i18n.t('packages.offer.cardSummary',{price:this.i18n.formatMoney(p['amount'],p['currency']),count,minutes,seats,seatLabel:this.i18n.t('refine.seats',{count:seats})});
   }
 
   contextLabel(): string | null {

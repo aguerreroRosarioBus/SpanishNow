@@ -82,7 +82,7 @@
                   <td>{{ o.courseTitle }}</td>
                   <td class="num">{{ money(o.amount, o.currency) }}</td>
                   <td class="num">{{ money(o.commissionAmount, o.currency) }}</td>
-                  <td><span class="badge-status" [class.badge-status--published]="o.commissionStatus === 'pending'" [class.badge-status--draft]="o.commissionStatus === 'none'" [class.badge-status--danger]="o.commissionStatus === 'void'">{{ statusLabel(o.commissionStatus) }}</span></td>
+                  <td><span class="badge-status" [class.badge-status--warn]="o.commissionStatus === 'pending'" [class.badge-status--draft]="o.commissionStatus === 'none'" [class.badge-status--danger]="o.commissionStatus === 'void'">{{ statusLabel(o.commissionStatus) }}</span></td>
                 </tr>
               }
             </tbody>

@@ -1,3 +1,4 @@
+import { NgbDropdownModule } from '@ng-bootstrap/ng-bootstrap';
 import { UserPreferencesService } from '../../../core/services/user-preferences.service';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
@@ -20,7 +21,7 @@ const PAGE_SIZE = 20;
 @Component({
   selector: 'app-teacher-comments',
   standalone: true,
-  imports: [TranslatePipe, FormsModule, RouterLink, ConfirmDialogComponent],
+  imports: [NgbDropdownModule, TranslatePipe, FormsModule, RouterLink, ConfirmDialogComponent],
   templateUrl: './teacher-comments.component.html',
   styleUrl: './teacher-comments.component.scss'
 })

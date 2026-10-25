@@ -17,8 +17,12 @@ import { PackageOrientationComponent } from './package-orientation.component';
 @if(teacher){<app-package-orientation section="purchases" />}
 @if(error()){<div class="alert alert-danger d-flex justify-content-between align-items-center gap-2" role="alert">{{error()}}<button type="button" class="btn btn-secondary btn-sm" [disabled]="busy()" (click)="read()">{{'packages.purchase.retry'|t}}</button></div>}
 @if(busy()){<p role="status">{{ 'packages.loading' | t }}</p>}
-@for(p of items();track p.id){
-  <article class="purchase-card" [class.is-inactive]="inactive(p)">
+@if(!id && items().length){<div class="purchase-filters" role="search">
+<label for="purchaseSearch">{{(teacher?'refine.searchPurchases':'refine.searchPackages')|t}}<input id="purchaseSearch" type="search" class="form-control" [ngModel]="search()" (ngModelChange)="search.set($event)"></label>
+<label for="purchaseStatus">{{'student.status'|t}}<select id="purchaseStatus" class="form-select" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event)"><option value="all">{{'refine.all'|t}}</option><option value="available">{{'refine.available'|t}}</option>@for(s of purchaseStatuses;track s){<option [value]="s">{{('packages.purchase.status.'+s)|t}}</option>}</select></label>
+</div>}
+@for(p of visibleItems();track p.id){
+  <article class="purchase-card" [class.is-inactive]="inactive(p)" [class.is-teacher]="teacher">
     <div class="card-head">
       <div class="card-title"><h2>{{name(p)}}</h2>
         @if(teacher && p.buyerName){<p class="buyer">{{p.buyerName}}</p>}
@@ -26,17 +30,18 @@ import { PackageOrientationComponent } from './package-orientation.component';
       </div>
       <span class="badge-status badge-status--dot status-{{tone(p.status)}}">{{('packages.purchase.status.'+p.status)|t}}</span>
     </div>
-    <p class="balance"><strong class="balance-num">{{p.balance.available}}</strong> {{'packages.purchase.availableOf'|t:{count:p.balance.available,granted:p.balance.granted} }}</p>
+    <div class="purchase-meta"><p class="balance"><strong class="balance-num">{{p.balance.available}}</strong> {{'packages.purchase.availableOf'|t:{count:p.balance.available,granted:p.balance.granted} }}</p>
     @if(others(p);as extra){<p class="muted">{{extra}}</p>}
     @if(expiry(p);as e){
       <p class="expiry">{{(p.status==='expired'?'packages.purchase.expiredOn':'packages.purchase.expires')|t:{day:e.day} }}</p>
       <p class="muted">{{'packages.purchase.expiryExact'|t:{time:e.time,zone:e.timeZone,offset:e.offsetLabel} }}</p>
     }
-    <p class="muted conditions">{{conditions(p)}}</p>
+    </div><div class="card-actions primary-action">      @if(primary(p)==='schedule'){<a class="btn btn-primary" routerLink="/schedule" [attr.aria-label]="label(teacher?'packages.purchase.scheduleTeacher':'packages.purchase.scheduleStudent',p)">{{(teacher?'packages.purchase.scheduleTeacher':'packages.purchase.scheduleStudent')|t}}</a>}
+      @else{<button type="button" class="btn btn-primary" [disabled]="busy()" [attr.aria-label]="label(teacher?'packages.purchase.renew':'packages.purchase.contact',p)" (click)="conversation(p,teacher)">{{(teacher?'packages.purchase.renew':'packages.purchase.contact')|t}}</button>}
+</div>
+    <details class="purchase-conditions" [open]="!!id"><summary>{{'refine.conditions'|t}}</summary><p class="muted conditions">{{conditions(p)}}</p>
     @if(teacher && renewSuggested(p)){<p class="muted">{{'packages.purchase.renewHint'|t}}</p>}
     <div class="card-actions">
-      @if(primary(p)==='schedule'){<a class="btn btn-primary" routerLink="/schedule" [attr.aria-label]="label(teacher?'packages.purchase.scheduleTeacher':'packages.purchase.scheduleStudent',p)">{{(teacher?'packages.purchase.scheduleTeacher':'packages.purchase.scheduleStudent')|t}}</a>}
-      @else{<button type="button" class="btn btn-primary" [disabled]="busy()" [attr.aria-label]="label(teacher?'packages.purchase.renew':'packages.purchase.contact',p)" (click)="conversation(p,teacher)">{{(teacher?'packages.purchase.renew':'packages.purchase.contact')|t}}</button>}
       <a class="btn btn-secondary" [routerLink]="['/class-offers',p.offerId]" [attr.aria-label]="label('packages.offer.open',p)">{{ 'packages.offer.open' | t }}</a>
       @if(!teacher && !id){<a class="btn btn-secondary" [routerLink]="['/class-packages',p.id]" [attr.aria-label]="label('packages.purchase.history',p)">{{ 'packages.purchase.history' | t }}</a>}
       @if(primary(p)==='schedule'){<button type="button" class="btn btn-secondary" [disabled]="busy()" [attr.aria-label]="label(teacher?'packages.purchase.renew':'packages.purchase.contact',p)" (click)="conversation(p,teacher)">{{(teacher?'packages.purchase.renew':'packages.purchase.contact')|t}}</button>}
@@ -48,6 +53,7 @@ import { PackageOrientationComponent } from './package-orientation.component';
         }
       }
     </div>
+    </details>
     @if(cancelId()===p.id){
       <div class="confirm"><p>{{'packages.purchase.cancelNote'|t}}</p><label [for]="'reason-'+p.id" class="form-label mt-2">{{'packages.offer.cancelReason'|t}}</label>
       <input [id]="'reason-'+p.id" class="form-control" maxlength="500" [ngModel]="reason()" (ngModelChange)="reason.set($event)">
@@ -56,12 +62,20 @@ import { PackageOrientationComponent } from './package-orientation.component';
     @if(id && !teacher && p.buyerId===auth.currentUser()?.id){<app-refund-request [purchaseId]="p.id" [hours]="p.snapshot.policy.refundWindowHours" [mode]="p.snapshot.policy.refundMode" />}
     @if(p.ledger){<details class="card-details" open><summary>{{'packages.purchase.history'|t}}</summary><ol class="ledger">@for(entry of p.ledger;track entry.id){<li>{{('packages.ledger.'+entry.operation)|t}}: {{entry.units}} · {{instant(entry.createdAt)}} @if(entry.reason){<span>— {{entry.reason}}</span>}</li>}</ol></details>}
   </article>
-}@empty{@if(!busy()){<p>{{'packages.purchase.empty'|t}}</p>}}
+}@empty{@if(!busy()){<p role="status">{{(items().length?'refine.noResults':'packages.purchase.empty')|t}}</p>}}
 </div>`})
 export class PurchasesComponent implements OnInit{
   private api=inject(PackagesService);readonly i18n=inject(I18nService);readonly fmt=inject(ChatFormat);readonly auth=inject(AuthService);
   private route=inject(ActivatedRoute);private router=inject(Router);private destroy=inject(DestroyRef);private requests=new Subscription();
   readonly teacher=this.route.snapshot.data['teacher']===true;id=0;
+  search=signal(''); statusFilter=signal('all');
+  readonly purchaseStatuses=['active','paused','exhausted','expired','cancelled'];
+  visibleItems=computed(()=>{
+    const query=this.search().trim().toLocaleLowerCase(this.i18n.intlLocale());
+    const status=this.statusFilter();
+    return this.items().filter(p=>(!query || [p.buyerName,this.name(p),p.snapshot.teacherName].some(v=>v?.toLocaleLowerCase(this.i18n.intlLocale()).includes(query))) && (status==='all'||status==='available' ? status==='all'||p.status==='active'&&p.balance.available>0 : p.status===status))
+      .slice().sort((a,b)=>Number(b.status==='active'&&b.balance.available>0)-Number(a.status==='active'&&a.balance.available>0)||Date.parse(a.expiresAt)-Date.parse(b.expiresAt)||a.id-b.id);
+  });
   readonly extras=['reserved','consumed','expired','refunded'] as const;
   items=signal<ClassPurchase[]>([]);busy=signal(false);cancelId=signal(0);reason=signal('');private failure=signal<unknown>(null);error=computed(()=>this.failure()?this.api.error(this.failure()):'');
   ngOnInit(){this.destroy.onDestroy(()=>this.requests.unsubscribe());this.route.paramMap.pipe(takeUntilDestroyed(this.destroy)).subscribe(p=>{this.requests.unsubscribe();this.requests=new Subscription();this.id=Number(p.get('id'))||0;this.items.set([]);this.cancelId.set(0);this.reason.set('');this.read();});}
@@ -76,7 +90,7 @@ export class PurchasesComponent implements OnInit{
   conditions(p:ClassPurchase){const hours=p.snapshot.validityHours;const base={sessions:p.snapshot.sessionsCount,minutes:p.minutesPerSession,seats:p.seatsCovered,hours};return hours%24===0&&hours>0?this.i18n.t('packages.purchase.conditionsDays',{...base,days:hours/24}):this.i18n.t('packages.purchase.conditions',base);}
   renewSuggested(p:ClassPurchase){return p.balance.available<=1||this.untilExpiry(p)<=168;}
   /** Una acción principal por tarjeta: agendar mientras haya saldo; si no, renovar (docente) o hablar con la docente (alumna). */
-  primary(p:ClassPurchase):'schedule'|'other'{return this.teacher?(this.renewSuggested(p)?'other':'schedule'):(p.status==='active'&&p.balance.available>0?'schedule':'other');}
+  primary(p:ClassPurchase):'schedule'|'other'{return p.status==='active'&&p.balance.available>0?'schedule':'other';}
   label(key:string,p:ClassPurchase){return this.i18n.t('packages.purchase.actionFor',{action:this.i18n.t(key),name:this.name(p)});}
   name(p:ClassPurchase){return this.i18n.locale()==='es'?p.snapshot.nameEs:p.snapshot.nameEn;}
   instant(value:string){try{const t=presentInstant(value,this.fmt.timeZone(),this.i18n.locale());return t.day+' '+t.time;}catch{return '';}}

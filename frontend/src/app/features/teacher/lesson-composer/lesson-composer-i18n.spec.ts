@@ -126,12 +126,12 @@ describe('compositor de lecciones: idioma', () => {
     it('compositor: fases, botones, pie y textos cambian de idioma; el contenido docente no se traduce', () => {
       const t = text(fixture);
       expect(t).toContain('Lección: María en la Fiesta'); expect(t).toContain('Más adelante'); expect(t).toContain('Guardar borrador');
-      expect(t).toContain('Publicar revisión'); expect(t).toContain('Fragmento narrativo'); expect(t).toContain('Aún no hay bloques.');
+      expect(t).toContain('Publicar'); expect(t).toContain('Fragmento narrativo'); expect(t).toContain('Aún no hay bloques.');
       expect(fixture.nativeElement.querySelector('.composer-dialog').getAttribute('aria-label')).toBe('Compositor de lección: María en la Fiesta');
       switchTo('en');
       const e = text(fixture);
       expect(e).toContain('Lesson: María en la Fiesta'); expect(e).toContain('Later'); expect(e).toContain('Save draft');
-      expect(e).toContain('Publish revision'); expect(e).toContain('Story passage'); expect(e).toContain('No blocks yet.');
+      expect(e).toContain('Publish'); expect(e).toContain('Story passage'); expect(e).toContain('No blocks yet.');
       expect(e).toContain('Draft · revision 1'); expect(e).not.toContain('Guardar');
       expect(e).toContain('María llega a la fiesta y busca a su amiga.');
       expect(fixture.nativeElement.querySelector('.composer-dialog').getAttribute('aria-label')).toBe('Lesson composer: María en la Fiesta');

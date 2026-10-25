@@ -65,11 +65,11 @@ describe('Saldo de clases: jerarquía de la tarjeta (#71)',()=>{
     expect(last.querySelector('.btn-primary')?.textContent?.trim()).toBe('Agendar una clase');
     expect(last.textContent).not.toContain('Actualizar estado');
   });
-  it('alumna sin saldo: la acción principal es hablar con la docente; docente con saldo corto: enviar nueva oferta',()=>{
+  it('sin saldo se abre conversación; con saldo la agenda tiene prioridad y la renovación sigue disponible',()=>{
     render(snap,{purchase:{expiresAt:expiry,balance:{...balance,available:0,consumed:4},status:'exhausted'}});
     expect(last.querySelector('.btn-primary')?.textContent?.trim()).toBe('Abrir conversación privada');
     render(snap,{teacher:true,purchase:{expiresAt:expiry,balance:{...balance,available:1}}});
-    expect(last.querySelector('.btn-primary')?.textContent?.trim()).toBe('Enviar nueva oferta');
+    expect(last.querySelector('.btn-primary')?.textContent?.trim()).toBe('Ver agenda');expect(last.textContent).toContain('Enviar nueva oferta');
     render(snap,{teacher:true,purchase:{expiresAt:'2030-01-01T00:00:00Z',balance}});
     expect(last.querySelector('.btn-primary')?.textContent?.trim()).toBe('Ver agenda');
   });

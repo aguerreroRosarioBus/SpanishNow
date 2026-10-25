@@ -1,3 +1,4 @@
+import { REFINEMENT_EN } from './refinement';
 import { VISUAL_EN } from './visual';
 import { ZOOM_EN } from './zoom';
 import { STUDENT_EN } from './student';
@@ -15,6 +16,7 @@ import { LIVE_BOARD_EN } from './live-board';
 import { TranslationCatalog } from '../i18n.types';
 
 export const EN = {
+  ...REFINEMENT_EN,
   ...VISUAL_EN,
   ...ZOOM_EN,
   ...STUDENT_EN,

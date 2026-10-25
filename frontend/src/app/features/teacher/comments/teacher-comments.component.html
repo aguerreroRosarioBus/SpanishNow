@@ -72,8 +72,9 @@
           } @else {
             <div class="item__actions">
               <button type="button" class="btn btn-secondary btn-sm" (click)="startReply(c)" [attr.aria-label]="'lessonComments.replyAria' | t: {name: c.author.name}">{{ 'lessonComments.reply' | t }}</button>
-              <button type="button" class="btn btn-ghost btn-sm" (click)="toggleHidden(c)" [attr.aria-label]="(c.hidden ? 'lessonComments.showAria' : 'lessonComments.hideAria') | t: {name: c.author.name}">{{ (c.hidden ? 'lessonComments.show' : 'lessonComments.hide') | t }}</button>
-              <button type="button" class="btn btn-ghost btn-sm" (click)="askDelete(c)" [attr.aria-label]="'lessonComments.deleteAria' | t: {name: c.author.name}">{{ 'lessonComments.delete' | t }}</button>
+              <div ngbDropdown container="body" placement="bottom-end"><button type="button" class="btn btn-ghost btn-sm" ngbDropdownToggle>{{'refine.manage'|t}}</button><div ngbDropdownMenu>              <button type="button" ngbDropdownItem (click)="toggleHidden(c)" [attr.aria-label]="(c.hidden ? 'lessonComments.showAria' : 'lessonComments.hideAria') | t: {name: c.author.name}">{{ (c.hidden ? 'lessonComments.show' : 'lessonComments.hide') | t }}</button>
+              <button type="button" ngbDropdownItem (click)="askDelete(c)" [attr.aria-label]="'lessonComments.deleteAria' | t: {name: c.author.name}">{{ 'lessonComments.delete' | t }}</button>
+</div></div>
               <a class="btn btn-ghost btn-sm" [routerLink]="['/teacher/course', c.course.id, 'manage']">{{ 'lessonComments.viewCourse' | t }}</a>
             </div>
           }

@@ -40,7 +40,7 @@
     <div class="live-grid">@for (c of filtered(); track c.id) {
       <a [routerLink]="['/live', c.id]" class="live-card"><div class="board-mini" aria-hidden="true"><div class="mini-sheet"><span class="mini-note"></span><i class="mini-connector"></i><b class="mini-shape"></b><span class="mini-lines"></span></div><span class="board-kind"><app-icon name="rectangle" [size]="12" />{{ 'liveBoard.list.boardKind' | t }}</span></div>
         <div class="live-card-body"><span class="badge-status" [class.badge-status--published]="c.status === 'live'" [class.badge-status--draft]="c.status !== 'live'">{{ statusLabel(c.status) }}</span><h2>{{ c.title }}</h2>
-          <p>{{ c.classroomCourseName || ((c.courseId ? 'liveBoard.list.linkedCourse' : 'liveBoard.list.standaloneRoom') | t) }}</p><small>{{ 'liveBoard.list.updated' | t : { date: updatedAt(c.updatedAt) } }}</small>
+          <p>{{courseName(c)}}</p><small>{{ 'liveBoard.list.updated' | t : { date: updatedAt(c.updatedAt) } }}</small>
           <span class="card-action">{{ (c.status === 'live' ? 'liveBoard.list.enterClass' : teacher ? 'liveBoard.list.openBoard' : 'liveBoard.list.viewBoard') | t }} <app-icon name="arrow-right" [size]="18" /></span></div>
       </a>
     }</div>

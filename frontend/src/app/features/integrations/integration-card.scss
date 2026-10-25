@@ -48,3 +48,5 @@
   .int-actions .btn { flex: 1 1 auto; }
   .int-actions-end { margin-left: 0; }
 }
+
+.calendar-editor { margin-top: 12px; } .calendar-editor>summary { min-height: 44px; padding-block: 12px; cursor: pointer; color: var(--color-primary); font-size: .875rem; }

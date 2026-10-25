@@ -1,7 +1,63 @@
 <section class="students-panel" [attr.aria-label]="'teacherDashboard.students.panelLabel' | t">
-  <!-- Agregar alumno -->
+  <!-- Lista de alumnos -->
   <div class="panel-block">
-    <h2 class="panel-block__title">{{ 'teacherDashboard.students.addTitle' | t }}</h2>
+    <h2 class="panel-block__title">
+      {{ 'teacherDashboard.students.enrolledTitle' | t }}
+      <span class="text-secondary-ui fw-normal">({{ 'teacherDashboard.students.enrolledCount' | t:{ count: students().length } }})</span>
+    </h2>
+
+    <label for="studentSearch" class="form-label">{{'refine.searchStudents'|t}}</label><input id="studentSearch" type="search" class="form-control mb-3" [value]="search()" (input)="search.set($any($event.target).value)">
+    @if (errorMessage()) {
+      <div class="alert alert-danger" role="alert">{{ errorMessage() }}</div>
+    }
+
+    @if (isLoading()) {
+      <div class="text-center py-4" role="status">
+        <div class="spinner-border text-primary" aria-hidden="true"></div>
+        <p class="text-muted mt-2 mb-0">{{ 'teacherDashboard.students.loading' | t }}</p>
+      </div>
+    } @else if (students().length === 0 && !errorMessage()) {
+      <div class="state-box">
+        <strong>{{ 'teacherDashboard.students.emptyTitle' | t }}</strong>
+        <span>{{ 'teacherDashboard.students.emptyHint' | t }}</span>
+      </div>
+    } @else if (students().length > 0) {
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">{{ 'teacherDashboard.students.colName' | t }}</th><th scope="col">{{ 'teacherDashboard.students.colEmail' | t }}</th><th scope="col">{{ 'teacherDashboard.students.colSource' | t }}</th>
+              <th scope="col">{{ 'teacherDashboard.students.colDate' | t }}</th><th scope="col">{{ 'teacherDashboard.students.colProgress' | t }}</th><th scope="col"><span class="visually-hidden">{{ 'teacherDashboard.students.colActions' | t }}</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (s of visibleStudents(); track s.enrollmentId) {
+              <tr>
+                <td>{{ s.user.name }}</td>
+                <td>{{ s.user.email }}</td>
+                <td><span class="badge-status badge-status--draft">{{ sourceLabel(s.source) }}</span></td>
+                <td>{{ enrolledDate(s.enrolledAt) }}</td>
+                <td>
+                  <div class="progress-cell">
+                    <div class="progress" role="progressbar" [attr.aria-valuenow]="progressPercent(s)" aria-valuemin="0" aria-valuemax="100"
+                         [attr.aria-label]="'teacherDashboard.students.progressOf' | t:{ name: s.user.name }">
+                      <div class="progress-bar" [style.width.%]="progressPercent(s)"></div>
+                    </div>
+                    <small>{{ s.progress.completedStories }}/{{ s.progress.totalStories }}</small>
+                  </div>
+                </td>
+                <td class="text-end">
+                  <button type="button" class="btn btn-ghost btn-sm" (click)="askRemove(s)" [attr.aria-label]="'teacherDashboard.students.removeAccessFor' | t:{ name: s.user.name }">{{ 'teacherDashboard.students.removeAccess' | t }}</button>
+                </td>
+              </tr>
+            } @empty { <tr><td colspan="6">{{'refine.noResults'|t}}</td></tr> }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+  <!-- Agregar alumno -->
+  <details class="panel-block student-tools"><summary>{{ 'teacherDashboard.students.addTitle' | t }}</summary>
     <form [formGroup]="addForm" (ngSubmit)="addStudent()" class="add-form" novalidate>
       <div class="add-form__field">
         <label for="studentEmail" class="form-label">{{ 'teacherDashboard.students.emailLabel' | t }}</label>
@@ -18,11 +74,10 @@
       </button>
     </form>
     <p class="form-text mb-0">{{ 'teacherDashboard.students.addHint' | t }}</p>
-  </div>
+  </details>
 
   <!-- Importar CSV de Hotmart -->
-  <div class="panel-block">
-    <h2 class="panel-block__title">{{ 'teacherDashboard.students.importTitle' | t }}</h2>
+  <details class="panel-block student-tools"><summary>{{ 'teacherDashboard.students.importTitle' | t }}</summary>
     <p class="form-text mt-0">{{ 'teacherDashboard.students.importHint' | t }}</p>
     <input #csvInput type="file" class="form-control" accept=".csv,text/csv" [attr.aria-label]="'teacherDashboard.students.csvLabel' | t"
            (change)="onFileSelected($event)" [disabled]="isPreviewing() || isImporting()">
@@ -93,64 +148,9 @@
         {{ 'teacherDashboard.students.importDone' | t:{ added: done.summary.new, existing: done.summary.existingUser, enrolled: done.summary.alreadyEnrolled, invalid: done.summary.invalid } }}
       </div>
     }
-  </div>
+  </details>
 
-  <!-- Lista de alumnos -->
-  <div class="panel-block">
-    <h2 class="panel-block__title">
-      {{ 'teacherDashboard.students.enrolledTitle' | t }}
-      <span class="text-secondary-ui fw-normal">({{ 'teacherDashboard.students.enrolledCount' | t:{ count: students().length } }})</span>
-    </h2>
 
-    @if (errorMessage()) {
-      <div class="alert alert-danger" role="alert">{{ errorMessage() }}</div>
-    }
-
-    @if (isLoading()) {
-      <div class="text-center py-4" role="status">
-        <div class="spinner-border text-primary" aria-hidden="true"></div>
-        <p class="text-muted mt-2 mb-0">{{ 'teacherDashboard.students.loading' | t }}</p>
-      </div>
-    } @else if (students().length === 0 && !errorMessage()) {
-      <div class="state-box">
-        <strong>{{ 'teacherDashboard.students.emptyTitle' | t }}</strong>
-        <span>{{ 'teacherDashboard.students.emptyHint' | t }}</span>
-      </div>
-    } @else if (students().length > 0) {
-      <div class="table-wrap">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th scope="col">{{ 'teacherDashboard.students.colName' | t }}</th><th scope="col">{{ 'teacherDashboard.students.colEmail' | t }}</th><th scope="col">{{ 'teacherDashboard.students.colSource' | t }}</th>
-              <th scope="col">{{ 'teacherDashboard.students.colDate' | t }}</th><th scope="col">{{ 'teacherDashboard.students.colProgress' | t }}</th><th scope="col"><span class="visually-hidden">{{ 'teacherDashboard.students.colActions' | t }}</span></th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (s of students(); track s.enrollmentId) {
-              <tr>
-                <td>{{ s.user.name }}</td>
-                <td>{{ s.user.email }}</td>
-                <td><span class="badge-status badge-status--draft">{{ sourceLabel(s.source) }}</span></td>
-                <td>{{ enrolledDate(s.enrolledAt) }}</td>
-                <td>
-                  <div class="progress-cell">
-                    <div class="progress" role="progressbar" [attr.aria-valuenow]="progressPercent(s)" aria-valuemin="0" aria-valuemax="100"
-                         [attr.aria-label]="'teacherDashboard.students.progressOf' | t:{ name: s.user.name }">
-                      <div class="progress-bar" [style.width.%]="progressPercent(s)"></div>
-                    </div>
-                    <small>{{ s.progress.completedStories }}/{{ s.progress.totalStories }}</small>
-                  </div>
-                </td>
-                <td class="text-end">
-                  <button type="button" class="btn btn-ghost btn-sm" (click)="askRemove(s)" [attr.aria-label]="'teacherDashboard.students.removeAccessFor' | t:{ name: s.user.name }">{{ 'teacherDashboard.students.removeAccess' | t }}</button>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    }
-  </div>
 </section>
 
 @if (studentToRemove(); as target) {

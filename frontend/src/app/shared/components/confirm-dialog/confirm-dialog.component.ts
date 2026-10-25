@@ -1,3 +1,4 @@
+import { ModalFocusDirective } from '../../directives/modal-focus.directive';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -5,9 +6,9 @@ import { CommonModule } from '@angular/common';
 @Component({
   selector: 'app-confirm-dialog',
   standalone: true,
-  imports: [CommonModule, TranslatePipe],
+  imports: [ModalFocusDirective, CommonModule, TranslatePipe],
   template: `
-    <div class="modal fade" [class.show]="show" [style.display]="show ? 'block' : 'none'" tabindex="-1">
+    <div [appModalFocus]="show" (modalDismiss)="onCancel()" role="dialog" [attr.aria-modal]="show ? true : null" [attr.aria-label]="title || ('common.confirm' | t)" class="modal fade" [class.show]="show" [style.display]="show ? 'block' : 'none'" tabindex="-1">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
           <div class="modal-header">

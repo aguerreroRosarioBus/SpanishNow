@@ -1,3 +1,4 @@
+import { REFINEMENT_ES } from './refinement';
 import { VISUAL_ES } from './visual';
 import { ZOOM_ES } from './zoom';
 import { STUDENT_ES } from './student';
@@ -16,6 +17,7 @@ import { LIVE_BOARD_ES } from './live-board';
 import { TranslationMessage } from '../i18n.types';
 
 export const ES = {
+  ...REFINEMENT_ES,
   ...VISUAL_ES,
   ...ZOOM_ES,
   ...STUDENT_ES,

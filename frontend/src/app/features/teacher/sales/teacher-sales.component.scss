@@ -44,11 +44,16 @@
 
 .panel-block__title { margin: 0 0 var(--spacing-md); font: 600 1.0625rem/1.3 var(--font-heading); }
 
-.chart { width: 100%; height: auto; display: block; }
-.chart__grid { stroke: var(--color-divider); stroke-width: 1; }
-.chart__tick { fill: var(--color-text-light); font: 0.6875rem var(--font-body); }
-.chart__bar { fill: var(--color-primary); }
-.chart__bar:hover { fill: var(--color-primary-hover); }
+.chart { padding: 12px 16px 32px 90px; }
+.chart__plot { position: relative; height: 220px; }
+.chart__grid { position: absolute; inset-inline: 0; border-top: 1px solid var(--color-divider); }
+.chart__tick { position: absolute; right: calc(100% + 8px); transform: translateY(-50%); color: var(--color-text-light); font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.chart__bars { position: absolute; inset: 0; display: flex; justify-content: space-around; gap: 8px; align-items: end; }
+.chart__slot { position: relative; height: 100%; flex: 1; display: flex; justify-content: center; align-items: end; }
+.chart__bar { width: 70%; max-width: 64px; background: var(--color-primary); border-radius: 3px 3px 0 0; }
+.chart__bar:hover { background: var(--color-primary-hover); }
+.chart__month { position: absolute; top: calc(100% + 8px); white-space: nowrap; font-size: 12px; color: var(--color-text-light); }
+@media (max-width: 575px) { .panel-block { padding: 16px; } .chart { padding-left: 86px; padding-right: 12px; } }
 
 .chart-table summary { cursor: pointer; font-size: 0.875rem; color: var(--color-text-light); margin-top: var(--spacing-sm); }
 

@@ -66,7 +66,7 @@ export class TeacherSalesComponent implements OnInit {
         currency,
         ticks: scale.ticks.map(value => ({ value, y: CHART_H - (value / scale.max) * CHART_H, label: this.i18n.formatMoney(Math.round(value), currency) })),
         bars,
-        labelEvery: Math.ceil(bars.length / 8)
+        labelEvery: Math.ceil(bars.length / 4)
       }];
     });
   });
