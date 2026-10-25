@@ -116,7 +116,7 @@ function passwordReset({ name, token, locale }) {
 }
 
 const teacherManageUrl = (course, story) => `${frontendUrl()}/teacher/course/${course.id}/manage?story=${story.id}`;
-const lessonUrl = (course, story) => `${frontendUrl()}/student/course/${course.id}/play?story=${story.id}`;
+const lessonUrl = (course, story) => `${frontendUrl()}/student/course/${course.id}/play?story=${story.id}&focus=comments`;
 
 /** Aviso al docente en su idioma, conservando el mensaje original. */
 function newQuestion({ teacherName, authorName, course, story, body, locale }) {

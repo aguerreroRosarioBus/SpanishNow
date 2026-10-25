@@ -45,7 +45,8 @@ export class StoryPlayerComponent implements OnInit, OnDestroy {
     }
     this.route.params.subscribe(params => {
       const story = Number(this.route.snapshot?.queryParamMap?.get('story'));
-      this.nav.load(+params['courseId'], Number.isInteger(story) && story > 0 ? story : null);
+      const focusComments = this.route.snapshot?.queryParamMap?.get('focus') === 'comments';
+      this.nav.load(+params['courseId'], Number.isInteger(story) && story > 0 ? story : null, focusComments);
     });
   }
 
