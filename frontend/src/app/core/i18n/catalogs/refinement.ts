@@ -1,6 +1,7 @@
 import { TranslationCatalog } from '../i18n.types';
 
 export const REFINEMENT_EN = {
+ "refine.unsavedEscape": "You have unsaved changes. Use the form buttons to save them or explicitly discard them.",
  "refine.policyKeep": "Keep this package’s policy",
  "refine.searchPackages": "Search by package or teacher",
  "refine.policyRetainedUnknown": "The existing package policy is retained.",
@@ -74,6 +75,7 @@ export const REFINEMENT_EN = {
 } satisfies TranslationCatalog;
 
 export const REFINEMENT_ES = {
+ "refine.unsavedEscape": "Tienes cambios sin guardar. Usa los botones del formulario para guardarlos o descartarlos expresamente.",
  "refine.policyKeep": "Conservar la política de este paquete",
  "refine.searchPackages": "Buscar por paquete o docente",
  "refine.policyRetainedUnknown": "Se conserva la política de este paquete.",

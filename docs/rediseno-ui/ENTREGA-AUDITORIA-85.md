@@ -52,7 +52,7 @@ Superficies compartidas: cambios mínimos en el encabezado/layout para mover la 
 
 ## Validación
 
-- Angular: 602 pruebas verdes en 85 archivos. Once pruebas adicionales cubren importes, DST, selección completa de grupo, foco y confirmación independiente de cada orden.
+- Angular: 603 pruebas verdes en 85 archivos. Doce pruebas adicionales cubren importes, DST, selección completa de grupo, foco y confirmación independiente de cada orden.
 - Build de producción verde sin ampliar presupuestos. Persisten avisos de Sass/Bootstrap, tamaño inicial y algunos estilos existentes; el resultado queda por debajo de los umbrales de error.
 - 30 combinaciones de vista y rol en 390, 1024 y 1440 px: 90 capturas base; sin desborde horizontal de página. Tablas mantienen scroll interno cuando es necesario.
 - Diez escenas dirigidas en los tres anchos: 30 comprobaciones de teclado, campos, estados y geometría. Las esperas se sincronizan con el DOM; se descartaron falsos fallos por evaluar antes del render.
@@ -82,3 +82,5 @@ No hubo cambios de base de datos ni se volvió a ejecutar el seed. Las imágenes
 Andrés autorizó expresamente merge y reinicio de `spanishnow public` después de las validaciones. El servicio sincroniza main y reinicia; se verificará que la copia fija use el merge y que la URL pública responda.
 
 Reversión: revertir el commit del PR y dejar al servicio sincronizar la nueva main. No hay migraciones ni datos que revertir.
+
+Protección adicional de U02: Escape conserva formularios editados o con archivos seleccionados y muestra un aviso EN/ES dentro de la ventana. El usuario guarda o descarta mediante los botones explícitos; los diálogos sin cambios conservan cierre por Escape y retorno de foco. Una prueba adicional verifica borrador y cambio de idioma.
