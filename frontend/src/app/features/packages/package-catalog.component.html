@@ -126,7 +126,7 @@
       </section>
       <ng-template #footer>
         <button type="button" class="btn btn-secondary" (click)="closeEditor()" [disabled]="busy()">{{ 'packages.close' | t }}</button>
-        <button type="submit" form="catalogEditorForm" class="btn btn-primary" [disabled]="busy() || form.invalid || !priceValid() || !form.get('validityHours')?.value">{{ 'packages.save' | t }}</button>
+        <button type="submit" form="catalogEditorForm" class="btn btn-primary" [disabled]="busy() || form.invalid || !priceValid() || !form.get('validityHours')?.value">{{ (selected() ? 'packages.save' : 'packages.create') | t }}</button>
       </ng-template>
     </p-dialog>
   }

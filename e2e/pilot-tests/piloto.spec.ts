@@ -122,7 +122,34 @@ for (const locale of ['es', 'en'] as const) {
     await sameHeight(drawer.locator('#nameEs'), drawer.locator('#groupSize'));
     await page.screenshot({ path: info.outputPath('editor-paquete.png'), fullPage: true });
     await page.keyboard.press('Escape'); await expect(drawer).toHaveCount(0);
-    await healthy(page, errors); expect(writes).toEqual([]); expect(originalAmount).toBe('9000');
+    await healthy(page, errors); expect(writes).toEqual([]); expect(originalAmount).toBe('90.00');
+  });
+  test(`${locale}: crear, duplicar un archivado y archivar con confirmación`, async ({ page }, info) => {
+    const { errors, writes } = await setup(page, locale);
+    await page.goto('/teacher/class-packages');
+    await expect(page.locator('.package-card')).toHaveCount(4);
+    await page.locator('[data-tour=catalog-create]').click();
+    let drawer = page.getByRole('dialog'); await expect(drawer).toBeVisible(); await expect(drawer).toHaveCSS('opacity', '1');
+    await expect(drawer.locator('#nameEs')).toBeInViewport();
+    await page.screenshot({ path: info.outputPath('crear-paquete.png') });
+    await page.keyboard.press('Escape'); await expect(drawer).toHaveCount(0);
+    const archived = page.locator('.package-card[data-status=archived]');
+    await expect(archived.locator('.archived-note')).toBeVisible();
+    await archived.getByRole('button', { name: locale === 'es' ? /Duplicar/ : /Duplicate/ }).click();
+    drawer = page.getByRole('dialog'); await expect(drawer).toBeVisible();
+    await expect(drawer.locator('#nameEs')).toHaveValue(/\(copia\)$/);
+    await expect(drawer.locator('#hotmartOfferCode')).toHaveValue('');
+    await page.screenshot({ path: info.outputPath('duplicar-archivado.png') });
+    await page.keyboard.press('Escape'); await expect(drawer).toHaveCount(0);
+    const active = page.locator('.package-card[data-status=active]');
+    await active.locator('.package-menu').click();
+    await page.getByRole('button', { name: locale === 'es' ? /^Archivar —/ : /^Archive —/ }).click();
+    const confirm = page.getByRole('dialog'); await expect(confirm).toBeVisible();
+    await expect(confirm).toContainText(locale === 'es' ? 'definitivo' : 'final');
+    await page.screenshot({ path: info.outputPath('archivar-confirmacion.png') });
+    await confirm.getByRole('button', { name: locale === 'es' ? /Cancelar/ : /Cancel/ }).click();
+    await expect(confirm).toHaveCount(0);
+    await healthy(page, errors); expect(writes).toEqual([]);
   });
   test(`${locale}: proponer abre un panel sin desplazar la agenda`, async ({ page }, info) => {
     const { errors, writes } = await setup(page, locale);
