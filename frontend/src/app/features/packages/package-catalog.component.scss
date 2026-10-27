@@ -49,3 +49,8 @@
 .sales-strip[open]>summary::after { content: '−'; }
 .sales-strip>summary::-webkit-details-marker { display: none; }
 @media(max-width:760px) { .catalog-heading { flex-direction: row; align-items: center; } .catalog-import-text { display: none; } .catalog-heading button { width: 44px; height: 44px; padding: 0; justify-content: center; } .sales-strip > button { margin-left: 0; } }
+
+.catalog-tools { display: flex; align-items: center; gap: 8px; }
+.archived-note { margin: 12px 0 0; font-size: .8125rem; color: var(--color-text-light); }
+.btn.is-editing { border-color: var(--color-primary); box-shadow: 0 0 0 2px var(--color-primary-soft); }
+@media(max-width:760px) { .catalog-heading .catalog-tools .btn-primary { width: auto; padding: 0 14px; } }

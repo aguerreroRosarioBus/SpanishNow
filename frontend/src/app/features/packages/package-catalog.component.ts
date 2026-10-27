@@ -12,10 +12,11 @@ import { DialogModule } from 'primeng/dialog';
 import { NgbDropdownModule } from '@ng-bootstrap/ng-bootstrap';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { PilotTheme } from '../../shared/styles/primeng-theme';
+import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { RestoreFocusDirective } from '../../shared/directives/restore-focus.directive';
 const editable = ['nameEn','nameEs','descriptionEn','descriptionEs','modality','groupSize','billing','sessionsCount','minutesPerSession','seatsCovered','priceAmount','currency','validityHours','policyVersionId','hotmartProductId','hotmartOfferCode','hotmartCheckoutUrl'] as const;
 @Component({
-  selector:'app-package-catalog', standalone:true, imports:[TranslatePipe,FormsModule,ReactiveFormsModule,PackageOrientationComponent,DialogModule,NgbDropdownModule,IconComponent,RestoreFocusDirective],
+  selector:'app-package-catalog', standalone:true, imports:[TranslatePipe,FormsModule,ReactiveFormsModule,PackageOrientationComponent,DialogModule,NgbDropdownModule,IconComponent,RestoreFocusDirective,ConfirmDialogComponent],
   templateUrl:'./package-catalog.component.html', styleUrl:'./package-catalog.component.scss'
 })
 export class PackageCatalogComponent implements OnInit {
@@ -47,7 +48,12 @@ export class PackageCatalogComponent implements OnInit {
   private failure = signal<unknown>(null);
   error = computed(()=> this.failure() ? this.api.error(this.failure()) : '');
   saved = signal(false);
-  closeEditor() { if (!this.busy()) this.selected.set(null); }
+  /** `edit` modifica un paquete existente; `create` y `duplicate` abren el mismo editor para un paquete nuevo (nace borrador). */
+  mode = signal<'edit'|'create'|'duplicate'|null>(null);
+  editorOpen = computed(()=>this.mode()!==null);
+  notice = signal(false);
+  archiveTarget = signal<PackageTemplate|null>(null);
+  closeEditor() { if (!this.busy()) { this.selected.set(null); this.mode.set(null); } }
   readonly form: FormGroup = this.fb.group({
     ...Object.fromEntries(editable.map(k=>[k,['',k.startsWith('name') ? Validators.required : []]])),
     expectations:this.fb.group(Object.fromEntries(this.locales.map(l=>[l,this.fb.group(Object.fromEntries(EXPECTATION_FIELDS.map(k=>[k,['',Validators.maxLength(4000)]])))])))
@@ -64,8 +70,32 @@ export class PackageCatalogComponent implements OnInit {
   /** Plantilla sin versión vigente: no tiene nombre ni condiciones que mostrar (ver `PackageTemplate.current`). */
   incomplete(t: PackageTemplate) { return !t.current; }
   name(t: PackageTemplate) { return !t.current ? t.templateKey : this.i18n.locale()==='es' ? t.current.nameEs : t.current.nameEn; }
+  startCreate() { this.openNew('create', null); }
+  duplicate(t: PackageTemplate) { this.openNew('duplicate', t); }
+  private openNew(mode: 'create'|'duplicate', source: PackageTemplate|null) {
+    this.selected.set(null); this.mode.set(mode); this.saved.set(false); this.notice.set(false); this.failure.set(null);
+    const blank = Object.fromEntries(this.locales.map(l => [l, Object.fromEntries(this.fields.map(k => [k, '']))]));
+    const base = source ? (source.current ?? source.lastVersion) : null;
+    this.form.reset();
+    if (base) {
+      // Se copian producto y link de Hotmart, pero no el código de oferta: cada precio necesita su propia oferta.
+      this.form.patchValue({ ...base, nameEn:`${base.nameEn} (copy)`, nameEs:`${base.nameEs} (copia)`,
+        hotmartOfferCode:'', policyVersionId:'', expectations: base.expectations ?? blank });
+    } else {
+      this.form.patchValue({ modality:'individual', groupSize:1, billing:'per_buyer', seatsCovered:1, currency:'USD', expectations: blank });
+    }
+    this.priceText.set(base?.priceAmount?moneyInputValue(base.priceAmount,base.currency):'');
+    this.validityInDays.set(!base?.validityHours||base.validityHours%24===0);
+  }
+  /** Clave técnica única por docente: slug ASCII del nombre en español más un sufijo corto aleatorio. */
+  templateKey(name: string) {
+    const slug = name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,50).replace(/-+$/,'') || 'paquete';
+    return `${slug}-${Math.random().toString(36).slice(2,6).padEnd(4,'0')}`;
+  }
+  askArchive(t: PackageTemplate) { if (!this.busy()) this.archiveTarget.set(t); }
+  confirmArchive() { const t=this.archiveTarget(); this.archiveTarget.set(null); if (t) this.status(t,'archived'); }
   edit(t: PackageTemplate) {
-    this.selected.set(t); this.saved.set(false); this.failure.set(null);
+    this.selected.set(t); this.mode.set('edit'); this.saved.set(false); this.notice.set(false); this.failure.set(null);
     const blank = Object.fromEntries(this.locales.map(l => [l, Object.fromEntries(this.fields.map(k => [k, '']))]));
     this.form.reset();
     // Sin versión vigente se parte de la última guardada, si la hay; si no, solo de la modalidad individual y el docente
@@ -76,7 +106,20 @@ export class PackageCatalogComponent implements OnInit {
     this.priceText.set(base?.priceAmount?moneyInputValue(base.priceAmount,base.currency):'');
     this.validityInDays.set(!base?.validityHours||base.validityHours%24===0);
   }
+  private create(retry=true) {
+    const body = this.form.getRawValue();
+    if (body.policyVersionId == null || body.policyVersionId === '') delete body.policyVersionId;
+    for (const k of this.providerFields) if (!body[k]) delete body[k];
+    this.api.create({...body,templateKey:this.templateKey(body.nameEs||body.nameEn)}).subscribe({
+      next:t=>{this.items.update(items=>[...items,t]);this.mode.set(null);this.notice.set(true);this.busy.set(false);},
+      error:e=>{ if ((e as {error?:{code?:string}})?.error?.code==='template_key_conflict' && retry) this.create(false); else this.fail(e); }
+    });
+  }
   save() {
+    if (this.mode()==='create' || this.mode()==='duplicate') {
+      if (this.busy() || this.form.invalid || !this.priceValid() || !Number.isSafeInteger(this.form.get('validityHours')?.value) || this.form.get('validityHours')?.value<1) return;
+      this.busy.set(true); this.failure.set(null); this.create(); return;
+    }
     const t=this.selected(); if(!t || this.busy() || this.form.invalid || !this.priceValid() || !Number.isSafeInteger(this.form.get('validityHours')?.value) || this.form.get('validityHours')?.value<1) return;
     this.busy.set(true); this.failure.set(null); this.saved.set(false);
     const body = this.form.getRawValue();

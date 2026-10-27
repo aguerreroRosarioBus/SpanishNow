@@ -22,10 +22,14 @@
   <section aria-labelledby="packagesTitle">
     <div class="catalog-heading">
       <h2 id="packagesTitle">{{ 'packages.catalog.listTitle' | t }} <span class="item-count">{{ items().length }}</span></h2>
-      @if (items().length) {
-        <button type="button" class="btn btn-ghost" [disabled]="busy()" [attr.aria-label]="'packages.catalog.import'|t" (click)="importInitial()"><app-icon name="download" [size]="16" /><span class="catalog-import-text">{{ 'packages.catalog.import' | t }}</span></button>
-      }
+      <div class="catalog-tools">
+        <button type="button" class="btn btn-primary" [disabled]="busy()" data-tour="catalog-create" aria-haspopup="dialog" [attr.aria-expanded]="editorOpen() && !selected()" (click)="startCreate()"><app-icon name="plus" [size]="16" />{{ 'packages.create' | t }}</button>
+        @if (items().length) {
+          <button type="button" class="btn btn-ghost" [disabled]="busy()" [attr.aria-label]="'packages.catalog.import'|t" (click)="importInitial()"><app-icon name="download" [size]="16" /><span class="catalog-import-text">{{ 'packages.catalog.import' | t }}</span></button>
+        }
+      </div>
     </div>
+    @if (notice()) { <p class="alert alert-success" role="status">{{ 'packages.created' | t }}</p> }
     @if (busy()) { <p class="small" role="status">{{ 'packages.loading' | t }}</p> }
     <label for="catalogStatus" class="form-label">{{'student.status'|t}}</label><select id="catalogStatus" class="form-select mb-3" style="max-width:260px" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event)"><option value="all">{{'refine.all'|t}}</option>@for(s of ['active','draft','paused','archived'];track s){<option [value]="s">{{('packages.status.'+s)|t}}</option>}</select>
     <div class="package-grid">
@@ -46,20 +50,22 @@
             <footer class="package-card__footer">
               <small>{{ 'packages.version' | t:{version:current.version} }}</small>
               <div class="package-actions">
-                <button type="button" class="btn btn-secondary" [disabled]="busy() || item.status==='archived'" data-tour="catalog-edit" (click)="edit(item)" [attr.aria-label]="('packages.edit' | t) + ' — ' + name(item)">
+                <button type="button" class="btn btn-secondary" [class.is-editing]="selected()?.id===item.id" [attr.aria-expanded]="selected()?.id===item.id" aria-haspopup="dialog" [disabled]="busy() || item.status==='archived'" data-tour="catalog-edit" (click)="edit(item)" [attr.aria-label]="('packages.edit' | t) + ' — ' + name(item)">
                   <app-icon name="pencil" [size]="15" />{{ 'packages.edit' | t }}
                 </button>
+                <button type="button" class="btn btn-secondary" [disabled]="busy()" aria-haspopup="dialog" (click)="duplicate(item)" [attr.aria-label]="('packages.dup' | t) + ' — ' + name(item)"><app-icon name="copy" [size]="15" />{{ 'packages.dup' | t }}</button>
                 @if (item.status !== 'archived') {
                   <div ngbDropdown container="body" placement="bottom-end">
                     <button type="button" class="btn btn-ghost package-menu" ngbDropdownToggle [disabled]="busy()" [attr.aria-label]="('packages.ui.actions' | t) + ' — ' + name(item)"><app-icon name="more" [size]="18" /></button>
                     <div ngbDropdownMenu>
                       <button type="button" ngbDropdownItem [attr.aria-label]="((item.status==='active'?'packages.pause':'packages.activate') | t) + ' — ' + name(item)" (click)="status(item,item.status==='active'?'paused':'active')">{{ (item.status==='active'?'packages.pause':'packages.activate') | t }}</button>
-                      <button type="button" ngbDropdownItem [attr.aria-label]="('packages.archive' | t) + ' — ' + name(item)" (click)="status(item,'archived')">{{ 'packages.archive' | t }}</button>
+                      <button type="button" ngbDropdownItem [attr.aria-label]="('packages.archive' | t) + ' — ' + name(item)" (click)="askArchive(item)">{{ 'packages.archive' | t }}</button>
                     </div>
                   </div>
                 }
               </div>
             </footer>
+            @if (item.status === 'archived') { <p class="archived-note">{{ 'packages.archNote' | t }}</p> }
           } @else {
             <p class="alert alert-warning" role="status">{{ 'packages.catalog.missingVersion' | t }}</p>
             <div class="package-actions">
@@ -79,12 +85,15 @@
       }
     </div>
   </section>
-  @if (selected(); as item) {
+  <app-confirm-dialog [show]="!!archiveTarget()" [title]="'packages.archTitle' | t" [message]="'packages.archMsg' | t" [confirmText]="'packages.archive' | t" type="danger" (confirmed)="confirmArchive()" (cancelled)="archiveTarget.set(null)" />
+  @if (editorOpen()) {
+    @let item = selected();
     <p-dialog appRestoreFocus [visible]="true" (visibleChange)="!$event && closeEditor()" position="right" appendTo="self"
-      [header]="('packages.edit' | t) + ' — ' + name(item)" [closeAriaLabel]="'packages.close' | t"
+      [header]="item ? ('packages.edit' | t) + ' — ' + name(item) : (mode()==='duplicate' ? 'packages.dupTitle' : 'packages.create') | t" [closeAriaLabel]="'packages.close' | t"
       [modal]="true" [draggable]="false" [resizable]="false" [blockScroll]="true" [closeOnEscape]="!busy()" [closable]="!busy()" styleClass="pilot-editor pilot-sheet">
       <section data-tour="catalog-editor">
-        <p class="editor-hint">{{ (item.current ? 'packages.catalog.immutable' : 'packages.catalog.completeHint') | t }}</p>
+        <p class="editor-hint">{{ (mode()!=='edit' ? 'packages.newHint' : item?.current ? 'packages.catalog.immutable' : 'packages.catalog.completeHint') | t }}</p>
+        @if (mode()==='duplicate') { <p class="editor-hint">{{ 'packages.dupHint' | t }}</p> }
         @if (error()) { <p class="alert alert-danger" role="alert">{{ error() }}</p> }
       <form id="catalogEditorForm" [formGroup]="form" (ngSubmit)="save()">
         <div class="row g-3">
@@ -100,7 +109,7 @@
           <div class="col-md-4"><label for="groupSize" class="form-label">{{ 'packages.field.modality' | t }}</label><select id="groupSize" class="form-select" [value]="form.get('groupSize')?.value" (change)="modality($any($event.target).value)"><option value="1">{{ 'packages.individual' | t }}</option><option value="2">{{ 'packages.group2' | t }}</option><option value="3">{{ 'packages.group3' | t }}</option></select></div>
         </div>
         <p class="form-text mt-3">{{'refine.elapsedHint'|t}}</p>
-        <section class="policy-summary"><label for="policyChoice" class="form-label">{{'refine.policy'|t}}</label><select id="policyChoice" class="form-select mb-2" [value]="form.get('policyVersionId')?.value||''" (change)="form.patchValue({policyVersionId:$any($event.target).value ? +$any($event.target).value : ''})">@if(item.current||item.lastVersion){<option [value]="item.current?.policyVersionId||item.lastVersion?.policyVersionId">{{'refine.policyKeep'|t}}</option>}<option value="">{{'refine.policyCurrent'|t}}</option></select><p class="small">{{((item.current||item.lastVersion)&&form.get('policyVersionId')?.value?(item.policy?.version?'refine.policyRetained':'refine.policyRetainedUnknown'):'refine.policyCurrent')|t:{version:item.policy?.version||''} }}</p></section>
+        <section class="policy-summary"><label for="policyChoice" class="form-label">{{'refine.policy'|t}}</label><select id="policyChoice" class="form-select mb-2" [value]="form.get('policyVersionId')?.value||''" (change)="form.patchValue({policyVersionId:$any($event.target).value ? +$any($event.target).value : ''})">@if(item&&(item.current||item.lastVersion)){<option [value]="item.current?.policyVersionId||item.lastVersion?.policyVersionId">{{'refine.policyKeep'|t}}</option>}<option value="">{{'refine.policyCurrent'|t}}</option></select><p class="small">{{((item&&(item.current||item.lastVersion))&&form.get('policyVersionId')?.value?(item?.policy?.version?'refine.policyRetained':'refine.policyRetainedUnknown'):'refine.policyCurrent')|t:{version:item?.policy?.version||''} }}</p></section>
         <details class="editor-section"><summary>{{'refine.provider'|t}}</summary><div class="row g-3 mt-1">@for(field of providerFields;track field){<div class="col-md-6"><label [for]="field" class="form-label">{{('packages.field.'+field)|t}}</label><input [id]="field" class="form-control" [formControlName]="field" maxlength="500"></div>}</div></details>
         <details class="editor-section"><summary>{{'refine.translations'|t}}</summary>
         <div class="row g-3 mt-1">@for(field of descriptionFields;track field){<div class="col-md-6"><label [for]="field" class="form-label">{{('packages.field.'+field)|t}}</label><textarea [id]="field" class="form-control" [formControlName]="field" rows="3" maxlength="8000"></textarea></div>}</div>
