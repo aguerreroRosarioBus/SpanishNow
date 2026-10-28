@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 jest.mock('../src/config/database', () => ({ transaction: jest.fn(fn => fn({ LOCK: { UPDATE: 'UPDATE' } })), close: jest.fn(async () => {}) }));
-jest.mock('../src/models', () => ({ GoogleConnection: { upsert: jest.fn(), findOne: jest.fn(), findByPk: jest.fn(), update: jest.fn(), destroy: jest.fn() } }));
+jest.mock('../src/models', () => ({ GoogleConnection: { upsert: jest.fn(), findOne: jest.fn(), findByPk: jest.fn(), update: jest.fn(), destroy: jest.fn() }, ExternalConnection: { count: jest.fn(async () => 0) } }));
 const { GoogleConnection: Connection } = require('../src/models');
 const google = require('../src/services/liveGoogleService');
 const hash = s => crypto.createHash('sha256').update(s).digest('hex');
@@ -13,7 +13,8 @@ beforeEach(() => {
   process.env.GOOGLE_TOKEN_ENCRYPTION_KEY = Buffer.alloc(32, 7).toString('base64');
   row = { userId: 7, update: jest.fn(async values => Object.assign(row, values)) };
   Connection.upsert.mockImplementation(async values => { Object.assign(row, values); });
-  Connection.findOne.mockResolvedValue(row); Connection.findByPk.mockResolvedValue(row);
+  Connection.update.mockImplementation(async values => { Object.assign(row, values); });
+  Connection.findOne.mockImplementation(async ({ where }) => (where.oauthStateHash === row.oauthStateHash ? row : null)); Connection.findByPk.mockResolvedValue(row);
   global.fetch = jest.fn();
 });
 afterEach(() => { process.env = env; jest.restoreAllMocks(); });
@@ -65,17 +66,46 @@ test('callback rejects mismatched cookies, missing state, expiry and replay befo
   await expect(google.callback(req)).rejects.toThrow(/venció/);
   expect(fetch).not.toHaveBeenCalled();
 });
-test('callback consumes state once and stores encrypted credentials; secrets never enter the return URL', async () => {
-  const req = await pending();
-  fetch.mockResolvedValueOnce(response({ access_token: 'private-access', refresh_token: 'private-refresh', expires_in: 3600, scope: google.SCOPES.join(' ') }))
-    .mockResolvedValueOnce(response({ email: 'teacher@example.test' }));
-  await google.callback(req);
+const grant = () => fetch.mockResolvedValueOnce(response({ access_token: 'private-access', refresh_token: 'private-refresh', expires_in: 3600, scope: google.SCOPES.join(' ') }))
+  .mockResolvedValueOnce(response({ email: 'teacher@example.test' }));
+test('callback consumes state once and only stages the result: no credentials are saved until complete()', async () => {
+  const req = await pending(); grant();
+  const token = await google.callback(req);
   expect(row.update).toHaveBeenCalledWith({ oauthStateHash: null, oauthVerifier: null, oauthExpiresAt: null }, expect.any(Object));
-  const saved = Connection.update.mock.calls[0][0];
-  expect(saved.email).toBe('teacher@example.test'); expect(saved.credentials).not.toContain('private');
-  expect(google.decrypt(saved.credentials)).toMatchObject({ accessToken: 'private-access', refreshToken: 'private-refresh' });
+  expect(token).toMatch(/^[\w-]{43}$/); expect(row.oauthStateHash).toBe(hash(token));
+  expect(row.credentials).toBeUndefined(); expect(row.email).toBeUndefined();
+  expect(row.oauthVerifier).not.toContain('private');
   expect(fetch.mock.calls[0][1].body.get('code_verifier')).toBeTruthy();
   await expect(google.callback(req)).rejects.toThrow(/venció/);
+});
+test('complete by the initiating teacher stores encrypted credentials and the token is single use', async () => {
+  const token = await google.callback((grant(), await pending()));
+  expect(await google.complete(7, token)).toEqual({ configured: true, connected: true, email: 'teacher@example.test' });
+  expect(row.credentials).not.toContain('private');
+  expect(google.decrypt(row.credentials)).toMatchObject({ accessToken: 'private-access', refreshToken: 'private-refresh' });
+  expect(row.oauthStateHash).toBeNull();
+  await expect(google.complete(7, token)).rejects.toMatchObject({ status: 400, code: 'oauth_state_invalid' });
+});
+test('regression #51: teacher A starts, teacher B completes -> rejected, A connection unchanged, token consumed and tokens revoked', async () => {
+  row.credentials = google.encrypt({ accessToken: 'a-access', refreshToken: 'a-refresh', expiresAt: 1 }); row.email = 'a@example.test';
+  const before = { credentials: row.credentials, email: row.email };
+  const token = await google.callback((grant(), await pending()));
+  const rowB = { userId: 8, credentials: null };
+  Connection.findByPk.mockImplementation(async id => (id === 8 ? rowB : row));
+  fetch.mockResolvedValueOnce(response({}));
+  await expect(google.complete(8, token)).rejects.toMatchObject({ status: 403, code: 'oauth_user_mismatch' });
+  expect({ credentials: row.credentials, email: row.email }).toEqual(before);
+  expect(row.oauthStateHash).toBeNull(); expect(fetch.mock.calls.at(-1)[0]).toBe('https://oauth2.googleapis.com/revoke');
+  await expect(google.complete(7, token)).rejects.toMatchObject({ status: 400, code: 'oauth_state_invalid' });
+  expect(google.decrypt(row.credentials)).toMatchObject({ refreshToken: 'a-refresh' });
+});
+test('complete rejects expired, unknown and malformed tokens', async () => {
+  const token = await google.callback((grant(), await pending()));
+  row.oauthExpiresAt = new Date(Date.now() - 1000);
+  await expect(google.complete(7, token)).rejects.toMatchObject({ code: 'oauth_state_invalid' });
+  await expect(google.complete(7, 'x'.repeat(43))).rejects.toMatchObject({ code: 'oauth_state_invalid' });
+  await expect(google.complete(7, undefined)).rejects.toMatchObject({ code: 'oauth_state_invalid' });
+  expect(row.credentials).toBeUndefined();
 });
 test('partial consent never replaces a valid existing connection', async () => {
   const req = await pending();
