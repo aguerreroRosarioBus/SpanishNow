@@ -49,6 +49,7 @@ export class PackagesService {
   importInitial() { return this.http.post<PackageTemplate[]>(`${this.base}/teacher/class-packages/import-initial`, {}); }
   settings() { return this.http.get<ClassSettings>(`${this.base}/teacher/class-settings`); }
   pause(salesPaused: boolean) { return this.http.patch<ClassSettings>(`${this.base}/teacher/class-settings`, {salesPaused}); }
+  create(body: unknown) { return this.http.post<PackageTemplate>(`${this.base}/teacher/class-packages`, body); }
   save(id: number, body: unknown) { return this.http.post<PackageTemplate>(`${this.base}/teacher/class-packages/${id}/versions`, body); }
   status(id: number, status: string, version: number) { return this.http.patch<PackageTemplate>(`${this.base}/teacher/class-packages/${id}/status`, {status, version}); }
   error(error: unknown) {
