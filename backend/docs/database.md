@@ -213,6 +213,12 @@ Por qué: corre una vez por despliegue (no en cada reinicio ni en cada réplica)
 
 Archivo `migrations/AAAAMMDDHHMMSS-descripcion.js` con `up(queryInterface, Sequelize)` y `down`. Reglas del repo: idempotente cuando sea posible (consultar el esquema antes de crear o alterar), confirmación por variable de entorno para cualquier borrado de datos, y fijar `charset`/`collate` si la tabla debe ser independiente de la base. No hace falta detector en `adoptChecks.js`: `adopt` existe solo para las migraciones anteriores al runner.
 
+## Recibos de webhooks Zoom (W08 / #54)
+
+`20261027120000-create-zoom-webhook-receipts.js` agrega `zoom_webhook_receipts`: PK `eventKey` (SHA-256 del identificador del evento y conexión; si Zoom no envía `event_id`, hash del JSON canonizado) y `receivedAt` indexado. No guarda payload, secretos ni IDs de cuenta en claro; no depende de tablas con migraciones históricas fechadas en noviembre. `up` es idempotente y fija InnoDB/utf8mb4_bin. `down` exige `CONFIRM_ZOOM_WEBHOOK_RECEIPTS_DATA_LOSS=yes` si hay filas.
+
+El recibo se confirma en la misma transacción que los efectos y auditoría, bajo el lock de la conexión. El lookup es por PK; ya no lee el historial de `audit_logs`. Se conservan los recibos recientes durante siete días; cada evento autenticado de una conexión conocida elimina como máximo 100 recibos anteriores a ese plazo mediante el índice temporal, en autocommit para no sostener gap locks durante los efectos. La limpieza es progresiva y puede dejar recibos antiguos si no llegan más eventos. La auditoría histórica se conserva y no se migra a recibos; la deduplicación de esta tabla empieza al aplicar el cambio.
+
 ## Hallazgos pendientes
 
 - El modelo `Question` declara `answerType` con `open_ended`, pero la columna real es `ENUM('yes_no','choice')` desde la baseline (igual que en el dump): insertar una pregunta abierta fallaría en MySQL estricto. Es previo a este cambio; hace falta una migración si se quiere esa opción.

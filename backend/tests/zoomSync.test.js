@@ -493,3 +493,66 @@ test.each([
   expect((await job.reload()).status).toBe('done');
   expect((await refFor(c.session.id)).status).toBe('ready');
 });
+
+test.each([false, true])('dedupe indexado: copias simultáneas=%s, un solo recibo, auditoría y efecto', async concurrent => {
+  const c = await fixture(); await sync(c.session.id);
+  const ref = await refFor(c.session.id);
+  const { tokens } = await connection.credentials(c.teacher.id);
+  const body = { event: 'meeting.updated', event_id: uuid(), event_ts: Date.now(), payload: { account_id: tokens.accountId,
+    object: { id: ref.externalId, start_time: new Date(c.session.startsAt.getTime() + 60000).toISOString() } } };
+  const before = await M.OutboxJob.count({ where: { aggregateId: c.session.id, topic: 'zoom.sync' } });
+  const audits = jest.spyOn(M.AuditLog, 'findAll'); const counts = jest.spyOn(M.AuditLog, 'count');
+  if (concurrent) {
+    // Las dos peticiones llegan al mismo grant antes de intentar su transacción.
+    const read = connection.readTokens;
+    let arrivals = 0, release;
+    const barrier = new Promise(resolve => { release = resolve; });
+    jest.spyOn(connection, 'readTokens').mockImplementation(async row => {
+      const result = await read(row);
+      if (row.id === ref.connectionId) { arrivals += 1; if (arrivals === 2) release(); await barrier; }
+      return result;
+    });
+    const results = await Promise.all([webhook(body), webhook({ payload: body.payload, event_ts: body.event_ts, event_id: body.event_id, event: body.event })]);
+    expect(results.map(r => r.status)).toEqual([200, 200]);
+  } else {
+    expect((await webhook(body)).status).toBe(200);
+    expect((await webhook(body)).status).toBe(200);
+  }
+  expect(audits).not.toHaveBeenCalled(); expect(counts).not.toHaveBeenCalled();
+  expect(await M.OutboxJob.count({ where: { aggregateId: c.session.id, topic: 'zoom.sync' } })).toBe(before + 1);
+  expect(await M.AuditLog.count({ where: { action: 'zoom.webhook', entityId: ref.connectionId } })).toBe(1);
+  const eventKey = adapter.hash(JSON.stringify([ref.connectionId, body.event_id]));
+  expect(await M.ZoomWebhookReceipt.count({ where: { eventKey } })).toBe(1);
+  expect((await M.ClassSession.findByPk(c.session.id)).status).toBe('confirmed');
+  expect((await c.purchases[0].reload()).unitsConsumed).toBe(0);
+});
+
+test('sin event_id deduplica JSON con distinto orden; un fallo revierte recibo y permite reintento', async () => {
+  const c = await fixture(); await sync(c.session.id); const ref = await refFor(c.session.id);
+  const { tokens } = await connection.credentials(c.teacher.id);
+  const body = { event: 'meeting.deleted', event_ts: Date.now(), payload: { account_id: tokens.accountId, object: { id: ref.externalId } } };
+  jest.spyOn(M.AuditLog, 'create').mockRejectedValueOnce(new Error('fallo local simulado'));
+  expect((await webhook(body)).status).toBe(500);
+  expect((await refFor(c.session.id)).status).toBe('ready');
+  expect((await webhook(body)).status).toBe(200);
+  expect((await webhook({ payload: { object: { id: ref.externalId }, account_id: tokens.accountId }, event_ts: body.event_ts, event: body.event })).status).toBe(200);
+  expect(await M.AuditLog.count({ where: { action: 'zoom.webhook', entityId: ref.connectionId } })).toBe(1);
+  expect((await refFor(c.session.id)).lastError).toBe('zoom_meeting_missing');
+});
+
+test('recibos: limpieza temporal indexada en lotes acotados, conserva recientes', async () => {
+  const c = await fixture(); await sync(c.session.id); const ref = await refFor(c.session.id);
+  const { tokens } = await connection.credentials(c.teacher.id);
+  const prefix = uuid();
+  const oldKeys = Array.from({ length: 101 }, (_, i) => adapter.hash(`${prefix}:${i}`));
+  const recentKey = adapter.hash(`${prefix}:recent`);
+  await M.ZoomWebhookReceipt.bulkCreate([...oldKeys.map(eventKey => ({ eventKey, receivedAt: new Date(Date.now() - 8 * 86400000) })),
+    { eventKey: recentKey, receivedAt: new Date() }]);
+  const event = { event: 'meeting.ended', event_ts: Date.now(), payload: { account_id: tokens.accountId, object: { id: ref.externalId } } };
+  expect((await webhook(event)).status).toBe(200);
+  expect(await M.ZoomWebhookReceipt.count({ where: { eventKey: oldKeys } })).toBe(1);
+  expect(await M.ZoomWebhookReceipt.findByPk(recentKey)).toBeTruthy();
+  expect((await webhook(event)).status).toBe(200);
+  expect(await M.ZoomWebhookReceipt.count({ where: { eventKey: oldKeys } })).toBe(0);
+  await M.ZoomWebhookReceipt.destroy({ where: { eventKey: recentKey } });
+});

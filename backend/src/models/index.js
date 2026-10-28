@@ -57,6 +57,7 @@ const CourseExpectations = require('./CourseExpectations');
 const CourseCheckoutSnapshot = require('./CourseCheckoutSnapshot');
 const ClassPackageProviderVerification = require('./ClassPackageProviderVerification');
 const AuditLog = require('./AuditLog');
+const ZoomWebhookReceipt = require('./ZoomWebhookReceipt');
 
 // Define associations
 User.hasMany(Course, { foreignKey: 'teacherId', as: 'courses' });
@@ -296,5 +297,6 @@ module.exports = {
   CourseExpectations,
   CourseCheckoutSnapshot,
   ClassPackageProviderVerification,
-  AuditLog
+  AuditLog,
+  ZoomWebhookReceipt
 };
