@@ -136,9 +136,12 @@ async function runOnce({ workerId = DEFAULT_WORKER, limit = 20, now = null, leas
     } catch (error) {
       const attempts = job.attempts + 1;
       const failed = attempts >= job.maxAttempts;
+      // Extensión aditiva del contrato de error: retryAt es el plazo absoluto del proveedor (epoch ms).
+      // Nunca acortarlo con el backoff local ni limitarlo a MAX_BACKOFF_MS.
+      const providerRetryAt = Number.isFinite(error?.retryAt) && Number.isFinite(new Date(error.retryAt).getTime()) ? error.retryAt : 0;
       changes = {
         status: failed ? 'failed' : 'pending', attempts, lastError: sanitize(error), lockedBy: null, lockedUntil: null,
-        ...(failed ? {} : { runAt: new Date(clock().getTime() + backoff(attempts)) })
+        ...(failed ? {} : { runAt: new Date(Math.max(clock().getTime() + backoff(attempts), providerRetryAt)) })
       };
     } finally {
       lease.stop();

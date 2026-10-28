@@ -416,3 +416,159 @@ test('W07/W08: jobs calendar.sync entregan automático/manual sin host y sobrevi
     expect(fake.eventCount('primary')).toBe(1);
   } finally { delete process.env.FEATURE_GOOGLE_CALENDAR; }
 });
+
+test('caché vencida: preflight no usa datos viejos ni hace red; refresco durable recupera la capacidad', async () => {
+  const c = await chain(); await connected(c.teacher);
+  const row = await connection.rowFor(c.teacher.id);
+  await row.update({ capabilities: { ...row.capabilities, checkedAt: new Date(Date.now() - 3600000).toISOString(), maxParticipants: 9999 } });
+  const provider = jest.spyOn(adapter, 'capabilities').mockResolvedValue({ ...row.capabilities, maxParticipants: 2 });
+  await expect(zoom.assertCapacity(c.teacher.id, 50, 2, { preflight: true })).rejects.toMatchObject({ code: 'zoom_capacity_unknown' });
+  await expect(zoom.assertCapacity(c.teacher.id, 50, 2, { preflight: true })).rejects.toMatchObject({ code: 'zoom_capacity_unknown' });
+  expect(provider).not.toHaveBeenCalled();
+  const jobs = await M.OutboxJob.findAll({ where: { topic: 'zoom.capabilities', aggregateId: row.id } });
+  expect(jobs).toHaveLength(1);
+  try {
+    await jobs[0].update({ runAt: new Date(0) });
+    await outbox.runOnce({ limit: 1 });
+    expect(provider).toHaveBeenCalledTimes(1);
+    expect((await jobs[0].reload()).status).toBe('done');
+    await expect(zoom.assertCapacity(c.teacher.id, 50, 2, { preflight: true })).rejects.toMatchObject({ code: 'zoom_capacity_exceeded' });
+    await expect(zoom.assertCapacity(c.teacher.id, 50, 1, { preflight: true })).resolves.toBeUndefined();
+  } finally { await M.OutboxJob.destroy({ where: { id: jobs[0].id } }); }
+});
+
+test('sync actualiza caché heredada antes de crear y no resucita un grant desconectado durante el refresco', async () => {
+  const c = await fixture(); const row = await connection.rowFor(c.teacher.id);
+  await row.update({ capabilities: { maxMinutes: 120, maxParticipants: 100 } });
+  const provider = jest.spyOn(adapter, 'capabilities');
+  await sync(c.session.id);
+  expect(provider).toHaveBeenCalledTimes(1);
+  expect((await connection.rowFor(c.teacher.id)).capabilities).toMatchObject({ cacheVersion: 1, plan: 'fake' });
+  provider.mockImplementationOnce(async () => { await connection.disconnect(c.teacher); return row.capabilities; });
+  await expect(connection.refreshCapabilities(c.teacher.id)).rejects.toMatchObject({ code: 'integration_not_connected' });
+  expect((await connection.rowFor(c.teacher.id)).capabilities).toBeNull();
+});
+
+test.each([null, 0, -1, 2.5, '100'])('preflight rechaza caché con participantes inválidos (%s)', async maxParticipants => {
+  const c = await chain(); await connected(c.teacher); const row = await connection.rowFor(c.teacher.id);
+  await row.update({ capabilities: { ...row.capabilities, maxParticipants } });
+  try { await expect(zoom.assertCapacity(c.teacher.id, 50, 1, { preflight: true })).rejects.toMatchObject({ code: 'zoom_capacity_unknown' }); }
+  finally { await M.OutboxJob.destroy({ where: { topic: 'zoom.capabilities', aggregateId: row.id } }); }
+});
+
+test.each([
+  ['segundos', '7200', 7200000],
+  ['fecha HTTP', 'Sat, 01 Jan 2000 14:00:00 GMT', 7200000],
+  ['sin encabezado', null, 30000],
+  ['inválido', 'no-es-fecha', 30000],
+  ['menor al backoff', '1', 30000],
+  ['supera el máximo local', '172800', 172800000]
+])('429 extremo a extremo con reloj controlado (%s): adaptador → zoomService → outbox', async (_, header, delay) => {
+  const c = await fixture();
+  const job = await M.OutboxJob.findOne({ where: { aggregateId: c.session.id, topic: 'zoom.sync' } });
+  await job.update({ runAt: new Date(0) });
+  const now = Date.parse('2000-01-01T12:00:00Z');
+  jest.spyOn(Date, 'now').mockReturnValue(now);
+  // La fixture se conectó antes de fijar el reloj: alinear solo sus metadatos de caché.
+  const row = await connection.rowFor(c.teacher.id);
+  await row.update({ capabilities: { ...row.capabilities, checkedAt: new Date(now).toISOString() } });
+  const real = require('../src/services/zoomRealAdapter').createZoomRealAdapter({ fetchImpl: async () => new Response('{}', {
+    status: 429, headers: header === null ? {} : { 'Retry-After': header }
+  }) });
+  const find = jest.spyOn(adapter, 'find').mockImplementation((...args) => real.find(...args));
+  // También comprobar explícitamente la información sanitizada que sale del servicio.
+  await expect(sync(c.session.id)).rejects.toMatchObject({ code: 'zoom_rate_limited', retryable: true,
+    retryAt: header === null || header === 'no-es-fecha' ? null : now + (header === '1' ? 1000 : delay) });
+  expect((await outbox.runOnce({ limit: 1, now: new Date(now) })).retried).toBe(1);
+  await job.reload();
+  expect(job.runAt.getTime()).toBe(now + delay);
+  expect(job.lastError).toBe('Zoom: zoom_rate_limited');
+  expect(job.attempts).toBe(1);
+  const attempts = find.mock.calls.length;
+  await outbox.runOnce({ limit: 1, now: new Date(now + delay - 1000) });
+  expect(find).toHaveBeenCalledTimes(attempts);
+  const fakeFind = require('../src/services/zoomFakeAdapter').find;
+  find.mockImplementation((...args) => fakeFind(...args));
+  expect((await outbox.runOnce({ limit: 1, now: new Date(now + delay) })).done).toBe(1);
+  expect((await job.reload()).status).toBe('done');
+  expect((await refFor(c.session.id)).status).toBe('ready');
+});
+
+test.each([false, true])('dedupe indexado: copias simultáneas=%s, un solo recibo, auditoría y efecto', async concurrent => {
+  const c = await fixture(); await sync(c.session.id);
+  const ref = await refFor(c.session.id);
+  const { tokens } = await connection.credentials(c.teacher.id);
+  const body = { event: 'meeting.updated', event_id: uuid(), event_ts: Date.now(), payload: { account_id: tokens.accountId,
+    object: { id: ref.externalId, start_time: new Date(c.session.startsAt.getTime() + 60000).toISOString() } } };
+  const before = await M.OutboxJob.count({ where: { aggregateId: c.session.id, topic: 'zoom.sync' } });
+  const audits = jest.spyOn(M.AuditLog, 'findAll'); const counts = jest.spyOn(M.AuditLog, 'count');
+  if (concurrent) {
+    // Las dos peticiones llegan al mismo grant antes de intentar su transacción.
+    const read = connection.readTokens;
+    let arrivals = 0, release;
+    const barrier = new Promise(resolve => { release = resolve; });
+    jest.spyOn(connection, 'readTokens').mockImplementation(async row => {
+      const result = await read(row);
+      if (row.id === ref.connectionId) { arrivals += 1; if (arrivals === 2) release(); await barrier; }
+      return result;
+    });
+    const results = await Promise.all([webhook(body), webhook({ payload: body.payload, event_ts: body.event_ts, event_id: body.event_id, event: body.event })]);
+    expect(results.map(r => r.status)).toEqual([200, 200]);
+  } else {
+    expect((await webhook(body)).status).toBe(200);
+    expect((await webhook(body)).status).toBe(200);
+  }
+  expect(audits).not.toHaveBeenCalled(); expect(counts).not.toHaveBeenCalled();
+  expect(await M.OutboxJob.count({ where: { aggregateId: c.session.id, topic: 'zoom.sync' } })).toBe(before + 1);
+  expect(await M.AuditLog.count({ where: { action: 'zoom.webhook', entityId: ref.connectionId } })).toBe(1);
+  const eventKey = adapter.hash(JSON.stringify([ref.connectionId, body.event_id]));
+  expect(await M.ZoomWebhookReceipt.count({ where: { eventKey } })).toBe(1);
+  expect((await M.ClassSession.findByPk(c.session.id)).status).toBe('confirmed');
+  expect((await c.purchases[0].reload()).unitsConsumed).toBe(0);
+});
+
+test('sin event_id deduplica JSON con distinto orden; un fallo revierte recibo y permite reintento', async () => {
+  const c = await fixture(); await sync(c.session.id); const ref = await refFor(c.session.id);
+  const { tokens } = await connection.credentials(c.teacher.id);
+  const body = { event: 'meeting.deleted', event_ts: Date.now(), payload: { account_id: tokens.accountId, object: { id: ref.externalId } } };
+  jest.spyOn(M.AuditLog, 'create').mockRejectedValueOnce(new Error('fallo local simulado'));
+  expect((await webhook(body)).status).toBe(500);
+  expect((await refFor(c.session.id)).status).toBe('ready');
+  expect((await webhook(body)).status).toBe(200);
+  expect((await webhook({ payload: { object: { id: ref.externalId }, account_id: tokens.accountId }, event_ts: body.event_ts, event: body.event })).status).toBe(200);
+  expect(await M.AuditLog.count({ where: { action: 'zoom.webhook', entityId: ref.connectionId } })).toBe(1);
+  expect((await refFor(c.session.id)).lastError).toBe('zoom_meeting_missing');
+});
+
+test('recibos: limpieza temporal indexada en lotes acotados, conserva recientes', async () => {
+  const c = await fixture(); await sync(c.session.id); const ref = await refFor(c.session.id);
+  const { tokens } = await connection.credentials(c.teacher.id);
+  const prefix = uuid();
+  const oldKeys = Array.from({ length: 101 }, (_, i) => adapter.hash(`${prefix}:${i}`));
+  const recentKey = adapter.hash(`${prefix}:recent`);
+  await M.ZoomWebhookReceipt.bulkCreate([...oldKeys.map(eventKey => ({ eventKey, receivedAt: new Date(Date.now() - 8 * 86400000) })),
+    { eventKey: recentKey, receivedAt: new Date() }]);
+  const event = { event: 'meeting.ended', event_ts: Date.now(), payload: { account_id: tokens.accountId, object: { id: ref.externalId } } };
+  expect((await webhook(event)).status).toBe(200);
+  expect(await M.ZoomWebhookReceipt.count({ where: { eventKey: oldKeys } })).toBe(1);
+  expect(await M.ZoomWebhookReceipt.findByPk(recentKey)).toBeTruthy();
+  expect((await webhook(event)).status).toBe(200);
+  expect(await M.ZoomWebhookReceipt.count({ where: { eventKey: oldKeys } })).toBe(0);
+  await M.ZoomWebhookReceipt.destroy({ where: { eventKey: recentKey } });
+});
+
+test('capacidad desconocida persistente no multiplica jobs al cambiar checkedAt tras cada refresco', async () => {
+  const c = await chain(); await connected(c.teacher); const row = await connection.rowFor(c.teacher.id);
+  const now = Date.parse('2000-01-01T12:00:00Z');
+  const clock = jest.spyOn(Date, 'now').mockReturnValue(now);
+  await row.update({ capabilities: { ...row.capabilities, checkedAt: new Date(now - 3600000).toISOString() } });
+  jest.spyOn(adapter, 'capabilities').mockResolvedValue({ ...row.capabilities, maxParticipants: null });
+  try {
+    for (let i = 0; i < 3; i += 1) {
+      clock.mockReturnValue(now + i);
+      await expect(zoom.assertCapacity(c.teacher.id, 50, 1, { preflight: true })).rejects.toMatchObject({ code: 'zoom_capacity_unknown' });
+      await expect(connection.refreshCapabilities(c.teacher.id)).rejects.toMatchObject({ code: 'zoom_capacity_unknown' });
+    }
+    expect(await M.OutboxJob.count({ where: { topic: 'zoom.capabilities', aggregateId: row.id } })).toBe(1);
+  } finally { await M.OutboxJob.destroy({ where: { topic: 'zoom.capabilities', aggregateId: row.id } }); }
+});

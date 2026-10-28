@@ -60,9 +60,14 @@ function createZoomRealAdapter({ oauthBaseUrl = 'https://zoom.us', apiBaseUrl = 
     if (failure === 'authorize' && (status === 400 || oauthCode === 'invalid_grant')) fail('zoom_oauth_invalid', 400);
     if (status === 401) fail('zoom_unauthorized', 401);
     if (status === 429) {
-      const raw = response.headers.get('retry-after');
-      const retryAfterSeconds = /^\d+$/.test(raw || '') ? Math.min(86400, Number(raw)) : undefined;
-      fail('zoom_rate_limited', 429, retryAfterSeconds === undefined ? {} : { retryAfterSeconds }, { retryable: true });
+      const raw = response.headers.get('retry-after')?.trim();
+      const now = Date.now();
+      const candidate = /^\d+$/.test(raw || '') ? now + Number(raw) * 1000
+        : raw && /^[A-Za-z]{3},/.test(raw) ? Date.parse(raw) : NaN;
+      // Plazo absoluto: el tiempo transcurrido hasta llegar al worker no reinicia la espera.
+      const retryAt = Number.isFinite(candidate) && Number.isFinite(new Date(candidate).getTime()) ? Math.max(now, candidate) : null;
+      const params = retryAt === null ? {} : { retryAfterSeconds: Math.ceil((retryAt - now) / 1000) };
+      fail('zoom_rate_limited', 429, params, { retryable: true, retryAt });
     }
     if (status >= 500) fail('zoom_provider_unavailable', 503, { reason: 'upstream', status }, { retryable: true });
     if (status === 404 && failure === 'meeting') fail('zoom_meeting_missing', 404);
@@ -90,10 +95,13 @@ function createZoomRealAdapter({ oauthBaseUrl = 'https://zoom.us', apiBaseUrl = 
     const type = Number(user?.type);
     const plan = type === 1 ? 'basic' : type === 2 ? 'licensed' : type === 4 ? 'unassigned' : 'unknown';
     const maxMinutes = plan === 'basic' ? 40 : plan === 'licensed' ? 1800 : 0;
-    const rawCapacity = Number(user?.feature?.meeting_capacity ?? user?.feature?.large_meeting_capacity ?? (plan === 'unknown' ? 0 : 100));
+    // Get user settings documenta feature.meeting_capacity; /users/me no es la fuente.
+    // No inferir 100 plazas ni usar la capacidad de un add-on que podría estar desactivado.
+    const rawCapacity = settings?.feature?.meeting_capacity;
     const capabilities = {
       plan, planType: Number.isFinite(type) ? type : null, maxMinutes,
-      maxParticipants: Number.isFinite(rawCapacity) ? rawCapacity : 0,
+      maxParticipants: Number.isSafeInteger(rawCapacity) && rawCapacity > 0 ? rawCapacity : null,
+      participantCapacitySource: 'users/me/settings.feature.meeting_capacity',
       concurrentMeetings: 1,
       waitingRoom: settings?.in_meeting?.waiting_room === true,
       // Cada reunión enviada por SpanishNow recibe una contraseña aleatoria, además de la política de Zoom.

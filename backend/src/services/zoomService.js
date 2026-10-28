@@ -7,6 +7,7 @@ const connection = require('./zoomConnection');
 const outbox = require('./outbox');
 const features = require('../config/features');
 const { fail } = adapter;
+const capacityCache = require('./zoomCapabilities');
 const terminal = ['cancelled', 'declined', 'expired'];
 const id = value => { const n = Number(value); if (!Number.isSafeInteger(n) || n < 1) fail('not_found', 404); return n; };
 function participantUrl(value, legacy = false) {
@@ -51,9 +52,10 @@ async function assertCapacity(teacherId, minutes, participants = 1, { preflight 
   // La sala de espera no se exige por defecto de la cuenta: cada reunión la activa y se verifica tras crearla/actualizarla.
   // El preflight siempre usa la copia persistida. No descifra ni refresca tokens y no hace llamadas a Zoom.
   const capability = row.capabilities;
-  if (!capability || !Number.isFinite(capability.maxMinutes) || !Number.isFinite(capability.maxParticipants)
-    || !Number.isFinite(capability.concurrentMeetings) || capability.concurrentMeetings < 1
-    || !capability.passcodeRequired || capability.plan === 'unknown') fail('zoom_capacity_unknown');
+  if (!capacityCache.fresh(capability) || !capacityCache.valid(capability)) {
+    await connection.enqueueCapabilities(row);
+    fail('zoom_capacity_unknown');
+  }
   if (minutes > capability.maxMinutes || participants + 1 > capability.maxParticipants) fail('zoom_capacity_exceeded', 409,
     { maxMinutes: capability.maxMinutes, maxParticipants: capability.maxParticipants });
 }
@@ -81,7 +83,10 @@ async function sync(job, ctx = { stillOwned: async () => true }) {
       // Un cambio de cuenta no reutiliza una reunión del docente en su grant anterior.
       if (ref.connectionId && ref.connectionId !== row.id) fail('zoom_revoked');
       const seats = await M.ClassSessionParticipant.count({ where: { sessionId, status: { [Op.ne]: 'cancelled' } } });
-      if (session.status === 'confirmed') await assertCapacity(session.teacherId, session.minutes, seats);
+      if (session.status === 'confirmed') {
+        if (!capacityCache.fresh(row.capabilities) || !capacityCache.valid(row.capabilities)) await connection.refreshCapabilities(session.teacherId);
+        await assertCapacity(session.teacherId, session.minutes, seats);
+      }
       if (!await ctx.stillOwned()) fail('zoom_busy', 503);
       const before = `${session.version}:${session.status}:${session.startsAt?.getTime()}`;
       // Se reconcilia SIEMPRE por correlación antes de crear; el endpoint create no promete idempotencia.
@@ -127,7 +132,10 @@ async function sync(job, ctx = { stillOwned: async () => true }) {
       const code = safeError(error);
       if (ref) await ref.update({ status: 'needs_attention', lastError: code, attempts: ref.attempts + 1 });
       // El outbox nunca recibe mensajes/cuerpos/tokens/URLs devueltos por proveedores.
-      fail(code, error.statusCode || 503);
+      const retryAt = Number.isFinite(error.retryAt) ? error.retryAt : null;
+      const seconds = error.params?.retryAfterSeconds;
+      const params = Number.isFinite(seconds) && seconds >= 0 ? { retryAfterSeconds: seconds } : {};
+      fail(code, error.statusCode || 503, params, { retryable: error.retryable === true, retryAt });
     }
   });
 }

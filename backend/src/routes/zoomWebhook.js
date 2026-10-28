@@ -6,6 +6,11 @@ const M = require('../models');
 const zoomConnections = require('../services/zoomConnection');
 const { fail, hash } = require('../services/zoomAdapter');
 const outbox = require('../services/outbox');
+const { Op } = require('sequelize');
+const RECEIPT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+// Zoom no siempre envía event_id. Canonizar el JSON evita que su orden cambie la identidad.
+const canonical = value => Array.isArray(value) ? value.map(canonical)
+  : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
 router.post('/', require('express').raw({ type: 'application/json', limit: '256kb' }), async (req, res, next) => {
   try {
     require('../services/zoomAdapter').assertConfigured();
@@ -37,15 +42,16 @@ router.post('/', require('express').raw({ type: 'application/json', limit: '256k
     }
     if (!connection) return res.json({ received: true });
     const meetingId = body.payload?.object?.id;
-    const eventKey = hash(JSON.stringify([body.event, body.event_ts || null, accountId, zoomUserId, meetingId || null, req.body.toString()]));
+    const eventKey = hash(JSON.stringify([connection.id, body.event_id || canonical(body)]));
+    // Limpieza autocommit: no mantener gap locks temporales mientras se insertan recibos concurrentes.
+    await M.ZoomWebhookReceipt.destroy({ where: { receivedAt: { [Op.lt]: new Date(Date.now() - RECEIPT_TTL_MS) } }, limit: 100 });
     await db.transaction(async transaction => {
       const current = await M.ExternalConnection.findByPk(connection.id, { transaction, lock: transaction.LOCK.UPDATE });
-      if (await M.AuditLog.count({ where: { action: 'zoom.webhook', entityType: 'external_connections', entityId: current.id },
-        // El hash se compara abajo para evitar depender de JSON SQL entre motores.
-        transaction })) {
-        const previous = await M.AuditLog.findAll({ where: { action: 'zoom.webhook', entityType: 'external_connections', entityId: current.id }, transaction });
-        if (previous.some(a => a.data?.eventKey === eventKey)) return;
-      }
+      if (!current) return;
+      // La fila de conexión serializa dos copias concurrentes; PK único como defensa en persistencia.
+      // Recibo y efectos se confirman juntos: un fallo permite que el siguiente intento procese el evento.
+      if (await M.ZoomWebhookReceipt.findByPk(eventKey, { transaction })) return;
+      await M.ZoomWebhookReceipt.create({ eventKey, receivedAt: new Date(Date.now()) }, { transaction });
       const data = { eventKey, event: ['meeting.deleted', 'meeting.updated', 'app_deauthorized'].includes(body.event) ? body.event : 'other' };
       await M.AuditLog.create({ action: 'zoom.webhook', entityType: 'external_connections', entityId: current.id, data }, { transaction });
       if (body.event === 'app_deauthorized') {
