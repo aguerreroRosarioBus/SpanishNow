@@ -132,7 +132,10 @@ async function sync(job, ctx = { stillOwned: async () => true }) {
       const code = safeError(error);
       if (ref) await ref.update({ status: 'needs_attention', lastError: code, attempts: ref.attempts + 1 });
       // El outbox nunca recibe mensajes/cuerpos/tokens/URLs devueltos por proveedores.
-      fail(code, error.statusCode || 503);
+      const retryAt = Number.isFinite(error.retryAt) ? error.retryAt : null;
+      const seconds = error.params?.retryAfterSeconds;
+      const params = Number.isFinite(seconds) && seconds >= 0 ? { retryAfterSeconds: seconds } : {};
+      fail(code, error.statusCode || 503, params, { retryable: error.retryable === true, retryAt });
     }
   });
 }

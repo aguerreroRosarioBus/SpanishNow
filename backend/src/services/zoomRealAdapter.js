@@ -60,9 +60,14 @@ function createZoomRealAdapter({ oauthBaseUrl = 'https://zoom.us', apiBaseUrl = 
     if (failure === 'authorize' && (status === 400 || oauthCode === 'invalid_grant')) fail('zoom_oauth_invalid', 400);
     if (status === 401) fail('zoom_unauthorized', 401);
     if (status === 429) {
-      const raw = response.headers.get('retry-after');
-      const retryAfterSeconds = /^\d+$/.test(raw || '') ? Math.min(86400, Number(raw)) : undefined;
-      fail('zoom_rate_limited', 429, retryAfterSeconds === undefined ? {} : { retryAfterSeconds }, { retryable: true });
+      const raw = response.headers.get('retry-after')?.trim();
+      const now = Date.now();
+      const candidate = /^\d+$/.test(raw || '') ? now + Number(raw) * 1000
+        : raw && /^[A-Za-z]{3},/.test(raw) ? Date.parse(raw) : NaN;
+      // Plazo absoluto: el tiempo transcurrido hasta llegar al worker no reinicia la espera.
+      const retryAt = Number.isFinite(candidate) && Number.isFinite(new Date(candidate).getTime()) ? Math.max(now, candidate) : null;
+      const params = retryAt === null ? {} : { retryAfterSeconds: Math.ceil((retryAt - now) / 1000) };
+      fail('zoom_rate_limited', 429, params, { retryable: true, retryAt });
     }
     if (status >= 500) fail('zoom_provider_unavailable', 503, { reason: 'upstream', status }, { retryable: true });
     if (status === 404 && failure === 'meeting') fail('zoom_meeting_missing', 404);

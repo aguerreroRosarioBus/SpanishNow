@@ -455,3 +455,41 @@ test.each([null, 0, -1, 2.5, '100'])('preflight rechaza caché con participantes
   try { await expect(zoom.assertCapacity(c.teacher.id, 50, 1, { preflight: true })).rejects.toMatchObject({ code: 'zoom_capacity_unknown' }); }
   finally { await M.OutboxJob.destroy({ where: { topic: 'zoom.capabilities', aggregateId: row.id } }); }
 });
+
+test.each([
+  ['segundos', '7200', 7200000],
+  ['fecha HTTP', 'Sat, 01 Jan 2000 14:00:00 GMT', 7200000],
+  ['sin encabezado', null, 30000],
+  ['inválido', 'no-es-fecha', 30000],
+  ['menor al backoff', '1', 30000],
+  ['supera el máximo local', '172800', 172800000]
+])('429 extremo a extremo con reloj controlado (%s): adaptador → zoomService → outbox', async (_, header, delay) => {
+  const c = await fixture();
+  const job = await M.OutboxJob.findOne({ where: { aggregateId: c.session.id, topic: 'zoom.sync' } });
+  await job.update({ runAt: new Date(0) });
+  const now = Date.parse('2000-01-01T12:00:00Z');
+  jest.spyOn(Date, 'now').mockReturnValue(now);
+  // La fixture se conectó antes de fijar el reloj: alinear solo sus metadatos de caché.
+  const row = await connection.rowFor(c.teacher.id);
+  await row.update({ capabilities: { ...row.capabilities, checkedAt: new Date(now).toISOString() } });
+  const real = require('../src/services/zoomRealAdapter').createZoomRealAdapter({ fetchImpl: async () => new Response('{}', {
+    status: 429, headers: header === null ? {} : { 'Retry-After': header }
+  }) });
+  const find = jest.spyOn(adapter, 'find').mockImplementation((...args) => real.find(...args));
+  // También comprobar explícitamente la información sanitizada que sale del servicio.
+  await expect(sync(c.session.id)).rejects.toMatchObject({ code: 'zoom_rate_limited', retryable: true,
+    retryAt: header === null || header === 'no-es-fecha' ? null : now + (header === '1' ? 1000 : delay) });
+  expect((await outbox.runOnce({ limit: 1, now: new Date(now) })).retried).toBe(1);
+  await job.reload();
+  expect(job.runAt.getTime()).toBe(now + delay);
+  expect(job.lastError).toBe('Zoom: zoom_rate_limited');
+  expect(job.attempts).toBe(1);
+  const attempts = find.mock.calls.length;
+  await outbox.runOnce({ limit: 1, now: new Date(now + delay - 1000) });
+  expect(find).toHaveBeenCalledTimes(attempts);
+  const fakeFind = require('../src/services/zoomFakeAdapter').find;
+  find.mockImplementation((...args) => fakeFind(...args));
+  expect((await outbox.runOnce({ limit: 1, now: new Date(now + delay) })).done).toBe(1);
+  expect((await job.reload()).status).toBe('done');
+  expect((await refFor(c.session.id)).status).toBe('ready');
+});

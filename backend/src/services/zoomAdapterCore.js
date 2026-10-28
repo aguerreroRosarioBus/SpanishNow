@@ -1,9 +1,9 @@
 const crypto = require('node:crypto');
 
 class ZoomError extends Error {
-  constructor(code, statusCode = 409, params = {}, { retryable = false } = {}) {
+  constructor(code, statusCode = 409, params = {}, { retryable = false, retryAt = null } = {}) {
     super(`Zoom: ${code}`);
-    Object.assign(this, { code, statusCode, params, retryable });
+    Object.assign(this, { code, statusCode, params, retryable, retryAt });
   }
 }
 
