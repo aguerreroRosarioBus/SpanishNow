@@ -30,13 +30,14 @@ router.get('/google/callback', async (req, res) => {
   let frontend;
   try { frontend = google.config().frontend; } catch { return res.status(503).send('La integración de Google todavía no está configurada.'); }
   try {
-    await google.callback(req);
+    const token = await google.callback(req);
     res.clearCookie(google.cookieName, { path: '/api/live-classes/google/callback', httpOnly: true, sameSite: 'lax', secure: google.config().secure });
-    res.redirect(`${frontend}/live?google=connected`);
+    res.redirect(`${frontend}/live?google=confirm&token=${encodeURIComponent(token)}`);
   } catch { res.redirect(`${frontend}/live?google=error`); }
 });
 router.use(authMiddleware);
 router.get('/google/status', isTeacher, run(async (req, res) => res.json(await google.status(req.user.id))));
+router.post('/google/complete', isTeacher, run(async (req, res) => res.json(await google.complete(req.user.id, req.body?.token))));
 router.post('/google/connect', isTeacher, run(async (req, res) => res.json(await google.connect(req.user.id, res))));
 router.delete('/google/connection', isTeacher, run(async (req, res) => { await google.disconnect(req.user.id); res.status(204).end(); }));
 router.get('/google/courses', isTeacher, run(async (req, res) => res.json(await google.courses(req.user.id, req.query.pageToken))));

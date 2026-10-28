@@ -11,6 +11,7 @@ const SCOPES = [
 ];
 const hash = value => crypto.createHash('sha256').update(value).digest('hex');
 const cookieName = 'spanishnow_google_state';
+const COMPLETION_TTL_MS = 300000;
 function encryptionKey() {
   const raw = process.env.GOOGLE_TOKEN_ENCRYPTION_KEY || '';
   const key = Buffer.from(raw, 'base64');
@@ -108,10 +109,40 @@ async function callback(req) {
   })).json();
   if (!result.access_token || !result.refresh_token || !SCOPES.every(scope => (result.scope || '').split(' ').includes(scope))) fail('Debes autorizar Classroom y Drive para conectar la cuenta.', 400);
   const profile = await (await remote('https://www.googleapis.com/oauth2/v2/userinfo', { headers: { Authorization: `Bearer ${result.access_token}` } })).json();
+  // La conexión NO se guarda aquí (el callback no tiene sesión): queda pendiente con un token de un solo uso que confirma complete().
+  const token = crypto.randomBytes(32).toString('base64url');
   await GoogleConnection.update({
-    credentials: encrypt({ accessToken: result.access_token, refreshToken: result.refresh_token, expiresAt: Date.now() + (result.expires_in || 3600) * 1000 }),
-    scopes: result.scope, email: typeof profile.email === 'string' ? profile.email.slice(0, 254) : null
+    oauthStateHash: hash(token), oauthExpiresAt: new Date(Date.now() + COMPLETION_TTL_MS),
+    oauthVerifier: encrypt({ kind: 'completion', credentials: { accessToken: result.access_token, refreshToken: result.refresh_token, expiresAt: Date.now() + (result.expires_in || 3600) * 1000 },
+      scopes: result.scope, email: typeof profile.email === 'string' ? profile.email.slice(0, 254) : null })
   }, { where: { userId: pending.userId } });
+  return token;
+}
+/** POST /complete { token }: confirma la conexión pendiente solo para quien la inició. Otra persona la descarta sin tocar la conexión de quien inició. */
+async function complete(userId, token) {
+  if (typeof token !== 'string' || !/^[\w-]{43}$/.test(token)) fail('La autorización venció. Vuelve a conectar Google.', 400, 'oauth_state_invalid');
+  const staged = await sequelize.transaction(async transaction => {
+    const row = await GoogleConnection.findOne({ where: { oauthStateHash: hash(token) }, transaction, lock: transaction.LOCK.UPDATE });
+    if (!row?.oauthVerifier || !row.oauthExpiresAt || new Date(row.oauthExpiresAt).getTime() < Date.now()) fail('La autorización venció. Vuelve a conectar Google.', 400, 'oauth_state_invalid');
+    let payload;
+    try { payload = decrypt(row.oauthVerifier); } catch { fail('La autorización venció. Vuelve a conectar Google.', 400, 'oauth_state_invalid'); }
+    if (payload?.kind !== 'completion') fail('La autorización venció. Vuelve a conectar Google.', 400, 'oauth_state_invalid');
+    // Un solo uso: se consume siempre, coincida o no.
+    if (row.userId !== userId) {
+      await row.update({ oauthStateHash: null, oauthVerifier: null, oauthExpiresAt: null }, { transaction });
+      return { ok: false, payload };
+    }
+    await row.update({ credentials: encrypt(payload.credentials), scopes: payload.scopes, email: payload.email, oauthStateHash: null, oauthVerifier: null, oauthExpiresAt: null }, { transaction });
+    return { ok: true };
+  });
+  if (!staged.ok) {
+    // Los tokens son de la cuenta de Google de otra persona. Si quien confirma comparte grant (mismo cliente OAuth) no se revoca para no romperlo.
+    const sharesGrant = await GoogleConnection.findByPk(userId).then(r => Boolean(r?.credentials))
+      || await ExternalConnection.count({ where: { userId, provider: 'google_calendar', status: 'connected' } });
+    if (!sharesGrant) await remote('https://oauth2.googleapis.com/revoke', { method: 'POST', body: new URLSearchParams({ token: staged.payload.credentials.refreshToken }) }).catch(() => {});
+    fail('Esta autorización de Google la inició otra cuenta de SpanishNow. No se conectó nada.', 403, 'oauth_user_mismatch');
+  }
+  return status(userId);
 }
 async function accessToken(userId) {
   const c = config();
@@ -202,4 +233,4 @@ async function loadDrive(userId, fileId) {
   try { raw = JSON.parse(Buffer.concat(chunks).toString()); } catch { fail('Archivo de pizarra inválido.'); }
   return restoreBoard(raw, userId);
 }
-module.exports = { SCOPES, cookieName, config, configured, encrypt, decrypt, status, connect, start, callback, accessToken, disconnect, courses, course, announce, boardFile, saveDrive, driveFiles, loadDrive };
+module.exports = { SCOPES, cookieName, config, configured, encrypt, decrypt, status, connect, start, callback, complete, accessToken, disconnect, courses, course, announce, boardFile, saveDrive, driveFiles, loadDrive };
