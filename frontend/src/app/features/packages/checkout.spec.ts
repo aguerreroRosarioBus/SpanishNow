@@ -33,4 +33,20 @@ describe('checkout W05',()=>{
    const checkout=vi.fn<(...args:any[])=>any>(()=>throwError(()=>new Error('network')));const f=fixture({offer:()=>of(offer),checkoutState:()=>of({offer,order:null,purchaseId:null}),checkout,error:()=> 'Error'});const c=f.componentInstance;
    c.accepted.set(true);c.pay();TestBed.inject(I18nService).setLocale('es');c.pay();expect(checkout.mock.calls[0][1]).toBe(checkout.mock.calls[1][1]);expect(c.offer()!.amount).toBe(9000);expect(c.accepted()).toBe(true);
  });
+ it('AC03: mientras la compra está en curso el botón se deshabilita, muestra carga y un segundo clic no lanza otra compra',()=>{
+   const pending=new Subject<any>();const checkout=vi.fn<(...args:any[])=>any>(()=>pending);
+   const f=fixture({offer:()=>of(offer),checkoutState:()=>of({offer,order:null,purchaseId:null}),checkout,error:()=> 'Error'});const c=f.componentInstance;const root:HTMLElement=f.nativeElement;
+   const button=()=>root.querySelector<HTMLButtonElement>('[data-testid="pay-button"]')!;
+   c.accepted.set(true);f.detectChanges();expect(button().disabled).toBe(false);expect(root.querySelector('[data-testid="pay-loading"]')).toBeNull();
+   button().click();f.detectChanges();
+   expect(button().disabled).toBe(true);expect(button().getAttribute('aria-busy')).toBe('true');expect(root.querySelector('[data-testid="pay-loading"]')).toBeTruthy();
+   button().click();c.pay();expect(checkout).toHaveBeenCalledTimes(1);
+   pending.next({order:{id:1,provider:'fake',status:'pending'},checkoutUrl:null});f.detectChanges();
+   expect(button().disabled).toBe(false);expect(root.querySelector('[data-testid="pay-loading"]')).toBeNull();
+ });
+ it('un link de pago vencido devuelve el intento como fallido y el siguiente clic usa una clave nueva',()=>{
+   const checkout=vi.fn<(...args:any[])=>any>(()=>of({order:{id:1,provider:'hotmart',status:'failed'},checkoutUrl:null}));
+   const f=fixture({offer:()=>of(offer),checkoutState:()=>of({offer,order:null,purchaseId:null}),checkout,error:()=> 'Error'});const c=f.componentInstance;
+   c.accepted.set(true);c.pay();c.pay();expect(checkout).toHaveBeenCalledTimes(2);expect(checkout.mock.calls[0][1]).not.toBe(checkout.mock.calls[1][1]);
+ });
 });

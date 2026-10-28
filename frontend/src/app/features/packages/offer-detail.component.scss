@@ -39,3 +39,11 @@ h1 { font-size: 1.625rem; line-height: 1.3; margin: 0 0 8px; overflow-wrap: anyw
   .offer-checkout { position: static; }
   .offer-content { padding: 20px; }
 }
+
+.btn-spinner {
+  display: inline-block; width: 1em; height: 1em; margin-right: .5em; vertical-align: -.15em;
+  border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%;
+  animation: offer-spin .7s linear infinite;
+}
+@keyframes offer-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .btn-spinner { animation-duration: 2s; } }

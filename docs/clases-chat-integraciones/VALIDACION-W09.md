@@ -26,7 +26,7 @@ Resultado de ejecución (HEAD de la rama `w09-integracion` tras el último commi
 | --- | --- | --- | --- | --- |
 | AC01 | Interesado registra, elige idioma y zona, chatea; otro alumno no lee | Con ID | `e2e/tests/07-chat-ac01.spec.ts`; `backend/tests/chat.test.js` | — |
 | AC02 | Oferta 4×50 USD 90; compra en fake; 4 unidades exactas | Con ID (backend) | `backend/tests/classPayments.test.js`; `backend/tests/w09.integration.test.js` (saldo tras renovación) | Sin E2E de checkout completo en navegador. |
-| AC03 | Doble clic, dos pestañas y webhook repetido: una compra | Tema | `backend/tests/classPayments.test.js`; `backend/tests/hotmart.test.js` (idempotencia) | Hueco: no hay prueba de doble clic en navegador. |
+| AC03 | Doble clic, dos pestañas y webhook repetido: una compra | Tema | `backend/tests/classPayments.test.js`; `backend/tests/hotmart.test.js` (idempotencia) | Cerrado en #56: prueba de componente del botón (deshabilitado + carga durante la petición; un segundo clic no lanza otra compra). El backend ya era idempotente. |
 | AC04 | Una unidad, dos confirmaciones concurrentes: una reserva | Tema | `backend/tests/classSessions.test.js` (concurrencia); `backend/tests/w00.foundation.test.js` | Revisar que el caso de 1 unidad esté explícito; no se verificó línea a línea. |
 | AC05 | Propuesta NY, aceptación Córdoba; Google y Zoom con el mismo instante | Con ID | `backend/tests/zoomSync.test.js` (AC05); `backend/tests/w07.calendar.test.js`; `backend/tests/w09.integration.test.js`; `e2e/schedule-tests/09-integracion.spec.ts` | — |
 | AC06 | TZ-T01–TZ-T11, DST, horas inexistentes/ambiguas, zona de servidor distinta | Con ID | `backend/tests/classTime.test.js` (`test.each` sobre `docs/clases-chat-integraciones/fixtures/time.json`, TZ-T04/05/06/08/10); E2E DST `09-integracion.spec.ts` | TZ-T07 (cambiar zona no reprograma) y TZ-T09 (cancelación a 24 h) cubiertas por tema, no por ID explícito. |
@@ -36,7 +36,7 @@ Resultado de ejecución (HEAD de la rama `w09-integracion` tras el último commi
 | AC10 | Grupo de 2: un pago cubre dos plazas; una sesión consume una unidad | Con ID | `backend/tests/w09.integration.test.js` (grupo de 2); `e2e/schedule-tests/08-schedule.spec.ts` (grupo 2) | — |
 | AC11 | Grupo de 3: tres compras, tres confirmaciones; sin reuniones duplicadas | Con ID | `backend/tests/w09.integration.test.js` (grupo de 3); `e2e/schedule-tests/08-schedule.spec.ts` (grupo 3) | — |
 | AC12 | Grupo incompleto, reprogramación rechazada, cancelación de participante | Tema | `backend/tests/classSessions.test.js` (grupo 3, cancelación con reembolso parcial); `backend/tests/classCohorts.test.js` | GROUP-04 con ID; GROUP-05–07 por tema. |
-| AC13 | Compra pausada/expirada y oferta reemplazada no cobran; pago tardío conciliado | Tema | `backend/tests/classPayments.test.js`; `backend/tests/classTimePersistence.test.js` | Hueco: no se encontró prueba explícita de pago tardío sobre oferta reemplazada. |
+| AC13 | Compra pausada/expirada y oferta reemplazada no cobran; pago tardío conciliado | Tema | `backend/tests/classPayments.test.js`; `backend/tests/classTimePersistence.test.js` | Cerrado en #56: cada link de pago caduca (`CLASS_CHECKOUT_LINK_TTL_MINUTES`, 24 h por defecto, a confirmar por Andrés) y hay pruebas de dominio de link vencido, oferta reemplazada, oferta vencida, ventas pausadas y webhook tardío (siempre a revisión manual, sin acreditar). |
 | AC14 | Renovación crea compra nueva; sin débito automático; historial intacto | Con ID | `backend/tests/w09.integration.test.js` (renovación) | Renovación por el chat en navegador no tiene E2E propio. |
 | AC15 | Error o revocación de Calendar/Zoom: estado accionable; recuperación sin duplicar | Con ID | `backend/tests/w09.integration.test.js` (fallo de Zoom y pérdida de respuesta de Calendar; desconexión de Zoom); `backend/tests/zoomSync.test.js`; `backend/tests/w07.calendar.test.js` | — |
 | AC16 | Alumno y Calendar reciben solo enlace de participante; docente ajeno sin anfitrión | Con ID | `backend/tests/zoomSync.test.js` (AC16) | — |
@@ -82,3 +82,8 @@ Reversión:
 - Desconectar proveedores desde la pantalla de integración; las clases y el saldo no se pierden.
 
 Registrar cada paso con fecha, cuenta ficticia usada, resultado y captura si corresponde.
+
+
+## Cierre de #56 por decisión de Andrés (27/10/2026)
+
+Quedan cerrados por decisión de Andrés, sin trabajo adicional: AC22 (redondeo de reembolsos), recorrido E2E completo, AC04, AC09, AC17, AC19, TZ-T07, TZ-T09 y el recorrido manual de §16. Lo que sí se implementó en #56: caducidad de los links de pago y webhook tardío a revisión (AC13) y estado de carga del botón de pago (AC03).
