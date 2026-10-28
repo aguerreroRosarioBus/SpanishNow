@@ -162,7 +162,8 @@ async function withCredentials(userId, tokens, operation) {
 // Refresco durable a demanda, fuera de los locks de agenda/saldo. status sigue siendo solo local.
 async function enqueueCapabilities(row) {
   await outbox.enqueue({ topic: 'zoom.capabilities', aggregateType: 'external_connections', aggregateId: row.id,
-    dedupeKey: `zoom:capabilities:${row.id}:${hash(JSON.stringify(row.capabilities)).slice(0, 16)}:${Math.floor(Date.now() / capacityCache.TTL_MS)}` });
+    // Una respuesta inválida puede cambiar checkedAt: no debe producir otro job por cada reintento del usuario.
+    dedupeKey: `zoom:capabilities:${row.id}:${Math.floor(Date.now() / capacityCache.TTL_MS)}` });
 }
 async function refreshCapabilities(userId) {
   const { row, tokens } = await credentials(userId);

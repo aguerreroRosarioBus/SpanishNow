@@ -556,3 +556,19 @@ test('recibos: limpieza temporal indexada en lotes acotados, conserva recientes'
   expect(await M.ZoomWebhookReceipt.count({ where: { eventKey: oldKeys } })).toBe(0);
   await M.ZoomWebhookReceipt.destroy({ where: { eventKey: recentKey } });
 });
+
+test('capacidad desconocida persistente no multiplica jobs al cambiar checkedAt tras cada refresco', async () => {
+  const c = await chain(); await connected(c.teacher); const row = await connection.rowFor(c.teacher.id);
+  const now = Date.parse('2000-01-01T12:00:00Z');
+  const clock = jest.spyOn(Date, 'now').mockReturnValue(now);
+  await row.update({ capabilities: { ...row.capabilities, checkedAt: new Date(now - 3600000).toISOString() } });
+  jest.spyOn(adapter, 'capabilities').mockResolvedValue({ ...row.capabilities, maxParticipants: null });
+  try {
+    for (let i = 0; i < 3; i += 1) {
+      clock.mockReturnValue(now + i);
+      await expect(zoom.assertCapacity(c.teacher.id, 50, 1, { preflight: true })).rejects.toMatchObject({ code: 'zoom_capacity_unknown' });
+      await expect(connection.refreshCapabilities(c.teacher.id)).rejects.toMatchObject({ code: 'zoom_capacity_unknown' });
+    }
+    expect(await M.OutboxJob.count({ where: { topic: 'zoom.capabilities', aggregateId: row.id } })).toBe(1);
+  } finally { await M.OutboxJob.destroy({ where: { topic: 'zoom.capabilities', aggregateId: row.id } }); }
+});
