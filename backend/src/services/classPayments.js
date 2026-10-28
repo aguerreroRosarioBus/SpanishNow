@@ -129,6 +129,7 @@ async function handleEvent(body,{provider='hotmart'}={}){
     if(APPROVED.has(n.eventType)){
       if(['paid','paid_needs_review','partially_refunded','refunded'].includes(order.status))return finish('ignored',{replayed:true});
       const reason=order.status==='failed'||!['sent','checkout_pending'].includes(offer.status)||offer.expiresAt<=new Date()?'offer_closed':
+        order.checkoutExpiresAt&&(n.approvedAt||new Date())>order.checkoutExpiresAt?'checkout_link_expired':
         n.productId!==offer.hotmartProductId?'product_mismatch':n.offerCode!==offer.hotmartOfferCode?'offer_code_mismatch':
         !n.reported?'price_missing':n.reported.amount!==offer.amount||n.reported.currency!==offer.currency?'price_mismatch':null;
       if(reason){await markReview(order,offer,n,reason,transaction);return finish('needs_review',{needsReview:true});}

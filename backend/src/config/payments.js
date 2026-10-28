@@ -22,4 +22,10 @@ function frontendUrl() {
   return url.replace(/\/+$/, '');
 }
 
-module.exports = { fake: enabledFake, assertSafe, frontendUrl, isProduction };
+/** Minutos de vigencia de un link de pago de paquetes (CLASS_CHECKOUT_LINK_TTL_MINUTES); por defecto 24 h. */
+function checkoutLinkTtlMinutes() {
+  const value = Number(process.env.CLASS_CHECKOUT_LINK_TTL_MINUTES);
+  return Number.isInteger(value) && value >= 1 && value <= 10080 ? value : 1440;
+}
+
+module.exports = { fake: enabledFake, checkoutLinkTtlMinutes, assertSafe, frontendUrl, isProduction };

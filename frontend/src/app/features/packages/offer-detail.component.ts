@@ -48,7 +48,7 @@ export class OfferDetailComponent implements OnInit {
   pay(){const o=this.offer();if(!o||!this.conditionsComplete()||!this.payable()||this.busy()||this.needsConsent()&&!this.accepted())return;this.busy.set(true);this.failure.set(null);
     const docs=o.snapshot.legalDocuments;
     this.api.checkout(o.id,this.key,{locale:this.i18n.locale(),...(this.needsConsent()?{legalConsent:consentFor(docs)}:{})}).pipe(takeUntil(this.routeChanges),takeUntilDestroyed(this.destroyRef)).subscribe({next:r=>{
-      if(this.offer()?.id!==o.id)return;this.order.set(r.order);this.busy.set(false);
+      if(this.offer()?.id!==o.id)return;this.order.set(r.order);this.busy.set(false);if(r.order.status==='failed')this.key=crypto.randomUUID();
       if(r.order.provider==='hotmart'&&r.order.status==='pending'&&r.checkoutUrl){const url=new URL(r.checkoutUrl);if(url.protocol==='https:'&&url.hostname==='pay.hotmart.com')this.document.defaultView?.location.assign(url.toString());}
     },error:e=>{this.failure.set(e);this.busy.set(false);}});
   }

@@ -147,7 +147,7 @@ Estados (PACK-14): `draft → sent → checkout_pending → paid`; terminales `e
 
 ### 3.7 Órdenes de paquete, intentos y eventos del proveedor (W05)
 
-`class_package_orders` (una fila = un intento de checkout; separada de `orders` de cursos): `offerId`, `buyerId`, `amount`, `currency`, `provider ENUM('hotmart','fake')`, `status`, `checkoutRef CHAR(32)` (**UNIQUE**), `pendingOfferId` (**columna generada por MySQL** `CASE WHEN status='pending' THEN offerId END`, con índice **UNIQUE** → *un solo checkout pendiente por oferta* impuesto en base, PACK-15; nadie la escribe y no está en el modelo; por eso la FK `offerId` es `ON UPDATE RESTRICT`), `idempotencyKey`, `providerTransactionId VARCHAR(64)` (**UNIQUE**), `providerProductId`, `providerOfferCode`, `reportedAmount`, `reportedCurrency`, `buyerEmailReported`, `refundedAmount`, `paidAt`, `refundedAt`, `failedAt`, `reviewReason VARCHAR(64)`, `reviewResolvedAt`, `reviewResolvedById`.
+`class_package_orders` (una fila = un intento de checkout; separada de `orders` de cursos): `offerId`, `buyerId`, `amount`, `currency`, `provider ENUM('hotmart','fake')`, `status`, `checkoutRef CHAR(32)` (**UNIQUE**), `pendingOfferId` (**columna generada por MySQL** `CASE WHEN status='pending' THEN offerId END`, con índice **UNIQUE** → *un solo checkout pendiente por oferta* impuesto en base, PACK-15; nadie la escribe y no está en el modelo; por eso la FK `offerId` es `ON UPDATE RESTRICT`), `idempotencyKey`, `providerTransactionId VARCHAR(64)` (**UNIQUE**), `providerProductId`, `providerOfferCode`, `reportedAmount`, `reportedCurrency`, `buyerEmailReported`, `refundedAmount`, `paidAt`, `refundedAt`, `failedAt`, `checkoutExpiresAt` (caducidad del link, #56), `reviewReason VARCHAR(64)`, `reviewResolvedAt`, `reviewResolvedById`.
 
 Estados (PACK-14 + PACK-17): `pending → paid → partially_refunded → refunded`; `pending → failed`; `paid_needs_review` (pago efectivo que no se puede acreditar: oferta vencida/cancelada/reemplazada o datos que no cuadran). `paid_needs_review → paid` (acreditado tras revisión) o `→ refunded`.
 
@@ -321,6 +321,7 @@ Se reutiliza `POST /api/payments/hotmart/webhook` y `verifyHottok`. `handleEvent
 3. Si el producto pertenece a un curso y no hay orden de paquete, sigue el flujo de cursos actual sin cambios.
 4. **Aprobado** (`PURCHASE_APPROVED`/`PURCHASE_COMPLETE`), en **una** transacción con lock de la orden y de la oferta:
    - orden ya `paid`/`refunded`/`paid_needs_review` → nada (replay);
+   - pago aprobado después de `checkoutExpiresAt` del link → `paid_needs_review` con `reviewReason=checkout_link_expired` (#56; el plazo es `CLASS_CHECKOUT_LINK_TTL_MINUTES`, 1440 por defecto, nunca posterior a la caducidad de la oferta);
    - producto y `offer.code` del webhook ≠ snapshot, u oferta `expired`/`cancelled`/`replaced`, u orden `failed` → orden `paid_needs_review` con `reviewReason` (`offer_closed`, `product_mismatch`, `offer_code_mismatch`), outbox para avisar al docente y a `class_payments.review`, mensaje de sistema al comprador «pago recibido en revisión» (PACK-17);
    - si no → orden `paid` (`providerTransactionId`, importes reportados), oferta `paid`, compra creada con `expiresAt = paidAt + validityHours`, beneficiarios desde la oferta, `credits.apply(grant)` con `grant:order:<id>`, mensaje de sistema en el chat y outbox `email.purchase_confirmed`.
    - La identidad del beneficiario sale **de la oferta**, nunca del email de Hotmart; si el email difiere se guarda en `buyerEmailReported` y en `audit_logs`, sin bloquear.
@@ -464,7 +465,7 @@ Notas de W04 (1.1): el contexto (`{ type: course|package|session, id }`) viaja e
 | `GET /api/class-offers/:id` | Detalle con snapshot (docente emisor y comprador/beneficiarios) |
 | `POST /api/class-offers/:id/cancel` | Docente; `{ reason }` |
 | `POST /api/class-offers/:id/replace` | Docente; crea otra con `replacesOfferId` |
-| `POST /api/class-offers/:id/checkout` | Comprador; iniciar o reutilizar; `409 offer_not_payable`, `409 offer_expired`, `503 payments_unavailable` |
+| `POST /api/class-offers/:id/checkout` | Comprador; iniciar o reutilizar; el link vigente se reutiliza y uno vencido (`checkoutExpiresAt`) se cierra y se reemplaza por otro; `409 offer_not_payable`, `409 offer_expired`, `503 payments_unavailable` |
 | `GET /api/class-offers/:id/checkout` | Estado de la orden (página de retorno) |
 | `POST /api/class-offers/:id/checkout/fake-complete` | Solo con `PAYMENTS_FAKE=1` |
 | `POST /api/payments/hotmart/webhook` | *Callback* existente, extendido (§7.3) |
@@ -564,6 +565,7 @@ Confirmación (W06 `accept`): con conexión `connected` se lee free/busy **antes
 | 409 | `schedule_conflict` | Choque con sesión o propuesta (con buffer) o con ocupación externa |
 | 409 | `proposal_stale` | Propuesta vencida, reemplazada o ya resuelta |
 | 409 | `offer_not_payable` / `offer_expired` | Oferta en estado que no admite checkout |
+| 409 | `checkout_link_expired` | Solo `fake-complete`: el link del intento venció |
 | 409 | `sales_paused`, `teacher_unavailable` | Pausa de ventas / docente no habilitado |
 | 409 | `hotmart_mapping_missing` | Plantilla sin producto/oferta de Hotmart |
 | 409 | `group_incomplete` | Grupo sin participantes/plazas confirmadas |

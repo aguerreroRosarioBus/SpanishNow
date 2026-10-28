@@ -69,6 +69,7 @@ describe('migration runner', () => {
     const before = await schemaOf(EMPTY_DB);
     const reverted = await emptyMigrator.umzug.down({ to: '20261021000000-add-keyframe-tooltips.js' });
     expect(reverted.map(m => m.name)).toEqual([
+      '20261113000000-add-class-order-checkout-expires-at.js',
       '20261112000001-add-class-purchase-frozen-from-status.js',
       '20261112000000-create-class-package-provider-verifications.js',
       '20261111000000-add-zoom-capabilities-cache.js',

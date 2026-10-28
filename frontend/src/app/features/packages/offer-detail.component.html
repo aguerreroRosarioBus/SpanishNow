@@ -65,7 +65,9 @@
         }
         @if (payable()) {
           @if (documents().length) { <app-legal-consent [documents]="documents()" [(accepted)]="accepted" /> }
-          <button type="button" class="btn btn-primary" [disabled]="busy() || !conditionsComplete() || (needsConsent() && !accepted())" (click)="pay()">{{ 'packages.payment.continue' | t }}<app-icon name="arrow-right" [size]="16" /></button>
+          <button type="button" class="btn btn-primary" data-testid="pay-button" [attr.aria-busy]="busy()" [disabled]="busy() || !conditionsComplete() || (needsConsent() && !accepted())" (click)="pay()">
+            @if (busy()) { <span class="btn-spinner" data-testid="pay-loading" aria-hidden="true"></span>{{ 'packages.payment.processing' | t }} } @else { {{ 'packages.payment.continue' | t }}<app-icon name="arrow-right" [size]="16" /> }
+          </button>
           @if (order()?.provider==='fake' && order()?.status==='pending') {
             <p class="fake-note">{{ 'packages.payment.fakeNote' | t }}</p>
             <button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="completeFake()">{{ 'packages.payment.fakeComplete' | t }}</button>

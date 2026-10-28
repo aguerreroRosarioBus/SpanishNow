@@ -18,6 +18,8 @@ module.exports = sequelize.define('ClassPackageOrder', {
   providerProductId: D.STRING(40), providerOfferCode: D.STRING(40),
   reportedAmount: D.INTEGER, reportedCurrency: D.CHAR(3), buyerEmailReported: D.STRING(255),
   refundedAmount: { type: D.INTEGER, allowNull: false, defaultValue: 0 },
+  // Caducidad del link de pago de este intento (#56); NULL en órdenes anteriores a la migración.
+  checkoutExpiresAt: D.DATE,
   paidAt: D.DATE, refundedAt: D.DATE, failedAt: D.DATE,
   reviewReason: D.STRING(64), reviewResolvedAt: D.DATE, reviewResolvedById: D.INTEGER
 }, { tableName: 'class_package_orders', timestamps: true });

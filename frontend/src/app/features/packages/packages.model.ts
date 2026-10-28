@@ -36,7 +36,7 @@ export interface ClassCohort {
   status:'forming'|'ready'|'cancelled'|'completed'; formingDeadlineAt:string; tentativeStartsAt:string;
   members?:{userId:number;status:string;name?:string;conversationId?:number}[]; invitation?:{status:string};
 }
-export interface ClassOrder { id:number;offerId:number;provider:'fake'|'hotmart';status:'pending'|'paid'|'failed'|'paid_needs_review'|'partially_refunded'|'refunded';amount:number;currency:string;reviewReason:string|null;reportedAmount?:number|null;reportedCurrency?:string|null;providerTransactionId?:string|null;providerProductId?:string|null;providerOfferCode?:string|null;purchaseStatus?:string|null;frozenFromStatus?:string|null;unitsAvailable?:number|null;unitsReserved?:number|null;unitsConsumed?:number|null }
+export interface ClassOrder { id:number;offerId:number;provider:'fake'|'hotmart';status:'pending'|'paid'|'failed'|'paid_needs_review'|'partially_refunded'|'refunded';amount:number;currency:string;reviewReason:string|null;checkoutExpiresAt?:string|null;reportedAmount?:number|null;reportedCurrency?:string|null;providerTransactionId?:string|null;providerProductId?:string|null;providerOfferCode?:string|null;purchaseStatus?:string|null;frozenFromStatus?:string|null;unitsAvailable?:number|null;unitsReserved?:number|null;unitsConsumed?:number|null }
 export interface CheckoutState {offer:ClassOffer;order:ClassOrder|null;purchaseId:number|null}
 export interface ClassPurchase {
   id:number;offerId:number;buyerId:number;/** Solo en la vista docente (GET /api/teacher/class-purchases). */buyerName?:string|null;teacherId:number;version:number;status:'active'|'paused'|'exhausted'|'expired'|'cancelled';
