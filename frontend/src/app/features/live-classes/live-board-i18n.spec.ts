@@ -45,17 +45,35 @@ describe('clases en vivo y pizarra: idioma', () => {
   });
 
   describe('lista', () => {
-    function setup(over: Partial<Record<string, unknown>> = {}, teacher = true) {
+    function setup(over: Partial<Record<string, unknown>> = {}, teacher = true, query: [string, string][] = [['google', 'connected']]) {
       const api = { list: vi.fn(() => of([klass()])), googleStatus: vi.fn(() => of({ configured: true, connected: true, email: 'docente@example.test' })),
         create: vi.fn(() => throwError(() => ({ status: 403, error: { error: 'texto libre del servidor', code: 'forbidden' } }))), join: vi.fn(), connect: vi.fn(), disconnect: vi.fn(), ...over };
       TestBed.configureTestingModule({ providers: [provideRouter([]),
-        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: new Map([['google', 'connected']]) } } },
+        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: new Map(query) } } },
         { provide: LiveClassService, useValue: api }, { provide: CourseService, useValue: { getCourses: vi.fn(() => of([{ id: 3, title: 'Curso original' }])) } },
         { provide: AuthService, useValue: { isTeacher: () => teacher } }, { provide: UserPreferencesService, useValue: preferences }] });
       const i18n = TestBed.inject(I18nService); i18n.setLocale('es');
       const f = TestBed.createComponent(LiveClassesComponent); f.detectChanges();
       return { f, c: f.componentInstance, i18n, api };
     }
+
+    it('confirma la conexión de Google con el token del callback, solo una vez, y avisa en ES y EN', async () => {
+      const completeGoogle = vi.fn(() => of({ configured: true, connected: true, email: 'docente@example.test' }));
+      const { f, i18n } = setup({ completeGoogle }, true, [['google', 'confirm'], ['token', 'a'.repeat(43)]]);
+      await f.whenStable(); f.detectChanges();
+      expect(completeGoogle).toHaveBeenCalledTimes(1); expect(completeGoogle).toHaveBeenCalledWith('a'.repeat(43));
+      expect(text(f)).toContain('Tu cuenta de Google quedó conectada.');
+      i18n.setLocale('en'); f.detectChanges(); expect(text(f)).toContain('Your Google account is now connected.');
+      expect(completeGoogle).toHaveBeenCalledTimes(1);
+    });
+
+    it('si otra cuenta inició la autorización (403) muestra el aviso de que no se conectó nada', async () => {
+      const completeGoogle = vi.fn(() => throwError(() => ({ status: 403, error: { code: 'oauth_user_mismatch' } })));
+      const { f, i18n } = setup({ completeGoogle }, true, [['google', 'confirm'], ['token', 'a'.repeat(43)]]);
+      await f.whenStable(); f.detectChanges();
+      expect(text(f)).toContain('la inició otra cuenta de SpanishNow'); expect(text(f)).not.toContain('Tu cuenta de Google quedó conectada.');
+      i18n.setLocale('en'); f.detectChanges(); expect(text(f)).toContain('started by a different SpanishNow account');
+    });
 
     it('cambia textos, estados, fecha con la zona de preferencias y avisos; conserva borrador y no repite peticiones', async () => {
       const { f, c, i18n, api } = setup();

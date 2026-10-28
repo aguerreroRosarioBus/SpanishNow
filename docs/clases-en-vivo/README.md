@@ -90,7 +90,7 @@ Todas las rutas parten de `/api/live-classes`. Salvo `google/start` y `google/ca
 | `PATCH /:id` | Título, estado y permiso de edición (dueño) |
 | `POST /:id/operations` | Operaciones versionadas `{operations: [...]}` |
 | `POST /:id/images` | Imagen multipart `image` con validación de firma |
-| `GET /google/status`, `POST /google/connect`, `DELETE /google/connection` | Conexión por docente |
+| `GET /google/status`, `POST /google/connect`, `POST /google/complete {token}`, `DELETE /google/connection` | Conexión por docente; el callback solo deja la conexión pendiente (token de un solo uso, 5 min) y `complete` exige que la confirme quien la inició |
 | `GET /google/courses`, `GET /google/drive-files` | Listas paginadas de Google |
 | `POST /:id/classroom` | Vincular `{courseId}` |
 | `POST /:id/classroom/announce` | Publicar invitación |

@@ -54,11 +54,24 @@ export class LiveClassesComponent implements OnInit {
     const google = this.route.snapshot.queryParamMap.get('google');
     if (google === 'connected') this.infoNotice.set(noticeKey('liveBoard.info.googleConnected'));
     if (google === 'error') this.errorNotice.set(noticeKey('liveBoard.error.googleConnect'));
-    if (google) void this.router.navigate([], { replaceUrl: true, queryParams: { google: null }, queryParamsHandling: 'merge' });
+    const token = this.route.snapshot.queryParamMap.get('token');
+    // El token es de un solo uso: sale de la URL antes de usarlo.
+    if (google) void this.router.navigate([], { replaceUrl: true, queryParams: { google: null, token: null }, queryParamsHandling: 'merge' });
+    if (google === 'confirm' && token && this.teacher) void this.completeGoogle(token);
     void this.load();
     if (this.teacher) {
       this.coursesApi.getCourses().subscribe({ next: courses => this.courses.set(courses), error: () => this.infoNotice.set(noticeKey('liveBoard.info.coursesLoadFailed')) });
       this.api.googleStatus().subscribe({ next: status => this.google.set(status), error: e => this.errorNotice.set(noticeError(e)) });
+    }
+  }
+  /** El callback solo deja la conexión pendiente: la confirma esta sesión autenticada, y solo si la inició esta cuenta. */
+  private async completeGoogle(token: string): Promise<void> {
+    try {
+      this.google.set(await firstValueFrom(this.api.completeGoogle(token)));
+      this.infoNotice.set(noticeKey('liveBoard.info.googleConnected'));
+    } catch (e) {
+      const mismatch = (e as { status?: number })?.status === 403;
+      this.errorNotice.set(noticeKey(mismatch ? 'liveBoard.error.googleMismatch' : 'liveBoard.error.googleConnect'));
     }
   }
   async load(): Promise<void> {

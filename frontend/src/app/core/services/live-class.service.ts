@@ -17,6 +17,7 @@ export class LiveClassService {
   upload(id: number, image: File) { const data = new FormData(); data.append('image', image); return this.http.post<{ url: string }>(`${this.url}/${id}/images`, data); }
   googleStatus() { return this.http.get<GoogleStatus>(`${this.url}/google/status`); }
   connect() { return this.http.post<{ url: string }>(`${this.url}/google/connect`, {}); }
+  completeGoogle(token: string) { return this.http.post<GoogleStatus>(`${this.url}/google/complete`, { token }); }
   disconnect() { return this.http.delete<void>(`${this.url}/google/connection`); }
   classroomCourses(pageToken?: string) { return this.http.get<{ courses: ClassroomCourse[]; nextPageToken: string | null }>(`${this.url}/google/courses`, { params: pageToken ? { pageToken } : {} }); }
   linkClassroom(id: number, courseId: string) { return this.http.post<LiveClass>(`${this.url}/${id}/classroom`, { courseId }); }
