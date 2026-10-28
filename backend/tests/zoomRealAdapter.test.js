@@ -41,9 +41,9 @@ beforeAll(async () => {
     if (url.pathname === '/v2/users/me' && mode === 'profile_failure') return send(res, 503, { code: 300 });
     if (url.pathname === '/v2/users/me') return send(res, 200, {
       id: 'zoom-user-7', account_id: 'zoom-account-9', email: 'teacher@example.test', type: 1,
-      feature: { meeting_capacity: 100 }
+      feature: { meeting_capacity: 9999 }
     });
-    if (url.pathname === '/v2/users/me/settings') return send(res, 200, { in_meeting: { waiting_room: mode === 'waiting_room_default_on' }, meeting_security: { auto_security: true, meeting_password: true } });
+    if (url.pathname === '/v2/users/me/settings') return send(res, 200, { feature: mode === 'missing_capacity' ? {} : { meeting_capacity: 100 }, in_meeting: { waiting_room: mode === 'waiting_room_default_on' }, meeting_security: { auto_security: true, meeting_password: true } });
     if (url.pathname === '/v2/users/me/meetings' && req.method === 'GET') {
       if (mode === 'rate_limited') return send(res, 429, { code: 429 }, { 'Retry-After': '12' });
       if (mode === 'unauthorized') return send(res, 401, { code: 124 });
@@ -185,4 +185,18 @@ test('si la creación no devuelve settings se consulta la reunión; si Zoom la a
   mode = 'waiting_room_forced_off';
   expect((await adapter.create({ accessToken: 'access-2' }, wanted)).waitingRoom).toBe(false);
   expect((await adapter.update({ accessToken: 'access-2' }, '789123456', wanted)).waitingRoom).toBe(false);
+});
+
+test('participantes provienen de settings: ignora user.feature y no supone 100 si falta el dato', async () => {
+  const adapter = createZoomRealAdapter({ apiBaseUrl: `${baseUrl}/v2` });
+  expect(await adapter.capabilities({ accessToken: 'token' })).toMatchObject({ maxParticipants: 100,
+    participantCapacitySource: 'users/me/settings.feature.meeting_capacity' });
+  mode = 'missing_capacity';
+  expect(await adapter.capabilities({ accessToken: 'token' })).toMatchObject({ maxParticipants: null });
+});
+
+test.each([0, -1, 3.5, '100', null, true])('rechaza capacidad de participantes no verificada: %s', async capacity => {
+  const adapter = createZoomRealAdapter({ fetchImpl: async url => new Response(JSON.stringify(url.endsWith('/settings')
+    ? { feature: { meeting_capacity: capacity } } : { id: 'u', account_id: 'a', email: 'e', type: 2 }), { status: 200 }) });
+  expect((await adapter.capabilities({ accessToken: 'token' })).maxParticipants).toBeNull();
 });

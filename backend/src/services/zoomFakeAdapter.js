@@ -43,6 +43,7 @@ async function store(account, fn) {
     return result;
   } finally { await handle.close(); await fs.unlink(lock); }
 }
+const fakeCapabilities = () => ({ plan: 'fake', maxMinutes: 120, maxParticipants: 100, concurrentMeetings: 1, waitingRoom: false, passcodeRequired: true });
 function tokens(accountId, rotation = 0) {
   return { accountId, accessToken: `fake-access-${crypto.randomUUID()}`, refreshToken: `fake-refresh-${crypto.randomUUID()}`,
     rotation, expiresAt: new Date(Date.now() + 3600000).toISOString() };
@@ -64,14 +65,14 @@ module.exports = {
     });
     return { ...tokens(accountId), email: `docente-${accountId.slice(0, 8)}@zoom.invalid`,
       // Capacidades explícitas de la cuenta simulada, nunca una afirmación sobre licencias reales.
-      capabilities: { maxMinutes: 120, maxParticipants: 100, concurrentMeetings: 1, waitingRoom: false, passcodeRequired: true } };
+      capabilities: fakeCapabilities() };
   },
   async refresh(credentials) {
     assertFake();
     if (!credentials.refreshToken?.startsWith('fake-refresh-')) fail('zoom_revoked', 401);
     return { ...credentials, ...tokens(credentials.accountId, credentials.rotation + 1) };
   },
-  async capabilities(credentials) { assertFake(); return credentials.capabilities; },
+  async capabilities(credentials) { assertFake(); return fakeCapabilities(); },
   async find(credentials, correlationKey) {
     return store(credentials.accountId, data => Object.values(data).find(m => m.correlationKey === correlationKey) || null);
   },

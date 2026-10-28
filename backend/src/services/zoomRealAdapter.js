@@ -90,10 +90,13 @@ function createZoomRealAdapter({ oauthBaseUrl = 'https://zoom.us', apiBaseUrl = 
     const type = Number(user?.type);
     const plan = type === 1 ? 'basic' : type === 2 ? 'licensed' : type === 4 ? 'unassigned' : 'unknown';
     const maxMinutes = plan === 'basic' ? 40 : plan === 'licensed' ? 1800 : 0;
-    const rawCapacity = Number(user?.feature?.meeting_capacity ?? user?.feature?.large_meeting_capacity ?? (plan === 'unknown' ? 0 : 100));
+    // Get user settings documenta feature.meeting_capacity; /users/me no es la fuente.
+    // No inferir 100 plazas ni usar la capacidad de un add-on que podría estar desactivado.
+    const rawCapacity = settings?.feature?.meeting_capacity;
     const capabilities = {
       plan, planType: Number.isFinite(type) ? type : null, maxMinutes,
-      maxParticipants: Number.isFinite(rawCapacity) ? rawCapacity : 0,
+      maxParticipants: Number.isSafeInteger(rawCapacity) && rawCapacity > 0 ? rawCapacity : null,
+      participantCapacitySource: 'users/me/settings.feature.meeting_capacity',
       concurrentMeetings: 1,
       waitingRoom: settings?.in_meeting?.waiting_room === true,
       // Cada reunión enviada por SpanishNow recibe una contraseña aleatoria, además de la política de Zoom.

@@ -8,6 +8,8 @@ const cipher = require('./liveGoogleService');
 const adapter = require('./zoomAdapter');
 const { fail, hash } = adapter;
 const connections = require('./externalConnections');
+const capacityCache = require('./zoomCapabilities');
+const outbox = require('./outbox');
 const scope = 'fake:meetings fake:account';
 const rowFor = userId => M.ExternalConnection.findOne({ where: { userId, provider: 'zoom' } });
 async function teacher(user) {
@@ -74,7 +76,7 @@ async function complete(user, token) {
   const { capabilities, email, scopes, ...tokenData } = credentials;
   await db.transaction(async transaction => {
     const row = await M.ExternalConnection.findByPk(result.connectionId, { transaction, lock: transaction.LOCK.UPDATE });
-    await row.update({ status: 'connected', credentials: cipher.encrypt(tokenData), capabilities: capabilities || null,
+    await row.update({ status: 'connected', credentials: cipher.encrypt(tokenData), capabilities: capacityCache.stamp(capabilities),
       accountEmail: email || row.accountEmail, scopes: scopes || (adapter.isFake() ? scope : adapter.scopes.join(' ')),
       tokenExpiresAt: new Date(credentials.expiresAt), lastError: null, refreshLockedUntil: null,
       version: row.version + 1 }, { transaction });
@@ -156,6 +158,35 @@ async function withCredentials(userId, tokens, operation) {
     }
   }
 }
+
+// Refresco durable a demanda, fuera de los locks de agenda/saldo. status sigue siendo solo local.
+async function enqueueCapabilities(row) {
+  await outbox.enqueue({ topic: 'zoom.capabilities', aggregateType: 'external_connections', aggregateId: row.id,
+    dedupeKey: `zoom:capabilities:${row.id}:${hash(JSON.stringify(row.capabilities)).slice(0, 16)}:${Math.floor(Date.now() / capacityCache.TTL_MS)}` });
+}
+async function refreshCapabilities(userId) {
+  const { row, tokens } = await credentials(userId);
+  const checkedAt = Date.now();
+  const result = await withCredentials(userId, tokens, current => adapter.capabilities(current));
+  const current = await rowFor(userId);
+  if (current?.status !== 'connected' || !current.credentials) fail('integration_not_connected');
+  const active = await readTokens(current);
+  // Una respuesta tardía no sustituye capacidades de un grant reemplazado/rotado ni un refresco más nuevo.
+  if (active.accessToken !== result.tokens.accessToken || active.refreshToken !== result.tokens.refreshToken
+    || Date.parse(current.capabilities?.checkedAt) > checkedAt) fail('zoom_busy', 503, {}, { retryable: true });
+  const capabilities = capacityCache.stamp(result.value, checkedAt);
+  const [saved] = await M.ExternalConnection.update({ capabilities }, { where: { id: row.id,
+    credentials: current.credentials, version: current.version, status: 'connected' } });
+  if (!saved) fail('zoom_busy', 503, {}, { retryable: true });
+  if (!capacityCache.valid(capabilities)) fail('zoom_capacity_unknown');
+  return capabilities;
+}
+outbox.register('zoom.capabilities', async job => {
+  const row = await M.ExternalConnection.findByPk(job.aggregateId);
+  if (row?.provider !== 'zoom' || row.status !== 'connected') return;
+  if (!capacityCache.fresh(row.capabilities) || !capacityCache.valid(row.capabilities)) await refreshCapabilities(row.userId);
+});
+
 async function status(user) {
   await teacher(user); adapter.assertConfigured();
   const current = await rowFor(user.id);
@@ -182,4 +213,4 @@ async function disconnect(user) {
   if (credentialsToRevoke?.accessToken && !adapter.isFake()) await adapter.revoke(credentialsToRevoke.accessToken).catch(() => {});
   return status(user);
 }
-module.exports = { teacher, connect, callback, complete, credentials, withCredentials, rotate, status, disconnect, rowFor, readTokens, config };
+module.exports = { teacher, connect, callback, complete, credentials, withCredentials, rotate, status, disconnect, rowFor, readTokens, config, enqueueCapabilities, refreshCapabilities };

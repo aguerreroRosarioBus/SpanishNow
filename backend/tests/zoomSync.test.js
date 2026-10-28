@@ -416,3 +416,42 @@ test('W07/W08: jobs calendar.sync entregan automático/manual sin host y sobrevi
     expect(fake.eventCount('primary')).toBe(1);
   } finally { delete process.env.FEATURE_GOOGLE_CALENDAR; }
 });
+
+test('caché vencida: preflight no usa datos viejos ni hace red; refresco durable recupera la capacidad', async () => {
+  const c = await chain(); await connected(c.teacher);
+  const row = await connection.rowFor(c.teacher.id);
+  await row.update({ capabilities: { ...row.capabilities, checkedAt: new Date(Date.now() - 3600000).toISOString(), maxParticipants: 9999 } });
+  const provider = jest.spyOn(adapter, 'capabilities').mockResolvedValue({ ...row.capabilities, maxParticipants: 2 });
+  await expect(zoom.assertCapacity(c.teacher.id, 50, 2, { preflight: true })).rejects.toMatchObject({ code: 'zoom_capacity_unknown' });
+  await expect(zoom.assertCapacity(c.teacher.id, 50, 2, { preflight: true })).rejects.toMatchObject({ code: 'zoom_capacity_unknown' });
+  expect(provider).not.toHaveBeenCalled();
+  const jobs = await M.OutboxJob.findAll({ where: { topic: 'zoom.capabilities', aggregateId: row.id } });
+  expect(jobs).toHaveLength(1);
+  try {
+    await jobs[0].update({ runAt: new Date(0) });
+    await outbox.runOnce({ limit: 1 });
+    expect(provider).toHaveBeenCalledTimes(1);
+    expect((await jobs[0].reload()).status).toBe('done');
+    await expect(zoom.assertCapacity(c.teacher.id, 50, 2, { preflight: true })).rejects.toMatchObject({ code: 'zoom_capacity_exceeded' });
+    await expect(zoom.assertCapacity(c.teacher.id, 50, 1, { preflight: true })).resolves.toBeUndefined();
+  } finally { await M.OutboxJob.destroy({ where: { id: jobs[0].id } }); }
+});
+
+test('sync actualiza caché heredada antes de crear y no resucita un grant desconectado durante el refresco', async () => {
+  const c = await fixture(); const row = await connection.rowFor(c.teacher.id);
+  await row.update({ capabilities: { maxMinutes: 120, maxParticipants: 100 } });
+  const provider = jest.spyOn(adapter, 'capabilities');
+  await sync(c.session.id);
+  expect(provider).toHaveBeenCalledTimes(1);
+  expect((await connection.rowFor(c.teacher.id)).capabilities).toMatchObject({ cacheVersion: 1, plan: 'fake' });
+  provider.mockImplementationOnce(async () => { await connection.disconnect(c.teacher); return row.capabilities; });
+  await expect(connection.refreshCapabilities(c.teacher.id)).rejects.toMatchObject({ code: 'integration_not_connected' });
+  expect((await connection.rowFor(c.teacher.id)).capabilities).toBeNull();
+});
+
+test.each([null, 0, -1, 2.5, '100'])('preflight rechaza caché con participantes inválidos (%s)', async maxParticipants => {
+  const c = await chain(); await connected(c.teacher); const row = await connection.rowFor(c.teacher.id);
+  await row.update({ capabilities: { ...row.capabilities, maxParticipants } });
+  try { await expect(zoom.assertCapacity(c.teacher.id, 50, 1, { preflight: true })).rejects.toMatchObject({ code: 'zoom_capacity_unknown' }); }
+  finally { await M.OutboxJob.destroy({ where: { topic: 'zoom.capabilities', aggregateId: row.id } }); }
+});
