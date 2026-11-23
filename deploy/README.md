@@ -82,7 +82,7 @@ docker compose -f deploy/docker-compose.yml exec caddy caddy validate --config /
 docker compose -f deploy/docker-compose.yml exec caddy caddy reload --config /etc/caddy/Caddyfile
 ```
 
-Validar **antes** de recargar: un error en este archivo afectaría a Gestión y CalcuCocos.
+Validar **antes** de recargar: un error en este archivo afectaría a los demás sistemas que usan ese Caddy.
 
 ## Backup
 
