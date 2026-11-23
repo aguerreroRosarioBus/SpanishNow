@@ -1,0 +1,9 @@
+# Solo para probar sin dominio (túnel SSH en la fase 2, o Docker local): publica la web en el puerto 18080 del
+# propio equipo, nunca hacia afuera. No se usa en producción.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prueba.yml up -d
+#   ssh -L 18080:127.0.0.1:18080 root@<servidor>      # y abrir http://localhost:18080
+services:
+  spanishnow-web:
+    ports:
+      - "127.0.0.1:18080:80"

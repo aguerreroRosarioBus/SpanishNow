@@ -1,0 +1,104 @@
+# SpanishNow en el VPS compartido (DEP-01). Lo gobiernan los scripts de esta carpeta; ver README.md.
+#
+#   Caddy compartido ──► spanishnow-web (nginx) ──► spanishnow-api ──► spanishnow-db (MySQL)
+#
+# Los nombres de servicio llevan el prefijo «spanishnow-» a propósito: spanishnow-web también se une a la red de
+# Gestión (deploy_default), donde ya existen servicios llamados `app` y `db`; un nombre genérico se confundiría.
+# La base y el backend están solo en la red propia y no publican ningún puerto.
+name: spanishnow
+
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "10m", max-file: "3" }
+
+services:
+  spanishnow-db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Falta MYSQL_ROOT_PASSWORD en deploy/.env}
+      MYSQL_DATABASE: ${DB_NAME:-spanishnow}
+      MYSQL_USER: ${DB_USER:-spanishnow}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Falta DB_PASSWORD en deploy/.env}
+      TZ: UTC
+    # Ajustes para un servidor chico y compartido: ~300 MB de RAM en vez de ~600 MB.
+    command:
+      - --innodb-buffer-pool-size=256M
+      - --max-connections=50
+      - --performance-schema=OFF
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_ROOT_PASSWORD\" mysqladmin ping -h 127.0.0.1 -uroot --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    mem_limit: 768m
+    logging: *logging
+
+  spanishnow-api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.api
+    image: spanishnow-api:local
+    restart: unless-stopped
+    depends_on:
+      spanishnow-db:
+        condition: service_healthy
+    env_file: .env.api
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      TZ: UTC
+      DB_HOST: spanishnow-db
+      DB_PORT: "3306"
+      DB_NAME: ${DB_NAME:-spanishnow}
+      DB_USER: ${DB_USER:-spanishnow}
+      DB_PASSWORD: ${DB_PASSWORD:?Falta DB_PASSWORD en deploy/.env}
+      # Dos proxies delante: el Caddy compartido y el nginx de spanishnow-web (DEP-03).
+      TRUST_PROXY: "2"
+      # Un solo worker de jobs (Zoom, Calendar, correo); es seguro con varias réplicas pero acá hay una.
+      OUTBOX_WORKER: "1"
+      IMAGE_SEARCH_CACHE_DIR: /app/tmp/image-search-cache
+    volumes:
+      - api_tmp:/app/tmp
+      - api_uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    mem_limit: 512m
+    logging: *logging
+
+  spanishnow-web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.web
+    image: spanishnow-web:local
+    restart: unless-stopped
+    depends_on:
+      - spanishnow-api
+    networks:
+      - default
+      - edge
+    healthcheck:
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://127.0.0.1/index.html"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    mem_limit: 64m
+    logging: *logging
+
+volumes:
+  db_data:
+  api_tmp:
+  api_uploads:
+
+networks:
+  # Red del Caddy compartido (en el VPS, la de Gestión). Debe existir antes de levantar.
+  edge:
+    external: true
+    name: ${EDGE_NETWORK:-deploy_default}

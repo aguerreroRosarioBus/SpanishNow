@@ -1,0 +1,8 @@
+# Secretos y estado del servidor: nunca al repositorio (AC-DEP-07).
+.env
+.env.api
+backups/
+rclone/*
+!rclone/.gitkeep
+.rama-publicada
+.commit-anterior

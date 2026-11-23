@@ -1,0 +1,14 @@
+**/node_modules
+**/.env
+**/.env.*
+.git
+backend
+e2e
+docs
+reels
+# De deploy/ solo hace falta nginx.conf (nada de backups ni secretos en el contexto de construcción).
+deploy/*
+!deploy/nginx.conf
+frontend/dist
+frontend/out-tsc
+frontend/.angular

@@ -1,0 +1,16 @@
+**/node_modules
+**/.env
+**/.env.*
+.git
+frontend
+e2e
+docs
+reels
+deploy
+backend/tests
+backend/tmp
+backend/uploads
+backend/uploads-dev
+backend/archive
+backend/*.log
+backend/*.sql
