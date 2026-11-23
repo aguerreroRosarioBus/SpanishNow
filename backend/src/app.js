@@ -7,6 +7,9 @@ dotenv.config();
 
 const app = express();
 
+// Saltos de proxy de confianza para req.ip (DEP-03). Sin TRUST_PROXY se ignora X-Forwarded-For.
+app.set('trust proxy', require('./config/trustProxy').parseTrustProxy(process.env.TRUST_PROXY));
+
 // CORS configuration
 // Extra origins (comma separated) for local tooling, e.g. E2E: CORS_EXTRA_ORIGINS=http://localhost:4300
 const extraOrigins = (process.env.CORS_EXTRA_ORIGINS || '')
