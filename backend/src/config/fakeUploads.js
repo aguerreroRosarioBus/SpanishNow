@@ -29,11 +29,13 @@ function extensionOf(buffer) {
   return '.bin';
 }
 
+// Relative by default (/uploads-dev/<file>): the dev server (ng serve) proxies /uploads-dev to the backend, so the stored URL
+// works from any host (localhost, LAN, tunnel) and does not break when the port changes (A-02). MEDIA_FAKE_BASE_URL opts into absolute URLs.
 function baseUrl() {
-  return (process.env.MEDIA_FAKE_BASE_URL || `http://localhost:${process.env.PORT || 3000}`).replace(/\/+$/, '');
+  return (process.env.MEDIA_FAKE_BASE_URL || '').replace(/\/+$/, '');
 }
 
-/** Same contract as cloudinary.uploadFromBuffer: resolves { secure_url }. */
+/** Same contract as cloudinary.uploadFromBuffer: resolves { secure_url } (a path like /uploads-dev/<uuid>.png, absolute only with MEDIA_FAKE_BASE_URL). */
 async function saveFake(buffer) {
   assertSafe();
   await fs.promises.mkdir(DIR, { recursive: true });
@@ -45,7 +47,7 @@ async function saveFake(buffer) {
 /** Removes a file written by saveFake (by its URL). Best effort: resolves false when it was not there. */
 async function removeFake(url) {
   try {
-    const name = path.basename(new URL(url).pathname);
+    const name = path.basename(new URL(url, 'http://localhost').pathname);
     if (!/^[0-9a-f-]{36}\.[a-z0-9]+$/.test(name)) return false;
     await fs.promises.rm(path.join(DIR, name), { force: true });
     return true;

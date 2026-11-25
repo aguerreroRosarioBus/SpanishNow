@@ -123,7 +123,7 @@ describe('materials', () => {
       expect(res.status).toBe(200);
       expect(res.body).toEqual({ url: material.fileUrl, filename: 'Guia.pdf' });
     }
-    const file = await request(app).get(new URL(material.fileUrl).pathname); // local stand-in serves the file
+    const file = await request(app).get(material.fileUrl); // local stand-in serves the file
     expect(file.status).toBe(200);
     expect(file.headers['content-type']).toMatch(/pdf/);
   });
