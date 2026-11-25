@@ -80,9 +80,9 @@ export class ProgressComponent implements OnInit {
     });
   }
 
-  /** Curso terminado: certificado listo o elegible. */
+  /** Finalización según el avance actual del curso. */
   isFinished(course: CourseProgress): boolean {
-    return !!(course.certificate?.code || course.certificate?.eligible);
+    return Boolean(course.certificate?.eligible);
   }
 
   /** Id del curso siguiente si el alumno ya lo tiene (para ir directo al reproductor). */

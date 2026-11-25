@@ -181,7 +181,7 @@ async function join(user, sessionId, part) {
   if (session.status !== 'confirmed' || (!isOwner && seat.status === 'cancelled')) fail('proposal_stale');
   const ref = await M.ExternalSyncRef.findOne({ where: { sessionId: session.id, provider: 'zoom' } });
   if (ref?.manualJoinUrl) return { joinUrl: participantUrl(ref.manualJoinUrl), manual: true };
-  if (!ref?.externalId && isOwner) fail('provider_unavailable', 503);
+  if (!ref || (isOwner && !ref.externalId)) fail('zoom_meeting_pending');
   if (ref?.status !== 'ready') fail('integration_not_connected');
   // Clases partidas por el tope de 40 min de Zoom Basic: tramo pedido o, por defecto, el que corresponde a la hora actual.
   const list = partsOf(session, ref);

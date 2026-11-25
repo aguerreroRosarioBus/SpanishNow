@@ -41,7 +41,7 @@
       @if (s.liveClassId && (teacher() || s.whiteboardJoinCode) && !inactive()) { <a class="btn btn-secondary" [routerLink]="teacher() ? ['/live', s.liveClassId] : ['/live/join', s.whiteboardJoinCode]">{{ 'schedule.whiteboard' | t }}</a> }
       @if (canCancel()) { <button type="button" class="btn btn-ghost card-actions-end" (click)="startDecision('cancel')" [disabled]="busy()">{{ 'schedule.cancel' | t }}</button> }
     </div>
-    @if (meetingNotReady()) { <p class="notice" role="status">{{ 'schedule.meetingNotReady' | t }}</p> }
+    @if (meetingError(); as message) { <p class="notice" role="status" data-testid="meeting-feedback">{{ message }}</p> }
     @if (decision(); as action) {
       <p-dialog appRestoreFocus [visible]="true" (visibleChange)="!$event && closeDecision()" [header]="('schedule.' + action) | t"
         [modal]="true" [draggable]="false" [resizable]="false" [blockScroll]="true" [closable]="!busy()" [closeOnEscape]="!busy()"
@@ -107,11 +107,13 @@
         <ul class="sync-list">@for (ref of s.sync; track ref.provider) { <li>{{ ref.provider === 'zoom' ? 'Zoom' : 'Google Calendar' }} · <span [class.sync-attention]="ref.status !== 'ready'">{{ ('schedule.status.' + ref.status) | t }}</span>
           @if (ref.provider === 'google_calendar' && ref.status === 'needs_attention' && teacher()) { <br /><span class="notice">{{ syncMessage(ref.lastError) | t }}</span>
             @if (ref.lastError === 'integration_not_connected' || ref.lastError === 'authorization_lost') { <a [routerLink]="['/teacher/integrations']">{{ 'calendar.manage' | t }}</a> } }</li> }</ul>
-        @if (!s.sync.length || hasPendingSync()) { <p class="notice">{{ 'schedule.syncPending' | t }}</p> }
+        @if (hasPendingSync()) { <p class="notice">{{ 'schedule.syncPending' | t }}</p> }
         <div class="sync-actions">
           <button type="button" class="btn btn-secondary btn-sm" (click)="downloadIcs()" [disabled]="busy()">{{ 'calendar.ics' | t }}</button>
-          @if (teacher() && (!s.sync.length || hasPendingSync())) { <button type="button" class="btn btn-secondary btn-sm" (click)="retrySync()" [disabled]="busy()" data-testid="retry-sync">{{ 'schedule.syncRetry' | t }}</button> }
+          @if (teacher() && hasPendingSync() && canJoin()) { <button type="button" class="btn btn-secondary btn-sm" (click)="retrySync()" [disabled]="busy()" data-testid="retry-sync">{{ 'schedule.syncRetry' | t }}</button> }
         </div>
+        @if (syncError(); as message) { <p class="notice" role="alert" data-testid="sync-error">{{ message }}</p> }
+        @if (syncQueued()) { <p class="notice" role="status">{{ 'schedule.syncQueued' | t }}</p> }
         <p class="notice">{{ 'calendar.icsNote' | t }}</p>
       </details>
     }

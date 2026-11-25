@@ -105,6 +105,23 @@ describe('W06: interfaz conectada por contratos de agenda', () => {
     }
   });
 
+  it('D2-01: la docente ve los errores junto a su botón de Zoom y al reintento', () => {
+    const api2 = api as typeof api & { join: ReturnType<typeof vi.fn>; retrySync: ReturnType<typeof vi.fn> };
+    api2.join = vi.fn(() => throwError(() => ({ status: 409, error: { code: 'zoom_meeting_pending' } })));
+    api2.retrySync = vi.fn(() => throwError(() => ({ status: 409, error: { code: 'integration_not_connected' } })));
+    api.get.mockReturnValue(of(confirmed([])));
+    auth.currentUser.set({ id: 2, role: 'teacher' });
+    const fixture = TestBed.createComponent(ClassSessionCardComponent);
+    fixture.componentRef.setInput('sessionId', 10);
+    fixture.detectChanges();
+    fixture.nativeElement.querySelector('[data-testid="join-button"]').click();
+    fixture.nativeElement.querySelector('[data-testid="retry-sync"]').click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="meeting-feedback"]').textContent).toContain('todavía no tiene una reunión');
+    expect(fixture.nativeElement.querySelector('[data-testid="sync-error"]').textContent).toContain('Conecta Zoom o Google Calendar');
+    fixture.destroy();
+  });
+
   it('la docente inicia la reunión con hostUrl de zoom.us; la alumna solo entra como participante', () => {
     const sync = [{ provider: 'zoom', status: 'ready', syncedVersion: 1 }];
     const api2 = api as typeof api & { join: ReturnType<typeof vi.fn> };
@@ -140,7 +157,7 @@ describe('W06: interfaz conectada por contratos de agenda', () => {
     auth.currentUser.set({ id: 2, role: 'teacher' });
     fixture = TestBed.createComponent(ClassSessionCardComponent); fixture.componentRef.setInput('sessionId', 10); fixture.detectChanges();
     click(fixture, 'Iniciar reunión');
-    expect(fixture.nativeElement.textContent).not.toContain('La reunión todavía no está lista'); expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeTruthy();
+    expect(fixture.nativeElement.textContent).not.toContain('La reunión todavía no está lista'); expect(fixture.nativeElement.querySelector('[data-testid="meeting-feedback"]').textContent).toContain('Conecta el servicio');
   });
 
   describe('Tanda C: tarjeta de clase', () => {

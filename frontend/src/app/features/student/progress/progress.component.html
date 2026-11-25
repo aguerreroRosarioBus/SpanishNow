@@ -57,7 +57,7 @@
                     }
                   }
                   @if (cert.code) {
-                    <strong>{{ 'student.certificateReady' | t }}</strong>
+                    <strong>{{ 'student.certificateObtained' | t }}</strong>
                     <div class="cert__meta">{{ 'student.certificateCode' | t : { code: cert.code } }} ·
                       <a [href]="verificationUrl(cert.code)" target="_blank" rel="noopener">{{ 'student.verifyLink' | t }}</a>
                     </div>

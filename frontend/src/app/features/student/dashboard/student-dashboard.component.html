@@ -82,7 +82,9 @@
             <div card-meta class="library-meta">
               @if (teacherName(enrollment); as teacher) { <small>{{ 'catalog.byTeacher' | t:{ name: teacher } }}</small> }
               <span class="badge-status" [class.badge-status--published]="courseState(enrollment) === 'refine.completed'" [class.badge-status--draft]="courseState(enrollment) !== 'refine.completed'">{{ courseState(enrollment) | t }}</span>
-              @if (progressPercent(enrollment); as percent) { <div class="progress" role="progressbar" [attr.aria-valuenow]="percent" aria-valuemin="0" aria-valuemax="100" [attr.aria-label]="'student.progress' | t"><div class="progress-bar" [class.is-complete]="courseState(enrollment)==='refine.completed'" [style.width.%]="percent"></div></div> }
+              @if (certificateObtained(enrollment)) { <small>{{ 'student.certificateObtained' | t }}</small> }
+              @let percent = progressPercent(enrollment);
+              @if (percent !== null) { <div class="progress" role="progressbar" [attr.aria-valuenow]="percent" aria-valuemin="0" aria-valuemax="100" [attr.aria-label]="'student.progress' | t"><div class="progress-bar" [class.is-complete]="courseState(enrollment)==='refine.completed'" [style.width.%]="percent"></div></div> }
             </div>
             <a [routerLink]="['/student/course', enrollment.courseId, 'play']" [queryParams]="{ story: resumeStory(enrollment) }" class="btn btn-primary flex-grow-1">{{ courseAction(enrollment) | t }}</a>
             <div ngbDropdown container="body" placement="bottom-end">
