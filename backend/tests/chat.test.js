@@ -378,6 +378,9 @@ describe('CHAT-04/08/10: block, report, system events and moderation', () => {
     expect(Number(again.id)).toBe(Number(event.id));
     const history = await as(student).get(`/api/conversations/${conversation.id}/messages`);
     expect(history.body.items[2]).toMatchObject({ type: 'system_event', senderRole: 'system', senderId: null, mine: false, eventCode: 'purchase_paid', eventParams: { units: 4 } });
+    // D-13: la bandeja recibe el código y los parámetros del último evento para mostrar su texto, no solo «Aviso del sistema».
+    const inbox = await as(student).get('/api/conversations');
+    expect(inbox.body.items.find(c => c.id === conversation.id).lastMessage).toMatchObject({ type: 'system_event', eventCode: 'purchase_paid', eventParams: { units: 4 }, preview: null });
 
     // Clients cannot create system or commercial messages: the API only takes text.
     const forged = await as(student).post(`/api/conversations/${conversation.id}/messages`, { clientMessageId: cid(), body: 'x', type: 'offer', senderId: null });

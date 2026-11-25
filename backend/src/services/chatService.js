@@ -250,6 +250,7 @@ const preview = message => {
     senderIsMe: null, // filled by the caller
     preview: text && text.length > PREVIEW_LENGTH ? `${text.slice(0, PREVIEW_LENGTH)}…` : text,
     eventCode: message.eventCode,
+    eventParams: hidden ? null : message.eventParams || null, // D-13: la bandeja traduce el evento con sus parámetros
     hidden,
     createdAt: message.createdAt
   };

@@ -16,6 +16,7 @@ export interface LastMessagePreview {
   /** Primeros caracteres de un texto; null para tarjetas, eventos u ocultos. */
   preview: string | null;
   eventCode: string | null;
+  eventParams?: Record<string, unknown> | null;
   hidden: boolean;
   createdAt: string;
 }
