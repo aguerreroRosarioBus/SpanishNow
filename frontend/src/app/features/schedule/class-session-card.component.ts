@@ -11,6 +11,7 @@ import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { isAtLeastHoursBefore, isTimeZone } from '../../core/time/class-time';
 import { SessionTimeComponent } from './session-time.component';
+import { isLapsed } from './session-lapse';
 import { DialogModule } from 'primeng/dialog';
 import { PilotTheme } from '../../shared/styles/primeng-theme';
 import { RestoreFocusDirective } from '../../shared/directives/restore-focus.directive';
@@ -23,6 +24,8 @@ export class ClassSessionCardComponent {
   private readonly pilotTheme = inject(PilotTheme);
   sessionId = input.required<number>();
   proposalVersion = input<number | null>(null);
+  /** La agenda muestra una sola vez los avisos de zona de toda la página; la tarjeta no los repite (D-04). */
+  pageNotices = input(false);
   changed = output<ClassSession>();
   private api = inject(ClassSessionsService);
   readonly auth = inject(AuthService);
@@ -54,10 +57,15 @@ export class ClassSessionCardComponent {
     const s = this.session(); if (!s) return null;
     return this.proposalVersion() ? s.proposals.find(p => p.version === this.proposalVersion()) || null : s.proposal;
   });
+  /** Sin confirmar y con el plazo de respuesta o la propia clase ya pasados: se muestra «Venció» aunque el worker no lo haya marcado. */
+  lapsed = computed(() => { const s = this.session(); return !!s && isLapsed(s, Date.now() + this.clockOffset); });
+  /** Propuesta pendiente cuyo plazo de respuesta ya pasó. */
+  proposalExpired = computed(() => { const p = this.selectedProposal(); return p?.status === 'pending' && Date.parse(p.expiresAt) <= Date.now() + this.clockOffset; });
+  displayStatus = computed(() => this.lapsed() ? 'expired' : (this.session()?.status || ''));
   canRespond = computed(() => {
     const s = this.session(), p = this.selectedProposal();
-    return !!s && !!p && p.status === 'pending' && p.version === s.version
-      && Date.parse(p.expiresAt) > Date.now() && !this.teacher()
+    return !!s && !!p && p.status === 'pending' && p.version === s.version && !this.lapsed()
+      && Date.parse(p.expiresAt) > Date.now() + this.clockOffset && !this.teacher()
       && s.participants.some(a => a.userId === this.auth.currentUser()?.id && a.status !== 'cancelled')
       && this.features.enabled('class_scheduling');
   });
@@ -81,9 +89,9 @@ export class ClassSessionCardComponent {
     return p?.status === 'pending' ? p : s;
   });
   /** Clase que ya no se va a dictar: se muestra atenuada. */
-  inactive = computed(() => ['cancelled', 'declined', 'expired'].includes(this.session()?.status || ''));
+  inactive = computed(() => this.lapsed() || ['cancelled', 'declined', 'expired'].includes(this.session()?.status || ''));
   statusTone = computed(() => {
-    switch (this.session()?.status) {
+    switch (this.displayStatus()) {
       case 'confirmed': return 'success';
       case 'draft': case 'forming': case 'proposed': return 'warning';
       case 'declined': case 'teacher_no_show': case 'student_no_show': return 'danger';
@@ -96,6 +104,13 @@ export class ClassSessionCardComponent {
     const s = this.session(); if (!s) return '';
     return this.teacher() ? (s.participants.map(p => p.name).join(', ') || s.teacher.name) : s.teacher.name;
   });
+  /** Reprogramar: no en clases que ya pasaron; una propuesta vencida se trata como «vencida» (solo las de grupo se reprograman). */
+  canReschedule = computed(() => {
+    const s = this.session(); if (!s || !this.teacher() || !this.features.enabled('class_scheduling')) return false;
+    if (this.lapsed()) return s.kind === 'group' && Date.parse(s.endsAt) > Date.now() + this.clockOffset;
+    return ['forming', 'proposed', 'confirmed'].includes(s.status) || (s.kind === 'group' && ['expired', 'declined'].includes(s.status));
+  });
+  canCancel = computed(() => { const s = this.session(); return !!s && !this.lapsed() && ['forming', 'proposed', 'confirmed'].includes(s.status) && !this.rejectIsEnough(); });
   hasPendingSync = computed(() => (this.session()?.sync || []).some(r => r.status !== 'ready'));
   /** El botón principal de la reunión: solo en una clase confirmada que todavía no terminó. */
   canJoin(): boolean {

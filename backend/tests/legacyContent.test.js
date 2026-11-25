@@ -60,8 +60,12 @@ describe('Migrated legacy content (Dump20260122.sql + migrations)', () => {
     const res = await as(owner).get(`${planUrl(story.id)}/draft`);
 
     expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ status: 'draft', revision: 2 });
+    // Abrir el compositor no escribe (D-10): se ve la revisión publicada y se anuncia la 2; el borrador nace al primer guardado.
+    expect(res.body).toMatchObject({ status: 'published', publishedRevision: 1, revision: 2 });
     expect(res.body.blocks.some(b => b.type === 'question' && typeof b.questionSnapshot.correctAnswer === 'string')).toBe(true);
+    const saved = await as(owner).put(`${planUrl(story.id)}/draft`, { revision: res.body.revision, blocks: res.body.blocks.map(({ position, ...b }) => b) });
+    expect(saved.status).toBe(200);
+    expect(saved.body).toMatchObject({ status: 'draft', revision: 2 });
     expect((await openLesson(student, story.id)).body.revision).toBe(1);
   });
 });

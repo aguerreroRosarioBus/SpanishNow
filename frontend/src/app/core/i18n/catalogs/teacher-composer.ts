@@ -29,6 +29,7 @@ const ENTRIES: readonly Entry[] = [
   ['composer.dialogLabel', 'Lesson composer: {title}', 'Compositor de lección: {title}'],
   ['composer.heading', 'Lesson: {title}', 'Lección: {title}'],
   ['composer.subheadDraft', 'Draft · revision {revision}', 'Borrador · revisión {revision}'],
+  ['composer.subheadPublished', 'Published · revision {revision}. The next save starts revision {next}.', 'Publicada · revisión {revision}. Al guardar se crea la revisión {next}.'],
   ['composer.subheadNewRevision', 'New draft revision · revision {revision}', 'Nueva revisión en borrador · revisión {revision}'],
   ['composer.tutorialLink', 'How does this template work?', '¿Cómo funciona esta plantilla?'],
   ['composer.closeAria', 'Close composer', 'Cerrar compositor'],

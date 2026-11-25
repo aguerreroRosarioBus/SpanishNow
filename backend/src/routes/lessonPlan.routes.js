@@ -92,11 +92,27 @@ async function withKeyframeTooltips(dto, storyId, transaction, student = false) 
 
 const draftDto = async (plan, transaction) => withKeyframeTooltips(planDto(plan), plan.storyId, transaction);
 
+/**
+ * Opening the composer must not write (D-10). A story that is published and has no open draft is shown as its published
+ * plan: `status: 'published'`, `publishedRevision` is the live revision and `revision` is the one the draft will get at the
+ * first write (save, reorder, audio or image), so the client's next call matches what `currentDraft` creates then.
+ * A story that was never composed still gets its initial draft here (there is nothing published to be mistaken for).
+ */
+async function draftOrPublishedView(story, transaction) {
+  const draft = await LessonPlan.findOne({ where: { storyId: story.id, status: 'draft' }, transaction });
+  const published = draft ? null : await LessonPlan.findOne({ where: { storyId: story.id, status: 'published' }, order: [['revision', 'DESC']], transaction });
+  if (published) {
+    const dto = await draftDto(await planWithBlocks(published.id, transaction), transaction);
+    return { ...dto, status: 'published', publishedRevision: published.revision, revision: published.revision + 1 };
+  }
+  return draftDto(await planWithBlocks((draft || await currentDraft(story, transaction)).id, transaction), transaction);
+}
+
 router.get('/story/:storyId/draft', authMiddleware, isTeacher, async (req, res) => {
   try {
     const result = await draftTransaction(async transaction => {
       const story = await storyForTeacher(req.params.storyId, req.user.id, transaction);
-      return draftDto(await planWithBlocks((await currentDraft(story, transaction)).id, transaction), transaction);
+      return draftOrPublishedView(story, transaction);
     });
     res.json(result);
   } catch (error) { sendError(res, error); }

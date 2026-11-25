@@ -349,4 +349,106 @@ describe('W06: interfaz conectada por contratos de agenda', () => {
       fixture.destroy();
     });
   });
+  describe('D-04: clases sin responder cuyo plazo pasó', () => {
+    // serverNow del fixture: 2026-10-22T13:00Z. Estas fechas se comparan con ese reloj, no con el de la máquina.
+    const lapsedProposal = (extra: Partial<ClassSession> = {}): ClassSession => {
+      const s = session(); s.proposals = [s.proposal!];
+      return { ...s, proposal: { ...s.proposal!, expiresAt: '2026-10-20T12:00:00Z' }, ...extra };
+    };
+    const render = (s: ClassSession, pageNotices = false) => {
+      api.get.mockReturnValue(of(s));
+      const fixture = TestBed.createComponent(ClassSessionCardComponent); fixture.componentRef.setInput('sessionId', 10); fixture.componentRef.setInput('pageNotices', pageNotices); fixture.detectChanges();
+      return fixture;
+    };
+    const buttons = (f: { nativeElement: HTMLElement }) => Array.from(f.nativeElement.querySelectorAll('.card-actions .btn')).map(b => b.textContent!.trim());
+
+    it('la alumna ve «Venció», la clase atenuada y ninguna acción cuando el plazo de respuesta pasó', () => {
+      const fixture = render(lapsedProposal());
+      const el: HTMLElement = fixture.nativeElement;
+      expect(el.querySelector('[data-testid="session-status"]')!.textContent).toContain('Venció');
+      expect(el.querySelector('.schedule-card')!.classList).toContain('is-inactive');
+      expect(buttons(fixture)).toEqual([]);
+      expect(el.querySelector('[data-testid="proposal-expired"]')).not.toBeNull();
+      expect(el.textContent).not.toContain('Responder antes de');
+      fixture.destroy();
+    });
+
+    it('una clase pendiente que ya pasó queda «Venció» sin «Proponer otro horario» ni «Cancelar clase» para la docente', () => {
+      auth.currentUser.set({ id: 2, role: 'teacher' });
+      const fixture = render(lapsedProposal({ startsAt: '2026-10-10T14:00:00.000Z', endsAt: '2026-10-10T14:50:00.000Z' }));
+      expect(fixture.nativeElement.querySelector('[data-testid="session-status"]')!.textContent).toContain('Venció');
+      expect(buttons(fixture)).toEqual([]);
+      fixture.destroy();
+    });
+
+    it('una propuesta vigente conserva sus acciones y el plazo «Responder antes de»', () => {
+      const fixture = render(session());
+      expect(fixture.nativeElement.querySelector('[data-testid="session-status"]')!.textContent).toContain('Esperando aceptación');
+      expect(buttons(fixture).length).toBeGreaterThan(0);
+      expect(buttons(fixture).join('|')).toMatch(/Acept/);
+      expect(fixture.nativeElement.textContent).toContain('Responder antes de');
+      fixture.destroy();
+    });
+
+    it('en un grupo con la clase aún por delante la docente puede reprogramar, pero no cancelar', () => {
+      auth.currentUser.set({ id: 2, role: 'teacher' });
+      const fixture = render(lapsedProposal({ kind: 'group' }));
+      expect(buttons(fixture)).toEqual(['Proponer otro horario']);
+      fixture.destroy();
+    });
+
+    it('la tarjeta dentro de la agenda no repite el aviso de zona ni el de reglas; fuera de ella sí, con el texto del rol', () => {
+      const changed = { ...session(), timeZoneRulesChanged: true };
+      preferencesUnconfirmed();
+      let fixture = render(changed, true);
+      expect(fixture.nativeElement.querySelector('.alert-warning')).toBeNull();
+      expect(fixture.nativeElement.textContent).not.toContain('Confirmar zona');
+      fixture.destroy();
+      fixture = render(changed);
+      expect(fixture.nativeElement.querySelector('.alert-warning')!.textContent).toContain('pide al docente');
+      expect(fixture.nativeElement.textContent).toContain('Confirmar zona');
+      fixture.destroy();
+      auth.currentUser.set({ id: 2, role: 'teacher' });
+      fixture = render(changed);
+      expect(fixture.nativeElement.querySelector('.alert-warning')!.textContent).toContain('revisa la clase');
+      expect(fixture.nativeElement.querySelector('.alert-warning')!.textContent).not.toContain('pide al docente');
+      fixture.destroy();
+    });
+
+    it('la agenda muestra el aviso de reglas una sola vez para varias clases y las vencidas van al historial', () => {
+      auth.currentUser.set({ id: 2, role: 'teacher' });
+      const base = { ...session(), timeZoneRulesChanged: true };
+      const vigente = { ...base, id: 11 }, vencida = { ...lapsedProposal(), timeZoneRulesChanged: true, id: 12 };
+      api.list.mockReturnValue(of({ items: [vigente, vencida, { ...base, id: 13 }], truncated: false }));
+      api.get.mockImplementation((id: number) => of(id === 12 ? vencida : { ...base, id }));
+      const fixture = TestBed.createComponent(ScheduleComponent); fixture.detectChanges();
+      const el: HTMLElement = fixture.nativeElement;
+      expect(el.querySelectorAll('[data-testid="rules-changed"]')).toHaveLength(1);
+      expect(el.querySelector('[data-testid="rules-changed"]')!.textContent).toContain('revisa la clase');
+      expect(el.querySelectorAll('.schedule-card .alert-warning')).toHaveLength(0);
+      const c = fixture.componentInstance;
+      c.listView.set('upcoming'); expect(c.visibleSessions().map(x => x.id)).toEqual([11, 13]);
+      c.listView.set('history'); expect(c.visibleSessions().map(x => x.id)).toEqual([12]);
+      fixture.destroy();
+    });
+  });
+
+  const preferencesUnconfirmed = () => {
+    const prefs = TestBed.inject(UserPreferencesService) as unknown as { preferences: ReturnType<typeof signal> };
+    prefs.preferences.set({ timeZone: 'America/Argentina/Cordoba', timeZoneConfirmedAt: null });
+  };
+  describe('A-11: agenda vacía del alumno', () => {
+    it('explica que el docente propone el horario y ofrece abrir Mensajes; la docente no ve esa ayuda', () => {
+      let fixture = TestBed.createComponent(ScheduleComponent); fixture.detectChanges();
+      let el: HTMLElement = fixture.nativeElement;
+      expect(el.querySelector('[data-testid="student-empty-hint"]')!.textContent).toContain('Tu docente te propondrá un horario');
+      expect(el.querySelector('[data-testid="schedule-empty"] a')!.getAttribute('href')).toBe('/messages');
+      fixture.destroy();
+      auth.currentUser.set({ id: 2, role: 'teacher' });
+      fixture = TestBed.createComponent(ScheduleComponent); fixture.detectChanges(); el = fixture.nativeElement;
+      expect(el.querySelector('[data-testid="schedule-empty"]')).not.toBeNull();
+      expect(el.querySelector('[data-testid="student-empty-hint"]')).toBeNull();
+      fixture.destroy();
+    });
+  });
 });

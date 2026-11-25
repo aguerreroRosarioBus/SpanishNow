@@ -1,6 +1,6 @@
 import { I18nService } from '../../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { StudentLessonBlock } from '../../../../core/services/student-lesson.service';
 import { ToastService } from '../../../../core/services/toast.service';
@@ -31,6 +31,14 @@ export class ReinforcementsComponent {
   showListenRepeatModal = signal(false);
   listenRepeatStoryId = signal<number | undefined>(undefined);
   activeBlock = signal<StudentLessonBlock | null>(null);
+
+  /** Refuerzos que se pueden practicar: «escuchar y repetir» solo se ofrece si la historia tiene actividades (A-03). */
+  blocks = computed(() => {
+    const storyId = this.session.lesson()?.storyId;
+    const story = this.nav.currentUnit()?.stories?.find(s => s.id === storyId);
+    const hasRepeat = Boolean(story?.repetitionActivities?.length);
+    return this.session.reinforcementBlocks().filter(block => block.type !== 'listen_repeat' || hasRepeat);
+  });
 
   label(block: StudentLessonBlock): string {
     return block.type === 'flashcards' ? this.i18n.t('player.flashcards') : block.type === 'matching' ? this.i18n.t('player.matching') : this.i18n.t('player.listenRepeat');
