@@ -68,7 +68,7 @@ export function currenciesOf(totals: SalesTotal[], byMonth: SalesByMonth[]): str
 export function monthLabel(month: string, locale = 'es'): string {
   const [y, m] = month.split('-').map(Number);
   const label = new Intl.DateTimeFormat(locale, {month: 'short', timeZone: 'UTC'}).format(new Date(Date.UTC(y, (m || 1) - 1, 1))).replace(/\.$/, '');
-  return `${label} ${String(y).slice(-2)}`;
+  return `${label} ${y}`; // año completo: «oct 26» se lee como «26 de octubre»
 }
 
 /** Fechas 'YYYY-MM-DD' de un período del selector, hasta hoy. `all` no manda fechas. */

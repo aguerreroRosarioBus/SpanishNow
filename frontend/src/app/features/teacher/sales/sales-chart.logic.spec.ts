@@ -64,7 +64,7 @@ describe('meses y monedas', () => {
   it('currenciesOf junta monedas sin repetir', () => {
     expect(currenciesOf([{ currency: 'usd', gross: 0, refunds: 0, net: 0, orders: 0, refundsCount: 0 }], [{ month: '2026-01', currency: 'EUR', net: 1, orders: 1 }, { month: '2026-01', currency: 'usd', net: 1, orders: 1 }])).toEqual(['usd', 'eur']);
   });
-  it('monthLabel', () => { expect(monthLabel('2026-03')).toBe('mar 26'); });
+  it('monthLabel', () => { expect(monthLabel('2026-03')).toBe('mar 2026'); });
   it('periodRange', () => {
     const today = new Date(2026, 5, 15);
     expect(periodRange('30d', today)).toEqual({ from: '2026-05-16', to: '2026-06-15' });

@@ -19,5 +19,5 @@ it('ventas: localiza gráfico sin recargar período, convertir monedas ni modifi
   expect(f.componentInstance.charts()[1].bars[0].value).toBe(1);
   expect(f.componentInstance.summary()).toBe(data); expect(f.componentInstance.currencies()).toEqual(['usd', 'ars']);
   expect(f.componentInstance.period()).toBe('12m'); expect(summary).toHaveBeenCalledTimes(1);
-  expect(monthLabel('2026-12', 'en-US')).toBe('Dec 26');
+  expect(monthLabel('2026-12', 'en-US')).toBe('Dec 2026');
 });

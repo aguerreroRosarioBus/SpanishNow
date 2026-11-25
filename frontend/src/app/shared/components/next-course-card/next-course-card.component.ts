@@ -11,19 +11,17 @@ import { IconComponent } from '../icon/icon.component';
   standalone: true,
   imports: [TranslatePipe, RouterLink, IconComponent],
   template: `
-    <section class="next-card" [attr.aria-label]="'student.nextCourse' | t : { course: offer().course.title }">
+    <section class="next-card" [attr.aria-label]="heading() | t : { course: offer().course.title }">
       <app-icon name="graduation-cap" [size]="22" class="next-card__icon" />
       <div class="next-card__body">
-        <strong>{{ 'student.nextCourse' | t : { course: offer().course.title } }}</strong>
+        <strong>{{ heading() | t : { course: offer().course.title } }}</strong>
         @if (!offer().alreadyEnrolled) {
           <div class="next-card__meta">
             {{ price() }}@if (offer().couponCode) { · {{ 'student.withCoupon' | t : { coupon: offer().couponCode ?? '' } }} }
           </div>
-        } @else {
-          <div class="next-card__meta">{{ 'student.alreadyNext' | t }}</div>
         }
       </div>
-      @if (offer().alreadyEnrolled && courseId(); as id) {
+      @if (offer().alreadyEnrolled && playId(); as id) {
         <a class="btn btn-primary btn-sm" [routerLink]="['/student/course', id, 'play']">{{ 'student.goToCourse' | t }}</a>
       } @else if (offer().alreadyEnrolled) {
         <a class="btn btn-primary btn-sm" [routerLink]="['/courses', offer().course.slug]">{{ 'student.goToCourse' | t }}</a>
@@ -54,6 +52,10 @@ export class NextCourseCardComponent {
   offer = input.required<NextCourseOffer>();
   /** Id del curso para ir directo al reproductor (si el padre lo conoce); si no, se va a su página. */
   courseId = input<number | null>(null);
+  /** Con el curso ya inscrito el botón va directo al reproductor (A-05): sin pasar por la página de venta. */
+  playId = computed(() => this.courseId() ?? this.offer().course.id ?? null);
+  /** Inscrito: «Siguiente curso de la serie»; si no, la invitación a continuar con el curso. */
+  heading = computed(() => (this.offer().alreadyEnrolled ? 'student.nextInSeries' : 'student.nextCourse'));
   price = computed(() => {
     const c = this.offer().course;
     return c.price > 0 ? this.i18n.formatMoney(c.price, c.currency) : this.i18n.t('student.free');

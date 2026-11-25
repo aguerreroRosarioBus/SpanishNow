@@ -1,6 +1,6 @@
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, afterNextRender, computed, inject, signal, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -42,10 +42,14 @@ export class LoginComponent {
     return key ? this.i18n.errorMessage(this.failure(), key) : '';
   });
   readonly isLoading = signal(false);
+  private emailField = viewChild<ElementRef<HTMLInputElement>>('emailField');
 
   constructor() {
     // Entrar a la pantalla de acceso descarta cualquier sesión vieja (el header no debe mostrar a otro usuario)
     this.authService.logout();
+
+    // C-06: al abrir la pantalla el foco va al campo de email, no al body ni a «Saltar al contenido»
+    afterNextRender(() => this.emailField()?.nativeElement.focus());
 
     // Inicializar el formulario con validaciones
     this.loginForm = this.fb.group({
