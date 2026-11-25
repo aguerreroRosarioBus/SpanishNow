@@ -33,6 +33,7 @@ export interface Course {
   /** Cobro en Hotmart (solo lo ve el docente). */
   hotmartProductId?: string | null;
   hotmartCheckoutUrl?: string | null;
+  hotmartOwnAccount?: boolean;
   /** Materiales generales del curso (sin unidad ni historia). Del alumno: sin fileUrl. */
   materials?: Material[];
 }

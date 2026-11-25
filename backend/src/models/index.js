@@ -1,5 +1,6 @@
 const User = require('./User');
 const Course = require('./Course');
+const TeacherHotmartConnection = require('./TeacherHotmartConnection');
 const Unit = require('./Unit');
 const Story = require('./Story');
 const Vocabulary = require('./Vocabulary');
@@ -245,6 +246,7 @@ module.exports = {
   GoogleConnection,
   User,
   Course,
+  TeacherHotmartConnection,
   Unit,
   Story,
   Vocabulary,

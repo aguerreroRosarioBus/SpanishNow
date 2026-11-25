@@ -12,6 +12,12 @@ export interface HotmartSetup {
   canManage: boolean;
 }
 
+export interface TeacherHotmartConnection {
+  webhookUrl: string | null;
+  pending: boolean;
+  verifiedAt: string | null;
+}
+
 /** Datos para configurar Hotmart (solo docente; el webhook, solo quien administra Hotmart). */
 @Injectable({ providedIn: 'root' })
 export class HotmartService {
@@ -19,5 +25,13 @@ export class HotmartService {
 
   setup(): Observable<HotmartSetup> {
     return this.http.get<HotmartSetup>(`${environment.apiUrl}/teacher/hotmart`);
+  }
+
+  connection(): Observable<TeacherHotmartConnection> {
+    return this.http.get<TeacherHotmartConnection>(`${environment.apiUrl}/teacher/hotmart/connection`);
+  }
+
+  saveKey(hottok: string): Observable<TeacherHotmartConnection> {
+    return this.http.put<TeacherHotmartConnection>(`${environment.apiUrl}/teacher/hotmart/connection`, { hottok });
   }
 }

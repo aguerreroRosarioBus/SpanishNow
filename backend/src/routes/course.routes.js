@@ -248,7 +248,7 @@ router.put('/:id', authMiddleware, isTeacher, upload.single('image'), async (req
     const series = await parseSeriesFields(req.body || {}, course);
     if (series.error) return res.status(400).json({ error: series.error });
     const hotmartFields = await hotmart.parseCourseFields(req.body || {}, course);
-    if (hotmartFields.error) return res.status(hotmartFields.status || 400).json({ error: hotmartFields.error });
+    if (hotmartFields.error) return res.status(hotmartFields.status || 400).json({ error: hotmartFields.error, ...(hotmartFields.code ? { code: hotmartFields.code } : {}) });
 
     if (req.file) {
       if (!cloudinary.canUpload()) return res.status(503).json({ error: 'El almacenamiento de imágenes no está configurado.' });

@@ -40,7 +40,13 @@
             }
           </div>
 
-          <h6 class="eyebrow mt-4 mb-3">{{ 'teacherManage.courseEdit.sales' | t }}</h6>
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-4 mb-3">
+            <h6 class="eyebrow m-0">{{ 'teacherManage.courseEdit.sales' | t }}</h6>
+            <button type="button" class="btn btn-sm btn-link p-0"
+                    (click)="hotmartSection.focus({ preventScroll: true }); hotmartSection.scrollIntoView({ block: 'start' })">
+              {{ 'teacherManage.courseEdit.hotmartTitle' | t }}
+            </button>
+          </div>
           <div class="row g-3 mb-3">
             <div class="col-7">
               <label for="coursePrice" class="form-label">{{ 'teacherManage.courseEdit.price' | t }}</label>
@@ -104,49 +110,53 @@
             </div>
           }
 
-          <h6 class="eyebrow mt-4 mb-3">{{ 'teacherManage.courseEdit.sales' | t }}</h6>
+          <h6 #hotmartSection tabindex="-1" class="eyebrow mt-4 mb-2">{{ 'teacherManage.courseEdit.hotmartTitle' | t }}</h6>
           <p class="form-text mt-0">{{ 'teacherManage.courseEdit.hotmartIntro' | t }}</p>
+          <app-teacher-hotmart-connection />
+
+          @if (hasSharedHotmart() && !hotmartConnection()?.verified()) {
+            <p class="form-text">{{ 'teacherManage.courseEdit.hotmartLegacyCourse' | t }}</p>
+          }
+          @if ((hasSharedHotmart() && hotmartConnection()?.verified()) || hotmartConnection()?.legacy()?.canManage) {
+            <div class="form-check mb-3">
+              <input type="checkbox" class="form-check-input" id="hotmartOwnAccount" formControlName="hotmartOwnAccount"
+                     aria-describedby="hotmartOwnAccountHelp" />
+              <label class="form-check-label" for="hotmartOwnAccount">{{ 'teacherManage.courseEdit.hotmartUseOwn' | t }}</label>
+              <div class="form-text" id="hotmartOwnAccountHelp">{{ 'teacherManage.courseEdit.hotmartUseOwnHelp' | t }}</div>
+            </div>
+          }
+          <div class="small fw-semibold mb-2">{{ 'teacherManage.courseEdit.hotmartLinkProduct' | t }}</div>
+          <p class="small mb-2">{{ 'teacherManage.courseEdit.hotmartSameProduct' | t }}</p>
           <div class="mb-3">
             <label for="hotmartProduct" class="form-label">{{ 'teacherManage.courseEdit.hotmartProduct' | t }}</label>
             <input class="form-control" id="hotmartProduct" formControlName="hotmartProductId" maxlength="40" autocomplete="off"
-                   [class.is-invalid]="form.controls.hotmartProductId.invalid && form.controls.hotmartProductId.touched" />
+                   aria-describedby="hotmartProductHelp"
+                   [class.is-invalid]="form.hasError('hotmartProductMissing') ||
+                     (form.controls.hotmartProductId.invalid && form.controls.hotmartProductId.touched)" />
             @if (form.controls.hotmartProductId.invalid && form.controls.hotmartProductId.touched) {
               <div class="invalid-feedback">{{ 'teacherManage.courseEdit.hotmartProductInvalid' | t }}</div>
+            } @else if (form.hasError('hotmartProductMissing')) {
+              <div class="invalid-feedback">{{ 'teacherManage.courseEdit.hotmartProductMissing' | t }}</div>
             }
+            <div class="form-text" id="hotmartProductHelp">{{ 'teacherManage.courseEdit.hotmartProductHelp' | t }}</div>
           </div>
           <div class="mb-3">
             <label for="hotmartUrl" class="form-label">{{ 'teacherManage.courseEdit.hotmartUrl' | t }}</label>
             <input class="form-control" id="hotmartUrl" type="url" formControlName="hotmartCheckoutUrl" maxlength="500" autocomplete="off"
-                   placeholder="https://pay.hotmart.com/…" />
-            <div class="form-text">{{ 'teacherManage.courseEdit.hotmartUrlHelp' | t }}</div>
-          </div>
-          @if (hotmartSetup(); as hs) {
-            @if (!hs.canManage) {
-              <p class="form-text" data-testid="webhook-admin-only">{{ 'teacherManage.courseEdit.webhookAdminOnly' | t }}</p>
-            } @else {
-            <div class="mb-3">
-              <label for="hotmartWebhook" class="form-label">{{ 'teacherManage.courseEdit.webhookUrl' | t }}</label>
-              <div class="input-group">
-                <input class="form-control" id="hotmartWebhook" [value]="hs.webhookUrl" readonly />
-                <button type="button" class="btn btn-secondary" (click)="copyWebhook()">{{ (webhookCopied() ? 'teacherManage.courseEdit.copied' : 'teacherManage.courseEdit.copy') | t }}</button>
-              </div>
-              @if (hs.configured) {
-                <div class="form-text">{{ 'teacherManage.courseEdit.tokenConfigured' | t }}</div>
-              } @else {
-                <div class="alert alert-warning mt-2 mb-0" role="note">{{ 'teacherManage.courseEdit.tokenMissing' | t }}</div>
-              }
-            </div>
-            <ol class="small mb-3">
-              <li>{{ 'teacherManage.courseEdit.step1' | t }}</li>
-              <li>{{ 'teacherManage.courseEdit.step2' | t }}</li>
-              <li>{{ 'teacherManage.courseEdit.step3Before' | t }} <code>/checkout/thanks</code> {{ 'teacherManage.courseEdit.step3After' | t }}</li>
-            </ol>
+                   placeholder="https://pay.hotmart.com/…" aria-describedby="hotmartUrlHelp"
+                   [class.is-invalid]="form.controls.hotmartCheckoutUrl.invalid && form.controls.hotmartCheckoutUrl.touched" />
+            @if (form.controls.hotmartCheckoutUrl.invalid && form.controls.hotmartCheckoutUrl.touched) {
+              <div class="invalid-feedback">{{ 'teacherManage.courseEdit.hotmartUrlInvalid' | t }}</div>
             }
-          }
+            <div class="form-text" id="hotmartUrlHelp">{{ 'teacherManage.courseEdit.hotmartUrlHelp' | t }}</div>
+            @if (needsVerifiedHotmart()) {
+              <p class="form-text text-danger mb-0">{{ 'teacherManage.courseEdit.hotmartVerifyFirst' | t }}</p>
+            }
+          </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" (click)="close()">{{ 'teacherManage.common.cancel' | t }}</button>
-          <button type="submit" class="btn btn-primary" [disabled]="form.invalid || isSaving">{{ 'teacherManage.courseEdit.save' | t }}</button>
+          <button type="submit" class="btn btn-primary" [disabled]="form.invalid || needsVerifiedHotmart() || isSaving">{{ 'teacherManage.courseEdit.save' | t }}</button>
         </div>
       </form>
     </div>

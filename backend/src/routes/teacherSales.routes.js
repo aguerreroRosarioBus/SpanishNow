@@ -6,6 +6,7 @@ const { Order, Course, User, Coupon, Affiliate } = require('../models');
 const sales = require('../services/salesService');
 const { registerRefund } = require('../services/orderService');
 const hotmart = require('../services/hotmartService');
+const teacherHotmart = require('../services/teacherHotmart');
 const { hasPermission } = require('../config/permissions');
 
 for (const prefix of ['/sales', '/orders', '/hotmart']) router.use(prefix, authMiddleware, isTeacher);
@@ -110,6 +111,29 @@ router.post('/orders/:id/refund', async (req, res) => {
 router.get('/hotmart', (req, res) => {
   const canManage = hasPermission(req.user, 'class_packages.manage_all');
   res.json({ canManage, configured: hotmart.configured(), ...(canManage ? { webhookUrl: hotmart.webhookUrl(req) } : {}) });
+});
+
+router.get('/hotmart/connection', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  try {
+    res.json(teacherHotmart.present(await teacherHotmart.read(req.user.id), req));
+  } catch (error) {
+    console.error('Could not read teacher Hotmart connection:', error.name);
+    res.status(500).json({ code: 'hotmart_connection_unavailable' });
+  }
+});
+
+router.put('/hotmart/connection', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  if (req.impersonatedBy) return res.status(403).json({ code: 'forbidden' });
+  const token = typeof req.body?.hottok === 'string' ? req.body.hottok.trim() : '';
+  if (!teacherHotmart.tokenPattern.test(token)) return res.status(400).json({ code: 'hotmart_hottok_invalid' });
+  try {
+    res.json(teacherHotmart.present(await teacherHotmart.stage(req.user.id, token), req));
+  } catch (error) {
+    console.error('Could not stage teacher Hotmart connection:', error.name);
+    res.status(500).json({ code: 'hotmart_connection_unavailable' });
+  }
 });
 
 module.exports = router;

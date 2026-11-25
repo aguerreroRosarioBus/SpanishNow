@@ -83,6 +83,11 @@ const Course = sequelize.define('Course', {
   hotmartCheckoutUrl: {
     type: DataTypes.STRING(500),
     allowNull: true
+  },
+  hotmartOwnAccount: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
   }
 }, {
   timestamps: true,
