@@ -2,6 +2,7 @@ import { REFINEMENT_ES } from './refinement';
 import { VISUAL_ES } from './visual';
 import { ZOOM_ES } from './zoom';
 import { STUDENT_ES } from './student';
+import { ACCESS_ES } from './access';
 import { PUBLIC_ES } from './public';
 import { ADMIN_ES } from './admin';
 import { PLAYER_ES } from './player';
@@ -21,6 +22,7 @@ export const ES = {
   ...VISUAL_ES,
   ...ZOOM_ES,
   ...STUDENT_ES,
+  ...ACCESS_ES,
   ...PUBLIC_ES,
   ...ADMIN_ES,
   ...PLAYER_ES,
