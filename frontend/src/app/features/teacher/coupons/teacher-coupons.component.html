@@ -50,28 +50,11 @@
               <td>{{ discountLabel(c) }}</td>
               <td>
                 {{ courseLabel(c) }}
-                @if (c.courseId == null) {
-                  <select
-                    class="form-select form-select-sm link-select"
-                    [attr.aria-label]="'teacherPromotions.couponLinkCourse' | t: { code: c.code }"
-                    (change)="setLinkCourse(c, $any($event.target).value)"
-                  >
-                    <option value="">{{ 'teacherPromotions.linkCourse' | t }}</option>
-                    @for (course of coursesWithSlug(); track course.id) {
-                      <option [value]="course.id">{{ course.title }}</option>
-                    }
-                  </select>
-                }
               </td>
               <td>{{ usageLabel(c) }}</td>
               <td>
                 @if (c.expiresAt) {
                   {{ date(c.expiresAt) }}
-                  @if (isExpired(c)) {
-                    <small class="d-block text-secondary-ui">{{
-                      'teacherPromotions.expired' | t
-                    }}</small>
-                  }
                 } @else {
                   <span
                     class="text-secondary-ui"
@@ -83,33 +66,25 @@
               <td>
                 <span
                   class="badge-status"
-                  [class.badge-status--published]="c.active"
-                  [class.badge-status--draft]="!c.active"
-                  >{{
-                    (c.active ? 'teacherPromotions.active' : 'teacherPromotions.inactive') | t
-                  }}</span
+                  data-testid="coupon-status"
+                  [class.badge-status--published]="statusOf(c) === 'active'"
+                  [class.badge-status--draft]="statusOf(c) !== 'active'"
+                  >{{ ('teacherPromotions.' + statusOf(c)) | t }}</span
                 >
               </td>
               <td>
                 <div class="actions">
-                  <span
-                    [ngbTooltip]="
-                      (saleLink(c) ? 'teacherPromotions.copyLink' : 'teacherPromotions.linkCourse')
-                        | t
-                    "
+                  <button
+                    type="button"
+                    class="btn-icon action-icon"
+                    data-testid="coupon-link"
+                    (click)="onLink(c)"
+                    [ngbTooltip]="(c.courseId == null ? 'teacherPromotions.linkChoose' : 'teacherPromotions.copyLink') | t"
                     container="body"
-                    [attr.tabindex]="!saleLink(c) ? 0 : null"
+                    [attr.aria-label]="'teacherPromotions.couponCopy' | t: { code: c.code }"
                   >
-                    <button
-                      type="button"
-                      class="btn-icon action-icon"
-                      (click)="copyLink(c)"
-                      [disabled]="!saleLink(c)"
-                      [attr.aria-label]="'teacherPromotions.couponCopy' | t: { code: c.code }"
-                    >
-                      <app-icon name="link" [size]="18" />
-                    </button>
-                  </span>
+                    <app-icon name="link" [size]="18" />
+                  </button>
                   <button
                     type="button"
                     class="btn-icon action-icon"
@@ -372,6 +347,38 @@
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  </div>
+}
+
+@if (linkFor(); as target) {
+  <div class="modal fade show" style="display: block; background-color: rgba(0, 0, 0, 0.5)" tabindex="-1" role="dialog" aria-modal="true"
+       aria-labelledby="couponLinkTitle" data-testid="coupon-link-dialog" appModalFocus (modalDismiss)="closeLink()">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="couponLinkTitle">{{ 'teacherPromotions.linkTitle' | t: { code: target.code } }}</h5>
+          <button type="button" class="btn-close" (click)="closeLink()" [attr.aria-label]="'teacherPromotions.close' | t"></button>
+        </div>
+        <div class="modal-body">
+          <p>{{ 'teacherPromotions.linkHelp' | t }}</p>
+          <label for="couponLinkCourse" class="form-label">{{ 'teacherPromotions.course' | t }}</label>
+          <select id="couponLinkCourse" class="form-select" [value]="linkCourse()[target.id] ?? ''" (change)="setLinkCourse(target, $any($event.target).value)">
+            <option value="">{{ 'teacherPromotions.linkCourse' | t }}</option>
+            @for (course of coursesWithSlug(); track course.id) {
+              <option [value]="course.id">{{ course.title }}</option>
+            }
+          </select>
+          @if (saleLink(target); as link) {
+            <label for="couponLinkUrl" class="form-label mt-3">{{ 'teacherPromotions.linkUrl' | t }}</label>
+            <input id="couponLinkUrl" class="form-control" type="text" readonly [value]="link" />
+          }
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="closeLink()">{{ 'teacherPromotions.close' | t }}</button>
+          <button type="button" class="btn btn-primary" data-testid="coupon-link-copy" [disabled]="!saleLink(target)" (click)="copyLink(target)">{{ 'teacherPromotions.copyLink' | t }}</button>
+        </div>
       </div>
     </div>
   </div>
