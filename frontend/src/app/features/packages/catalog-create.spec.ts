@@ -20,7 +20,7 @@ describe('W05 catálogo: crear, duplicar y archivar', () => {
     create.mockReset().mockImplementation((b: any) => of({ id: 9, teacherId: 2, templateKey: b.templateKey, status: 'draft', current: version({ id: 9, templateId: 9, version: 1, ...b }) }));
     status.mockClear();
     TestBed.configureTestingModule({ imports: [PackageCatalogComponent], providers: [provideRouter([]), { provide: I18N_CATALOGS, multi: true, useValue: TUTORIAL_MESSAGES }, { provide: I18N_CATALOGS, multi: true, useValue: PACKAGE_MESSAGES },
-      { provide: PackagesService, useValue: { list: () => of(items), settings: () => of({ classesEnabledAt: null, salesPausedAt: null, acceptsInquiries: false }), create, status, error: () => 'Error' } }] });
+      { provide: PackagesService, useValue: { list: () => of(items), settings: () => of({ classesEnabledAt: null, salesPausedAt: null, acceptsInquiries: false, sessionBufferMinutes: 10, minLeadTimeHours: 24 }), create, status, error: () => 'Error' } }] });
     const f = TestBed.createComponent(PackageCatalogComponent); f.detectChanges(); return f;
   }
   const fill = (c: PackageCatalogComponent) => { c.form.patchValue({ nameEn: 'Group', nameEs: 'Grupo de tres', sessionsCount: 8, minutesPerSession: 60, validityHours: 720 }); c.setPrice('1000'); };

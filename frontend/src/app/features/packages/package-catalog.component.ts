@@ -6,7 +6,7 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { EXPECTATION_FIELDS } from '../legal/legal.model';
 import { PackagesService } from './packages.service';
-import { ClassSettings, PackageTemplate } from './packages.model';
+import { ClassSettings, PackageTemplate, SCHEDULE_LIMITS } from './packages.model';
 import { PackageOrientationComponent } from './package-orientation.component';
 import { DialogModule } from 'primeng/dialog';
 import { NgbDropdownModule } from '@ng-bootstrap/ng-bootstrap';
@@ -43,6 +43,16 @@ export class PackageCatalogComponent implements OnInit {
 
   items = signal<PackageTemplate[]>([]);
   settings = signal<ClassSettings|null>(null);
+  readonly limits = SCHEDULE_LIMITS;
+  /** Texto de cada campo de agenda: se valida al escribir y recién entonces pasa a número. */
+  bufferText = signal(''); leadText = signal(''); scheduleSaved = signal(false);
+  private whole(text: string, max: number) { return /^\d{1,5}$/.test(text.trim()) && Number(text) <= max ? Number(text) : null; }
+  bufferValue = computed(()=>this.whole(this.bufferText(), SCHEDULE_LIMITS.sessionBufferMinutes));
+  leadValue = computed(()=>this.whole(this.leadText(), SCHEDULE_LIMITS.minLeadTimeHours));
+  scheduleChanged = computed(()=>{const s=this.settings();return !!s && (this.bufferValue()!==s.sessionBufferMinutes || this.leadValue()!==s.minLeadTimeHours);});
+  setBuffer(text: string) { this.bufferText.set(text); this.scheduleSaved.set(false); }
+  setLead(text: string) { this.leadText.set(text); this.scheduleSaved.set(false); }
+  private showSchedule(s: ClassSettings) { this.bufferText.set(String(s.sessionBufferMinutes)); this.leadText.set(String(s.minLeadTimeHours)); }
   selected = signal<PackageTemplate|null>(null);
   busy = signal(false);
   private failure = signal<unknown>(null);
@@ -61,7 +71,7 @@ export class PackageCatalogComponent implements OnInit {
   ngOnInit() { this.reload(); }
   reload() {
     this.busy.set(true); this.failure.set(null);
-    forkJoin({items:this.api.list(),settings:this.api.settings()}).subscribe({next:r=>{this.items.set(r.items);this.settings.set(r.settings);this.busy.set(false);},error:e=>this.fail(e)});
+    forkJoin({items:this.api.list(),settings:this.api.settings()}).subscribe({next:r=>{this.items.set(r.items);this.settings.set(r.settings);this.showSchedule(r.settings);this.busy.set(false);},error:e=>this.fail(e)});
   }
   importInitial() {
     if(this.busy()) return; this.busy.set(true); this.failure.set(null);
@@ -139,6 +149,13 @@ export class PackageCatalogComponent implements OnInit {
   toggleInquiries() {
     const s=this.settings(); if(!s || this.busy()) return; this.busy.set(true); this.failure.set(null);
     this.api.inquiries(!s.acceptsInquiries).subscribe({next:s=>{this.settings.set(s);this.busy.set(false);},error:e=>this.fail(e)});
+  }
+  /** Descanso entre clases y aviso mínimo: solo se envían si ambos valores son válidos y alguno cambió. */
+  saveSchedule() {
+    const buffer=this.bufferValue(), lead=this.leadValue();
+    if(this.busy() || buffer===null || lead===null || !this.scheduleChanged()) return;
+    this.busy.set(true); this.failure.set(null); this.scheduleSaved.set(false);
+    this.api.schedule({sessionBufferMinutes:buffer,minLeadTimeHours:lead}).subscribe({next:s=>{this.settings.set(s);this.showSchedule(s);this.scheduleSaved.set(true);this.busy.set(false);},error:e=>this.fail(e)});
   }
   modality(value: string) {
     const size=Number(value); this.form.patchValue({modality:size===1?'individual':'group',groupSize:size,billing:size===1?'per_buyer':size===2?'per_group':'per_seat',seatsCovered:size===2?2:1});

@@ -111,7 +111,7 @@ Columnas nuevas en `users`: `locale ENUM('en','es') NULL`, `timeZone VARCHAR(64)
 
 ### 3.2 Configuración docente — `teacher_class_settings`
 
-`userId` (PK, FK users CASCADE), `classesEnabledAt` (lo activa un admin con `class_teachers.manage`; `NULL` = el docente no aparece para consultas ni vende; §16), `acceptsInquiries BOOL`, `salesPausedAt` (pausa de ventas, PACK-05/AC21), `sessionBufferMinutes SMALLINT DEFAULT 10`, `minLeadTimeHours SMALLINT DEFAULT 24`. Esta fila es también el **cerrojo de agenda del docente** (§6.3).
+`userId` (PK, FK users CASCADE), `classesEnabledAt` (lo activa un admin con `class_teachers.manage`; `NULL` = el docente no aparece para consultas ni vende; §16), `acceptsInquiries BOOL`, `salesPausedAt` (pausa de ventas, PACK-05/AC21), `sessionBufferMinutes SMALLINT DEFAULT 10` (descanso mínimo entre dos clases del docente; el servidor acepta de 0 a 120), `minLeadTimeHours SMALLINT DEFAULT 24` (aviso mínimo para proponer una clase; de 0 a 720; rige el mayor entre este valor y `proposalLeadHours` de la política). El docente los edita en «Paquetes de clases → Agenda de clases». Esta fila es también el **cerrojo de agenda del docente** (§6.3).
 
 ### 3.3 Chat (W04)
 
@@ -436,7 +436,7 @@ Notas de W04 (1.1): el contexto (`{ type: course|package|session, id }`) viaja e
 
 | Método y ruta | Uso |
 | --- | --- |
-| `GET` / `PATCH /api/teacher/class-settings` | Pausa de ventas, consultas, buffer |
+| `GET` / `PATCH /api/teacher/class-settings` | Pausa de ventas, consultas, descanso entre clases (`sessionBufferMinutes`, 0–120) y aviso mínimo (`minLeadTimeHours`, 0–720); valida enteros y es todo o nada |
 | `GET /api/teacher/class-packages` | Plantillas propias (`?teacherId=` con `class_packages.manage_all`) |
 | `POST /api/teacher/class-packages` | Crear plantilla + versión 1 (`draft`) |
 | `POST /api/teacher/class-packages/import-initial` | Importar explícitamente las seis variantes como borradores; idempotente, no pisa las existentes; `?teacherId=` solo con capacidad global |

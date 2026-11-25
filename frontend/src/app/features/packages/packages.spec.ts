@@ -38,7 +38,7 @@ describe('W05 catálogo de paquetes',()=>{
 
 describe('Tanda B: catálogo con plantilla sin versión (current null)',()=>{
   const broken: PackageTemplate = {id:1,teacherId:2,templateKey:'individual-1x30',status:'draft',current:null,policy:undefined};
-  const settings = {classesEnabledAt:null,salesPausedAt:'2026-10-22T00:00:00Z',acceptsInquiries:false};
+  const settings = {classesEnabledAt:null,salesPausedAt:'2026-10-22T00:00:00Z',acceptsInquiries:false,sessionBufferMinutes:10,minLeadTimeHours:24};
   const save = vi.fn();
   const status = vi.fn();
   const importInitial = vi.fn();

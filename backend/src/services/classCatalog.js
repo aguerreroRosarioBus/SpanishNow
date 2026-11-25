@@ -171,6 +171,9 @@ async function settings(user) {
   const [row] = await TeacherClassSettings.findOrCreate({ where: { userId: user.id }, defaults: { salesPausedAt: new Date() } });
   return row;
 }
+// Topes de las reglas de agenda del docente (descanso entre clases en minutos y aviso mínimo en horas). Los valores por
+// defecto del modelo son 10 y 24; el tope evita cargar por error un descanso de días o un aviso de años.
+const SCHEDULE_LIMITS = { sessionBufferMinutes: 120, minLeadTimeHours: 720 };
 async function saveSettings(user, body) {
   if (!only(body, ['salesPaused', 'acceptsInquiries', 'sessionBufferMinutes', 'minLeadTimeHours'])) throw invalid();
   if (body.salesPaused === false) await require('./classPackageProvider').assertSelling();
@@ -178,8 +181,8 @@ async function saveSettings(user, body) {
   for (const key of ['salesPaused', 'acceptsInquiries']) if (body[key] !== undefined && typeof body[key] !== 'boolean') throw invalid([key]);
   if (body.salesPaused !== undefined) values.salesPausedAt = body.salesPaused ? new Date() : null;
   if (body.acceptsInquiries !== undefined) values.acceptsInquiries = body.acceptsInquiries;
-  for (const key of ['sessionBufferMinutes', 'minLeadTimeHours']) if (body[key] !== undefined) {
-    if (!Number.isInteger(body[key]) || body[key] < 0 || body[key] > 65535) throw invalid([key]);
+  for (const key of Object.keys(SCHEDULE_LIMITS)) if (body[key] !== undefined) {
+    if (!Number.isInteger(body[key]) || body[key] < 0 || body[key] > SCHEDULE_LIMITS[key]) throw invalid([key]);
     values[key] = body[key];
   }
   const row = await settings(user);
@@ -210,4 +213,4 @@ async function createPolicy(actor, body) {
     return Policy.create({ version: body.version, rules: body.rules, createdById: actor.id }, { transaction });
   });
 }
-module.exports = { FIELDS, owned, assertReady, assertProductFree, present, list, detail, create, newVersion, setStatus, importInitial, publicCatalog, settings, saveSettings, enableTeacher, createPolicy };
+module.exports = { FIELDS, owned, assertReady, assertProductFree, present, list, detail, create, newVersion, setStatus, importInitial, publicCatalog, settings, saveSettings, enableTeacher, createPolicy, SCHEDULE_LIMITS };
