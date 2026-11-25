@@ -95,6 +95,28 @@ cloudflared tunnel route dns spanishnow-platform platform.spanishnow.ar
 - Caché: `ng serve` usa nombres fijos (`main.js`) y renombra los `chunk-*.js` en cada recompilación; Cloudflare, por defecto, hace que el navegador cachee los `.js` 4 h y un `main.js` viejo pide chunks que ya no existen. La configuración `lan` envía `Cache-Control: no-store` (`headers` en `angular.json`). Conviene además, en Cloudflare, dejar «Caching → Configuration → Browser Cache TTL» en «Respect Existing Headers». Tras este cambio hay que hacer una recarga forzada (Cmd+Shift+R) una vez para descartar el `main.js` ya cacheado.
 - Log del túnel en `.run/tunnel.log`. Otro host o túnel: `RUN_MAIN_PUBLIC_HOST` y `RUN_MAIN_TUNNEL`.
 
+
+#### Permisos y worker en una base de pruebas
+Dos cosas que se ven «rotas» en una base local y en realidad dependen de la base o del entorno (hallazgos D-01, D-02 y D-04 de la auditoría del 25/11/2026):
+
+**Permisos de administración.** `users.permissions` es `NULL` en una cuenta hasta que alguien se los dé, y entonces `/admin/*`, la conexión de Zoom y las ventas de clases responden 403 (o muestran «Tu cuenta no tiene este permiso»). En una base de **pruebas** se obtienen así:
+
+1. `npm run db:rebuild` (o `npm run db:seed:curated` sobre una base ya migrada), desde `backend/`. El seed curado lee `backend/seeds/local-test-accounts.json` y aplica los `permissions` de cada cuenta (hoy `users.manage` y `test_users.manage` para `admin@gmail.com`) tanto al crearla como en una cuenta que ya existe, de forma idempotente. No cambia contraseñas (salvo `--reset-passwords`) ni cuentas que no estén en el JSON.
+2. Solo se aplican con `DB_HOST` local (`localhost`, `127.0.0.1` o `::1`); contra cualquier otro host el seed avisa y no toca los permisos, para no dar poderes a una cuenta real que comparta el correo.
+3. El seed maestro (`db:seed:master`) nunca altera cuentas ni permisos existentes. Una cuenta que no figure en el JSON (por ejemplo una docente real en una copia de datos) no recibe permisos del seed: se los da desde el panel `/admin/users` una cuenta con `users.manage`, o se añade su correo a `ADMIN_EMAILS` en el `.env` de esa base.
+4. El JSON no incluye `legal.manage` ni otros permisos de ventas. Para publicar textos legales o administrar ventas de clases en una base de pruebas, concédelos con el panel o con `ADMIN_EMAILS`.
+
+**Worker de la cola de salida (`OUTBOX_WORKER=1`).** Sin esta variable el backend atiende peticiones pero no ejecuta los trabajos diferidos de la tabla `outbox_jobs` (los trabajos se guardan igual y esperan). Con `OUTBOX_WORKER=1` el proceso sondea cada 5 s y ejecuta, entre otros:
+
+- `proposal.expire`: marca como vencidas las propuestas de clase cuyo plazo pasó (sin worker quedan `proposed`; la pantalla ya las muestra como «Venció», pero la fila no cambia ni se liberan reservas).
+- `calendar.sync` / `calendar.reconcile` y `zoom.sync` / `zoom.capabilities`: sincronización de eventos de Google Calendar y de reuniones de Zoom.
+- Recordatorios de clase (`reminder.session`), vencimiento de ofertas y compras de paquetes (`offer.expire`, `purchase.expire`), plazos de grupos (`cohort.deadline`), reembolsos y correos (confirmación de compra, aviso de mensajes sin leer).
+
+Cuándo activarlo: en una base de pruebas cuando se quiera ver el ciclo completo (propuesta que vence, sincronización con los adaptadores falsos `INTEGRATIONS_FAKE=1`, correos en `MAIL_TRANSPORT=log`). Nada sale a internet con los adaptadores falsos. No activarlo en una base con datos copiados de producción sin `MAIL_TRANSPORT=log` y `INTEGRATIONS_FAKE=1`: los trabajos pendientes enviarían correos y llamarían a proveedores. En producción el `docker-compose.yml` ya lo fija.
+
+Propuesta para la copia fija de main (**no aplicada**; es decisión de Andrés): añadir `OUTBOX_WORKER=1` al `backend/.env` de `SpanishNow-run`, junto con `INTEGRATIONS_FAKE=1`, `MAIL_TRANSPORT=log` y `PAYMENTS_FAKE=1` si no estaban; reiniciar con `spanishnow off && spanishnow on`; comprobar que las propuestas vencidas pasan a expiradas y que `backend/tmp/mail/` recibe los correos en lugar de enviarlos. Si la copia fija usa `spanishnow_main` con correos reales de alumnos, revisar antes la cola (`SELECT topic, status, COUNT(*) FROM outbox_jobs GROUP BY 1, 2`) por si hay trabajos viejos que se ejecutarían de golpe. Tocar `scripts/run-main.sh`, el plist o el `.env` queda fuera de lo que hacen las sesiones.
+
+Checklist de lo que falta antes de abrir al público: [docs/PRELANZAMIENTO.md](docs/PRELANZAMIENTO.md).
 ---
 
 ## Estructura del Proyecto
