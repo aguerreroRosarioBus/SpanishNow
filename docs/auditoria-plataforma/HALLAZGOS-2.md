@@ -20,7 +20,32 @@ Contraseña de prueba local (`backend/seeds/local-test-accounts.json` y `SEED_MA
 
 ## 2. Verificación de los arreglos de la primera pasada
 
-*(pendiente)*
+*(tabla final pendiente; notas de trabajo mientras se audita)*
+
+Notas de trabajo (docente/admin, 1440 px, ES), a pasar a la tabla:
+- C-06: funciona, el foco inicial de `/auth/login` queda en `INPUT#email`.
+- D-01: funciona; sin habilitación de clases `GET /api/integrations/zoom` → 403 y las dos pantallas muestran «Tu cuenta no tiene este permiso. Pídelo a quien administra la plataforma.» sin estado vacío engañoso. Matiz: la causa es «docente no habilitado para clases» (`teacher_class_settings.classesEnabledAt`), no un permiso del catálogo; el texto habla de «permiso». Con permisos y habilitación cargados, el 403 desaparece.
+- D-02: con permisos, `/admin/class-commerce` carga (6 `GET /api/admin/*` en 200). El estado 403 se comprobará con `docente2.audit@example.test` (sin permisos).
+- D-03: funciona (tarjetas, «← Grupos de clases», «Abrir conversación» por integrante; al cambiar `/class-cohorts/1` → `/class-cohorts/2` por el router los datos se recargan). Ver D2-08 por textos contradictorios.
+- D-04 / A-10: funciona; ninguna tarjeta de la agenda muestra el aviso «las reglas de zona difieren» (la semilla ahora tiene segundos en 0). Las propuestas con plazo vigente (hasta mañana 16:30) siguen «Esperando aceptación»; la expiración con worker se prueba más abajo.
+- D-05, D-06: D-06 funciona en la lista (días); en la oferta falta (D2-02).
+- D-07: funciona (filas de la misma altura, un solo estado «Vencido»).
+- D-10: funciona. Abrir el compositor de una historia publicada no crea revisión (18 borradores antes y después en `lesson_plans`); cabecera «Publicada · revisión 1. Al guardar se crea la revisión 2.»; «Guardar borrador» creó la revisión 2 en borrador y «Publicar» la dejó publicada (BD: revisiones 1 y 2 `published`).
+- D-12: funciona en parte: la zona sale precargada (America/Cordoba) y sin «IANA»; el selector «Alumno» filtra por quien tenga paquete, y en esta base todos los alumnos tienen uno (26 opciones).
+- D-13: la lista muestra el tipo del último mensaje («Propuesta de horario»); tras enviar un mensaje de texto a `lucas` falta ver el extracto (se confirma en la pasada del alumno).
+- A-08, C-04: confirmado en la base nueva: la lista de órdenes del docente muestra una orden por curso y alumno (`lucas`: 3 órdenes, una por curso).
+- C-01: casi: queda «duplicalo» (D2-07).
+- (alumno `lucas`, 1440 px, ES) A-01: funciona; `/nope-404` muestra «ERROR 404 · No encontramos esa página… Tu sesión sigue abierta.» y `localStorage.token` sigue.
+- A-02: funciona; 0 filas de `lesson_blocks` con URL absoluta a `localhost` (todas `/seed-master/*.svg`); las imágenes del reproductor cargan.
+- A-03: funciona; «Practicar vocabulario» ofrece Flashcards y «Emparejar vocabulario» y ya no muestra «Listen and repeat» sin actividades.
+- A-04: funciona; con «Emparejar vocabulario» abierto, Escape lo cierra; la cabecera es verde con texto claro.
+- A-05: funciona; «Siguiente curso de la serie: …» con «Ir al curso» enlaza directo a `/student/course/3/play`.
+- A-07: funciona; `GET /api/users/teachers` devuelve solo `id`, `name`, `coursesCount`, sin email; `/teachers` muestra «Escribir» solo para el docente que recibe consultas.
+- A-09: funciona; el quiz «Repaso: Presentarnos y conocernos» tiene tres preguntas distintas y se aprobó con 100 %.
+- A-11: funciona; `/class-packages` ofrece «Ver agenda» en lugar de «Schedule a class».
+- (docente) D-14: funciona; el eje del gráfico dice «nov 2026».
+- (docente) D-05: funciona; `/teacher/class-offers/new` sin conversación redirige a `/messages`.
+- C-03: los cuatro documentos se publicaron con texto de PRUEBA desde `/admin/legal` y `GET /api/public/legal/{terms,privacy,refunds}?locale={es,en}` devuelve 200. Nota: `/admin/legal` rechaza publicar con correos `@*.test` o `example.*` («Todavía no se puede publicar… Completa estos campos: Contacto, Consultas de privacidad»); se usó el dominio reservado `.invalid`.
 
 ## 3. Índice de hallazgos nuevos
 
@@ -73,5 +98,39 @@ Contraseña de prueba local (`backend/seeds/local-test-accounts.json` y `SEED_MA
 - Observado: con `INTEGRATIONS_FAKE=1` y `FEATURE_GOOGLE_CALENDAR=1`, `POST /api/integrations/google-calendar/connect` → **500** «Ocurrió un error. Por favor intenta de nuevo.» (log: «Falta configurar la clave de cifrado de Google en el servidor.», `GOOGLE_TOKEN_ENCRYPTION_KEY`). Con la clave definida, el «consentimiento» fake redirige a `http://localhost:3000/api/integrations/google-calendar/callback` (valor por defecto de `GOOGLE_CALENDAR_REDIRECT_URI`) y en un entorno con otro puerto la pantalla queda en blanco y la conexión en «Conectando…»; hay que definir `GOOGLE_CALENDAR_REDIRECT_URI` y `ZOOM_REDIRECT_URI` apuntando al backend propio.
 - Esperado: el modo fake debería funcionar con solo el flag (o la documentación decir qué más hace falta); la falta de clave debería ser un 503 con mensaje claro y no un 500 genérico.
 - Sugerencia: documentar en `backend/.env.example` y `CONFIGURAR-INTEGRACIONES.md` que `INTEGRATIONS_FAKE=1` sigue exigiendo `GOOGLE_TOKEN_ENCRYPTION_KEY` y los `*_REDIRECT_URI` (los de .env.example apuntan al puerto 3000), o derivar la URL de `PORT`/`FRONTEND_URL` en modo fake.
+
+#### D2-08 · Grupo de clases ya completo y con sesión confirmada sigue diciendo «falta aceptar el horario»
+- Severidad: baja (texto incorrecto). Rutas: `/teacher/class-cohorts` y `/class-cohorts/1` (docente, 1440 px, ES).
+- Observado: el grupo 1 (Emily Scott, Daniel Green) tiene `status = ready`, 2 de 2 invitaciones aceptadas y su sesión 25 está `confirmed` (y aparece «Confirmada» en la Agenda), pero la lista y el detalle dicen «Grupo pagado — falta aceptar el horario de la sesión · 2 de 2 invitaciones aceptadas», y el detalle añade «Podrás enviar las ofertas cuando todas las personas hayan aceptado su invitación.» aunque todas ya aceptaron. El grupo 2 igual (sesión 26 confirmada).
+- Causa: `packages.group.status.ready` es la única etiqueta para `ready` y no mira si ya hay sesión confirmada (`features/packages/packages.i18n.ts:553`); el enum del modelo no tiene un estado «programado».
+- Sugerencia: derivar «Clase confirmada para el …» cuando exista sesión confirmada y ocultar el aviso de ofertas cuando `accepted === total`.
+
+#### D2-09 · Afiliados: la tabla no cabe a 1440 px y deja fuera la columna de acciones
+- Severidad: baja. Ruta: `/teacher/affiliates` (1440 px, ES). La tabla mide 1124 px en un contenedor de 1038 px (`overflow-x: auto`), de modo que los botones de cada fila (ver, editar, enlace) quedan fuera de vista hasta desplazar. En el seed hay 4 afiliados; con más columnas de importes en otro idioma sería peor.
+- Sugerencia: acortar encabezados («Comisión generada») o pasar las acciones a un menú «…» fijo a la derecha. `.data-table` compartido.
+
+#### D2-10 · La Agenda pide el detalle de cada clase una por una (N+1) y carga la lista dos veces
+- Severidad: baja (rendimiento; crece con las clases). Ruta: `/schedule` (docente, 1440 px).
+- Observado: con 25 clases, una navegación directa hace `GET /api/class-sessions` (primero `net::ERR_ABORTED`, luego 200), `…/reminders`, `…/options` (también abortado y repetido) y luego 25 peticiones `GET /api/class-sessions/{id}` seguidas, una por clase. En la Agenda de `lucas` el registro de red de una sola sesión de pantalla acumuló más de 340 peticiones a `/api/class-sessions`.
+- Sugerencia: devolver en el listado los campos que usa la tarjeta o cargar el detalle solo al desplegar; evitar la doble inicialización. `features/schedule/schedule.component.ts`.
+
+#### A2-01 · «Reiniciar progreso» deja el curso «Completado» y con certificado, con 0/9 historias
+- Severidad: media (dato contradictorio). Rutas: `/student/dashboard` y `/student/progress` (alumno `lucas`, 1440 px, ES).
+- Pasos: en una tarjeta de curso completado → «Reiniciar progreso» → confirmar («Se borrarán tu avance por historia, tus respuestas y tus refuerzos completados»).
+- Observado: `DELETE /api/enrollments/170/reset-progress` → 200 y toast «Progreso del curso reiniciado exitosamente.»; en la base `lesson_progress` queda con 0 filas y `GET /api/enrollments/170/progress` devuelve todo en cero. Pero la tarjeta sigue en «Completado · Repasar curso» tras recargar, y `/student/progress` muestra «Historias completadas 0/9 · 0% · Quizzes aprobados 0/3 · Tu certificado está listo · Código …». El certificado persiste (1 fila en `certificates`) y el estado «Completado» se deriva de él (`student-dashboard.component.ts:50`).
+- Esperado: o bien el diálogo avisa de que el certificado se conserva y la tarjeta muestra el progreso real («0/9, certificado obtenido»), o el reinicio retira el estado de completado.
+- Sugerencia: separar «certificado obtenido» de «curso completado» en la tarjeta y en `/student/progress`; si el certificado debe conservarse, decirlo en la confirmación.
+
+#### C2-02 · Abrir la raíz `/` (o ser rechazado por `adminGuard`) cierra la sesión: A-01 sigue en parte
+- Severidad: media. Rutas: `/` y `/admin/users` sin permiso (docente `docente2.audit@example.test` y alumno, 1440 px, ES).
+- Pasos: iniciar sesión → escribir `http://localhost:4301/` en la barra (o abrir `/admin/users` siendo docente sin `users.manage`).
+- Observado: se termina en `/auth/login` y `localStorage.token`/`user` quedan vacíos (comprobado dos veces). `app.routes.ts:20` redirige `''` a `auth/login` y `LoginComponent` llama a `logout()` en su constructor (`login.component.ts:49`); `adminGuard` devuelve `createUrlTree(['/'])` para quien no es admin (`auth.guard.ts:53`), con el mismo resultado. Los enlaces del logo de la propia app apuntan al dashboard, así que solo se llega por URL escrita, marcador o rechazo del guard. La página 404 de A-01 sí funciona (`/nope-404` conserva la sesión).
+- Esperado: `/` con sesión lleva al dashboard del rol; un rechazo por permiso lleva a una pantalla «Sin acceso» o al dashboard, sin cerrar sesión.
+- Sugerencia: `''` → guard que redirija según rol/sesión, y `adminGuard` → `/teacher/dashboard` o `/student/dashboard`. `frontend/src/app/app.routes.ts`, `core/guards/auth.guard.ts`.
+
+#### C2-03 · El adaptador fake de Zoom devuelve enlaces del dominio real `zoom.us`
+- Severidad: baja (seguridad de pruebas, no producción). Ruta: `GET /api/class-sessions/53/join` (alumno).
+- Observado: `{"joinUrl":"https://zoom.us/j/333951588?pwd=b4bd…","manual":false}` con `INTEGRATIONS_FAKE=1`. «Entrar a la clase» abre un dominio real (no se pulsó); quien pruebe puede contactar sin querer a un tercero con identificadores inventados.
+- Sugerencia: que el fake use un dominio inequívocamente falso (`https://zoom.fake.invalid/j/…`) o una página local de prueba. `backend/src/services/zoomFakeAdapter.js`.
 
 *(se añaden más fichas durante la auditoría)*
