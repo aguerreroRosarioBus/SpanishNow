@@ -552,7 +552,9 @@ a {
 .card-header.bg-success,
 .card-header.bg-info,
 .card-header.bg-danger,
-.modal-header.bg-primary {
+.modal-header.bg-primary,
+.modal-header.bg-success,
+.modal-header.bg-info {
   color: #fff;
   padding: var(--spacing-md);
 }
@@ -561,6 +563,14 @@ a {
 .card-header.bg-primary h4, .card-header.bg-primary h5, .card-header.bg-primary h6,
 .card-header.bg-success h1, .card-header.bg-success h2, .card-header.bg-success h3,
 .card-header.bg-success h4, .card-header.bg-success h5, .card-header.bg-success h6 {
+  color: #fff;
+}
+
+/* A-04: el título de un modal con cabecera de color conserva el texto claro (la regla general lo pintaba oscuro sobre verde) */
+.modal-header.bg-primary .modal-title,
+.modal-header.bg-success .modal-title,
+.modal-header.bg-info .modal-title,
+.modal-header.bg-danger .modal-title {
   color: #fff;
 }
 

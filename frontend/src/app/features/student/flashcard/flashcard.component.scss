@@ -47,6 +47,11 @@
   transform: rotateY(180deg);
 }
 
+/* A-04: la pista «Haz clic para ver…» sobre el naranja/coral debe leerse (el gris de .text-muted casi no contrastaba) */
+.flashcard-face .text-muted {
+  color: #fff !important;
+}
+
 .card-content {
   text-align: center;
   width: 100%;
