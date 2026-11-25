@@ -24,6 +24,8 @@ const blankBoard = () => {
 function safeUrl(value, driveOnly = false) {
   try {
     if (typeof value !== 'string') fail('Enlace inválido.');
+    // Subidas locales de desarrollo (fakeUploads) guardadas como ruta relativa.
+    if (!driveOnly && process.env.NODE_ENV !== 'production' && /^\/uploads-dev\/[0-9a-f-]{36}\.[a-z0-9]+$/.test(value)) return value;
     const url = new URL(value);
     const dev = process.env.NODE_ENV !== 'production' && ['localhost', '127.0.0.1'].includes(url.hostname) && url.pathname.startsWith('/uploads-dev/');
     if ((url.protocol !== 'https:' && !dev) || url.username || url.password || value.length > 1500) fail('Enlace inválido.');

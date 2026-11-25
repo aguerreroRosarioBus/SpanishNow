@@ -110,7 +110,8 @@
               "buildTarget": "frontend:build:production"
             },
             "development": {
-              "buildTarget": "frontend:build:development"
+              "buildTarget": "frontend:build:development",
+              "proxyConfig": "proxy.dev.json"
             },
             "e2e": {
               "buildTarget": "frontend:build:e2e"
