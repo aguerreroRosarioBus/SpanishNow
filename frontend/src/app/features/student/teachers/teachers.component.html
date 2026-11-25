@@ -23,15 +23,23 @@
       <span>{{ 'student.teachersEmptyHelp' | t }}</span>
     </div>
   } @else {
+    @if (startError(); as message) {
+      <div class="state-box state-box--error" role="alert"><app-icon name="alert-triangle" [size]="18" /><span>{{ message }}</span></div>
+    }
     <div class="card-grid">
       @for (teacher of teachers(); track teacher.id) {
         <article class="teacher-card">
           <div class="teacher-avatar" aria-hidden="true">{{ teacher.name.charAt(0).toUpperCase() }}</div>
           <div class="teacher-card__text">
             <h2 class="teacher-card__name">{{ teacher.name }}</h2>
-            <span class="teacher-card__email">{{ teacher.email }}</span>
+            @if (teacher.email) { <span class="teacher-card__email">{{ teacher.email }}</span> }
           </div>
           <span class="badge-level">{{ 'student.courseCount' | t : { count: teacher.coursesCount } }}</span>
+          @if (canWrite(teacher)) {
+            <button type="button" class="btn btn-secondary btn-sm" data-testid="teacher-write"
+                    [disabled]="startingId() !== null" [attr.aria-label]="'teachers.writeLabel' | t : { name: teacher.name }"
+                    (click)="write(teacher)">{{ (startingId() === teacher.id ? 'teachers.writing' : 'teachers.write') | t }}</button>
+          }
         </article>
       }
     </div>

@@ -6,13 +6,15 @@ import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {TranslatePipe} from '../../core/i18n/translate.pipe';
 import {I18nService} from '../../core/i18n/i18n.service';
 import {AuthService} from '../../core/services/auth.service';
+import {PermissionNoticeComponent} from '../../shared/components/permission-notice/permission-notice.component';
 import {ChatFormat} from '../chat/chat-format';
 import {PackagesService} from './packages.service';
 import {ClassOrder,ClassPurchase,ClassSettings,RefundPreview,PaymentJob,ClassProviderState,isFrozenOrder} from './packages.model';
-@Component({selector:'app-commerce-admin',standalone:true,imports:[FormsModule,TranslatePipe,ModalFocusDirective],
+@Component({selector:'app-commerce-admin',standalone:true,imports:[FormsModule,TranslatePipe,ModalFocusDirective,PermissionNoticeComponent],
 styles:[`.commerce{max-width:960px}.block{margin:var(--spacing-md) 0}.block-title{margin:0 0 var(--spacing-xs);font-size:1.125rem}.sub-title{margin:var(--spacing-md) 0 var(--spacing-sm);font-size:.9375rem;font-weight:700}.notice{margin:var(--spacing-xs) 0 0;font-size:.8125rem;color:var(--color-text-light);overflow-wrap:anywhere}.item{margin:var(--spacing-sm) 0;padding:var(--spacing-md);border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-bg)}.item-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--spacing-sm)}.item-head h4,.item-head h3{margin:0;font-size:1rem}.item p{margin:var(--spacing-xs) 0 0}.item-actions{display:flex;flex-wrap:wrap;gap:var(--spacing-sm);margin-top:var(--spacing-sm)}.empty{padding:var(--spacing-md);border:1px dashed var(--color-border);border-radius:var(--radius-md);background:var(--color-bg-light)}.empty p{margin:0 0 var(--spacing-sm)}.badge-status{flex:none;white-space:normal}.status-success{background:var(--color-success-soft);color:var(--color-success-text)}.status-warning{background:var(--color-warning-soft);color:#6b4a00}.status-danger{background:var(--color-danger-soft);color:var(--color-danger)}.status-neutral{background:var(--color-bg-dark);color:var(--color-text-light)}@media (max-width:480px){.item-actions .btn{flex:1 1 auto}}`],
 template:`
 <div class="page-container commerce"><h1>{{'packages.admin.title'|t}}</h1>
+@if(denied()){<app-permission-notice />}@else{
 <p class="notice">{{'packages.admin.realBlocked'|t}}</p>
 @if(error()){<p class="alert alert-danger mt-3" role="alert">{{error()}}</p>}
 @if(saved()){<p class="alert alert-success mt-3" role="status">{{'packages.admin.saved'|t}}</p>}
@@ -128,6 +130,7 @@ template:`
   @if(can('class_credits.adjust')){<label for="adjustDirection" class="form-label mt-2">{{'packages.admin.direction'|t}}</label><select id="adjustDirection" class="form-select" [(ngModel)]="direction">@for(d of directions;track d){<option [value]="d">{{('packages.admin.adjust.'+d)|t}}</option>}</select><label for="adjustUnits" class="form-label mt-2">{{'packages.admin.units'|t}}</label><input id="adjustUnits" class="form-control" type="number" min="1" [(ngModel)]="units"><div class="item-actions"><button class="btn btn-outline-danger" [disabled]="!ready()||units<1" (click)="adjust()">{{'packages.admin.confirmAdjust'|t}}</button></div>}}
 </section>}
 <button class="btn btn-secondary mt-3" [disabled]="busy()" (click)="load()">{{'packages.offer.refresh'|t}}</button>
+}
 @if(pending();as op){
 <div class="modal fade show" style="display:block;background:#2b1a0e80" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="operationTitle" appModalFocus (modalDismiss)="cancelOperation()">
   <div class="modal-dialog modal-dialog-centered"><form class="modal-content" (ngSubmit)="confirmOperation()">
@@ -157,7 +160,7 @@ export class CommerceAdminComponent implements OnInit{
   revoker(r:{revokedBy:{name:string}|number|null}){const b=r.revokedBy;return b&&typeof b==='object'?b.name:b!=null?`#${b}`:'—';}
   verifyReady(){return !this.busy()&&this.checkKeys.every(k=>this.vChecks[k])&&this.guaranteeOptions.includes(this.vDays as number)&&Boolean(this.vReason.trim());}
   revokeReady(){return !this.busy()&&this.rConfirmed&&Boolean(this.rReason.trim());}
-  loadProvider(){this.api.providerState().pipe(takeUntilDestroyed(this.destroy)).subscribe({next:v=>this.provider.set(v),error:()=>this.provider.set(null)});}
+  loadProvider(){if(!this.can('class_provider.verify')&&!this.can('class_payments.review'))return;this.api.providerState().pipe(takeUntilDestroyed(this.destroy)).subscribe({next:v=>this.provider.set(v),error:()=>this.provider.set(null)});}
   verifyProvider(){if(!this.verifyReady())return;this.act(this.api.verifyProvider({checks:{account:true,format:true,guarantee:true,mapping:true},guaranteeDays:this.vDays as number,reason:this.vReason.trim()}),()=>{this.verifyOpen.set(false);this.vChecks={account:false,format:false,guarantee:false,mapping:false};this.vDays=null;this.vReason='';});}
   revokeProvider(){if(!this.revokeReady())return;this.act(this.api.revokeProvider(this.rReason.trim()),()=>{this.revokeOpen.set(false);this.rReason='';this.rConfirmed=false;});}
   private fractionDigits(c:string){return new Intl.NumberFormat('en',{style:'currency',currency:c.toUpperCase()}).resolvedOptions().maximumFractionDigits??2;}
@@ -166,7 +169,11 @@ export class CommerceAdminComponent implements OnInit{
   refundMinor(o:ClassOrder){const t=this.refundText(o).trim().replace(',','.');const d=this.fractionDigits(o.currency);if(!/^\d+(\.\d+)?$/.test(t))return null;const [,f='']=t.split('.');if(f.length>d)return null;const n=Math.round(Number(t)*10**d);return Number.isSafeInteger(n)&&n>=1&&n<=o.amount?n:null;}
   refundInvalid(o:ClassOrder){return this.refundMinor(o)===null;}
   confirmRefund(o:ClassOrder){const n=this.refundMinor(o);if(n===null||!this.ready())return;const context=this.orderContext(o,'confirm_refund')+' · '+this.i18n.formatMoney(n,o.currency);this.requestOperation(context,reason=>this.api.resolvePayment(o.id,'confirm_refund',reason,n===o.amount?undefined:n));}
-  ngOnInit(){this.load();this.loadProvider();}can(p:string){return this.auth.hasPermission(p);}ready(){return !this.busy();}
+  /** Permisos que dan acceso a alguna sección de esta pantalla; sin ninguno (o ante un 403) se explica en lugar de dejarla vacía (D-02). */
+  private readonly sectionPermissions=['class_provider.verify','class_payments.review','class_teachers.manage','class_packages.manage_all','class_credits.adjust'];
+  private forbidden=signal(false);
+  denied=computed(()=>this.forbidden()||!this.sectionPermissions.some(p=>this.can(p)));
+  ngOnInit(){if(!this.sectionPermissions.some(p=>this.can(p)))return;this.load();this.loadProvider();}can(p:string){return this.auth.hasPermission(p);}ready(){return !this.busy();}
   pending=signal<{context:string;execute:(reason:string)=>Observable<unknown>;done?:(value:any)=>void}|null>(null);
   requestOperation(context:string,execute:(reason:string)=>Observable<unknown>,done?:(value:any)=>void){if(this.busy())return;this.reason='';this.confirmed=false;this.failure.set(null);this.pending.set({context,execute,done});}
   cancelOperation(){if(!this.busy()){this.pending.set(null);this.reason='';this.confirmed=false;}}
@@ -174,7 +181,7 @@ export class CommerceAdminComponent implements OnInit{
   reviewReason(code:string){return this.i18n.t(code==='amount_mismatch'?'refine.amountMismatch':'refine.reviewReason');}
   orderContext(o:ClassOrder,action:string){const labels:Record<string,string>={credit:'packages.admin.credit',refund:'packages.admin.approve',confirm_refund:'packages.pv.confirmRefund',unfreeze:'packages.pv.unfreeze'};return this.i18n.t('refine.orderAction',{id:o.id,amount:this.i18n.formatMoney(o.amount,o.currency),action:this.i18n.t(labels[action])});}
 
-  private read<T>(o:Observable<T>,next:(v:T)=>void){o.pipe(takeUntilDestroyed(this.destroy)).subscribe({next,error:e=>this.failure.set(e)});}
+  private read<T>(o:Observable<T>,next:(v:T)=>void){o.pipe(takeUntilDestroyed(this.destroy)).subscribe({next,error:e=>{if((e as {status?:number})?.status===403)this.forbidden.set(true);else this.failure.set(e);}});}
   load(){if(this.can('class_payments.review')){this.read(this.api.refundRequests(),v=>this.refunds.set(v));this.loadPayments();this.jobsFailed.set(false);this.api.paymentJobs().pipe(takeUntilDestroyed(this.destroy)).subscribe({next:v=>this.jobs.set(v),error:()=>this.jobsFailed.set(true)});}if(this.can('class_teachers.manage'))this.read(this.api.teachers(),v=>this.teachers.set(v));if(this.can('class_packages.manage_all'))this.read(this.api.policies(),v=>{this.policy.set(v[0]||null);if(v[0]){this.refundHours=Math.max(360,Number(v[0].rules['refundWindowHours']));this.pauseHours=Number(v[0].rules['maxPauseHours']);this.ttlHours=Number(v[0].rules['offerTtlHours']);}});}
   loadPayments(){this.read(this.api.paymentList(this.filter),v=>{this.orders.set(v.items);this.events.set(v.events);});}
   private act<T>(o:Observable<T>,done?:(v:T)=>void){if(this.busy())return;this.busy.set(true);this.saved.set(false);this.failure.set(null);o.pipe(takeUntilDestroyed(this.destroy)).subscribe({next:v=>{done?.(v);this.busy.set(false);this.saved.set(true);this.confirmed=false;this.load();this.loadProvider();},error:e=>{this.busy.set(false);this.failure.set(e);}});}

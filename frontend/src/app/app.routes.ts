@@ -262,9 +262,9 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
 
-  // Ruta 404 - página no encontrada
+  // Ruta 404 - página no encontrada. No cierra la sesión (A-01): entrar a /auth/login a propósito sí la descarta.
   {
     path: '**',
-    redirectTo: 'auth/login'
+    loadComponent: () => import('./features/not-found/not-found.component').then(m => m.NotFoundComponent)
   }
 ];

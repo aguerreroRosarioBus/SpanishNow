@@ -2,6 +2,7 @@ import { REFINEMENT_EN } from './refinement';
 import { VISUAL_EN } from './visual';
 import { ZOOM_EN } from './zoom';
 import { STUDENT_EN } from './student';
+import { ACCESS_EN } from './access';
 import { PUBLIC_EN } from './public';
 import { ADMIN_EN } from './admin';
 import { PLAYER_EN } from './player';
@@ -20,6 +21,7 @@ export const EN = {
   ...VISUAL_EN,
   ...ZOOM_EN,
   ...STUDENT_EN,
+  ...ACCESS_EN,
   ...PUBLIC_EN,
   ...ADMIN_EN,
   ...PLAYER_EN,
