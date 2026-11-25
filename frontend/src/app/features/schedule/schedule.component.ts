@@ -85,12 +85,12 @@ export class ScheduleComponent {
       this.sessions.set([]); this.selected.set(null); this.editing.set(null); this.options.set(null); this.busy.set(false);
       this.studentId.set(0); this.purchaseId.set(0); this.cohortId.set(0); this.reason = ''; this.waiver = ''; this.exception = false;
       this.whiteboardId = 0;
-      this.draft.set({ localStart: '', timeZone: '', offset: '', disambiguation: 'none', minutes: 50 });
+      this.draft.set({ localStart: '', timeZone: this.zone(), offset: '', disambiguation: 'none', minutes: 50 });
       if (account) { this.reload(); this.loadSelection(); }
     }); });
     effect(() => { const zone = this.preferences.preferences()?.timeZone; untracked(() => {
       if (zone && zone !== this.lastSavedZone) { this.zoneInput.set(zone); this.lastSavedZone = zone; }
-      if (zone && !this.draft().timeZone) this.patch({ timeZone: zone });
+      if (!this.draft().timeZone) this.patch({ timeZone: zone || this.zone() }); // D-12: la zona de programación nace con la del docente (o la del dispositivo)
     }); });
     this.zoneInput.set(this.preferences.preferences()?.timeZone || this.suggested || 'UTC');
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe(query => {
@@ -136,6 +136,8 @@ export class ScheduleComponent {
   patch(value: Partial<Draft>): void { this.draft.update(d => ({ ...d, ...value, offset: '', disambiguation: 'none' })); }
   choose(offset: string, index: number): void { this.draft.update(d => ({ ...d, offset, disambiguation: index ? 'later' : 'earlier' })); }
   useAlternative(localStart: string, timeZone: string, offset: string): void { this.draft.update(d => ({ ...d, localStart, timeZone, offset, disambiguation: 'none' })); }
+  /** D-12: solo los alumnos con un paquete individual disponible; proponer una clase a los demás no tiene saldo contra el cual reservar. */
+  studentsWithPackage() { const o = this.options(); return o ? o.students.filter(s => o.purchases.some(p => !p.cohortId && p.beneficiaryIds.includes(s.id))) : []; }
   purchasesForStudent() { return this.options()?.purchases.filter(p => p.beneficiaryIds.includes(this.studentId()) && !p.cohortId) || []; }
   selectPurchase(id: number): void { this.purchaseId.set(Number(id)); const p = this.options()?.purchases.find(p => p.id === Number(id)); if (p) this.patch({ minutes: p.minutesPerSession }); }
   selectedCohort() { return this.options()?.cohorts.find(c => c.id === this.cohortId()); }

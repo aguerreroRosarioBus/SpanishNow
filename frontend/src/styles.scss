@@ -566,6 +566,21 @@ a {
   color: #fff;
 }
 
+/* D-08: tablas anchas dentro de .table-wrap (Pedidos, Cupones, Afiliados, Ventas…): sombra en el borde donde queda contenido
+   por desplazar, para que en móvil se note que hay más columnas. Se usan longhands con !important porque cada pantalla
+   define su propio `background` abreviado, que de otro modo borraría estas imágenes. */
+.table-wrap {
+  background-image:
+    linear-gradient(to right, var(--color-bg), var(--color-bg)),
+    linear-gradient(to left, var(--color-bg), var(--color-bg)),
+    linear-gradient(to right, rgba(74, 40, 15, 0.22), rgba(74, 40, 15, 0)),
+    linear-gradient(to left, rgba(74, 40, 15, 0.22), rgba(74, 40, 15, 0)) !important;
+  background-position: left center, right center, left center, right center !important;
+  background-repeat: no-repeat !important;
+  background-size: 28px 100%, 28px 100%, 16px 100%, 16px 100% !important;
+  background-attachment: local, local, scroll, scroll !important;
+}
+
 /* A-04: el título de un modal con cabecera de color conserva el texto claro (la regla general lo pintaba oscuro sobre verde) */
 .modal-header.bg-primary .modal-title,
 .modal-header.bg-success .modal-title,

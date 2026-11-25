@@ -125,10 +125,13 @@
                 (ngModelChange)="studentId.set(+$event); purchaseId.set(0)"
               >
                 <option [ngValue]="0">{{ 'schedule.choose' | t }}</option>
-                @for (s of opts.students; track s.id) {
+                @for (s of studentsWithPackage(); track s.id) {
                   <option [ngValue]="s.id">{{ s.name }}</option>
                 }
-              </select></label
+              </select>
+              @if (!studentsWithPackage().length) {
+                <small class="form-text" data-testid="no-students">{{ 'schedule.ui.noStudents' | t }}</small>
+              }</label
             >
             <label
               >{{ 'schedule.purchase' | t
