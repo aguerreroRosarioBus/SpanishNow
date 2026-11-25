@@ -52,9 +52,13 @@ export class ZoomSessionComponent {
     this.busy.set(true); this.failure.set(null); this.notice.set('');
     request.pipe(takeUntilDestroyed(this.destroy), finalize(() => this.busy.set(false))).subscribe({ next: success, error: e => this.failure.set(e) });
   }
-  join(): void {
-    this.meeting.set(null);
-    this.action(this.api.join(this.id), r => this.meeting.set(r.hostUrl || r.joinUrl || null));
+  /** Tramos de la clase (vacío si cabe en una sola reunión). */
+  readonly parts = computed(() => this.sync()?.parts ?? []);
+  /** Tramo cuyo enlace se está mostrando. */
+  readonly openedPart = signal<number | null>(null);
+  join(part?: number): void {
+    this.meeting.set(null); this.openedPart.set(null);
+    this.action(this.api.join(this.id, part), r => { this.meeting.set(r.hostUrl || r.joinUrl || null); this.openedPart.set(this.parts().length > 1 ? (r.part ?? part ?? null) : null); });
   }
   retry(): void { this.action(this.api.retry(this.id), () => this.notice.set('zoom.queued')); }
   saveManual(remove = false): void {

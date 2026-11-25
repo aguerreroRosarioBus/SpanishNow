@@ -81,18 +81,21 @@ describe('rutas y conexión (CAL-01, CAL-08)', () => {
     expect(replay.headers.location).toContain('calendar=error');
     expect((await as(teacher).post('/api/integrations/google-calendar/complete', { token: target.searchParams.get('token') })).body.code).toBe('oauth_state_invalid');
     const state = (await as(teacher).get('/api/integrations/google-calendar')).body;
-    expect(state).toMatchObject({ status: 'connected', accountEmail: 'calendar-fake@example.test', targetCalendarId: 'primary', busyCalendarIds: ['primary'] });
-    expect(state.calendars.map(c => c.id)).toEqual(['primary', 'clases@example.test', 'personal@example.test']);
+    expect(state).toMatchObject({ status: 'connected', accountEmail: 'calendar-fake@example.test', targetCalendarId: fake.DEDICATED_ID, busyCalendarIds: [fake.DEDICATED_ID, 'primary'] });
+    // El calendario propio se crea una sola vez al conectar; el principal solo cuenta como ocupado.
+    expect(fake.calls().createCalendar).toBe(1);
+    expect(state.calendars.map(c => c.id)).toEqual(['primary', 'clases@example.test', 'personal@example.test', fake.DEDICATED_ID]);
     expect(JSON.stringify(state)).not.toMatch(/credentials|fake-at|fake-refresh|oauth/i);
 
     const bad = await as(teacher).request?.patch;
     const patch = body => require('supertest')(require('../src/app')).patch('/api/integrations/google-calendar').set('Authorization', `Bearer ${teacher.token}`).send(body);
     expect((await patch({ targetCalendarId: 'personal@example.test' })).status).toBe(400); // solo lectura: no se puede escribir
     expect((await patch({ targetCalendarId: 'ajeno@example.test' })).status).toBe(400);
+    expect((await patch({ targetCalendarId: 'clases@example.test' })).status).toBe(400); // el destino es fijo: el calendario propio de la app
     expect((await patch({ busyCalendarIds: 'primary' })).status).toBe(400);
-    const ok = await patch({ targetCalendarId: 'clases@example.test', busyCalendarIds: ['primary', 'personal@example.test'] });
+    const ok = await patch({ targetCalendarId: fake.DEDICATED_ID, busyCalendarIds: ['primary', 'personal@example.test'] });
     expect(ok.status).toBe(200);
-    expect(ok.body).toMatchObject({ targetCalendarId: 'clases@example.test', busyCalendarIds: ['clases@example.test', 'primary', 'personal@example.test'] });
+    expect(ok.body).toMatchObject({ targetCalendarId: fake.DEDICATED_ID, busyCalendarIds: [fake.DEDICATED_ID, 'primary', 'personal@example.test'] });
 
     const removed = await as(teacher).delete('/api/integrations/google-calendar');
     expect(removed.body).toMatchObject({ status: 'disconnected', connected: false });
@@ -230,13 +233,13 @@ describe('confirmación con free/busy (CAL-03, AC05)', () => {
   test('ocupación externa bloquea sin consumir saldo ni confirmar; liberada, confirma y encola un solo sync', async () => {
     const { c, connection } = await withConnection();
     const s = await proposed(c);
-    fake.setBusy('primary', [{ start: new Date(s.startsAt).toISOString(), end: new Date(new Date(s.startsAt).getTime() + 600000).toISOString() }]);
+    fake.setBusy(fake.DEDICATED_ID, [{ start: new Date(s.startsAt).toISOString(), end: new Date(new Date(s.startsAt).getTime() + 600000).toISOString() }]);
     await expect(sessions.accept(c.students[0], s.id, 1)).rejects.toMatchObject({ code: 'schedule_conflict', params: { reason: 'external_busy' } });
     expect(await credits.balance(c.purchases[0].id)).toMatchObject({ available: 4, reserved: 0 });
     expect((await M.ClassSession.findByPk(s.id)).status).toBe('proposed');
     expect(await M.OutboxJob.count({ where: { topic: 'calendar.sync', aggregateId: s.id } })).toBe(0);
 
-    fake.setBusy('primary', []);
+    fake.setBusy(fake.DEDICATED_ID, []);
     const done = await sessions.accept(c.students[0], s.id, 1);
     expect(done.status).toBe('confirmed');
     expect(fake.calls().freeBusy).toBe(2);
@@ -285,14 +288,14 @@ describe('confirmación con free/busy (CAL-03, AC05)', () => {
     const s = await confirmed(c);
     await drain();
     const own = { start: s.startsAt.toISOString(), end: s.endsAt.toISOString() };
-    fake.setBusy('primary', [own]);
+    fake.setBusy(fake.DEDICATED_ID, [own]);
     const later = { ...c.body.intent, localStart: c.body.intent.localStart.replace('09:00', '09:25') }; // se solapa con la clase vigente
     const p = await sessions.reschedule(c.teacher, s.id, { version: s.version, intent: later });
     const moved = await sessions.accept(c.students[0], s.id, p.version);
     expect(moved.status).toBe('confirmed');
     const next = await sessions.reschedule(c.teacher, s.id, { version: moved.version, intent: { ...c.body.intent, localStart: c.body.intent.localStart.replace('09:00', '15:00') } });
     const target = time.resolveLocalIntent({ localStart: c.body.intent.localStart.replace('09:00', '15:00'), timeZone: c.body.intent.timeZone, offset: c.body.intent.offset, minutes: 50 });
-    fake.setBusy('primary', [{ start: target.startsAt, end: target.endsAt }]);
+    fake.setBusy(fake.DEDICATED_ID, [{ start: target.startsAt, end: target.endsAt }]);
     await expect(sessions.accept(c.students[0], s.id, next.version)).rejects.toMatchObject({ code: 'schedule_conflict' });
   });
 
@@ -311,7 +314,7 @@ describe('calendar.sync (CAL-02, CAL-04, CAL-05)', () => {
     const s = await confirmed(c);
     expect(await drain()).toBeGreaterThan(0);
     let ref = await refOf(s.id);
-    expect(ref).toMatchObject({ status: 'ready', syncedVersion: s.version, calendarId: 'primary', lastError: null });
+    expect(ref).toMatchObject({ status: 'ready', syncedVersion: s.version, calendarId: fake.DEDICATED_ID, lastError: null });
     expect(ref.externalId).toBe(sync.eventIdFor(ref.correlationKey));
     const [stored] = fake.events();
     expect(stored.startsAt).toBe(new Date(s.startsAt).toISOString());
@@ -319,20 +322,20 @@ describe('calendar.sync (CAL-02, CAL-04, CAL-05)', () => {
     expect(stored.attendees.sort()).toEqual(c.students.map(u => u.email).sort());
     expect(JSON.stringify(stored)).not.toMatch(/start_url|hostUrl|mensaje|message/i);
     expect(stored.description).not.toMatch(/zoom\.us\/s\//);
-    expect(fake.eventCount('primary')).toBe(1);
+    expect(fake.eventCount(fake.DEDICATED_ID)).toBe(1);
 
     const p = await sessions.reschedule(c.teacher, s.id, { version: s.version, intent: { ...c.body.intent, localStart: c.body.intent.localStart.replace('09:00', '13:00') } });
     let current = p;
     for (const student of c.students) current = await sessions.accept(student, s.id, p.version);
     await drain();
     ref = await refOf(s.id);
-    expect(fake.eventCount('primary')).toBe(1);
+    expect(fake.eventCount(fake.DEDICATED_ID)).toBe(1);
     expect(fake.events()[0].startsAt).toBe(new Date(current.startsAt).toISOString());
     expect(ref).toMatchObject({ status: 'ready', syncedVersion: current.version });
 
     await sessions.cancel(c.teacher, s.id, { version: current.version, reason: 'Imprevisto del docente' });
     await drain();
-    expect(fake.eventCount('primary')).toBe(0);
+    expect(fake.eventCount(fake.DEDICATED_ID)).toBe(0);
     expect(await refOf(s.id)).toMatchObject({ status: 'cancelled' });
   });
 
@@ -349,10 +352,10 @@ describe('calendar.sync (CAL-02, CAL-04, CAL-05)', () => {
     const s = await confirmed(c);
     fake.loseResponseNext('insertEvent', new IntegrationError(503, 'provider_unavailable', {}, { retryable: true }));
     await outbox.runOnce({ limit: 5 });
-    expect(fake.eventCount('primary')).toBe(1);
+    expect(fake.eventCount(fake.DEDICATED_ID)).toBe(1);
     expect(await refOf(s.id)).toMatchObject({ status: 'pending', externalId: null, attempts: 1 });
     await drain(new Date(Date.now() + 3600e3));
-    expect(fake.eventCount('primary')).toBe(1);
+    expect(fake.eventCount(fake.DEDICATED_ID)).toBe(1);
     expect(await refOf(s.id)).toMatchObject({ status: 'ready', lastError: null });
   });
 
@@ -361,7 +364,7 @@ describe('calendar.sync (CAL-02, CAL-04, CAL-05)', () => {
     const s = await confirmed(c);
     fake.setDelay(40);
     await Promise.all([sync.syncSession(s.id), sync.syncSession(s.id), sync.syncSession(s.id)]);
-    expect(fake.eventCount('primary')).toBe(1);
+    expect(fake.eventCount(fake.DEDICATED_ID)).toBe(1);
     expect((await refOf(s.id)).status).toBe('ready');
   });
 
@@ -378,7 +381,7 @@ describe('calendar.sync (CAL-02, CAL-04, CAL-05)', () => {
     expect(retried.status).toBe(200);
     await drain();
     expect(await refOf(s.id)).toMatchObject({ status: 'ready' });
-    expect(fake.eventCount('primary')).toBe(1);
+    expect(fake.eventCount(fake.DEDICATED_ID)).toBe(1);
   });
 
   test('el estado de sincronización es visible en el detalle de la sesión', async () => {
@@ -395,7 +398,7 @@ describe('recuperación (AC15, CAL-06, CAL-07, CAL-08)', () => {
     const { c, connection } = await withConnection();
     const s = await confirmed(c);
     await drain();
-    expect(fake.eventCount('primary')).toBe(1);
+    expect(fake.eventCount(fake.DEDICATED_ID)).toBe(1);
     // El docente cambia la clase pero Google ya revocó la autorización.
     const p = await sessions.reschedule(c.teacher, s.id, { version: s.version, intent: { ...c.body.intent, localStart: c.body.intent.localStart.replace('09:00', '14:00') } });
     const moved = await sessions.accept(c.students[0], s.id, p.version);
@@ -417,7 +420,7 @@ describe('recuperación (AC15, CAL-06, CAL-07, CAL-08)', () => {
     await connect(c.teacher);
     await drain();
     expect(await refOf(s.id)).toMatchObject({ status: 'ready', syncedVersion: moved.version });
-    expect(fake.eventCount('primary')).toBe(1);
+    expect(fake.eventCount(fake.DEDICATED_ID)).toBe(1);
     expect(fake.events()[0].startsAt).toBe(new Date(moved.startsAt).toISOString());
   });
 
@@ -427,7 +430,7 @@ describe('recuperación (AC15, CAL-06, CAL-07, CAL-08)', () => {
     await drain();
     const ref = await refOf(s.id);
     const original = (await M.ClassSession.findByPk(s.id)).startsAt.toISOString();
-    fake.editExternally('primary', ref.externalId, { startsAt: '2031-01-01T10:00:00.000Z', endsAt: '2031-01-01T10:50:00.000Z' });
+    fake.editExternally(fake.DEDICATED_ID, ref.externalId, { startsAt: '2031-01-01T10:00:00.000Z', endsAt: '2031-01-01T10:50:00.000Z' });
     await sync.reconcile(connection.id);
     expect(await refOf(s.id)).toMatchObject({ status: 'needs_attention', lastError: 'external_changed' });
     expect((await M.ClassSession.findByPk(s.id)).startsAt.toISOString()).toBe(original);
@@ -439,14 +442,14 @@ describe('recuperación (AC15, CAL-06, CAL-07, CAL-08)', () => {
     expect(fake.events()[0].startsAt).toBe(original);
     expect(await refOf(s.id)).toMatchObject({ status: 'ready', lastError: null });
 
-    fake.removeExternally('primary', ref.externalId);
+    fake.removeExternally(fake.DEDICATED_ID, ref.externalId);
     await sync.reconcile(connection.id);
     expect(await refOf(s.id)).toMatchObject({ status: 'needs_attention', lastError: 'external_deleted' });
     await sync.syncSession(s.id); // un job ordinario no recrea un evento que alguien borró a propósito
-    expect(fake.eventCount('primary')).toBe(0);
+    expect(fake.eventCount(fake.DEDICATED_ID)).toBe(0);
     await as(c.teacher).post(`/api/class-sessions/${s.id}/sync/retry`);
     await drain();
-    expect(fake.eventCount('primary')).toBe(1);
+    expect(fake.eventCount(fake.DEDICATED_ID)).toBe(1);
     expect(await refOf(s.id)).toMatchObject({ status: 'ready' });
   });
 
@@ -457,7 +460,7 @@ describe('recuperación (AC15, CAL-06, CAL-07, CAL-08)', () => {
     await drain();
     await sync.reconcile(connection.id);
     const [watch] = fake.channels();
-    expect(watch).toMatchObject({ address: process.env.GOOGLE_CALENDAR_NOTIFICATIONS_URL, calendarId: 'primary' });
+    expect(watch).toMatchObject({ address: process.env.GOOGLE_CALENDAR_NOTIFICATIONS_URL, calendarId: fake.DEDICATED_ID });
     const channel = await M.ExternalCalendarChannel.findOne({ where: { connectionId: connection.id } });
     expect(channel.tokenHash).toBe(connections.sha256(watch.token));
     expect(JSON.stringify(channel)).not.toContain(watch.token);
@@ -470,7 +473,7 @@ describe('recuperación (AC15, CAL-06, CAL-07, CAL-08)', () => {
     expect((await post({})).status).toBe(404);
     expect((await post({ ...good(1), 'X-Goog-Resource-State': 'sync' })).status).toBe(200);
     expect(await M.OutboxJob.count({ where: { topic: 'calendar.reconcile', dedupeKey: { [require('sequelize').Op.like]: '%:push:%' } } })).toBe(0);
-    fake.editExternally('primary', (await refOf(s.id)).externalId, { startsAt: '2031-02-01T10:00:00.000Z', endsAt: '2031-02-01T10:50:00.000Z' });
+    fake.editExternally(fake.DEDICATED_ID, (await refOf(s.id)).externalId, { startsAt: '2031-02-01T10:00:00.000Z', endsAt: '2031-02-01T10:50:00.000Z' });
     expect((await post(good(2))).status).toBe(200);
     expect((await post(good(2))).status).toBe(200); // repetida: no se encola otra vez
     expect((await post(good(1))).status).toBe(200); // desordenada/vieja: ignorada
@@ -488,7 +491,7 @@ describe('recuperación (AC15, CAL-06, CAL-07, CAL-08)', () => {
     await sync.reconcile(connection.id);
     const channel = await M.ExternalCalendarChannel.findOne({ where: { connectionId: connection.id } });
     expect(channel.syncToken).toMatch(/^fake-sync-/);
-    expect(fake.eventCount('primary')).toBe(1);
+    expect(fake.eventCount(fake.DEDICATED_ID)).toBe(1);
     expect((await M.ClassSession.findByPk(s.id)).status).toBe('confirmed');
     expect((await refOf(s.id)).status).toBe('ready');
   });
@@ -511,7 +514,7 @@ describe('recuperación (AC15, CAL-06, CAL-07, CAL-08)', () => {
     await as(c.teacher).delete('/api/integrations/google-calendar');
     expect(await refOf(s.id)).toMatchObject({ status: 'needs_attention', lastError: 'integration_not_connected' });
     expect((await M.ClassSession.findByPk(s.id)).status).toBe('confirmed');
-    expect(fake.eventCount('primary')).toBe(1); // el evento ya creado no se toca
+    expect(fake.eventCount(fake.DEDICATED_ID)).toBe(1); // el evento ya creado no se toca
     const detail = (await as(c.teacher).get(`/api/class-sessions/${s.id}`)).body;
     expect(detail.sync[0].status).toBe('needs_attention');
     // Sin conexión no se consulta free/busy y la agenda sigue funcionando.
@@ -519,7 +522,7 @@ describe('recuperación (AC15, CAL-06, CAL-07, CAL-08)', () => {
     expect((await sessions.accept(c.students[0], other.session.id, 1)).status).toBe('confirmed');
     await connect(c.teacher);
     await drain();
-    expect(fake.eventCount('primary')).toBe(2);
+    expect(fake.eventCount(fake.DEDICATED_ID)).toBe(2);
     expect(await refOf(s.id)).toMatchObject({ status: 'ready' });
   });
 });
@@ -557,10 +560,32 @@ describe('ICS para el alumno (CAL-05)', () => {
   });
 });
 
+describe('calendario propio de la app (#98)', () => {
+  test('reconectar reutiliza el calendario «SpanishNow clases» y no crea otro', async () => {
+    const teacher = await createUser('teacher', 'cal-reutiliza');
+    const first = await connect(teacher);
+    expect(first.targetCalendarId).toBe(fake.DEDICATED_ID);
+    await calendar.disconnect(teacher);
+    const again = await connect(teacher);
+    expect(again.targetCalendarId).toBe(fake.DEDICATED_ID);
+    expect(fake.calls().createCalendar).toBe(1);
+    expect((await calendar.status(teacher)).calendars.filter(c => c.summary === calendar.CALENDAR_NAME)).toHaveLength(1);
+  });
+
+  test('si Google no deja crear el calendario, la conexión no queda activa', async () => {
+    const teacher = await createUser('teacher', 'cal-sin-calendario');
+    fake.failNext('createCalendar', new IntegrationError(403, 'permission_denied', {}, { needsAttention: true }));
+    const { token } = await authorize(teacher);
+    await expect(calendar.complete(teacher, token)).rejects.toMatchObject({ code: 'permission_denied' });
+    expect(await M.ExternalConnection.findOne({ where: { userId: teacher.id, provider: 'google_calendar', status: 'connected' } })).toBeNull();
+  });
+});
+
 describe('P3 de la revisión cruzada', () => {
-  test('el scope de eventos es solo de calendarios propios y el destino debe ser owner', async () => {
+  test('el scope de eventos es no sensible (solo el calendario de la app) y el destino no se puede cambiar', async () => {
     const { SCOPES } = require('../src/services/googleCalendar');
-    expect(SCOPES).toContain('https://www.googleapis.com/auth/calendar.events.owned');
+    expect(SCOPES).toContain('https://www.googleapis.com/auth/calendar.app.created');
+    expect(SCOPES).not.toContain('https://www.googleapis.com/auth/calendar.events.owned'); // sensible: exigiría verificar la app
     expect(SCOPES).not.toContain('https://www.googleapis.com/auth/calendar.events');
     const teacher = await createUser('teacher', 'cal-owner');
     await connect(teacher);
@@ -568,7 +593,8 @@ describe('P3 de la revisión cruzada', () => {
     fake.addCalendar(writer);
     const patch = body => require('supertest')(require('../src/app')).patch('/api/integrations/google-calendar').set('Authorization', `Bearer ${teacher.token}`).send(body);
     expect((await patch({ targetCalendarId: writer.id })).status).toBe(400);
-    expect((await patch({ targetCalendarId: 'clases@example.test' })).status).toBe(200);
+    expect((await patch({ targetCalendarId: 'clases@example.test' })).status).toBe(400);
+    expect((await patch({ targetCalendarId: fake.DEDICATED_ID, busyCalendarIds: ['primary'] })).status).toBe(200);
   });
 
   test('los canales push viejos se detienen al cambiar la URL, quitarla o cambiar el calendario destino', async () => {
@@ -594,12 +620,12 @@ describe('P3 de la revisión cruzada', () => {
     // Cambia el calendario destino y ya no hay eventos en el viejo: el canal del calendario sin uso se detiene.
     process.env.GOOGLE_CALENDAR_NOTIFICATIONS_URL = 'https://api.example.test/b/notifications';
     await sync.reconcile(connection.id);
-    expect(fake.channels().map(ch => ch.calendarId)).toEqual(['primary']);
+    expect(fake.channels().map(ch => ch.calendarId)).toEqual([fake.DEDICATED_ID]);
     await M.ExternalSyncRef.update({ status: 'cancelled' }, { where: { sessionId: s.id } });
     await M.ExternalConnection.update({ targetCalendarId: 'clases@example.test' }, { where: { id: connection.id } });
     await sync.reconcile(connection.id);
     expect(fake.channels().map(ch => ch.calendarId)).toEqual(['clases@example.test']);
-    expect(await M.ExternalCalendarChannel.count({ where: { connectionId: connection.id, calendarId: 'primary' } })).toBe(0);
+    expect(await M.ExternalCalendarChannel.count({ where: { connectionId: connection.id, calendarId: fake.DEDICATED_ID } })).toBe(0);
   });
 
   test('una clave de cifrado rotada deja la conexión en needs_attention en vez de fallar sin aviso', async () => {

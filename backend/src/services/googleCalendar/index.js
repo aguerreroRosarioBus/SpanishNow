@@ -4,6 +4,7 @@
 //   refresh(refreshToken) → { accessToken, expiresIn, refreshToken? } · revoke(token)
 //   listCalendars(token) → [{ id, summary, primary, accessRole }]
 //   freeBusy(token, { calendarIds, timeMin, timeMax }) → [{ start, end }] (solo intervalos, nunca títulos ni participantes)
+//   createCalendar(token, { summary, timeZone }) → { id, summary } (calendario secundario propio de la app)
 //   getEvent / insertEvent / patchEvent / deleteEvent(token, calendarId, ...) con el evento normalizado (ver eventBody)
 //   listChanges(token, calendarId, syncToken) → { events, nextSyncToken } · 410 → IntegrationError 'sync_token_expired'
 //   watch(token, calendarId, { channelId, token, address, ttlSeconds }) → { resourceId, expiresAt } · stopChannel(token, { channelId, resourceId })
@@ -11,7 +12,7 @@ const features = require('../../config/features');
 
 const SCOPES = [
   'https://www.googleapis.com/auth/userinfo.email',
-  'https://www.googleapis.com/auth/calendar.events.owned', // solo eventos de calendarios propios
+  'https://www.googleapis.com/auth/calendar.app.created', // no sensible: solo el calendario secundario que crea SpanishNow y sus eventos
   'https://www.googleapis.com/auth/calendar.freebusy',
   'https://www.googleapis.com/auth/calendar.calendarlist.readonly'
 ];

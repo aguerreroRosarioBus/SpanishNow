@@ -30,15 +30,22 @@
         @case ('cancelled') { <p>{{ 'zoom.status.cancelled' | t }}</p> }
       }
       @if (s.status === 'confirmed') {
+        @if (parts().length > 1 && !sync()?.manual) { <p data-testid="zoom-parts-hint">{{ (teacher() ? 'zoom.partsHintTeacher' : 'zoom.partsHintStudent') | t:{ total: parts().length } }}</p> }
         @if (teacher()) { <p>{{ 'zoom.hostHint' | t }}</p> }
         <div class="zoom-actions">
-          <button type="button" class="btn btn-primary" (click)="join()" [disabled]="busy() || !canJoin()">{{ 'zoom.meeting' | t }}</button>
+          @if (parts().length > 1 && !sync()?.manual) {
+            @for (p of parts(); track p.index) {
+              <button type="button" class="btn" [class.btn-primary]="p.index === 1" [class.btn-secondary]="p.index !== 1" data-testid="zoom-part" (click)="join(p.index)" [disabled]="busy() || !canJoin()">{{ 'zoom.part' | t:{ index: p.index, total: parts().length, minutes: p.minutes } }}</button>
+            }
+          } @else {
+            <button type="button" class="btn btn-primary" (click)="join()" [disabled]="busy() || !canJoin()">{{ 'zoom.meeting' | t }}</button>
+          }
           @if (teacher()) { <button type="button" class="btn btn-secondary" (click)="retry()" [disabled]="busy()">{{ 'zoom.retry' | t }}</button> }
           <button type="button" class="btn btn-secondary" (click)="refresh()" [disabled]="busy()">{{ 'zoom.refresh' | t }}</button>
           <a class="btn btn-secondary" routerLink="/schedule" [queryParams]="{ sessionId: s.id }">{{ 'zoom.backToAgenda' | t }}</a>
         </div>
       }
-      @if (meeting(); as link) { <p><a [href]="link" target="_blank" rel="noopener noreferrer">{{ 'zoom.openMeeting' | t }}</a></p> }
+      @if (meeting(); as link) { <p><a [href]="link" target="_blank" rel="noopener noreferrer">{{ (openedPart() ? 'zoom.openPart' : 'zoom.openMeeting') | t:{ index: openedPart() ?? 0 } }}</a></p> }
     </div>
     @if (s.liveClassId && (teacher() || s.whiteboardJoinCode)) {
       <div class="zoom-panel"><h2>{{ 'zoom.whiteboard' | t }}</h2><a class="btn btn-secondary" [routerLink]="teacher() ? ['/live', s.liveClassId] : ['/live/join', s.whiteboardJoinCode]">{{ 'zoom.whiteboard' | t }}</a></div>

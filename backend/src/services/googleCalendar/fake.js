@@ -2,6 +2,7 @@
 // Los ganchos (set*, touch, removeExternally...) los usan las pruebas para simular fallos y cambios externos.
 const { IntegrationError } = require('../externalConnections');
 
+const DEDICATED_ID = 'spanishnow-clases@example.test';
 const store = {};
 function reset() {
   Object.assign(store, {
@@ -39,6 +40,7 @@ const clone = event => event && structuredClone({ ...event, calendarId: undefine
 module.exports = {
   // ---- ganchos de prueba
   reset,
+  DEDICATED_ID,
   failNext: (op, error) => store.failures.push({ op, error }),
   /** El efecto SÍ ocurre en «Google» pero la respuesta se pierde (timeout): el caso que no debe duplicar. */
   loseResponseNext: (op, error) => store.failures.push({ op, error, after: true }),
@@ -72,6 +74,13 @@ module.exports = {
   },
   async revoke() { await enter('revoke'); store.validTokens.clear(); },
   async listCalendars(token) { await enter('listCalendars', { auth: token }); return structuredClone(store.calendars); },
+  /** Calendario secundario propio de la app: el permiso no sensible solo cubre este. */
+  async createCalendar(token, { summary }) {
+    await enter('createCalendar', { auth: token });
+    let calendar = store.calendars.find(c => c.id === DEDICATED_ID);
+    if (!calendar) { calendar = { id: DEDICATED_ID, summary, primary: false, accessRole: 'owner' }; store.calendars.push(calendar); }
+    return { id: calendar.id, summary: calendar.summary };
+  },
   async freeBusy(token, { calendarIds, timeMin, timeMax }) {
     await enter('freeBusy', { auth: token });
     const from = Date.parse(timeMin), to = Date.parse(timeMax);

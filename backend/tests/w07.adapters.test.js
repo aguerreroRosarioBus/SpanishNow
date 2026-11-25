@@ -57,6 +57,18 @@ describe('adaptador real (fetch simulado)', () => {
     expect(url.searchParams.get('redirect_uri')).toBe('http://localhost:3000/api/integrations/google-calendar/callback');
   });
 
+  test('crea el calendario secundario propio y la URL de autorización no pide permisos sensibles', async () => {
+    mockFetch(respond(200, { id: 'abc123@group.calendar.google.com', summary: 'SpanishNow clases' }));
+    expect(await live.createCalendar('token', { summary: 'SpanishNow clases', timeZone: 'UTC' })).toEqual({ id: 'abc123@group.calendar.google.com', summary: 'SpanishNow clases' });
+    expect(calls[0].url).toBe('https://www.googleapis.com/calendar/v3/calendars');
+    expect(calls[0].options.method).toBe('POST');
+    expect(JSON.parse(calls[0].options.body)).toEqual({ summary: 'SpanishNow clases', timeZone: 'UTC' });
+    expect(calls[0].options.headers.Authorization).toBe('Bearer token');
+    expect(SCOPES.join(' ')).not.toMatch(/calendar\.events|auth\/calendar$/);
+    mockFetch(respond(403, { error: { errors: [{ reason: 'forbidden' }] } }));
+    await expect(live.createCalendar('t', { summary: 'x' })).rejects.toMatchObject({ code: 'permission_denied' });
+  });
+
   test('el evento oculta invitados, impide invitar/modificar y no lleva datos privados', async () => {
     mockFetch(respond(200, { id: 'abc', etag: '"1"', status: 'confirmed', start: { dateTime: '2026-11-02T13:00:00Z' }, end: { dateTime: '2026-11-02T13:50:00Z' } }));
     const event = await live.insertEvent('token', 'primary', { id: 'abc', summary: 'Clase', description: 'd', startsAt: '2026-11-02T13:00:00.000Z', endsAt: '2026-11-02T13:50:00.000Z',

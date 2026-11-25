@@ -19,10 +19,12 @@ function fold(line) {
   return out.join('\r\n ');
 }
 
-function buildIcs({ session, locale = 'es', host = 'spanishnow.invalid', url, zoomJoinUrl }) {
+function buildIcs({ session, locale = 'es', host = 'spanishnow.invalid', url, zoomJoinUrl, zoomExtraUrls = [] }) {
   const lang = locale === 'en' ? 'en' : 'es';
   const cancelled = session.status === 'cancelled';
-  const description = [NOTE[lang], url, zoomJoinUrl && `Zoom: ${zoomJoinUrl}`].filter(Boolean).join('\n\n');
+  const total = zoomExtraUrls.length + 1;
+  const description = [NOTE[lang], url, zoomJoinUrl && `Zoom${zoomExtraUrls.length ? ` (1/${total})` : ''}: ${zoomJoinUrl}`,
+    ...zoomExtraUrls.map(p => `Zoom (${p.index}/${total}): ${p.url}`)].filter(Boolean).join('\n\n');
   const lines = [
     'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//SpanishNow//Clases//ES', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
     'BEGIN:VEVENT', `UID:class-session-${session.id}@${host}`, `DTSTAMP:${stamp(session.updatedAt || session.startsAt)}`,

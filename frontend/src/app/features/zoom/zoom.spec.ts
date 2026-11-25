@@ -87,6 +87,22 @@ describe('W08 UI propia', () => {
     expect(f.nativeElement.querySelector('form')).toBeNull(); expect(f.nativeElement.textContent).not.toContain('Retry meeting sync');
     f.componentInstance.join(); expect(f.componentInstance.meeting()).toContain('/j/');
   });
+  it('clase partida en tramos: un botón por tramo que pide ese tramo y avisa que son reuniones seguidas', () => {
+    const parts = [{ index: 1, startsAt: '2026-12-01T12:00:00Z', minutes: 40 }, { index: 2, startsAt: '2026-12-01T12:40:00Z', minutes: 20 }];
+    const join = vi.fn((_id: number, part?: number) => of({ joinUrl: `https://zoom.us/j/12345678${part}`, manual: false, part }));
+    const f = setupSession({ join, session: () => of({ status: 'ready', manual: false, lastError: null, parts }) }, false);
+    TestBed.inject(I18nService).setLocale('es'); f.detectChanges();
+    const buttons = Array.from((f.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('[data-testid="zoom-part"]'));
+    expect(buttons.map(b => b.textContent!.trim())).toEqual(['Tramo 1 de 2 · 40 min', 'Tramo 2 de 2 · 20 min']);
+    expect(f.nativeElement.querySelector('[data-testid="zoom-parts-hint"]').textContent).toContain('2 reuniones seguidas');
+    buttons[1].click(); f.detectChanges();
+    expect(join).toHaveBeenCalledWith(7, 2);
+    expect(f.nativeElement.querySelector('a[target=_blank]').textContent).toContain('Abrir tramo 2');
+  });
+  it('clase en una sola reunión no muestra tramos', () => {
+    const f = setupSession({ session: () => of({ status: 'ready', manual: false, lastError: null }) }, false); f.detectChanges();
+    expect(f.nativeElement.querySelector('[data-testid="zoom-part"]')).toBeNull();
+  });
   it('error al guardar conserva borrador, no declara sync exitosa', () => {
     const f = setupSession({ manual: () => throwError(() => ({ error: { code: 'version_conflict' } })) });
     f.componentInstance.manualLink = 'https://zoom.us/j/123456789'; f.componentInstance.saveManual();

@@ -19,7 +19,7 @@ router.get('/:id/calendar.ics', handle(async (req, res) => { // W07: ICS para qu
   res.set('Content-Disposition', `attachment; filename="clase-${ics.id}.ics"`).type('text/calendar; charset=utf-8').send(ics.body);
 }));
 router.get('/:id/join', requireFeature('zoom'), handle(async (req, res) => { // W08: una sola ruta, conservando auth/impersonación de W06
-  res.set('Cache-Control', 'no-store').json(await sessions.join(req.user, req.params.id));
+  res.set('Cache-Control', 'no-store').json(await sessions.join(req.user, req.params.id, req.query.part));
 }));
 router.post('/:id/sync/retry', handle(async (req, res) => res.json(await sessions.retrySync(req.user, req.params.id))));
 router.post('/:id/proposals', requireFeature('class_scheduling'), handle(async (req, res) => res.json(await sessions.reschedule(req.user, req.params.id, req.body))));

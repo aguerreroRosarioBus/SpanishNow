@@ -43,6 +43,22 @@ async function exclusive(sessionId, fn) {
     finally { await db.connectionManager.releaseConnection(raw); }
   }
 }
+// Zoom Basic corta cada reunión a los 40 min (maxMinutes): una clase más larga se parte en tramos consecutivos y cada tramo
+// es su propia reunión. Con licencia (maxMinutes alto) hay un solo tramo. MAX_PARTS evita partir una clase sin límite.
+const MAX_PARTS = 4;
+function plan(minutes, maxMinutes) {
+  const lengths = [];
+  for (let left = Number(minutes); left > 0; left -= maxMinutes) lengths.push(Math.min(left, maxMinutes));
+  return lengths;
+}
+const partMeta = (p, session) => ({ index: p.index, startsAt: p.startsAt, minutes: p.minutes ?? session.minutes });
+/** Todos los tramos de la clase en orden: el 1.º vive en la ref y los siguientes en ref.parts. */
+function partsOf(session, ref) {
+  const extra = Array.isArray(ref?.parts) ? ref.parts : [];
+  const first = { index: 1, externalId: ref?.externalId, joinUrl: ref?.joinUrl, startsAt: session.startsAt.toISOString(),
+    minutes: session.minutes - extra.reduce((total, p) => total + p.minutes, 0) };
+  return [first, ...extra];
+}
 async function assertCapacity(teacherId, minutes, participants = 1, { preflight = false } = {}) {
   const row = await connection.rowFor(teacherId);
   if (row?.status !== 'connected') {
@@ -56,7 +72,7 @@ async function assertCapacity(teacherId, minutes, participants = 1, { preflight 
     await connection.enqueueCapabilities(row);
     fail('zoom_capacity_unknown');
   }
-  if (minutes > capability.maxMinutes || participants + 1 > capability.maxParticipants) fail('zoom_capacity_exceeded', 409,
+  if (plan(minutes, capability.maxMinutes).length > MAX_PARTS || participants + 1 > capability.maxParticipants) fail('zoom_capacity_exceeded', 409,
     { maxMinutes: capability.maxMinutes, maxParticipants: capability.maxParticipants });
 }
 async function enqueue(session, transaction, reason = 'retry') {
@@ -97,14 +113,34 @@ async function sync(job, ctx = { stillOwned: async () => true }) {
       };
       const existing = await providerCall('find', ref.correlationKey);
       let meeting = existing;
+      const stored = Array.isArray(ref.parts) ? ref.parts : [];
+      let parts = [];
+      const settings = { waitingRoom: true, passcodeRequired: true, autoRecording: 'none', joinBeforeHost: false };
+      const removeParts = async list => { for (const p of list) { const found = await providerCall('find', p.correlationKey); if (found) await providerCall('remove', found.id); } };
       if (terminal.includes(session.status)) {
         if (existing) await providerCall('remove', existing.id);
+        await removeParts(stored);
       } else {
+        const lengths = plan(session.minutes, (await connection.rowFor(session.teacherId)).capabilities.maxMinutes);
         const wanted = { correlationKey: ref.correlationKey, startsAt: session.startsAt.toISOString(), timeZone: 'UTC',
-          minutes: session.minutes, sessionVersion: session.version, settings: { waitingRoom: true, passcodeRequired: true, autoRecording: 'none', joinBeforeHost: false } };
+          minutes: lengths[0], sessionVersion: session.version, settings };
         meeting = existing ? await providerCall('update', existing.id, wanted) : await providerCall('create', wanted);
         // Si Zoom (o la cuenta) forzó la sala de espera apagada, la clase no queda lista.
         if (meeting?.waitingRoom !== true) fail('zoom_waiting_room_disabled', 409);
+        // Tramos siguientes: reuniones consecutivas (cada una se reconcilia por su propia clave de correlación).
+        let offset = lengths[0];
+        for (let i = 1; i < lengths.length; i++) {
+          const correlationKey = `${ref.correlationKey}:p${i + 1}`;
+          const startsAt = new Date(session.startsAt.getTime() + offset * 60000).toISOString();
+          const wantedPart = { correlationKey, startsAt, timeZone: 'UTC', minutes: lengths[i], sessionVersion: session.version, settings };
+          const found = await providerCall('find', correlationKey);
+          const part = found ? await providerCall('update', found.id, wantedPart) : await providerCall('create', wantedPart);
+          if (part?.waitingRoom !== true) fail('zoom_waiting_room_disabled', 409);
+          parts.push({ index: i + 1, correlationKey, externalId: part.id, joinUrl: participantUrl(part.joinUrl), startsAt, minutes: lengths[i] });
+          offset += lengths[i];
+        }
+        // Tramos que ya no hacen falta (clase más corta o cuenta con licencia).
+        await removeParts(stored.filter(p => !parts.some(n => n.index === p.index)));
       }
       if (!await ctx.stillOwned()) fail('zoom_busy', 503);
       // Una cancelación/reprogramación que llegó durante el efecto se corrige con la verdad interna vigente.
@@ -117,6 +153,7 @@ async function sync(job, ctx = { stillOwned: async () => true }) {
         const connected = currentConnection?.status === 'connected'
           && (await connection.readTokens(currentConnection)).accountId === tokens.accountId;
         await ref.update({ connectionId: row.id, externalId: meeting?.id || ref.externalId, joinUrl: terminal.includes(session.status) ? null : meeting ? participantUrl(meeting.joinUrl) : null,
+          parts: terminal.includes(session.status) || !parts.length ? null : parts,
           syncedVersion: changed ? ref.syncedVersion : session.version, status: changed ? 'pending' : !connected ? 'needs_attention' : terminal.includes(session.status) ? 'cancelled' : 'ready',
           lastError: connected ? null : 'integration_not_connected', attempts: ref.attempts + 1 }, { transaction });
         if (changed) await enqueue(session, transaction, 'reconcile');
@@ -125,7 +162,7 @@ async function sync(job, ctx = { stillOwned: async () => true }) {
         if (!changed && connected && session.status === 'confirmed' && features.isEnabled('google_calendar')
           && await M.ExternalConnection.count({ where: { userId: session.teacherId, provider: 'google_calendar', status: 'connected' }, transaction })) {
           await outbox.enqueue({ topic: 'calendar.sync', aggregateType: 'class_sessions', aggregateId: session.id,
-            aggregateVersion: session.version, dedupeKey: `calendar:zoom:${ref.id}:v${session.version}:${adapter.hash(ref.joinUrl || '').slice(0, 12)}` }, { transaction });
+            aggregateVersion: session.version, dedupeKey: `calendar:zoom:${ref.id}:v${session.version}:${adapter.hash([ref.joinUrl || '', ...parts.map(p => p.joinUrl)].join('|')).slice(0, 12)}` }, { transaction });
         }
       });
     } catch (error) {
@@ -139,23 +176,32 @@ async function sync(job, ctx = { stillOwned: async () => true }) {
     }
   });
 }
-async function join(user, sessionId) {
+async function join(user, sessionId, part) {
   const { session, seat, isOwner } = await visible(user, sessionId);
   if (session.status !== 'confirmed' || (!isOwner && seat.status === 'cancelled')) fail('proposal_stale');
   const ref = await M.ExternalSyncRef.findOne({ where: { sessionId: session.id, provider: 'zoom' } });
   if (ref?.manualJoinUrl) return { joinUrl: participantUrl(ref.manualJoinUrl), manual: true };
   if (!ref?.externalId && isOwner) fail('provider_unavailable', 503);
   if (ref?.status !== 'ready') fail('integration_not_connected');
-  if (!isOwner) return { joinUrl: participantUrl(ref.joinUrl, !ref.externalId), manual: false };
+  // Clases partidas por el tope de 40 min de Zoom Basic: tramo pedido o, por defecto, el que corresponde a la hora actual.
+  const list = partsOf(session, ref);
+  const asked = Number(part);
+  const chosen = Number.isInteger(asked) && asked >= 1 && asked <= list.length ? list[asked - 1]
+    : [...list].reverse().find(p => Date.now() >= Date.parse(p.startsAt) - 5 * 60000) || list[0];
+  const info = list.length > 1 ? { part: chosen.index, parts: list.map(p => partMeta(p, session)) } : {};
+  if (!isOwner) {
+    return { joinUrl: participantUrl(chosen.joinUrl, chosen.index === 1 && !ref.externalId), manual: false, ...info,
+      ...(list.length > 1 ? { parts: list.map(p => ({ ...partMeta(p, session), joinUrl: participantUrl(p.joinUrl, p.index === 1 && !ref.externalId) })) } : {}) };
+  }
   const { tokens } = await connection.credentials(session.teacherId);
   let hostUrl;
-  try { hostUrl = (await connection.withCredentials(session.teacherId, tokens, currentTokens => adapter.host(currentTokens, ref.externalId))).value; }
+  try { hostUrl = (await connection.withCredentials(session.teacherId, tokens, currentTokens => adapter.host(currentTokens, chosen.externalId))).value; }
   catch (error) { fail(safeError(error), error.statusCode || 503); }
   const current = await M.ClassSession.findByPk(session.id);
   const grant = await connection.rowFor(session.teacherId);
   if (current?.status !== 'confirmed' || current.version !== session.version || grant?.status !== 'connected') fail('proposal_stale');
   // Jamás persistir start_url; el adaptador solo lo obtiene en esta acción autorizada.
-  return { hostUrl, manual: false };
+  return { hostUrl, manual: false, ...info };
 }
 async function retry(user, sessionId) {
   const { session } = await visible(user, sessionId, { owner: true, support: true });
@@ -202,7 +248,8 @@ async function sessions(user) {
 async function sessionStatus(user, sessionId) {
   const { session } = await visible(user, sessionId);
   const ref = await M.ExternalSyncRef.findOne({ where: { sessionId: session.id, provider: 'zoom' } });
-  return { fake: adapter.isFake(), status: ref?.status || 'needs_attention', manual: Boolean(ref?.manualJoinUrl), lastError: ref?.lastError || null };
+  return { fake: adapter.isFake(), status: ref?.status || 'needs_attention', manual: Boolean(ref?.manualJoinUrl), lastError: ref?.lastError || null,
+    ...(ref?.parts?.length ? { parts: partsOf(session, ref).map(p => partMeta(p, session)) } : {}) };
 }
 outbox.register('zoom.sync', sync);
-module.exports = { participantUrl, visible, exclusive, assertCapacity, sync, join, retry, manual, sessions, sessionStatus };
+module.exports = { MAX_PARTS, plan, partsOf, participantUrl, visible, exclusive, assertCapacity, sync, join, retry, manual, sessions, sessionStatus };

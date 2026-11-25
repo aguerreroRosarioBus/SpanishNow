@@ -41,10 +41,7 @@ const OUTCOMES = ['connected', 'denied', 'scopes', 'error', 'mismatch'];
           <p class="notice">{{'refine.calendarSummary'|t:{name:targetName(),count:s.busyCalendarIds?.length||0} }}</p>
           <details class="calendar-editor" [open]="!s.targetCalendarId || !!s.calendarsError"><summary>{{'refine.editSelection'|t}}</summary><div class="int-body">
           @if (s.calendarsError) { <p class="alert alert-warning" role="alert">{{ 'calendar.calendarsError' | t }}</p> }
-          <label for="calendarTarget">{{ 'calendar.target' | t }}
-            <select id="calendarTarget" class="form-select" [ngModel]="target()" (ngModelChange)="target.set($event)">
-              @for (c of writable(); track c.id) { <option [value]="c.id">{{ c.summary }}</option> }
-            </select></label>
+          <p data-testid="calendar-target"><strong>{{ 'calendar.target' | t }}:</strong> {{ targetName() }}</p>
           <p class="notice">{{ 'calendar.targetHint' | t }}</p>
           <fieldset><legend>{{ 'calendar.busy' | t }}</legend>
             @for (c of s.calendars; track c.id) {
@@ -88,7 +85,6 @@ export class CalendarCardComponent implements OnInit {
   target = signal(''); busyIds = signal<string[]>([]);
   error = computed(() => this.failure() ? this.i18n.errorMessage(this.failure()) : '');
   targetName(){const s=this.state();return s?.calendars.find(c=>c.id===s.targetCalendarId||(s.targetCalendarId==='primary'&&c.primary))?.summary||s?.targetCalendarId||'—';}
-  writable = computed(() => (this.state()?.calendars ?? []).filter(c => c.accessRole === 'owner'));
 
   ngOnInit(): void {
     const params = this.route.snapshot.queryParamMap;

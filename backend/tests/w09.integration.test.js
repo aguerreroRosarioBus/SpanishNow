@@ -78,7 +78,7 @@ describe('recorrido individual: oferta, propuesta NY, aceptación, proveedores y
     const { tokens } = await zoomConnection.credentials(c.teacher.id);
     expect(await zoomAdapter.find(tokens, ref.correlationKey)).toMatchObject({ startsAt: session.startsAt.toISOString(), minutes: 50, timeZone: 'UTC' });
     expect(await calendarRef(session.id)).toMatchObject({ status: 'ready' });
-    expect(fake.eventCount('primary')).toBe(1);
+    expect(fake.eventCount(fake.DEDICATED_ID)).toBe(1);
 
     // Clase dictada: la asistencia del docente consume la unidad reservada de la compra original.
     const now = new Date(time.addElapsed(session.endsAt.toISOString(), { minutes: 1 }));
@@ -106,7 +106,7 @@ describe('recorrido individual: oferta, propuesta NY, aceptación, proveedores y
 
     expect(await zoomRef(session.id)).toMatchObject({ status: 'ready', lastError: null });
     expect(await calendarRef(session.id)).toMatchObject({ status: 'ready', lastError: null });
-    expect(fake.eventCount('primary')).toBe(1);
+    expect(fake.eventCount(fake.DEDICATED_ID)).toBe(1);
     expect(await credits.balance(c.purchases[0].id)).toMatchObject({ reserved: 1, consumed: 0 });
   });
 
@@ -135,7 +135,7 @@ describe('grupos de 2 y 3 alumnos', () => {
     await drain();
     expect(await M.ExternalSyncRef.count({ where: { sessionId: session.id, provider: 'zoom' } })).toBe(1);
     expect(await M.ExternalSyncRef.count({ where: { sessionId: session.id, provider: 'google_calendar' } })).toBe(1);
-    expect(fake.eventCount('primary')).toBe(1);
+    expect(fake.eventCount(fake.DEDICATED_ID)).toBe(1);
     for (const purchase of c.purchases) expect(await credits.balance(purchase.id)).toMatchObject({ reserved: 1 });
   });
 });

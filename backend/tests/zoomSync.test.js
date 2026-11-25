@@ -44,6 +44,66 @@ test('AC05: sync durable refleja UTC de NY y duración, configuración protegida
   expect(ref.status).toBe('ready'); expect(ref.syncedVersion).toBe(c.session.version);
   expect(await M.OutboxJob.count({ where: { aggregateId: c.session.id, topic: 'zoom.sync' } })).toBe(1);
 });
+// Zoom Basic corta cada reunión a los 40 min: la clase de 50 min se parte en tramos consecutivos (#98).
+async function basicFixture() {
+  const c = await chain(); await connected(c.teacher);
+  const row = await connection.rowFor(c.teacher.id);
+  await row.update({ capabilities: { ...row.capabilities, plan: 'basic', maxMinutes: 40 } });
+  const { session } = await sessions.create(c.teacher, c.body, uuid());
+  createdSessions.add(session.id);
+  return { ...c, session: await sessions.accept(c.students[0], session.id, 1) };
+}
+test('cuenta Basic: una clase de 50 min se parte en dos reuniones consecutivas (40 + 10) con enlaces propios', async () => {
+  const c = await basicFixture(); await sync(c.session.id);
+  const ref = await refFor(c.session.id); const { tokens } = await connection.credentials(c.teacher.id);
+  expect(ref.status).toBe('ready');
+  const first = await adapter.find(tokens, ref.correlationKey);
+  expect(first).toMatchObject({ startsAt: c.session.startsAt.toISOString(), minutes: 40 });
+  expect(ref.parts).toHaveLength(1);
+  const [second] = ref.parts;
+  expect(second).toMatchObject({ index: 2, minutes: 10, startsAt: new Date(c.session.startsAt.getTime() + 40 * 60000).toISOString() });
+  expect(await adapter.find(tokens, second.correlationKey)).toMatchObject({ startsAt: second.startsAt, minutes: 10, settings: { waitingRoom: true } });
+  expect(second.joinUrl).not.toBe(ref.joinUrl);
+  expect(JSON.stringify(ref.parts)).not.toMatch(/start_url|zak=/); // solo enlaces de participante
+});
+test('cuenta Basic: sincronizar de nuevo no duplica reuniones y la clase de un solo tramo no usa parts', async () => {
+  const c = await basicFixture(); await sync(c.session.id); const before = await refFor(c.session.id);
+  await sync(c.session.id);
+  const after = await refFor(c.session.id); const { tokens } = await connection.credentials(c.teacher.id);
+  expect(after.externalId).toBe(before.externalId); expect(after.parts[0].externalId).toBe(before.parts[0].externalId);
+  expect(after.parts).toHaveLength(1);
+  // Con licencia (tope alto) vuelve a ser una sola reunión y el tramo sobrante se borra de Zoom.
+  const row = await connection.rowFor(c.teacher.id);
+  await row.update({ capabilities: { ...row.capabilities, plan: 'licensed', maxMinutes: 1800 } });
+  await sync(c.session.id);
+  const licensed = await refFor(c.session.id);
+  expect(licensed.parts).toBeNull();
+  expect(await adapter.find(tokens, before.parts[0].correlationKey)).toBeNull();
+  expect(await adapter.find(tokens, licensed.correlationKey)).toMatchObject({ minutes: 50 });
+});
+test('cuenta Basic: ingreso por tramo (participante ve todos los enlaces, docente pide el tramo) y cancelar borra todas las reuniones', async () => {
+  const c = await basicFixture(); await sync(c.session.id);
+  const ref = await refFor(c.session.id);
+  const student = await zoom.join(c.students[0], c.session.id);
+  expect(student.parts.map(p => [p.index, p.minutes])).toEqual([[1, 40], [2, 10]]);
+  expect(student.parts.every(p => /^https:\/\/zoom\.us\/j\/\d{8,12}/.test(p.joinUrl))).toBe(true);
+  expect(student.part).toBe(1); // aún falta para la clase: el primer tramo
+  expect(student.joinUrl).toBe(student.parts[0].joinUrl);
+  const status = await zoom.sessionStatus(c.students[0], c.session.id);
+  expect(status.parts.map(p => [p.index, p.minutes])).toEqual([[1, 40], [2, 10]]);
+  expect(JSON.stringify(status)).not.toMatch(/joinUrl|zak=|start_url/);
+  const second = await zoom.join(c.students[0], c.session.id, 2);
+  expect(second.joinUrl).toBe(ref.parts[0].joinUrl); expect(second.part).toBe(2);
+  const host = await zoom.join(c.teacher, c.session.id, 2);
+  expect(host.hostUrl).toMatch(/^https:\/\/zoom\.us\/s\//); expect(host.part).toBe(2);
+  expect(JSON.stringify(host.parts)).not.toMatch(/hostUrl|zak=|start_url/); // la lista no lleva enlaces de anfitrión
+  const { tokens } = await connection.credentials(c.teacher.id);
+  await M.ClassSession.update({ status: 'cancelled' }, { where: { id: c.session.id } });
+  await sync(c.session.id);
+  expect(await adapter.find(tokens, ref.correlationKey)).toBeNull();
+  expect(await adapter.find(tokens, ref.parts[0].correlationKey)).toBeNull();
+  expect((await refFor(c.session.id)).parts).toBeNull();
+});
 test('docente con sala de espera desactivada por defecto: la reunión se crea con sala de espera', async () => {
   const c = await fixture();
   const row = await connection.rowFor(c.teacher.id);
@@ -108,7 +168,8 @@ test('AC16: host efímero solo dueño; alumno/Calendar/soporte no reciben el sec
 test('capacidad antes de proponer, ofrecer o comprar; no modifica agenda ni saldo', async () => {
   const c = await chain(); await connected(c.teacher);
   const row = await connection.rowFor(c.teacher.id);
-  await row.update({ capabilities: { ...row.capabilities, maxMinutes: 40 } });
+  // Un tope de 10 min partiría la clase de 50 en 5 tramos: más de los permitidos (MAX_PARTS), así que se rechaza.
+  await row.update({ capabilities: { ...row.capabilities, maxMinutes: 10 } });
   const proposed = await as(c.teacher).post('/api/class-sessions').set('Idempotency-Key', uuid()).send(c.body);
   expect(proposed.body.code).toBe('zoom_capacity_exceeded');
   const offer = await as(c.teacher).post(`/api/conversations/${c.conversations[0].id}/offers`).set('Idempotency-Key', uuid()).send({ templateVersionId: c.terms.id });
@@ -397,7 +458,7 @@ test('W07/W08: jobs calendar.sync entregan automático/manual sin host y sobrevi
       const result = await outbox.runOnce({ limit: 1 }); await job.reload(); return result;
     };
     fake.loseResponseNext('insertEvent', new IntegrationError(503, 'provider_unavailable', {}, { retryable: true }));
-    expect((await run(automatic)).retried).toBe(1); expect(fake.eventCount('primary')).toBe(1);
+    expect((await run(automatic)).retried).toBe(1); expect(fake.eventCount(fake.DEDICATED_ID)).toBe(1);
     expect((await run(automatic)).done).toBe(1); expect((await run(automatic)).done).toBe(1);
     let event = fake.events()[0]; const eventId = event.id;
     expect(event.startsAt).toBe(c.session.startsAt.toISOString());
@@ -409,11 +470,11 @@ test('W07/W08: jobs calendar.sync entregan automático/manual sin host y sobrevi
     let job = await M.OutboxJob.findOne({ where: { aggregateId: c.session.id, topic: 'calendar.sync', dedupeKey: { [require('sequelize').Op.startsWith]: 'calendar:zoom-manual:' } }, order: [['id', 'DESC']] });
     expect((await run(job)).done).toBe(1);
     event = fake.events()[0]; expect(event.id).toBe(eventId); expect(event.description).toContain(manual);
-    expect(fake.eventCount('primary')).toBe(1); expect((await refFor(c.session.id)).status).toBe('needs_attention');
+    expect(fake.eventCount(fake.DEDICATED_ID)).toBe(1); expect((await refFor(c.session.id)).status).toBe('needs_attention');
     await zoom.manual(c.teacher, c.session.id, { version: c.session.version, joinUrl: null });
     job = await M.OutboxJob.findOne({ where: { aggregateId: c.session.id, topic: 'calendar.sync', dedupeKey: { [require('sequelize').Op.startsWith]: 'calendar:zoom-manual:' } }, order: [['id', 'DESC']] });
     expect((await run(job)).done).toBe(1); expect(fake.events()[0].description).not.toContain('zoom.us');
-    expect(fake.eventCount('primary')).toBe(1);
+    expect(fake.eventCount(fake.DEDICATED_ID)).toBe(1);
   } finally { delete process.env.FEATURE_GOOGLE_CALENDAR; }
 });
 
