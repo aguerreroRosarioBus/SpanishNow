@@ -351,7 +351,8 @@ export class LessonComposerComponent implements OnInit, OnDestroy {
   async publish(): Promise<void> {
     const valid = this.validatePublish();
     if (valid) { this.errorState.set({ key: valid }); return; }
-    if (this.dirty() && !(await this.save())) return;
+    // Una historia publicada sin borrador (D-10): publicar de nuevo es un guardado explícito, que crea el borrador.
+    if ((this.dirty() || this.plan()?.publishedRevision != null) && !(await this.save())) return;
     const plan = this.plan(); if (!plan) return;
     this.publishing.set(true); this.errorState.set(null);
     this.api.publish(this.story.id, plan.revision).subscribe({

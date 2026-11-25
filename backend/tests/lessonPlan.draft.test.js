@@ -1,7 +1,7 @@
 // Draft editing: atomic reorder/validation and publishing rules.
 const { randomUUID } = require('crypto');
 const { Story, LessonPlan, LessonBlock } = require('../src/models');
-const { as, createWorld, createStory, standardBlocks, planUrl, saveDraft, publishPlan, openLesson } = require('./helpers/fixtures');
+const { as, createWorld, createStory, standardBlocks, planUrl, stripPositions, saveDraft, publishPlan, openLesson } = require('./helpers/fixtures');
 const { draftTransaction, currentDraft } = require('../src/services/lessonPlanService');
 
 describe('TPRS lesson plans: draft editing and publishing', () => {
@@ -19,6 +19,70 @@ describe('TPRS lesson plans: draft editing and publishing', () => {
     expect(saved.status).toBe(200);
     return { ...content, keys, blocks, draft: saved.body };
   }
+
+  describe('abrir el compositor no escribe (D-10)', () => {
+    /** Historia ya publicada (revisión 1), sin borrador abierto. */
+    async function publishedStory() {
+      const content = await createStory(world, 'Publicada');
+      const { blocks } = standardBlocks({ vocab: world.vocab, ...content });
+      const published = await publishPlan(world.teacher, content.story.id, blocks);
+      expect(await LessonPlan.count({ where: { storyId: content.story.id, status: 'draft' } })).toBe(0);
+      return { ...content, blocks, published };
+    }
+
+    test('GET /draft de una historia publicada no crea revisión y se muestra como publicada', async () => {
+      const { story, published } = await publishedStory();
+      const plansBefore = await LessonPlan.count({ where: { storyId: story.id } });
+
+      const res = await getDraft(story.id);
+
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('published');
+      expect(res.body.publishedRevision).toBe(published.revision);
+      expect(res.body.revision).toBe(published.revision + 1);
+      expect(res.body.blocks.map(b => b.blockKey)).toEqual(published.blocks.map(b => b.blockKey));
+      expect(await LessonPlan.count({ where: { storyId: story.id } })).toBe(plansBefore);
+      expect(await LessonPlan.count({ where: { storyId: story.id, status: 'draft' } })).toBe(0);
+    });
+
+    test('abrirlo varias veces, también a la vez, sigue sin crear nada', async () => {
+      const { story } = await publishedStory();
+      const results = await Promise.all([getDraft(story.id), getDraft(story.id), getDraft(story.id)]);
+      expect(results.map(r => r.status)).toEqual([200, 200, 200]);
+      expect(await LessonPlan.count({ where: { storyId: story.id, status: 'draft' } })).toBe(0);
+    });
+
+    test('el primer guardado crea el borrador con la revisión anunciada y a partir de ahí se ve como borrador', async () => {
+      const { story, blocks, published } = await publishedStory();
+      const opened = await getDraft(story.id);
+
+      const saved = await as(world.teacher).put(`${planUrl(story.id)}/draft`, { revision: opened.body.revision, blocks: stripPositions(blocks) });
+
+      expect(saved.status).toBe(200);
+      expect(saved.body.status).toBe('draft');
+      expect(saved.body.revision).toBe(published.revision + 1);
+      expect(saved.body.publishedRevision).toBeUndefined();
+      expect(await LessonPlan.count({ where: { storyId: story.id, status: 'draft' } })).toBe(1);
+      const reopened = await getDraft(story.id);
+      expect(reopened.body.status).toBe('draft');
+      expect(reopened.body.revision).toBe(saved.body.revision);
+    });
+
+    test('con una revisión equivocada el primer guardado se rechaza y no deja un borrador a medias', async () => {
+      const { story, blocks, published } = await publishedStory();
+      const res = await as(world.teacher).put(`${planUrl(story.id)}/draft`, { revision: published.revision, blocks: stripPositions(blocks) });
+      expect(res.status).toBe(409);
+      expect(await LessonPlan.count({ where: { storyId: story.id, status: 'draft' } })).toBe(0);
+    });
+
+    test('una historia nunca compuesta conserva su borrador inicial al abrirla', async () => {
+      const { story } = await createStory(world, 'Nueva');
+      const res = await getDraft(story.id);
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('draft');
+      expect(await LessonPlan.count({ where: { storyId: story.id, status: 'draft' } })).toBe(1);
+    });
+  });
 
   describe('concurrent drafts', () => {
     // Regression: under REPEATABLE READ, opening drafts of new stories at the same time deadlocked (500): both requests
@@ -293,10 +357,15 @@ describe('TPRS lesson plans: draft editing and publishing', () => {
       const again = await publish(content.story.id, first.revision);
       expect(again.status).toBe(404);
 
+      // Abrir de nuevo no crea el borrador (D-10): anuncia la revisión 2 y se ve como publicada hasta el primer guardado.
       const next = await getDraft(content.story.id);
       expect(next.body.revision).toBe(2);
-      expect(next.body.status).toBe('draft');
+      expect(next.body.status).toBe('published');
       expect(next.body.blocks.map(b => b.blockKey)).toEqual(first.blocks.map(b => b.blockKey));
+      expect(await LessonPlan.count({ where: { storyId: content.story.id, status: 'draft' } })).toBe(0);
+      const saved = await saveDraft(world.teacher, content.story.id, blocks);
+      expect(saved.body.revision).toBe(2);
+      expect(saved.body.status).toBe('draft');
     });
 
     test('rejects a stale draft revision', async () => {

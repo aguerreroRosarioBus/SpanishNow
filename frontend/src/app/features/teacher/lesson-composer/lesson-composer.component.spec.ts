@@ -21,12 +21,13 @@ describe('LessonComposerComponent', () => {
   const seenKey = 'spanishnow.lesson-tutorial.5.v1';
 
   let createQuestion: any, createVocabulary: any;
+  let opened: Partial<LessonPlan> = {};
 
   async function create(blocks: LessonBlock[], vocab: Vocabulary[] = []): Promise<void> {
     createQuestion = vi.fn((d: any) => of({ id: 99, ...d } as Question));
     createVocabulary = vi.fn((f: FormData) => of({ id: 55, unitId: 1, word: f.get('word'), translation: f.get('translation') } as Vocabulary));
     api = {
-      getDraft: vi.fn(() => of(makePlan(blocks))),
+      getDraft: vi.fn(() => of({ ...makePlan(blocks), ...opened })),
       saveDraft: vi.fn((_s: number, _r: number, b: LessonBlock[]) => of(makePlan(b))),
       reorder: vi.fn((_s: number, _r: number, keys: string[]) => of(makePlan(keys.map(k => blocks.find(b => b.blockKey === k)!)))),
       publish: vi.fn(() => of({ ...makePlan(blocks), status: 'published', revision: 2 })),
@@ -51,7 +52,7 @@ describe('LessonComposerComponent', () => {
     fixture.detectChanges();
   }
 
-  beforeEach(() => localStorage.removeItem(seenKey));
+  beforeEach(() => { opened = {}; localStorage.removeItem(seenKey); });
   afterEach(() => localStorage.removeItem(seenKey));
 
   const keys = () => component.blocks().map(b => b.blockKey);
@@ -392,6 +393,48 @@ describe('LessonComposerComponent', () => {
       expect(component.activeBlockKey()).toBe('e1');
       expect(document.activeElement).toBe(fixture.nativeElement.querySelector('#ex-select-e1'));
       expect(fixture.nativeElement.querySelector('.preview-item[data-block-key="e1"]').getAttribute('aria-current')).toBe('true');
+    });
+  });
+  describe('D-10: historia publicada sin borrador', () => {
+    beforeEach(() => {
+      localStorage.setItem(seenKey, 'seen');
+      opened = { status: 'published', publishedRevision: 2, revision: 3 };
+    });
+    const blocks = () => [
+      block('k1', 'keyframe', 'during', { text: 'uno' }),
+      block('q1', 'question', 'during', { questionId: 1, contextBlockKey: 'k1' }),
+      block('f1', 'full_story', 'after'),
+    ];
+
+    it('se muestra «Publicada» y avisa de la revisión que se creará, sin guardar nada al abrir', async () => {
+      await create(blocks());
+      const subhead = fixture.nativeElement.querySelector('.subhead').textContent.trim();
+      expect(subhead).toContain('Publicada · revisión 2');
+      expect(subhead).toContain('revisión 3');
+      expect(subhead).not.toContain('Borrador');
+      expect(api.saveDraft).not.toHaveBeenCalled();
+      expect(component.dirty()).toBe(false);
+    });
+
+    it('al primer guardado envía la revisión anunciada y pasa a verse como borrador', async () => {
+      await create(blocks());
+      await component.save();
+      expect(api.saveDraft).toHaveBeenCalledWith(7, 3, expect.any(Array));
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.subhead').textContent).toContain('Borrador');
+    });
+
+    it('publicar sin cambios crea primero el borrador con un guardado explícito', async () => {
+      await create(blocks());
+      await component.publish();
+      expect(api.saveDraft).toHaveBeenCalledTimes(1);
+      expect(api.publish).toHaveBeenCalledTimes(1);
+    });
+
+    it('un borrador real (con cambios sin publicar) sigue mostrándose como borrador', async () => {
+      opened = {};
+      await create(blocks());
+      expect(fixture.nativeElement.querySelector('.subhead').textContent).toContain('Borrador · revisión 1');
     });
   });
 });

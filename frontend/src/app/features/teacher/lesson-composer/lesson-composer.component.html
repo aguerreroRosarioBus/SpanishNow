@@ -1,7 +1,7 @@
 <div class="composer-backdrop" role="presentation" (click)="close()">
   <section #dialog class="composer-dialog" role="dialog" aria-modal="true" [attr.aria-label]="'teacherComposer.composer.dialogLabel' | t:{ title: story.title }" (click)="$event.stopPropagation()">
     <header class="composer-header">
-      <div><p class="eyebrow">{{ unit.title }}</p><h2>{{ 'teacherComposer.composer.heading' | t:{ title: story.title } }}</h2><p class="subhead">{{ (plan()?.status === 'published' ? 'teacherComposer.composer.subheadNewRevision' : 'teacherComposer.composer.subheadDraft') | t:{ revision: plan()?.revision ?? '' } }}</p></div>
+      <div><p class="eyebrow">{{ unit.title }}</p><h2>{{ 'teacherComposer.composer.heading' | t:{ title: story.title } }}</h2><p class="subhead">{{ (plan()?.publishedRevision != null ? 'teacherComposer.composer.subheadPublished' : plan()?.status === 'published' ? 'teacherComposer.composer.subheadNewRevision' : 'teacherComposer.composer.subheadDraft') | t:{ revision: plan()?.publishedRevision ?? plan()?.revision ?? '', next: plan()?.revision ?? '' } }}</p></div>
       <div class="header-actions">
         <details class="composer-help"><summary [attr.aria-label]="'refine.help'|t">?</summary><div class="composer-help__menu"><button type="button" class="text-button" appTutorial="composer">{{'tutorial.help'|t}}</button><a href="#" class="tutorial-link" (click)="$event.preventDefault(); openTutorial()">{{'teacherComposer.composer.tutorialLink'|t}}</a></div></details>
 
