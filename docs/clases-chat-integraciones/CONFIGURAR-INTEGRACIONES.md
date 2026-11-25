@@ -118,14 +118,14 @@ Permisos (*scopes*) de Calendar según la [documentación oficial de scopes](htt
 
 | Scope (después de `https://www.googleapis.com/auth/`) | Qué permite | ¿Hace falta? |
 |---|---|---|
-| `calendar.events.owned` | Leer, crear, modificar y borrar eventos **solo en calendarios que el usuario posee** | **Sí** (el más acotado que alcanza para crear/editar eventos propios de SpanishNow) |
+| `calendar.app.created` | Crear calendarios secundarios y manejar **solo los eventos de esos calendarios** | **Sí** (no sensible: SpanishNow crea el calendario «SpanishNow clases» en la cuenta del docente y escribe solo ahí; evita la verificación de la app y su video) |
 | `calendar.freebusy` | Ver solo disponibilidad (ocupado/libre) | **Sí** (CAL-02: free/busy sin leer eventos ajenos) |
-| `calendar.calendarlist.readonly` | Listar los calendarios del usuario para elegir el destino | **Sí** (para el selector del paso 3.2) |
+| `calendar.calendarlist.readonly` | Listar los calendarios del usuario para elegir cuáles cuentan como ocupados y reencontrar el calendario propio | **Sí** (para el selector del paso 3.2) |
+| `calendar.events.owned` | Leer, crear, modificar y borrar eventos en los calendarios que el usuario posee | **No usar**: es **sensible** (exige verificar la app con un video de demostración) |
 | `calendar.events` | Ver y editar eventos en **todos** los calendarios | **No usar**: es más amplio |
 | `calendar` (acceso total) | Todo | **No usar** |
-| `calendar.app.created` | Crear calendarios secundarios y manejar sus eventos | Alternativa solo si W07 decide crear un calendario propio «SpanishNow» en vez de usar uno existente |
 
-Los tres «Sí» y los que W07 use finalmente están **(lo define W07)**: la lista exacta es la constante de scopes del servicio; esta tabla es lo mínimo que la SPEC (CAL-01, CAL-02) permite. Si W07 pidiera un scope más amplio que `calendar.events.owned`, anotarlo en el PR. Además del correo (`userinfo.email`) que ya usa Classroom.
+Los tres «Sí» y los que W07 use finalmente están **(lo define W07)**: la lista exacta es la constante de scopes del servicio; esta tabla es lo mínimo que la SPEC (CAL-01, CAL-02) permite. Si W07 pidiera un scope más amplio que `calendar.app.created`, anotarlo en el PR. Además del correo (`userinfo.email`) que ya usa Classroom.
 
 Hay que agregar los scopes a la pantalla de consentimiento para que aparezcan como permisos que Google muestra; si falta uno, la autorización falla o el permiso no se otorga.
 
@@ -379,7 +379,7 @@ Hallazgos que pueden requerir cambios en los nombres fijados o en el CONTRATO. L
 
 **W07 (Google Calendar)**
 1. **Redirección con `localhost`**: Google acepta `http://localhost:<puerto>` en clientes web, pero no IPs. La copia fija debe probarse en `https://localhost:4200`. `GOOGLE_CALENDAR_REDIRECT_URI` queda como `http://localhost:3001/api/integrations/google-calendar/callback`. Ojo: el servicio de Classroom (`liveGoogleService.js`) solo admite `http` si el host es `localhost`/`127.0.0.1` y `NODE_ENV` no es producción; W07 debería aplicar la misma validación y no depender de cookies de terceros (hoy usa una cookie `spanishnow_google_state` y una navegación de primera parte `…/start`).
-2. **Scope mínimo**: `calendar.events.owned` + `calendar.freebusy` + `calendar.calendarlist.readonly` alcanza para CAL-01/02; evitar `calendar.events` y `calendar`. Documentar en el PR si hace falta otro. Dado el grant de Classroom/Drive: usar `include_granted_scopes` con cuidado (CAL-08, no mezclar grants).
+2. **Scope mínimo**: `calendar.app.created` + `calendar.freebusy` + `calendar.calendarlist.readonly` alcanza para CAL-01/02 (ninguno es sensible); evitar `calendar.events` y `calendar`. Documentar en el PR si hace falta otro. Dado el grant de Classroom/Drive: usar `include_granted_scopes` con cuidado (CAL-08, no mezclar grants).
 3. **Free/busy no es *push***: el recurso FreeBusy no se puede observar con canales, solo Events, CalendarList, Acl y Settings. Los canales deben ser sobre *events* de cada calendario relevante, y la ocupación se consulta por API antes de confirmar (CAL-03).
 4. **Canales push**: exigen HTTPS con certificado válido (mkcert no sirve), vencen y no se renuevan solos. Como el túnel se abre y se cierra a demanda, los canales vencen mientras está cerrado: W07 debe tolerar `GOOGLE_CALENDAR_NOTIFICATIONS_URL` inalcanzable (detener canales viejos con `channels.stop`, registrar nuevos) y caer a sondeo cuando falta.
 5. **Testing**: *refresh tokens* de 7 días; W07 debe pasar a «requiere atención» en `invalid_grant`, no a error genérico (CAL-08).

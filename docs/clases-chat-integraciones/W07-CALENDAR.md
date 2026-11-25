@@ -6,7 +6,7 @@ Entrega de Claude (Sonnet) para [#20](https://github.com/aguerreroRosarioBus/Spa
 
 | ID | Evidencia |
 | --- | --- |
-| CAL-01 | OAuth por docente con `external_connections` (independiente de `google_connections`), destino y calendarios de ocupación elegibles, solo permisos de eventos de calendarios propios (`calendar.events.owned`, destino solo `owner`), free-busy y lista de calendarios. El alumno no conecta nada. Prueba: `w07.calendar` (rutas), `w07.adapters` (scopes). |
+| CAL-01 | OAuth por docente con `external_connections` (independiente de `google_connections`), calendario destino propio y fijo («SpanishNow clases», creado al conectar con `calendar.app.created`, no sensible), calendarios de ocupación elegibles, free-busy y lista de calendarios. El alumno no conecta nada. Prueba: `w07.calendar` (rutas), `w07.adapters` (scopes). |
 | CAL-02 | SpanishNow gobierna: un evento por sesión confirmada vía outbox; free/busy sin títulos ni participantes. |
 | CAL-03 | Free/busy leído justo antes de confirmar, fuera de la transacción; ocupado → 409, fallo de lectura → 503 recuperable, nunca confirma a ciegas. **No cubierto:** la opción de «revisión docente explícita» como alternativa al reintento (el docente puede desconectar). |
 | CAL-04 | Ref con `externalId`, `calendarId`, `etag`, `syncedVersion`, estado; id de evento determinista + `correlationKey` en `extendedProperties`: un timeout no duplica. El evento lleva horario UTC, zona y enlace a la agenda; Zoom de participante si está `ready` (nunca el de anfitrión). |

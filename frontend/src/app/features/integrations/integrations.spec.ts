@@ -43,17 +43,17 @@ describe('W07: tarjeta de Google Calendar', () => {
     expect(assign).toHaveBeenCalledWith('https://accounts.example/auth');
   });
 
-  it('conectado: solo calendarios escribibles como destino, el destino siempre ocupa y se guarda con la versión', () => {
+  it('conectado: el destino es fijo (calendario propio de la app), siempre ocupa y se guarda con la versión', () => {
     api.status.mockReturnValue(of(connected()));
     const fixture = create();
-    const options = [...fixture.nativeElement.querySelectorAll('#calendarTarget option')].map((o: HTMLOptionElement) => o.value);
-    expect(options).toEqual(['primary', 'clases']); // solo calendarios propios: el scope pedido no cubre los de otros
+    expect(fixture.nativeElement.querySelector('#calendarTarget')).toBeNull(); // no se elige: el permiso no sensible solo cubre el calendario de la app
+    expect(fixture.nativeElement.querySelector('[data-testid="calendar-target"]')).not.toBeNull();
     expect(fixture.nativeElement.textContent).toContain('docente@example.test');
     expect(fixture.nativeElement.textContent).toContain('solo lectura');
     const component = fixture.componentInstance;
-    component.target.set('clases'); component.toggle('ro');
+    component.toggle('ro');
     component.save();
-    expect(api.update).toHaveBeenCalledWith({ targetCalendarId: 'clases', busyCalendarIds: ['clases', 'primary', 'ro'], version: 3 });
+    expect(api.update).toHaveBeenCalledWith({ targetCalendarId: 'primary', busyCalendarIds: ['primary', 'ro'], version: 3 });
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Elecciones guardadas.');
   });
@@ -121,8 +121,8 @@ describe('W07: tarjeta de Google Calendar', () => {
     const fixture = create(); fixture.detectChanges();
     expect(fixture.componentInstance.target()).toBe('docente@example.test');
     expect(fixture.componentInstance.busyIds()).toEqual(['docente@example.test']);
-    const select = fixture.nativeElement.querySelector('#calendarTarget') as HTMLSelectElement;
-    return fixture.whenStable().then(() => { fixture.detectChanges(); expect(select.selectedOptions[0]?.textContent).toContain('Principal'); });
+    // Una conexión antigua con el alias guardado muestra el nombre real del calendario, no «primary».
+    expect((fixture.nativeElement.querySelector('[data-testid="calendar-target"]') as HTMLElement).textContent).toContain('Principal');
   });
 
   it('jerarquía: estado como etiqueta en el encabezado, cuenta como texto secundario y una sola acción principal', () => {

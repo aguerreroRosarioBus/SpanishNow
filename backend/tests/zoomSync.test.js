@@ -397,7 +397,7 @@ test('W07/W08: jobs calendar.sync entregan automático/manual sin host y sobrevi
       const result = await outbox.runOnce({ limit: 1 }); await job.reload(); return result;
     };
     fake.loseResponseNext('insertEvent', new IntegrationError(503, 'provider_unavailable', {}, { retryable: true }));
-    expect((await run(automatic)).retried).toBe(1); expect(fake.eventCount('primary')).toBe(1);
+    expect((await run(automatic)).retried).toBe(1); expect(fake.eventCount(fake.DEDICATED_ID)).toBe(1);
     expect((await run(automatic)).done).toBe(1); expect((await run(automatic)).done).toBe(1);
     let event = fake.events()[0]; const eventId = event.id;
     expect(event.startsAt).toBe(c.session.startsAt.toISOString());
@@ -409,11 +409,11 @@ test('W07/W08: jobs calendar.sync entregan automático/manual sin host y sobrevi
     let job = await M.OutboxJob.findOne({ where: { aggregateId: c.session.id, topic: 'calendar.sync', dedupeKey: { [require('sequelize').Op.startsWith]: 'calendar:zoom-manual:' } }, order: [['id', 'DESC']] });
     expect((await run(job)).done).toBe(1);
     event = fake.events()[0]; expect(event.id).toBe(eventId); expect(event.description).toContain(manual);
-    expect(fake.eventCount('primary')).toBe(1); expect((await refFor(c.session.id)).status).toBe('needs_attention');
+    expect(fake.eventCount(fake.DEDICATED_ID)).toBe(1); expect((await refFor(c.session.id)).status).toBe('needs_attention');
     await zoom.manual(c.teacher, c.session.id, { version: c.session.version, joinUrl: null });
     job = await M.OutboxJob.findOne({ where: { aggregateId: c.session.id, topic: 'calendar.sync', dedupeKey: { [require('sequelize').Op.startsWith]: 'calendar:zoom-manual:' } }, order: [['id', 'DESC']] });
     expect((await run(job)).done).toBe(1); expect(fake.events()[0].description).not.toContain('zoom.us');
-    expect(fake.eventCount('primary')).toBe(1);
+    expect(fake.eventCount(fake.DEDICATED_ID)).toBe(1);
   } finally { delete process.env.FEATURE_GOOGLE_CALENDAR; }
 });
 

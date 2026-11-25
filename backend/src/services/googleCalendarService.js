@@ -1,6 +1,7 @@
 // Google Calendar del docente (W07, CAL-01…CAL-03, CAL-08): conexión, calendarios elegidos y ocupación.
 // Habla con Google solo a través del puerto ./googleCalendar y nunca dentro de una transacción con locks.
-// Permisos mínimos: eventos propios, free/busy y lista de calendarios. Independiente de google_connections (Drive/Classroom).
+// Permisos mínimos y no sensibles: el calendario propio «SpanishNow clases» (calendar.app.created), free/busy y la lista de
+// calendarios. Independiente de google_connections (Drive/Classroom).
 const { Op } = require('sequelize');
 const M = require('../models');
 const features = require('../config/features');
@@ -9,6 +10,8 @@ const connections = require('./externalConnections');
 const { adapter } = require('./googleCalendar');
 
 const PROVIDER = 'google_calendar';
+// Calendario secundario donde viven todos los eventos de clase: el permiso no sensible no alcanza el calendario principal.
+const CALENDAR_NAME = 'SpanishNow clases';
 const { IntegrationError } = connections;
 const redirectUri = () => process.env.GOOGLE_CALENDAR_REDIRECT_URI || 'http://localhost:3000/api/integrations/google-calendar/callback';
 // Mismas reglas que liveGoogleService: https, o http de localhost solo fuera de producción; nunca credenciales en la URL.
@@ -99,11 +102,25 @@ async function complete(user, token) {
     throw new IntegrationError(403, 'forbidden', { reason: 'oauth_user_mismatch' });
   }
   const row = await M.ExternalConnection.findByPk(result.connectionId);
+  // Antes de marcar la conexión como activa: sin calendario destino no hay dónde crear eventos.
+  const dedicated = await dedicatedCalendar(adapter(), result.tokens.accessToken, row);
+  // Por defecto el calendario principal cuenta como ocupado (solo se lee su free/busy, no se escribe en él).
+  const busy = row.busyCalendarIds?.length ? row.busyCalendarIds : ['primary'];
   const saved = await connections.saveCredentials(row.id, result.tokens, {
-    targetCalendarId: row.targetCalendarId || 'primary', busyCalendarIds: row.busyCalendarIds?.length ? row.busyCalendarIds : [row.targetCalendarId || 'primary']
+    targetCalendarId: dedicated.id, busyCalendarIds: [...new Set([dedicated.id, ...busy])]
   });
   await recover(saved);
   return status(user);
+}
+
+/**
+ * Calendario propio de SpanishNow en la cuenta del docente. Se reutiliza el que ya tenía (por id guardado o, si se perdió, por
+ * nombre) para que reconectar nunca cree uno segundo; solo se crea si no existe.
+ */
+async function dedicatedCalendar(api, accessToken, row) {
+  const own = (await api.listCalendars(accessToken)).filter(c => c.accessRole === 'owner' && !c.primary);
+  return own.find(c => c.id === row.targetCalendarId) || own.find(c => c.summary === CALENDAR_NAME)
+    || api.createCalendar(accessToken, { summary: CALENDAR_NAME, timeZone: 'UTC' });
 }
 
 /** Tras (re)conectar: sesiones futuras que quedaron sin sincronizar se reencolan; el id determinista evita duplicar eventos. */
@@ -128,7 +145,7 @@ async function scheduleTick(connectionId, { transaction } = {}) {
 
 const validCalendar = (calendars, id) => typeof id === 'string' && id.length > 0 && id.length <= 255 && calendars.some(c => c.id === id);
 
-/** PATCH { targetCalendarId, busyCalendarIds }: el destino debe ser propio (owner); los de ocupación solo leerse. */
+/** PATCH { busyCalendarIds }: el destino es fijo (calendario propio de la app); los de ocupación solo se leen. */
 async function update(user, body = {}) {
   const row = await ownConnection(user);
   if (!row || row.status !== 'connected') throw new IntegrationError(409, 'integration_not_connected');
@@ -136,17 +153,13 @@ async function update(user, body = {}) {
   if (body.version !== undefined && body.version !== row.version) throw new IntegrationError(409, 'version_conflict', { version: row.version });
   const calendars = await call(row, (api, token) => api.listCalendars(token));
   const patch = {};
-  if (body.targetCalendarId !== undefined) {
-    const target = calendars.find(c => c.id === body.targetCalendarId);
-    if (!target) invalid(['targetCalendarId']);
-    if (target.accessRole !== 'owner') invalid(['targetCalendarId']); // el scope pedido solo cubre calendarios propios
-    patch.targetCalendarId = target.id;
-  }
+  // El destino es siempre el calendario propio de SpanishNow: el permiso no sensible no permite escribir en otro.
+  if (body.targetCalendarId !== undefined && body.targetCalendarId !== row.targetCalendarId) invalid(['targetCalendarId']);
   if (body.busyCalendarIds !== undefined) {
     if (!Array.isArray(body.busyCalendarIds) || body.busyCalendarIds.length > 10 || !body.busyCalendarIds.every(id => validCalendar(calendars, id))) invalid(['busyCalendarIds']);
     patch.busyCalendarIds = [...new Set(body.busyCalendarIds)];
   }
-  if (!Object.keys(patch).length) invalid(['targetCalendarId', 'busyCalendarIds']);
+  if (!Object.keys(patch).length) invalid(['busyCalendarIds']);
   // El calendario destino también ocupa: citas puestas allí por el docente bloquean horarios.
   const target = patch.targetCalendarId || row.targetCalendarId;
   const busy = patch.busyCalendarIds || row.busyCalendarIds || [];
@@ -202,4 +215,4 @@ async function assertAvailable({ teacherId, startsAt, endsAt, own = null }) {
   return { checked: true };
 }
 
-module.exports = { PROVIDER, REQUIRES_CHECK, call, status, connect, callback, complete, recover, scheduleTick, update, disconnect, assertAvailable, redirectUri, frontendUrl, TICK_MS };
+module.exports = { PROVIDER, CALENDAR_NAME, REQUIRES_CHECK, call, status, connect, callback, complete, recover, scheduleTick, update, disconnect, assertAvailable, redirectUri, frontendUrl, TICK_MS };

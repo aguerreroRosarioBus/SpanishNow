@@ -84,6 +84,10 @@ module.exports = {
     const items = (await (await http(`${API}/users/me/calendarList?minAccessRole=reader&maxResults=250`, { token })).json()).items || [];
     return items.map(c => ({ id: c.id, summary: c.summaryOverride || c.summary, primary: Boolean(c.primary), accessRole: c.accessRole }));
   },
+  async createCalendar(token, { summary, timeZone = 'UTC' }) {
+    const created = await (await http(`${API}/calendars`, { token, method: 'POST', json: { summary, timeZone } })).json();
+    return { id: created.id, summary: created.summary };
+  },
   async freeBusy(token, { calendarIds, timeMin, timeMax }) {
     const result = await (await http(`${API}/freeBusy`, { token, method: 'POST', json: { timeMin, timeMax, items: calendarIds.map(id => ({ id })) } })).json();
     const calendars = result.calendars || {};
