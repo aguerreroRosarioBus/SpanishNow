@@ -11,6 +11,25 @@ Fecha de verificación contra la documentación de cada proveedor: 23/10/2026.
 
 ---
 
+## Pruebas locales con adaptadores fake
+
+En un entorno desechable, activa estos valores en el `.env` local del backend. Los callbacks apuntan al puerto del backend y `FRONTEND_URL` al del frontend. Los ejemplos usan 3102 y 4301.
+
+```dotenv
+PORT=3102
+FRONTEND_URL=http://localhost:4301
+INTEGRATIONS_FAKE=1
+FEATURE_GOOGLE_CALENDAR=1
+FEATURE_ZOOM=1
+OUTBOX_WORKER=1
+GOOGLE_CALENDAR_REDIRECT_URI=http://localhost:3102/api/integrations/google-calendar/callback
+ZOOM_REDIRECT_URI=http://localhost:3102/api/integrations/zoom/callback
+```
+
+Genera una clave con `openssl rand -base64 32` y guárdala en `GOOGLE_TOKEN_ENCRYPTION_KEY`. Los adaptadores fake también cifran el estado y las credenciales simuladas. Si la clave falta o es inválida, la acción de conectar devuelve `503 integration_encryption_not_configured`. Conserva la clave entre reinicios del mismo entorno.
+
+Usa cuentas ficticias de la aplicación y habilita al docente para clases. Calendar y Zoom simulan OAuth sin clientes ni secretos de proveedor y Zoom genera enlaces en `zoom.fake.invalid`. Si pruebas también el flujo independiente de Classroom/Drive, su callback local usa `GOOGLE_OAUTH_REDIRECT_URI=http://localhost:3102/api/live-classes/google/callback`. El flag fake corresponde a Calendar y Zoom.
+
 ## 0. Qué se puede probar y con qué
 
 | Qué | Sin túnel | Con túnel HTTPS |

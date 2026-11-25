@@ -24,6 +24,7 @@ export class ClassSessionCardComponent {
   private readonly pilotTheme = inject(PilotTheme);
   sessionId = input.required<number>();
   proposalVersion = input<number | null>(null);
+  listedSession = input<ClassSession | null>(null);
   /** La agenda muestra una sola vez los avisos de zona de toda la página; la tarjeta no los repite (D-04). */
   pageNotices = input(false);
   changed = output<ClassSession>();
@@ -42,8 +43,27 @@ export class ClassSessionCardComponent {
   attendanceUser = 0; attendanceStatus = 'attended'; attendanceReason = '';
   adjustmentPurchase = 0; adjustmentKind = 'waive_charge'; adjustmentReason = ''; unavailableMinutes = 50;
   meeting = signal<string | null>(null);
-  /** La alumna pidió el enlace y la reunión de Zoom aún no existe (no es un problema de conexión suyo). */
-  meetingNotReady = signal(false);
+  private meetingFailure = signal<unknown>(null);
+  readonly meetingError = computed(() => {
+    const error = this.meetingFailure();
+    if (!error) return '';
+    const code = this.errorCode(error);
+    if (code === 'zoom_meeting_pending' || (!this.teacher() && code === 'integration_not_connected')) {
+      return this.i18n.t(this.teacher() ? 'schedule.meetingMissingTeacher' : 'schedule.meetingNotReady');
+    }
+    return this.i18n.errorMessage(error);
+  });
+  private syncFailure = signal<unknown>(null);
+  readonly syncQueued = signal(false);
+  readonly syncError = computed(() => {
+    const error = this.syncFailure();
+    if (!error) return '';
+    return this.errorCode(error) === 'integration_not_connected'
+      ? this.i18n.t('schedule.syncConnectFirst') : this.i18n.errorMessage(error);
+  });
+  private errorCode(error: unknown): unknown {
+    return (error as { error?: { code?: unknown } } | null)?.error?.code;
+  }
   private generation = 0;
   private clockOffset = 0;
   private request?: Subscription;
@@ -111,7 +131,11 @@ export class ClassSessionCardComponent {
     return ['forming', 'proposed', 'confirmed'].includes(s.status) || (s.kind === 'group' && ['expired', 'declined'].includes(s.status));
   });
   canCancel = computed(() => { const s = this.session(); return !!s && !this.lapsed() && ['forming', 'proposed', 'confirmed'].includes(s.status) && !this.rejectIsEnough(); });
-  hasPendingSync = computed(() => (this.session()?.sync || []).some(r => r.status !== 'ready'));
+  hasPendingSync = computed(() => {
+    const refs = this.session()?.sync ?? [];
+    return refs.some(ref => ref.status !== 'ready')
+      || (['zoom', 'google_calendar'] as const).some(provider => this.features.enabled(provider) && !refs.some(ref => ref.provider === provider));
+  });
   /** El botón principal de la reunión: solo en una clase confirmada que todavía no terminó. */
   canJoin(): boolean {
     const s = this.session(); if (!s || s.status !== 'confirmed') return false;
@@ -126,26 +150,45 @@ export class ClassSessionCardComponent {
     this.features.load();
     effect(() => { const id = this.sessionId(); const account = this.auth.currentUser()?.id; untracked(() => {
       this.generation++; this.request?.unsubscribe(); this.actionRequest?.unsubscribe(); this.busy.set(false);
-      this.session.set(null); this.decision.set(null); this.meeting.set(null); this.meetingNotReady.set(false); if (id && account) this.refresh();
+      this.session.set(null); this.decision.set(null); this.meeting.set(null); this.meetingFailure.set(null); this.syncFailure.set(null); this.syncQueued.set(false); if (id && account && !this.listedSession()) this.refresh();
     }); });
-    const timer = setInterval(() => { if (this.document.visibilityState === 'visible' && !this.busy() && !this.decision()) this.refresh(false); }, 15000);
+    effect(() => {
+      const listed = this.listedSession();
+      if (!listed || listed.id !== this.sessionId() || !this.auth.currentUser()) return;
+      untracked(() => this.setSession(listed));
+    });
+    const timer = setInterval(() => {
+      if (!this.listedSession() && this.document.visibilityState === 'visible' && !this.busy() && !this.decision()) this.refresh(false);
+    }, 15000);
     this.destroyRef.onDestroy(() => { clearInterval(timer); this.request?.unsubscribe(); this.actionRequest?.unsubscribe(); });
   }
   refresh(showLoading = true): void {
     const generation = this.generation;
     this.request?.unsubscribe(); if (showLoading) { this.loading.set(true); this.failure.set(null); }
     this.request = this.api.get(this.sessionId()).subscribe({ next: s => {
-      if (generation !== this.generation) return; this.clockOffset = Date.parse(s.serverNow) - Date.now(); this.session.set(s); this.loading.set(false);
+      if (generation !== this.generation) return; this.setSession(s); this.loading.set(false);
     }, error: err => { if (generation === this.generation) { this.failure.set(err); this.loading.set(false); } } });
+  }
+  private setSession(value: ClassSession): void {
+    this.clockOffset = Date.parse(value.serverNow) - Date.now();
+    const meetingCode = this.errorCode(this.meetingFailure());
+    if ((meetingCode === 'zoom_meeting_pending' || meetingCode === 'integration_not_connected')
+      && value.sync.some(ref => ref.provider === 'zoom' && ref.status === 'ready')) this.meetingFailure.set(null);
+    if (this.syncQueued() && !value.sync.some(ref => ref.status === 'pending')) this.syncQueued.set(false);
+    this.session.set(value);
   }
   startDecision(action: 'accept' | 'decline' | 'cancel'): void { this.decision.set(action); this.acknowledge = false; this.failure.set(null); }
   closeDecision(): void { if (!this.busy()) this.decision.set(null); }
-  private act(request: Observable<ClassSession>): void {
+  private act(request: Observable<ClassSession>, sync = false): void {
     if (this.busy()) return;
     const generation = this.generation; this.request?.unsubscribe(); this.busy.set(true); this.failure.set(null);
     this.actionRequest = request.subscribe({ next: s => {
-      if (generation !== this.generation) return; this.busy.set(false); this.session.set(s); this.decision.set(null); this.changed.emit(s);
-    }, error: err => { if (generation !== this.generation) return; this.busy.set(false); this.failure.set(err);
+      if (generation !== this.generation) return; this.busy.set(false); this.setSession(s); this.decision.set(null);
+      if (sync) this.syncQueued.set(s.sync.some(ref => ref.status === 'pending'));
+      this.changed.emit(s);
+    }, error: err => { if (generation !== this.generation) return; this.busy.set(false);
+      if (sync) { this.syncFailure.set(err); return; }
+      this.failure.set(err);
       if (err.status === 409) { this.decision.set(null); this.refresh(false); }
     } });
   }
@@ -185,18 +228,26 @@ export class ClassSessionCardComponent {
       link.href = url; link.download = `clase-${s.id}.ics`; link.click(); URL.revokeObjectURL(url);
     }, error: error => this.failure.set(error) });
   }
-  retrySync(): void { const s = this.session(); if (s) this.act(this.api.retrySync(s.id)); }
+  retrySync(): void {
+    const s = this.session();
+    if (!s || this.busy()) return;
+    this.syncFailure.set(null);
+    this.syncQueued.set(false);
+    this.act(this.api.retrySync(s.id), true);
+  }
   join(): void {
     const generation = this.generation; const s = this.session(); if (!s) return;
-    this.meetingNotReady.set(false);
+    if (this.busy()) return;
+    this.busy.set(true);
+    this.meetingFailure.set(null);
     this.actionRequest = this.api.join(s.id).subscribe({ next: result => {
       if (generation !== this.generation) return;
-      try { const u = new URL((this.teacher() && result.hostUrl) || result.joinUrl || ''); if (u.protocol === 'https:' && (u.hostname === 'zoom.us' || u.hostname.endsWith('.zoom.us'))) this.meeting.set(u.href); } catch { /* no se muestra una URL inválida */ }
+      this.busy.set(false);
+      try { const u = new URL((this.teacher() && result.hostUrl) || result.joinUrl || ''); if (u.protocol === 'https:' && (u.hostname === 'zoom.us' || u.hostname.endsWith('.zoom.us') || u.hostname === 'zoom.fake.invalid')) this.meeting.set(u.href); } catch { /* no se muestra una URL inválida */ }
     }, error: error => {
       if (generation !== this.generation) return;
-      // «Conecta el servicio» es un mensaje para la docente: la alumna solo necesita saber que la reunión no está lista.
-      if (!this.teacher() && (error as { error?: { code?: unknown } } | null)?.error?.code === 'integration_not_connected') this.meetingNotReady.set(true);
-      else this.failure.set(error);
+      this.busy.set(false);
+      this.meetingFailure.set(error);
     } });
   }
   displayProposal(p: SessionProposal): string { return this.i18n.formatInstant(p.expiresAt, isTimeZone(this.zone()) ? this.zone() : 'UTC'); }

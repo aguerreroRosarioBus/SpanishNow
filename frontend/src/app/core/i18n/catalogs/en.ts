@@ -235,6 +235,7 @@ export const EN = {
   'errors.operation_key_conflict': 'This request identifier was already used with different details.',
   'errors.rate_limited': 'Too many requests. Please wait before trying again.',
   'errors.payments_unavailable': 'Payments are currently unavailable. Please try again later.',
+  'errors.integration_encryption_not_configured': 'Configure GOOGLE_TOKEN_ENCRYPTION_KEY with a 32-byte base64 key to connect this integration.',
   'errors.provider_unavailable': 'The external service is currently unavailable. Please try again later.',
   'errors.live_not_live': "The class is not live yet. Ask the teacher to start it.",
   'errors.live_editing_paused': "The teacher paused editing for students.",

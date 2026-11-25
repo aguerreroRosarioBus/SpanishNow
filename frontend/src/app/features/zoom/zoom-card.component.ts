@@ -1,5 +1,5 @@
 import { DOCUMENT } from '@angular/common';
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize, switchMap } from 'rxjs';
@@ -13,6 +13,11 @@ import { ZoomApi, ZoomSession, ZoomStatus } from './zoom-api.service';
   templateUrl: './zoom-card.component.html', styleUrl: './zoom.component.scss' })
 export class ZoomCardComponent {
   readonly api = inject(ZoomApi); readonly i18n = inject(I18nService); readonly features = inject(FeaturesService); readonly preferences = inject(UserPreferencesService);
+  private readonly deviceZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  readonly zone = computed(() => {
+    const preferences = this.preferences.preferences();
+    return preferences?.timeZoneConfirmedAt && preferences.timeZone ? preferences.timeZone : this.deviceZone;
+  });
   private document = inject(DOCUMENT); private destroy = inject(DestroyRef);
   readonly status = signal<ZoomStatus | null>(null); readonly sessions = signal<ZoomSession[]>([]);
   /** La cuenta no puede usar Zoom (403 al leer el estado): se explica en lugar de mostrar un estado vacío (D-01). */

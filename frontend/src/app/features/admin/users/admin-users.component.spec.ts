@@ -1,6 +1,6 @@
 import { NgbOffcanvasConfig } from '@ng-bootstrap/ng-bootstrap';
 import { TestBed } from '@angular/core/testing';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { AdminUsersComponent } from './admin-users.component';
 import { AdminService } from '../../../core/services/admin.service';
@@ -11,9 +11,9 @@ import { UserPreferencesService } from '../../../core/services/user-preferences.
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { AdminUser } from '../../../core/models/admin.model';
 
-function setup(fail = false) {
-  const user = {id: 2, name: 'Nombre original', email: 'ficticio@example.test', role: 'student', permissions: [], isTestAccount: true, fixedAdmin: false, suspendedAt: null, createdAt: '2026-10-23T02:30:00Z', coursesCount: 0, enrollmentsCount: 2} as AdminUser;
-  const service = {users: vi.fn(() => fail ? throwError(() => ({error: {code: 'unknown', error: 'PRIVATE_INTERNAL'}})) : of({users: [user], total: 1})), permissions: () => of([{key: 'users.manage', label: 'Gestionar usuarios y permisos', description: 'Original'}]), updateUser: vi.fn(), deleteTestUser: vi.fn(), deleteAllTestUsers: vi.fn(), createTestUsers: vi.fn()};
+function setup(fail = false, isTestAccount = true) {
+  const user = {id: 2, name: 'Nombre original', email: 'ficticio@example.test', role: 'student', permissions: [], isTestAccount, fixedAdmin: false, suspendedAt: null, createdAt: '2026-10-23T02:30:00Z', coursesCount: 0, enrollmentsCount: 2} as AdminUser;
+  const service = {users: vi.fn(() => fail ? throwError(() => ({error: {code: 'unknown', error: 'PRIVATE_INTERNAL'}})) : of({users: [user], total: 1})), permissions: () => of([{key: 'users.manage', label: 'Gestionar usuarios y permisos', description: 'Original'}, { key: 'legal.manage', label: 'Documentos legales', description: 'Legales' }]), updateUser: vi.fn(), deleteTestUser: vi.fn(), deleteAllTestUsers: vi.fn(), createTestUsers: vi.fn()};
   TestBed.configureTestingModule({providers: [
     {provide: AdminService, useValue: service},
     {provide: AuthService, useValue: {currentUser: () => ({id: 1, role: 'teacher'}), hasPermission: () => true}},
@@ -69,5 +69,30 @@ it('admin: el directorio abre un panel con permisos y conserva las protecciones 
   expect(service.updateUser).not.toHaveBeenCalled();
   document.querySelector<HTMLButtonElement>('.offcanvas-header .btn-close')!.click();
   await f.whenStable();
+  f.destroy();
+});
+
+
+it('D2-06: dos cambios rápidos no pisan los permisos y la casilla omitida vuelve al valor guardado', () => {
+  const { f, user, service, el } = setup(false, false);
+  const pending = new Subject<AdminUser>();
+  service.updateUser.mockReturnValue(pending);
+  el.querySelector<HTMLButtonElement>('.manage-button')!.click();
+  f.detectChanges();
+  const [first, second] = document.querySelectorAll<HTMLInputElement>('.permission input');
+  first.click();
+  second.click();
+  expect(service.updateUser).toHaveBeenCalledExactlyOnceWith(user.id, { permissions: ['users.manage'] });
+  expect(second.checked).toBe(false);
+  f.detectChanges();
+  expect(second.disabled).toBe(true);
+  pending.next({ ...user, permissions: ['users.manage'] });
+  pending.complete();
+  f.detectChanges();
+  expect(first.checked).toBe(true);
+  expect(second.disabled).toBe(false);
+  service.updateUser.mockReturnValue(of({ ...user, permissions: ['users.manage', 'legal.manage'] }));
+  second.click();
+  expect(service.updateUser).toHaveBeenLastCalledWith(user.id, { permissions: ['users.manage', 'legal.manage'] });
   f.destroy();
 });

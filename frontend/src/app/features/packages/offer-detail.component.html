@@ -12,7 +12,7 @@
             <div><dt>{{ 'packages.field.sessionsCount' | t }}</dt><dd>{{ o.sessionsCount }} × {{ o.minutesPerSession }} min</dd></div>
             <div><dt>{{ 'packages.ui.seats' | t }}</dt><dd>{{ o.seatsCovered }}</dd></div>
             @if (o.snapshot.validityHours != null) {
-              <div><dt>{{ 'packages.ui.validity' | t }}</dt><dd>{{ i18n.formatNumber(o.snapshot.validityHours) }} h <small>{{ 'packages.ui.fromPayment' | t }}</small></dd></div>
+              <div><dt>{{ 'packages.ui.validity' | t }}</dt><dd>{{ validityLabel(o.snapshot.validityHours) }} <small>{{ 'packages.ui.fromPayment' | t }}</small></dd></div>
             }
           </dl>
         </header>

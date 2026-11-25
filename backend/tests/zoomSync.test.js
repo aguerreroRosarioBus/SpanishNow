@@ -86,7 +86,7 @@ test('cuenta Basic: ingreso por tramo (participante ve todos los enlaces, docent
   const ref = await refFor(c.session.id);
   const student = await zoom.join(c.students[0], c.session.id);
   expect(student.parts.map(p => [p.index, p.minutes])).toEqual([[1, 40], [2, 10]]);
-  expect(student.parts.every(p => /^https:\/\/zoom\.us\/j\/\d{8,12}/.test(p.joinUrl))).toBe(true);
+  expect(student.parts.every(p => /^https:\/\/zoom\.fake\.invalid\/j\/\d{8,12}/.test(p.joinUrl))).toBe(true);
   expect(student.part).toBe(1); // aún falta para la clase: el primer tramo
   expect(student.joinUrl).toBe(student.parts[0].joinUrl);
   const status = await zoom.sessionStatus(c.students[0], c.session.id);
@@ -95,7 +95,7 @@ test('cuenta Basic: ingreso por tramo (participante ve todos los enlaces, docent
   const second = await zoom.join(c.students[0], c.session.id, 2);
   expect(second.joinUrl).toBe(ref.parts[0].joinUrl); expect(second.part).toBe(2);
   const host = await zoom.join(c.teacher, c.session.id, 2);
-  expect(host.hostUrl).toMatch(/^https:\/\/zoom\.us\/s\//); expect(host.part).toBe(2);
+  expect(host.hostUrl).toMatch(/^https:\/\/zoom\.fake\.invalid\/s\//); expect(host.part).toBe(2);
   expect(JSON.stringify(host.parts)).not.toMatch(/hostUrl|zak=|start_url/); // la lista no lleva enlaces de anfitrión
   const { tokens } = await connection.credentials(c.teacher.id);
   await M.ClassSession.update({ status: 'cancelled' }, { where: { id: c.session.id } });
@@ -180,7 +180,7 @@ test('capacidad antes de proponer, ofrecer o comprar; no modifica agenda ni sald
 });
 test('manual: solo dueño con versión, URL participante válida y auditoría sin URL', async () => {
   const c = await fixture(); await connection.disconnect(c.teacher);
-  for (const link of ['https://zoom.us/s/123456789?zak=secret', 'https://zoom.us.evil.test/j/123456789', 'https://x@zoom.us/j/123456789', 'http://zoom.us/j/123456789', 'https://zoom.us/j/123456789?zak=secret']) {
+  for (const link of ['https://zoom.fake.invalid/j/123456789', 'https://zoom.us/s/123456789?zak=secret', 'https://zoom.us.evil.test/j/123456789', 'https://x@zoom.us/j/123456789', 'http://zoom.us/j/123456789', 'https://zoom.us/j/123456789?zak=secret']) {
     await expect(zoom.manual(c.teacher, c.session.id, { version: 1, joinUrl: link })).rejects.toMatchObject({ code: 'zoom_invalid_link' });
   }
   await expect(zoom.manual(c.students[0], c.session.id, { version: 1, joinUrl: 'https://zoom.us/j/123456789' })).rejects.toMatchObject({ code: 'not_found' });
@@ -435,7 +435,7 @@ test('P3: join canónico W06 respeta feature, autenticación, impersonación y p
   const teacher = await as(c.teacher).get(`/api/class-sessions/${c.session.id}/join`);
   expect(teacher.status).toBe(200); expect(teacher.body.hostUrl).toContain('/s/'); expect(teacher.headers['cache-control']).toBe('no-store');
   const student = await as(c.students[0]).get(`/api/class-sessions/${c.session.id}/join`);
-  expect(student.body.joinUrl).toContain('/j/'); expect(student.headers['cache-control']).toBe('no-store');
+  expect(student.body.joinUrl).toMatch(/^https:\/\/zoom\.fake\.invalid\/j\//); expect(student.headers['cache-control']).toBe('no-store');
   const ics = await as(c.students[0]).get(`/api/class-sessions/${c.session.id}/calendar.ics`);
   expect(ics.status).toBe(200); expect(ics.text).toContain('/j/'); expect(ics.text).not.toMatch(/zak=|\/s\//);
 });

@@ -412,7 +412,8 @@
                 type="checkbox"
                 [checked]="hasPermission(u, p.key)"
                 [disabled]="permissionDisabled(u, p.key)"
-                (change)="togglePermission(u, p.key, $any($event.target).checked)"
+                #permissionBox
+                (change)="togglePermission(u, p.key, permissionBox)"
             /></label>
           }
         </fieldset>

@@ -84,6 +84,60 @@ describe('W06: interfaz conectada por contratos de agenda', () => {
     fixture.destroy();
   });
 
+  it('D2-10: la agenda pinta las tarjetas con la lista, con una sola carga de opciones y sin GET por tarjeta', () => {
+    auth.currentUser.set({ id: 2, role: 'teacher' });
+    const first = session();
+    api.list.mockReturnValue(of({ items: [first, { ...first, id: 11 }], truncated: false }));
+    const f = TestBed.createComponent(ScheduleComponent);
+    f.detectChanges();
+    expect(f.nativeElement.querySelectorAll('[data-testid="session-card"] h2')).toHaveLength(2);
+    expect(api.list).toHaveBeenCalledOnce();
+    expect(api.reminders).toHaveBeenCalledOnce();
+    expect(api.options).toHaveBeenCalledOnce();
+    expect(api.get).not.toHaveBeenCalled();
+    f.destroy();
+  });
+
+  it('D2-04: oculta el horario del docente para sí mismo y para zonas con el mismo desfase', () => {
+    const fixture = TestBed.createComponent(ClassSessionCardComponent);
+    fixture.componentRef.setInput('sessionId', 10);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="teacher-time"]')).toBeTruthy();
+    auth.currentUser.set({ id: 2, role: 'teacher' });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="teacher-time"]')).toBeNull();
+    auth.currentUser.set({ id: 1, role: 'student' });
+    const s = session();
+    api.get.mockReturnValue(of({ ...s, teacher: { ...s.teacher, timeZone: 'America/Cordoba' } }));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="teacher-time"]')).toBeNull();
+    fixture.destroy();
+  });
+
+  it('D2-05: ambos paneles explican la zona pendiente y bloquean el envío o aceptación', () => {
+    const preferences = TestBed.inject(UserPreferencesService).preferences as ReturnType<typeof signal<any>>;
+    preferences.set({ timeZone: 'America/Cordoba', timeZoneConfirmedAt: null });
+    const card = TestBed.createComponent(ClassSessionCardComponent);
+    card.componentRef.setInput('sessionId', 10);
+    card.detectChanges();
+    card.componentInstance.startDecision('accept');
+    card.componentInstance.acknowledge = true;
+    card.detectChanges();
+    expect(document.querySelector('[data-testid="accept-zone-hint"]')?.textContent).toContain('Confirma tu zona');
+    card.componentInstance.respond();
+    expect(api.respond).not.toHaveBeenCalled();
+    card.destroy();
+
+    auth.currentUser.set({ id: 2, role: 'teacher' });
+    const schedule = TestBed.createComponent(ScheduleComponent);
+    schedule.detectChanges();
+    schedule.componentInstance.openForm();
+    schedule.detectChanges();
+    expect(document.querySelector('[data-testid="proposal-zone-hint"]')?.textContent).toContain('confirma tu zona');
+    expect(document.querySelector<HTMLButtonElement>('button[form="scheduleProposalForm"]')?.disabled).toBe(true);
+    schedule.destroy();
+  });
+
   it('horas inexistentes y repetidas se resuelven explícitamente, sin normalización oculta', () => {
     auth.currentUser.set({ id: 2, role: 'teacher' });
     const fixture = TestBed.createComponent(ScheduleComponent); fixture.detectChanges(); const c = fixture.componentInstance;
@@ -103,6 +157,36 @@ describe('W06: interfaz conectada por contratos de agenda', () => {
       const fixture = TestBed.createComponent(ClassSessionCardComponent); fixture.componentRef.setInput('sessionId', 10); fixture.detectChanges();
       expect(fixture.nativeElement.textContent.includes('Las integraciones externas no están listas')).toBe(shown); fixture.destroy();
     }
+  });
+
+  it('D2-01: la docente ve los errores junto a su botón de Zoom y al reintento', () => {
+    const api2 = api as typeof api & { join: ReturnType<typeof vi.fn>; retrySync: ReturnType<typeof vi.fn> };
+    api2.join = vi.fn(() => throwError(() => ({ status: 409, error: { code: 'zoom_meeting_pending' } })));
+    api2.retrySync = vi.fn(() => throwError(() => ({ status: 409, error: { code: 'integration_not_connected' } })));
+    api.get.mockReturnValue(of(confirmed([])));
+    auth.currentUser.set({ id: 2, role: 'teacher' });
+    const fixture = TestBed.createComponent(ClassSessionCardComponent);
+    fixture.componentRef.setInput('sessionId', 10);
+    fixture.detectChanges();
+    fixture.nativeElement.querySelector('[data-testid="join-button"]').click();
+    fixture.nativeElement.querySelector('[data-testid="retry-sync"]').click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="meeting-feedback"]').textContent).toContain('todavía no tiene una reunión');
+    expect(fixture.nativeElement.querySelector('[data-testid="sync-error"]').textContent).toContain('Conecta Zoom o Google Calendar');
+    fixture.destroy();
+  });
+
+  it('C2-03: la agenda muestra el enlace del adaptador fake', () => {
+    const api2 = api as typeof api & { join: ReturnType<typeof vi.fn> };
+    api2.join = vi.fn(() => of({ joinUrl: 'https://zoom.fake.invalid/j/123456789', manual: false }));
+    api.get.mockReturnValue(of(confirmed([])));
+    const f = TestBed.createComponent(ClassSessionCardComponent);
+    f.componentRef.setInput('sessionId', 10);
+    f.detectChanges();
+    f.nativeElement.querySelector('[data-testid="join-button"]').click();
+    f.detectChanges();
+    expect(f.nativeElement.querySelector('[data-testid="meeting-link"]').getAttribute('href')).toBe('https://zoom.fake.invalid/j/123456789');
+    f.destroy();
   });
 
   it('la docente inicia la reunión con hostUrl de zoom.us; la alumna solo entra como participante', () => {
@@ -140,7 +224,7 @@ describe('W06: interfaz conectada por contratos de agenda', () => {
     auth.currentUser.set({ id: 2, role: 'teacher' });
     fixture = TestBed.createComponent(ClassSessionCardComponent); fixture.componentRef.setInput('sessionId', 10); fixture.detectChanges();
     click(fixture, 'Iniciar reunión');
-    expect(fixture.nativeElement.textContent).not.toContain('La reunión todavía no está lista'); expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeTruthy();
+    expect(fixture.nativeElement.textContent).not.toContain('La reunión todavía no está lista'); expect(fixture.nativeElement.querySelector('[data-testid="meeting-feedback"]').textContent).toContain('Conecta el servicio');
   });
 
   describe('Tanda C: tarjeta de clase', () => {

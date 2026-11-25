@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard, teacherGuard, studentGuard, adminGuard } from './core/guards/auth.guard';
+import { authGuard, teacherGuard, studentGuard, adminGuard, homeRedirect } from './core/guards/auth.guard';
 import { liveAuthGuard } from './core/guards/live-auth.guard';
 import { legalManageGuard } from './features/legal/legal-manage.guard';
 
@@ -15,10 +15,9 @@ export const routes: Routes = [
   { path: 'teacher/integrations/zoom', canActivate: [teacherGuard], loadComponent: () => import('./features/zoom/zoom-card.component').then(m => m.ZoomCardComponent) },
   { path: 'zoom/sessions/:id', canActivate: [authGuard], loadComponent: () => import('./features/zoom/zoom-session.component').then(m => m.ZoomSessionComponent) },
   { path: 'schedule', canActivate: [authGuard], loadComponent: () => import('./features/schedule/schedule.component').then(m => m.ScheduleComponent) },
-  // Ruta raíz - redirige a login por ahora
   {
     path: '',
-    redirectTo: 'auth/login',
+    redirectTo: homeRedirect,
     pathMatch: 'full'
   },
 

@@ -28,7 +28,10 @@ import { ClassCohort } from './packages.model';
       <div class="page-header__main">
         <h1 class="page-title">{{ (isTeacher() ? 'packages.group.title' : 'packages.group.invitation') | t }}</h1>
         @if (cohort(); as c) {
-          <p class="page-summary">{{ ('packages.group.status.' + (c.invitation?.status ?? c.status)) | t }} · {{ 'packages.group.accepted' | t:{count:c.acceptedCount,total:c.groupSize} }}</p>
+          <p class="page-summary">@if (c.confirmedSession; as session) {
+            {{ 'packages.group.confirmedSession' | t:{ date: instant(session.startsAt) } }}
+          } @else { {{ ('packages.group.status.' + (c.invitation?.status ?? c.status)) | t }} }
+          · {{ 'packages.group.accepted' | t:{count:c.acceptedCount,total:c.groupSize} }}</p>
         }
       </div>
       <button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="load()">{{ 'packages.offer.refresh' | t }}</button>
@@ -39,8 +42,13 @@ import { ClassCohort } from './packages.model';
         <div class="card-header"><h2 id="cohort-schedule" class="h5 mb-0">{{ 'packages.group.scheduleTitle' | t }}</h2></div>
         <div class="card-body">
           <dl class="detail-list">
-            <dt>{{ (isPast(c.tentativeStartsAt) ? 'packages.group.tentativePastLabel' : 'packages.group.tentativeLabel') | t }}</dt>
-            <dd>{{ instant(c.tentativeStartsAt) }} ({{ fmt.timeZone() }})</dd>
+            @if (c.confirmedSession; as session) {
+              <dt>{{ 'packages.group.confirmedTime' | t }}</dt>
+              <dd><a routerLink="/schedule" [queryParams]="{ sessionId: session.id }">{{ instant(session.startsAt) }} ({{ fmt.timeZone() }})</a></dd>
+            } @else {
+              <dt>{{ (isPast(c.tentativeStartsAt) ? 'packages.group.tentativePastLabel' : 'packages.group.tentativeLabel') | t }}</dt>
+              <dd>{{ instant(c.tentativeStartsAt) }} ({{ fmt.timeZone() }})</dd>
+            }
             <dt>{{ 'packages.group.deadlineLabel' | t }}</dt>
             <dd>{{ instant(c.formingDeadlineAt) }} ({{ fmt.timeZone() }})</dd>
           </dl>
@@ -67,7 +75,11 @@ import { ClassCohort } from './packages.model';
                 </span>
               </div>
             }
-            <p class="note mt-3">{{ (readyForOffers(c) ? 'packages.group.teacherHint' : 'packages.group.waitingHint') | t }}</p>
+            @if (readyForOffers(c)) {
+              <p class="note mt-3">{{ 'packages.group.teacherHint' | t }}</p>
+            } @else if (c.status === 'forming' && c.acceptedCount < c.groupSize) {
+              <p class="note mt-3">{{ 'packages.group.waitingHint' | t }}</p>
+            }
           </div>
         </section>
       } @else {

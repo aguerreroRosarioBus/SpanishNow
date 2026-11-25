@@ -12,7 +12,7 @@ import { TimeInterval, presentSessionTime } from '../../core/time/class-time';
         <time [attr.datetime]="interval().startsAt">{{ v.recipient.day }} · {{ v.recipient.range }}</time>
       </p>
       <p class="when-zone">{{ 'schedule.recipient' | t }} · {{ v.recipient.start.timeZone }} · {{ v.recipient.offsetLabel }}</p>
-      @if (v.teacherDiffers) {
+      @if (showTeacherTime() && v.teacherDiffers) {
         <p class="when-teacher" data-testid="teacher-time"><span class="when-label">{{ 'schedule.teacherTime' | t }}</span>
           {{ v.teacher.day }} · {{ v.teacher.range }}
           <span class="when-zone">{{ v.teacher.start.timeZone }} · {{ v.teacher.offsetLabel }}</span></p>
@@ -26,6 +26,7 @@ export class SessionTimeComponent {
   interval = input.required<TimeInterval>();
   recipientZone = input.required<string>();
   teacherZone = input.required<string>();
+  showTeacherTime = input(true);
   private i18n = inject(I18nService);
   view = computed(() => { try { return presentSessionTime(this.interval(), this.recipientZone(), this.teacherZone(), this.i18n.locale()); } catch { return null; } });
 }

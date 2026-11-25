@@ -27,7 +27,7 @@
     </div>
   } @else if (affiliates().length > 0) {
     <div class="table-wrap">
-      <table class="data-table">
+      <table class="data-table affiliate-list">
         <thead>
           <tr>
             <th scope="col">{{ 'teacherPromotions.affiliate' | t }}</th>
@@ -93,26 +93,6 @@
               </td>
               <td>
                 <div class="actions">
-                  <button
-                    type="button"
-                    class="btn-icon action-icon"
-                    (click)="openDetail(a)"
-                    [ngbTooltip]="'teacherPromotions.detail' | t"
-                    container="body"
-                    [attr.aria-label]="'teacherPromotions.affiliateDetail' | t: { name: a.name }"
-                  >
-                    <app-icon name="eye" [size]="18" />
-                  </button>
-                  <button
-                    type="button"
-                    class="btn-icon action-icon"
-                    (click)="openLinks(a)"
-                    [ngbTooltip]="'teacherPromotions.links' | t"
-                    container="body"
-                    [attr.aria-label]="'teacherPromotions.affiliateLinks' | t: { name: a.name }"
-                  >
-                    <app-icon name="link" [size]="18" />
-                  </button>
                   <div ngbDropdown container="body" placement="bottom-end">
                     <button
                       type="button"
@@ -124,6 +104,12 @@
                       <app-icon name="more" [size]="18" />
                     </button>
                     <div ngbDropdownMenu role="menu">
+                      <button type="button" ngbDropdownItem role="menuitem" (click)="openDetail(a)">
+                        {{ 'teacherPromotions.detail' | t }}
+                      </button>
+                      <button type="button" ngbDropdownItem role="menuitem" (click)="openLinks(a)">
+                        {{ 'teacherPromotions.links' | t }}
+                      </button>
                       <button type="button" ngbDropdownItem role="menuitem" (click)="openEdit(a)">
                         {{ 'teacherPromotions.edit' | t }}
                       </button>

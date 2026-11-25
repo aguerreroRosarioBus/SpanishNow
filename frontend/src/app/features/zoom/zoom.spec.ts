@@ -14,7 +14,7 @@ import { UserPreferencesService } from '../../core/services/user-preferences.ser
 import { FeaturesService } from '../../core/services/features.service';
 import { I18nService } from '../../core/i18n/i18n.service';
 const account = { status: 'connected', fake: true, accountEmail: 'docente@zoom.invalid', capabilities: { maxMinutes: 120, maxParticipants: 100 }, lastError: null };
-const preferences = { preferences: () => ({ timeZone: 'America/Argentina/Cordoba' }) };
+const preferences = { preferences: () => ({ timeZone: 'America/Argentina/Cordoba', timeZoneConfirmedAt: '2026-10-20T00:00:00Z' }) };
 const session = { id: 7, teacherId: 1, version: 2, status: 'confirmed', minutes: 50, startsAt: '2026-11-02T15:00:00Z', endsAt: '2026-11-02T15:50:00Z',
   teacher: { id: 1, name: 'Docente', timeZone: 'America/New_York' }, timeZone: 'America/New_York', liveClassId: 8, whiteboardJoinCode: 'board' };
 function setupCard(api: object = {}, query = {}) {
@@ -44,6 +44,19 @@ describe('W08 UI propia', () => {
     expect(f.nativeElement.textContent).toContain('Disconnect?'); expect(f.componentInstance.disconnecting()).toBe(true);
     f.componentInstance.disconnect(); expect(disconnect).toHaveBeenCalledTimes(1);
   });
+  it('D2-03: Reuniones Zoom muestra el instante en la zona confirmada del docente', () => {
+    const f = setupCard({ sessions: () => of({ items: [session] }) });
+    const i18n = TestBed.inject(I18nService);
+    for (const locale of ['es', 'en'] as const) {
+      i18n.setLocale(locale);
+      f.detectChanges();
+      const time = f.nativeElement.querySelector('time') as HTMLElement;
+      expect(time.getAttribute('datetime')).toBe(session.startsAt);
+      expect(time.textContent).toContain('12:00');
+      expect(time.textContent).not.toContain('15:00');
+    }
+  });
+
   it('OAuth no duplica solicitudes mientras espera y conserva error recuperable', () => {
     const pending = new Subject<{ url: string; fake: boolean }>(); const connect = vi.fn(() => pending); const f = setupCard({ connect });
     f.componentInstance.connect(); f.componentInstance.connect(); expect(connect).toHaveBeenCalledTimes(1);

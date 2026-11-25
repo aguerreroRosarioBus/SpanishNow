@@ -7,15 +7,19 @@ const connection = require('./zoomConnection');
 const outbox = require('./outbox');
 const features = require('../config/features');
 const { fail } = adapter;
+const { FAKE_ZOOM_HOST } = require('./zoomAdapterCore');
 const capacityCache = require('./zoomCapabilities');
 const terminal = ['cancelled', 'declined', 'expired'];
 const id = value => { const n = Number(value); if (!Number.isSafeInteger(n) || n < 1) fail('not_found', 404); return n; };
-function participantUrl(value, legacy = false) {
+function participantUrl(value, { legacy = false, automatic = false } = {}) {
   let url;
   try { url = new URL(value); } catch { fail('zoom_invalid_link', 400); }
-  if (url.protocol !== 'https:' || (url.hostname !== 'zoom.us' && !url.hostname.endsWith('.zoom.us'))
+  const fake = automatic && adapter.isFake();
+  const zoomHost = url.hostname === 'zoom.us' || url.hostname.endsWith('.zoom.us');
+  if (url.protocol !== 'https:' || !(zoomHost || (fake && url.hostname === FAKE_ZOOM_HOST))
     || url.username || url.password || url.port || url.hash || !(legacy ? /^\/j\/\d{1,12}$/ : /^\/j\/\d{8,12}$/).test(url.pathname)
     || [...url.searchParams.keys()].some(k => k !== 'pwd') || url.searchParams.getAll('pwd').length > 1 || url.href.length > 1000) fail('zoom_invalid_link', 400);
+  if (fake) url.hostname = FAKE_ZOOM_HOST;
   return url.href;
 }
 async function visible(user, sessionId, { owner = false, support = false } = {}) {
@@ -136,7 +140,7 @@ async function sync(job, ctx = { stillOwned: async () => true }) {
           const found = await providerCall('find', correlationKey);
           const part = found ? await providerCall('update', found.id, wantedPart) : await providerCall('create', wantedPart);
           if (part?.waitingRoom !== true) fail('zoom_waiting_room_disabled', 409);
-          parts.push({ index: i + 1, correlationKey, externalId: part.id, joinUrl: participantUrl(part.joinUrl), startsAt, minutes: lengths[i] });
+          parts.push({ index: i + 1, correlationKey, externalId: part.id, joinUrl: participantUrl(part.joinUrl, { automatic: true }), startsAt, minutes: lengths[i] });
           offset += lengths[i];
         }
         // Tramos que ya no hacen falta (clase más corta o cuenta con licencia).
@@ -152,7 +156,7 @@ async function sync(job, ctx = { stillOwned: async () => true }) {
         // Refresh o reconexión de la misma cuenta no invalida el efecto ya aplicado.
         const connected = currentConnection?.status === 'connected'
           && (await connection.readTokens(currentConnection)).accountId === tokens.accountId;
-        await ref.update({ connectionId: row.id, externalId: meeting?.id || ref.externalId, joinUrl: terminal.includes(session.status) ? null : meeting ? participantUrl(meeting.joinUrl) : null,
+        await ref.update({ connectionId: row.id, externalId: meeting?.id || ref.externalId, joinUrl: terminal.includes(session.status) ? null : meeting ? participantUrl(meeting.joinUrl, { automatic: true }) : null,
           parts: terminal.includes(session.status) || !parts.length ? null : parts,
           syncedVersion: changed ? ref.syncedVersion : session.version, status: changed ? 'pending' : !connected ? 'needs_attention' : terminal.includes(session.status) ? 'cancelled' : 'ready',
           lastError: connected ? null : 'integration_not_connected', attempts: ref.attempts + 1 }, { transaction });
@@ -181,7 +185,7 @@ async function join(user, sessionId, part) {
   if (session.status !== 'confirmed' || (!isOwner && seat.status === 'cancelled')) fail('proposal_stale');
   const ref = await M.ExternalSyncRef.findOne({ where: { sessionId: session.id, provider: 'zoom' } });
   if (ref?.manualJoinUrl) return { joinUrl: participantUrl(ref.manualJoinUrl), manual: true };
-  if (!ref?.externalId && isOwner) fail('provider_unavailable', 503);
+  if (!ref || (isOwner && !ref.externalId)) fail('zoom_meeting_pending');
   if (ref?.status !== 'ready') fail('integration_not_connected');
   // Clases partidas por el tope de 40 min de Zoom Basic: tramo pedido o, por defecto, el que corresponde a la hora actual.
   const list = partsOf(session, ref);
@@ -190,8 +194,8 @@ async function join(user, sessionId, part) {
     : [...list].reverse().find(p => Date.now() >= Date.parse(p.startsAt) - 5 * 60000) || list[0];
   const info = list.length > 1 ? { part: chosen.index, parts: list.map(p => partMeta(p, session)) } : {};
   if (!isOwner) {
-    return { joinUrl: participantUrl(chosen.joinUrl, chosen.index === 1 && !ref.externalId), manual: false, ...info,
-      ...(list.length > 1 ? { parts: list.map(p => ({ ...partMeta(p, session), joinUrl: participantUrl(p.joinUrl, p.index === 1 && !ref.externalId) })) } : {}) };
+    return { joinUrl: participantUrl(chosen.joinUrl, { automatic: true, legacy: chosen.index === 1 && !ref.externalId }), manual: false, ...info,
+      ...(list.length > 1 ? { parts: list.map(p => ({ ...partMeta(p, session), joinUrl: participantUrl(p.joinUrl, { automatic: true, legacy: p.index === 1 && !ref.externalId }) })) } : {}) };
   }
   const { tokens } = await connection.credentials(session.teacherId);
   let hostUrl;

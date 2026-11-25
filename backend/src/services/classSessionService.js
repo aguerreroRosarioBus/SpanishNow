@@ -1,12 +1,13 @@
 // Agenda W06. Toda mutación bloquea docente → sesión → alumnos ordenados → compras ordenadas.
 // Nunca llama proveedores dentro de la transacción; el saldo solo pasa por classCredits.
 const { Op, Transaction } = require('sequelize');
-const { createHash } = require('node:crypto');
+const { createHash, randomUUID } = require('node:crypto');
 const sequelize = require('../config/database');
 const M = require('../models');
 const time = require('../domain/classTime');
 const credits = require('./classCredits');
 const outbox = require('./outbox');
+const features = require('../config/features');
 const chat = require('./chatService');
 const { validatePolicy } = require('../domain/classPolicy');
 
@@ -329,16 +330,18 @@ async function ics(user, sessionId) {
   if (session.teacherId !== user.id && !seats.some(s => s.userId === user.id && (s.status !== 'cancelled' || session.status === 'cancelled'))) fail('not_found', {}, 404);
   if (!session.confirmedAt || !['confirmed', 'cancelled', 'completed'].includes(session.status)) fail('not_found', {}, 404);
   const ref = await M.ExternalSyncRef.findOne({ where: { sessionId: session.id, provider: 'zoom' } });
+  const { participantUrl } = require('./zoomService');
   let zoomJoinUrl = null;
   try {
-    const url = new URL(ref?.manualJoinUrl || (ref?.status === 'ready' ? ref.joinUrl : '') || '');
-    if (url.protocol === 'https:' && (url.hostname === 'zoom.us' || url.hostname.endsWith('.zoom.us'))) zoomJoinUrl = url.href;
+    const automatic = !ref?.manualJoinUrl;
+    const url = ref?.manualJoinUrl || (ref?.status === 'ready' ? ref.joinUrl : null);
+    if (url) zoomJoinUrl = participantUrl(url, { automatic, legacy: automatic });
   } catch { /* sin enlace de participante listo */ }
   // Clase partida en reuniones consecutivas (tope de 40 min de Zoom Basic): los enlaces de los tramos siguientes.
   const zoomExtraUrls = [];
   if (!ref?.manualJoinUrl && ref?.status === 'ready') {
     for (const p of Array.isArray(ref.parts) ? ref.parts : []) {
-      try { zoomExtraUrls.push({ index: p.index, url: require('./zoomService').participantUrl(p.joinUrl) }); } catch { /* tramo sin enlace válido */ }
+      try { zoomExtraUrls.push({ index: p.index, url: participantUrl(p.joinUrl, { automatic: true }) }); } catch { /* tramo sin enlace válido */ }
     }
   }
   const frontend = require('./googleCalendarService').frontendUrl(); // validado: https fuera de desarrollo
@@ -351,24 +354,37 @@ async function retrySync(user, sessionId) {
   const support = hasPermission(user, 'class_sessions.support');
   return locked(support ? null : user, sessionId, async ({ session, transaction }) => {
     if (user.id !== session.teacherId && !support) fail('forbidden', {}, 403);
+    const now = new Date();
+    const future = session.status === 'confirmed' && session.startsAt > now;
     const all = await M.ExternalSyncRef.findAll({ where: { sessionId: session.id }, transaction });
-    // Se reintentan los proveedores conectados; fallar solo si ninguno lo está (Zoom sin conectar no frena a Calendar).
+    const connections = await M.ExternalConnection.findAll({
+      where: { userId: session.teacherId, provider: ['zoom', 'google_calendar'], status: 'connected' }, transaction
+    });
     const refs = [];
-    for (const ref of all) {
-      if (await M.ExternalConnection.count({ where: { userId: session.teacherId, provider: ref.provider, status: 'connected' }, transaction })) refs.push(ref);
+    for (const { provider } of connections) {
+      if (!features.isEnabled(provider)) continue;
+      const existing = all.find(ref => ref.provider === provider);
+      if (!existing && !future) continue;
+      const ref = existing || await M.ExternalSyncRef.create({
+        sessionId: session.id, provider, correlationKey: `${provider}:session:${session.id}`, status: 'pending'
+      }, { transaction });
+      refs.push(ref);
+
+      const topic = provider === 'zoom' ? 'zoom.sync' : 'calendar.sync';
+      const jobScope = { aggregateType: 'class_sessions', aggregateId: session.id, aggregateVersion: session.version, topic };
+      if (await M.OutboxJob.count({ where: { ...jobScope, status: ['pending', 'running'] }, transaction })) continue;
+      const failedJob = await M.OutboxJob.findOne({ where: { ...jobScope, status: 'failed' }, order: [['id', 'DESC']], transaction });
+      const force = provider === 'google_calendar' && ref.status === 'needs_attention' && session.status === 'confirmed';
+      if (!failedJob && !force && !(future && (!existing || ref.status !== 'ready'))) continue;
+      const payload = force ? { ...failedJob?.payload, force: true } : failedJob?.payload;
+      if (failedJob) {
+        await failedJob.update({ status: 'pending', attempts: 0, runAt: now, lastError: null, payload }, { transaction });
+      } else {
+        await outbox.enqueue({ ...jobScope, payload, dedupeKey: `${topic}:${session.id}:v${session.version}:retry:${randomUUID()}` }, { transaction });
+      }
+      if (session.status === 'confirmed') await ref.update({ status: 'pending', lastError: null, attempts: 0 }, { transaction });
     }
     if (!refs.length) fail('integration_not_connected');
-    for (const ref of refs) {
-      const topic = ref.provider === 'zoom' ? 'zoom.sync' : 'calendar.sync';
-      await M.OutboxJob.update({ status: 'pending', attempts: 0, runAt: new Date(), lastError: null }, {
-        where: { aggregateType: 'class_sessions', aggregateId: session.id, aggregateVersion: session.version, topic, status: 'failed' }, transaction });
-      // W07: una divergencia o un fallo de Calendar se resuelve desde la app con un reintento que fuerza el estado vigente.
-      if (ref.provider === 'google_calendar' && ref.status === 'needs_attention' && session.status === 'confirmed') {
-        await ref.update({ status: 'pending', lastError: null, attempts: 0 }, { transaction });
-        await outbox.enqueue({ topic, aggregateType: 'class_sessions', aggregateId: session.id, aggregateVersion: session.version,
-          dedupeKey: `calendar.sync:${session.id}:v${session.version}:retry:${Date.now()}`, payload: { force: true } }, { transaction });
-      }
-    }
     await audit(session, user.id, 'sync_retry', { version: session.version }, transaction);
     return user.id === session.teacherId ? detail(user, session.id, transaction) : { id: session.id, sync: refs.map(r => ({ provider: r.provider, status: r.status, syncedVersion: r.syncedVersion })) };
   });

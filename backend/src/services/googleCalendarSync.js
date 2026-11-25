@@ -50,11 +50,11 @@ async function buildEvent(session, ref) {
   const extra = zoom?.manualJoinUrl || zoom?.status !== 'ready' ? [] : (Array.isArray(zoom.parts) ? zoom.parts : []);
   const label = n => (extra.length ? `${text.zoom} (${n}/${extra.length + 1})` : text.zoom);
   if (zoomLink) {
-    try { lines.push(`${label(1)}: ${require('./zoomService').participantUrl(zoomLink, !zoom.manualJoinUrl)}`); }
+    try { lines.push(`${label(1)}: ${require('./zoomService').participantUrl(zoomLink, { automatic: !zoom.manualJoinUrl, legacy: !zoom.manualJoinUrl })}`); }
     catch { /* W08: sin enlace de participante válido; nunca enviar un start_url heredado. */ }
   }
   for (const p of extra) {
-    try { lines.push(`${label(p.index)}: ${require('./zoomService').participantUrl(p.joinUrl)}`); } catch { /* tramo sin enlace válido */ }
+    try { lines.push(`${label(p.index)}: ${require('./zoomService').participantUrl(p.joinUrl, { automatic: true })}`); } catch { /* tramo sin enlace válido */ }
   }
   if (extra.length) lines.push(text.zoomParts);
   return {

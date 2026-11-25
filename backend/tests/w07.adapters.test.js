@@ -1,6 +1,7 @@
 // W07 · reglas puras: ICS, id determinista del evento y adaptador real contra un fetch simulado (sin red ni cuentas).
 process.env.GOOGLE_TOKEN_ENCRYPTION_KEY = Buffer.alloc(32, 5).toString('base64');
 process.env.GOOGLE_OAUTH_CLIENT_ID = 'cid'; process.env.GOOGLE_OAUTH_CLIENT_SECRET = 'secret';
+process.env.GOOGLE_CALENDAR_REDIRECT_URI = 'http://localhost:3000/api/integrations/google-calendar/callback';
 const { buildIcs } = require('../src/services/calendarIcs');
 const { eventIdFor } = require('../src/services/googleCalendarSync');
 const live = require('../src/services/googleCalendar/live');

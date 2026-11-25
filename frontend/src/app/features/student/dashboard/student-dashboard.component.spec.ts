@@ -42,6 +42,23 @@ describe('StudentDashboardComponent (reiniciar progreso)', () => {
     expect(enrollments.getMyCourses).toHaveBeenCalledTimes(2); // recarga tras reiniciar
   });
 
+  it('A2-01: muestra el certificado anterior con progreso actual al 0 %', async () => {
+    const { fixture } = await create();
+    fixture.componentInstance.progressByEnrollment.set({
+      5: {
+        stories: [{ storyId: 1, narrativeCompleted: false }], quizzes: [],
+        certificate: { eligible: false, code: 'ABC', missing: { stories: 1, quizzes: 0 } }
+      } as any
+    });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Certificado obtenido');
+    expect(fixture.nativeElement.textContent).not.toContain('Repasar curso');
+    expect(fixture.nativeElement.querySelector('[role="progressbar"]').getAttribute('aria-valuenow')).toBe('0');
+    fixture.componentInstance.resetCourseProgress(enrollment as any);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('seguirá disponible');
+  });
+
   it('cancelar no llama al backend', async () => {
     const { fixture, enrollments } = await create();
     fixture.componentInstance.resetCourseProgress(enrollment as any);

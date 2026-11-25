@@ -252,11 +252,17 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
     this.patch(u, { role: role as 'teacher' | 'student' }, 'adminUsers.roleUpdated');
   }
 
-  togglePermission(u: AdminUser, key: string, checked: boolean): void {
-    const next = checked
-      ? [...new Set([...u.permissions, key])]
-      : u.permissions.filter((p) => p !== key);
-    this.patch(u, { permissions: next }, 'adminUsers.permissionsUpdated');
+  togglePermission(u: AdminUser, key: string, checkbox: HTMLInputElement): void {
+    const current = this.users().find(user => user.id === u.id);
+    if (!current || this.permissionDisabled(current, key)) {
+      // Dos eventos pueden llegar antes de que Angular deshabilite los controles.
+      checkbox.checked = this.hasPermission(current ?? u, key);
+      return;
+    }
+    const next = checkbox.checked
+      ? [...new Set([...current.permissions, key])]
+      : current.permissions.filter(permission => permission !== key);
+    this.patch(current, { permissions: next }, 'adminUsers.permissionsUpdated');
   }
 
   askSuspend(u: AdminUser): void {

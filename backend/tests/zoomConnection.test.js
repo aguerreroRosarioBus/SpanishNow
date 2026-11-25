@@ -12,6 +12,27 @@ beforeAll(() => {
 });
 afterAll(() => { delete process.env.FEATURE_ZOOM; delete process.env.INTEGRATIONS_FAKE; });
 const { connected } = require('./zoomFixtures');
+test.each(['', 'clave-inválida'])('C2-01: Calendar y Zoom reportan una clave de cifrado ausente o inválida', async value => {
+  const { teacher } = await chain();
+  const key = process.env.GOOGLE_TOKEN_ENCRYPTION_KEY;
+  const calendar = process.env.FEATURE_GOOGLE_CALENDAR;
+  process.env.GOOGLE_TOKEN_ENCRYPTION_KEY = value;
+  process.env.FEATURE_GOOGLE_CALENDAR = '1';
+  try {
+    for (const provider of ['google-calendar', 'zoom']) {
+      const response = await as(teacher).post(`/api/integrations/${provider}/connect`);
+      expect(response.status).toBe(503);
+      expect(response.body.code).toBe('integration_encryption_not_configured');
+      expect(response.body.error).toContain('GOOGLE_TOKEN_ENCRYPTION_KEY');
+    }
+    expect(await M.ExternalConnection.count({ where: { userId: teacher.id } })).toBe(0);
+  } finally {
+    process.env.GOOGLE_TOKEN_ENCRYPTION_KEY = key;
+    if (calendar === undefined) delete process.env.FEATURE_GOOGLE_CALENDAR;
+    else process.env.FEATURE_GOOGLE_CALENDAR = calendar;
+  }
+});
+
 test('OAuth fake por docente, cifrado, state de un uso, confirmación autenticada, perfil sin credenciales', async () => {
   const fixture = await chain(); const t = fixture.teacher;
   const { agent, url } = await connected(t);

@@ -37,6 +37,7 @@ export interface ClassOffer {
 export interface ClassCohort {
   id:number; teacherId:number; templateVersionId:number; groupSize:number; acceptedCount:number;
   status:'forming'|'ready'|'cancelled'|'completed'; formingDeadlineAt:string; tentativeStartsAt:string;
+  confirmedSession?: { id: number; startsAt: string } | null;
   members?:{userId:number;status:string;name?:string;conversationId?:number}[]; invitation?:{status:string};
 }
 export interface ClassOrder { id:number;offerId:number;provider:'fake'|'hotmart';status:'pending'|'paid'|'failed'|'paid_needs_review'|'partially_refunded'|'refunded';amount:number;currency:string;reviewReason:string|null;checkoutExpiresAt?:string|null;reportedAmount?:number|null;reportedCurrency?:string|null;providerTransactionId?:string|null;providerProductId?:string|null;providerOfferCode?:string|null;purchaseStatus?:string|null;frozenFromStatus?:string|null;unitsAvailable?:number|null;unitsReserved?:number|null;unitsConsumed?:number|null }

@@ -48,7 +48,11 @@ styles:[`
   <h2 class="h4">{{'packages.group.existing'|t}}</h2>
   @if(groupsLoading()){<p role="status">{{'packages.loading'|t}}</p>}
   @else if(groupsFailed()){<button type="button" class="btn btn-secondary" (click)="ngOnInit()">{{'packages.purchase.retry'|t}}</button>}
-  @else{<ul class="group-list">@for(c of groups();track c.id){<li><a class="group-link" [routerLink]="['/class-cohorts',c.id]"><strong>{{groupName(c)}}</strong><span>{{('packages.group.status.'+c.status)|t}} · {{c.acceptedCount}}/{{c.groupSize}}</span><small>{{i18n.formatInstant(c.tentativeStartsAt,zone())}} · {{zone()}}</small></a></li>}@empty{<li class="state-box">{{'refine.noGroups'|t}}</li>}</ul>}
+  @else{<ul class="group-list">@for(c of groups();track c.id){<li><a class="group-link" [routerLink]="['/class-cohorts',c.id]"><strong>{{groupName(c)}}</strong><span>@if (c.confirmedSession; as session) {
+    {{ 'packages.group.confirmedSession' | t:{ date: i18n.formatInstant(session.startsAt, zone()) } }}
+  } @else { {{ ('packages.group.status.' + c.status) | t }} }
+  · {{c.acceptedCount}}/{{c.groupSize}}</span>
+  @if (!c.confirmedSession) { <small>{{i18n.formatInstant(c.tentativeStartsAt,zone())}} · {{zone()}}</small> }</a></li>}@empty{<li class="state-box">{{'refine.noGroups'|t}}</li>}</ul>}
 </div>`})
 export class GroupsComponent implements OnInit {
   private api=inject(PackagesService);private chat=inject(ChatService);private router=inject(Router);private destroy=inject(DestroyRef);private preferences=inject(UserPreferencesService);readonly i18n=inject(I18nService);

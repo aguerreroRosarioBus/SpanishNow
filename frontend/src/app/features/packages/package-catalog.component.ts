@@ -4,6 +4,7 @@ import { FormsModule, FormBuilder, FormGroup, ReactiveFormsModule, Validators } 
 import { forkJoin } from 'rxjs';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { I18nService } from '../../core/i18n/i18n.service';
+import { formatPackageValidity } from './package-validity';
 import { EXPECTATION_FIELDS } from '../legal/legal.model';
 import { PackagesService } from './packages.service';
 import { ClassSettings, PackageTemplate, SCHEDULE_LIMITS } from './packages.model';
@@ -71,7 +72,7 @@ export class PackageCatalogComponent implements OnInit {
     expectations:this.fb.group(Object.fromEntries(this.locales.map(l=>[l,this.fb.group(Object.fromEntries(EXPECTATION_FIELDS.map(k=>[k,['',Validators.maxLength(4000)]])))])))
   });
   /** D-06: 720 h se leen como 30 días; si no es múltiplo de 24 se conservan las horas. */
-  validityLabel(hours:number){return hours>0&&hours%24===0?this.i18n.t('packages.ui.validityDays',{count:hours/24}):this.i18n.t('packages.ui.validityHours',{count:hours});}
+  validityLabel(hours: number) { return formatPackageValidity(this.i18n, hours); }
   ngOnInit() { this.reload(); }
   reload() {
     this.busy.set(true); this.failure.set(null);

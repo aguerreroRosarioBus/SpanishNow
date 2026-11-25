@@ -236,10 +236,17 @@ test('opciones solo del docente dueño y enlace Zoom solo de participante, sin a
   expect((await as(other).get(`/api/class-sessions/options?conversationId=${c.conversations[0].id}`)).status).toBe(404);
   await M.ExternalSyncRef.update({ joinUrl: 'https://zoom.us/j/12345', status: 'ready' }, { where: { sessionId: s.id, provider: 'zoom' } });
   process.env.FEATURE_ZOOM = '1'; // W08 integra el join con su feature flag.
+  const fake = process.env.INTEGRATIONS_FAKE;
   try {
-    expect((await as(c.students[0]).get(`/api/class-sessions/${s.id}/join`)).body).toEqual({ joinUrl: 'https://zoom.us/j/12345', manual: false });
-    expect((await as(c.teacher).get(`/api/class-sessions/${s.id}/join`)).body.code).toBe('provider_unavailable');
-  } finally { delete process.env.FEATURE_ZOOM; }
+    for (const [flag, host] of [['0', 'zoom.us'], ['1', 'zoom.fake.invalid']]) {
+      process.env.INTEGRATIONS_FAKE = flag;
+      expect((await as(c.students[0]).get(`/api/class-sessions/${s.id}/join`)).body).toEqual({ joinUrl: `https://${host}/j/12345`, manual: false });
+    }
+    expect((await as(c.teacher).get(`/api/class-sessions/${s.id}/join`)).body.code).toBe('zoom_meeting_pending');
+  } finally {
+    delete process.env.FEATURE_ZOOM;
+    if (fake === undefined) delete process.env.INTEGRATIONS_FAKE; else process.env.INTEGRATIONS_FAKE = fake;
+  }
   expect((await as(c.teacher).post(`/api/class-sessions/${s.id}/sync/retry`)).body.code).toBe('integration_not_connected');
 });
 
@@ -434,4 +441,50 @@ test('Tanda B: la misma clave tras cancelar devuelve la clase cancelada (200) y 
   // Una clave nueva con los mismos datos es otro intento y sí propone.
   const again = await as(c.teacher).post('/api/class-sessions').set('Idempotency-Key', uuid()).send(c.body);
   expect(again.status).toBe(201); expect(again.body.id).not.toBe(first.body.id); expect(again.body.status).toBe('proposed');
+});
+
+
+test('D2-08: el listado y detalle del docente muestran el horario confirmado sin ampliar la invitación', async () => {
+  process.env.FEATURE_CLASS_PACKAGES = '1';
+  try {
+    const c = await chain({ size: 2 });
+    await c.cohort.update({ status: 'ready' });
+    const session = await confirmed(c);
+    const expected = { id: session.id, startsAt: session.startsAt.toISOString() };
+    const list = await as(c.teacher).get('/api/teacher/class-cohorts');
+    expect(list.status).toBe(200);
+    expect(list.body).toEqual(expect.arrayContaining([expect.objectContaining({ id: c.cohort.id, confirmedSession: expected })]));
+    const detail = await as(c.teacher).get(`/api/class-cohorts/${c.cohort.id}`);
+    expect(detail.body.confirmedSession).toEqual(expected);
+    const invite = await as(c.students[0]).get(`/api/class-cohorts/${c.cohort.id}`);
+    expect(invite.status).toBe(200);
+    expect(invite.body.confirmedSession).toBeUndefined();
+  } finally { delete process.env.FEATURE_CLASS_PACKAGES; }
+});
+
+test('D2-01: reintentos concurrentes de una clase antigua crean una referencia y un job por proveedor', async () => {
+  const old = { zoom: process.env.FEATURE_ZOOM, calendar: process.env.FEATURE_GOOGLE_CALENDAR };
+  process.env.FEATURE_ZOOM = '1'; process.env.FEATURE_GOOGLE_CALENDAR = '1';
+  const c = await chain();
+  const session = await confirmed(c);
+  const scope = { sessionId: session.id };
+  const jobs = { aggregateType: 'class_sessions', aggregateId: session.id, topic: ['zoom.sync', 'calendar.sync'] };
+  try {
+    await M.ExternalSyncRef.destroy({ where: scope });
+    for (const provider of ['google_calendar', 'zoom']) {
+      await M.ExternalConnection.create({ userId: c.teacher.id, provider, status: 'connected' });
+    }
+    const retry = () => as(c.teacher).post(`/api/class-sessions/${session.id}/sync/retry`);
+    const results = await Promise.all([retry(), retry()]);
+    expect(results.map(result => result.status)).toEqual([200, 200]);
+    expect(await M.ExternalSyncRef.count({ where: scope })).toBe(2);
+    expect(await M.OutboxJob.count({ where: jobs })).toBe(2);
+    expect(await credits.balance(c.purchases[0].id)).toMatchObject({ available: 3, reserved: 1 });
+    expect((await as(c.students[0]).post(`/api/class-sessions/${session.id}/sync/retry`)).status).toBe(403);
+  } finally {
+    await M.OutboxJob.destroy({ where: jobs });
+    for (const [key, value] of [['FEATURE_ZOOM', old.zoom], ['FEATURE_GOOGLE_CALENDAR', old.calendar]]) {
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    }
+  }
 });

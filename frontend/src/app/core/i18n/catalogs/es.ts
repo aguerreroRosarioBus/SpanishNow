@@ -236,6 +236,7 @@ export const ES = {
   'errors.operation_key_conflict': 'El identificador de esta solicitud ya se usó con otros datos.',
   'errors.rate_limited': 'Demasiadas solicitudes. Espera antes de intentar de nuevo.',
   'errors.payments_unavailable': 'Los pagos no están disponibles por el momento. Intenta más tarde.',
+  'errors.integration_encryption_not_configured': 'Configura GOOGLE_TOKEN_ENCRYPTION_KEY con una clave de 32 bytes en base64 para conectar esta integración.',
   'errors.provider_unavailable': 'El servicio externo no está disponible por el momento. Intenta más tarde.',
   'errors.live_not_live': "La clase no está en vivo. Pide al docente que la inicie.",
   'errors.live_editing_paused': "El docente pausó la edición de los alumnos.",

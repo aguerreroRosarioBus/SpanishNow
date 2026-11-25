@@ -47,8 +47,11 @@ export class StudentDashboardComponent implements OnInit {
     const p = this.progressByEnrollment()[e.id];
     if (p === undefined) return 'refine.progressLoading';
     if (p === null) return 'refine.progressUnavailable';
-    if (p.certificate?.eligible || p.certificate?.code) return 'refine.completed';
+    if (p.certificate?.eligible) return 'refine.completed';
     return p.stories.some(s => s.narrativeCompleted || s.lastBlockKey) ? 'refine.inProgress' : 'refine.notStarted';
+  }
+  certificateObtained(e: Enrollment): boolean {
+    return Boolean(this.progressByEnrollment()[e.id]?.certificate?.code);
   }
   courseAction(e: Enrollment): string {
     const state = this.courseState(e);

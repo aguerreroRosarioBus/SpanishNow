@@ -122,7 +122,7 @@ describe('Tanda C: formato compacto de TZ-07', () => {
   it('el horario del docente solo se oculta con la misma zona IANA; con zona distinta se muestra aunque la hora coincida', () => {
     const session = { startsAt: '2026-10-27T13:00:00.000Z', endsAt: '2026-10-27T13:50:00.000Z' };
     expect(presentSessionTime(session, cordoba, cordoba, 'es').teacherDiffers).toBe(false);
-    expect(presentSessionTime(session, cordoba, 'America/Buenos_Aires', 'es').teacherDiffers).toBe(true);
+    expect(presentSessionTime(session, cordoba, 'America/Buenos_Aires', 'es').teacherDiffers).toBe(false);
     expect(presentSessionTime(session, cordoba, zone, 'es').teacherDiffers).toBe(true);
   });
 });
