@@ -62,7 +62,7 @@ describe('Saldo de clases: jerarquía de la tarjeta (#71)',()=>{
   it('una sola acción principal por tarjeta y «Actualizar estado» ya no está suelto',()=>{
     render(snap,{purchase:{expiresAt:expiry,balance}});
     expect(last.querySelectorAll('.btn-primary').length).toBe(1);
-    expect(last.querySelector('.btn-primary')?.textContent?.trim()).toBe('Agendar una clase');
+    expect(last.querySelector('.btn-primary')?.textContent?.trim()).toBe('Ver agenda');
     expect(last.textContent).not.toContain('Actualizar estado');
   });
   it('sin saldo se abre conversación; con saldo la agenda tiene prioridad y la renovación sigue disponible',()=>{

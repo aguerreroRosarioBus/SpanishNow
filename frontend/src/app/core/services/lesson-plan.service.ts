@@ -42,6 +42,8 @@ export interface LessonPlan {
   storyId: number;
   revision: number;
   status: 'draft' | 'published';
+  /** Solo al abrir el compositor de una historia publicada: aún no hay borrador; `revision` es la que tendrá al primer guardado. */
+  publishedRevision?: number;
   audioSlowUrl?: string | null;
   audioNormalUrl?: string | null;
   blocks: LessonBlock[];

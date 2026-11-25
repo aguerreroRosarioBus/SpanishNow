@@ -1,11 +1,11 @@
-@if (session.reinforcementBlocks().length > 0) {
+@if (blocks().length > 0) {
   <section class="practice" aria-labelledby="practice-title">
     <div class="practice__head">
       <h2 id="practice-title" class="practice__title">{{ 'player.practiceTitle' | t }}</h2>
       <span class="practice__hint">{{ 'player.optionalUnit' | t: {number: nav.unitNumber()} }}</span>
     </div>
     <div class="practice__grid">
-      @for (extra of session.reinforcementBlocks(); track extra.blockKey) {
+      @for (extra of blocks(); track extra.blockKey) {
         <div class="practice-card">
           <span class="icon-tile" aria-hidden="true"><app-icon [name]="icon(extra)" [size]="18" /></span>
           <div class="practice-card__text">
