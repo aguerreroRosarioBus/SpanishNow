@@ -324,6 +324,8 @@ async function seedClasses({ teacher, students, policy, historyDay, teacherIndex
   const sessionFor = async (pkgList, participants, startsAt, status, cohortId = null) => {
     const version = pkgList[0].purchase; const minutes = version.minutesPerSession;
     const participantIds = participants.map(p => p.id);
+    // Los instantes caen en segundo 0, como los que produce resolveLocalIntent; si no, la ficha avisaría falsamente que cambiaron las reglas de zona (A-10).
+    startsAt = new Date(Math.floor(+startsAt / 60000) * 60000);
     const commitments = await M.ClassSessionParticipant.findAll({ where: { userId: participantIds }, attributes: ['sessionId'], transaction });
     const occupied = await M.ClassSession.findAll({ where: { status: ['proposed','forming','confirmed','completed','student_no_show'], [Op.or]: [{ teacherId: teacher.id }, { id: commitments.map(c => c.sessionId) }] }, transaction });
     let attempts = 0;

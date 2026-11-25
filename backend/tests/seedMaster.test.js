@@ -81,6 +81,18 @@ describe('seed maestro persistido',()=>{
     expect((await require('../src/services/liveClassService').list(existingStudent)).length).toBeGreaterThan(0);
     for(const file of assets.files.filter(f=>f.endsWith('.pdf')))expect(fs.readFileSync(path.join(directory,file)).subarray(0,5).toString()).toBe('%PDF-');
   },120000);
+  test('ninguna sesión sembrada dispara el aviso de reglas de zona (A-10)',async()=>{
+    const time=require('../src/domain/classTime');
+    const sessions=await M.ClassSession.findAll({where:{id:{[Op.in]:result.manifest.rows.ClassSession}}});
+    expect(sessions.length).toBeGreaterThan(30);
+    for(const s of sessions){
+      expect(s.startsAt.getUTCSeconds()).toBe(0);expect(s.endsAt.getUTCSeconds()).toBe(0);
+      const expected=time.resolveLocalIntent({localStart:s.localStart,timeZone:s.timeZone,offset:s.utcOffset,disambiguation:s.disambiguation,minutes:s.minutes});
+      expect(expected.startsAt).toBe(s.startsAt.toISOString());expect(expected.endsAt).toBe(s.endsAt.toISOString());
+    }
+    const detail=await require('../src/services/classSessionService').detail({id:sessions[0].teacherId,role:'teacher'},sessions[0].id);
+    expect(detail.timeZoneRulesChanged).toBe(false);
+  },120000);
   test('repetir no cambia filas, contraseñas, fechas, progreso ni identidad del dataset',async()=>{
     const before=await M.User.findOne({where:{id:result.manifest.studentIds[0]},raw:true});
     const second=await run({models:M,sequelize,options:{...options,password:'otra-password',now:new Date(Date.now()+86400000)},assets});
