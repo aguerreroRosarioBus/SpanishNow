@@ -1,12 +1,19 @@
 // Datos exclusivamente ficticios. No contienen cuentas, enlaces ni medios de proveedores.
 const PEOPLE = ['Emma Wilson', 'Oliver Brooks', 'Sofia Martin', 'Liam Johnson', 'Charlotte Lee', 'Noah Williams', 'Amelia Davis', 'Ethan Miller', 'Isabella Moore', 'James Taylor', 'Mia Anderson', 'Lucas White', 'Harper Clark', 'Benjamin Lewis', 'Evelyn Walker', 'Henry Hall', 'Abigail Young', 'Alexander King', 'Emily Scott', 'Daniel Green', 'Elizabeth Adams', 'Michael Baker', 'Avery Nelson', 'Samuel Carter'];
 const COURSES = [
-  { key: 'primeros-pasos', title: 'Primeros pasos: español para conectar', level: 'A1', price: 0, color: '#d96d45', units: ['Presentarnos y conocernos', 'La vida en el barrio', 'Pequeños planes'], person: 'Ana', place: 'Rosario', object: 'un cuaderno azul', goal: 'conocer a sus vecinos' },
-  { key: 'historias-cotidianas', title: 'Historias cotidianas: entender sin traducir', level: 'A1', price: 4900, color: '#9d445c', units: ['Personas y rutinas', 'Encuentros inesperados', 'Celebrar juntos'], person: 'Diego', place: 'Córdoba', object: 'una mochila verde', goal: 'organizar una merienda para sus amigos' },
-  { key: 'viajar-con-confianza', title: 'Viajar con confianza por América Latina', level: 'A2', price: 6900, color: '#347e80', units: ['Llegar y orientarse', 'Sabores y mercados', 'Un viaje para recordar'], person: 'Lucía', place: 'Mendoza', object: 'un mapa de la ciudad', goal: 'encontrar una feria de libros' },
-  { key: 'conversaciones-reales', title: 'Conversaciones reales: historias que nos unen', level: 'B1', price: 8900, color: '#496c9f', units: ['Contar experiencias', 'Resolver imprevistos', 'Mirar hacia adelante'], person: 'Martín', place: 'Salta', object: 'una cámara pequeña', goal: 'preparar una exposición de fotografías' },
-  { key: 'voces-y-perspectivas', title: 'Voces y perspectivas: un club de lectura', level: 'B2', price: 9900, color: '#67764d', draft: true, units: ['Memoria e identidad', 'Decisiones compartidas', 'Imaginar otros futuros'], person: 'Valentina', place: 'La Plata', object: 'un libro de cuentos', goal: 'fundar un club de lectura en el barrio' }
+  { key: 'primeros-pasos', altTitle: 'Español desde cero: primeras conversaciones', title: 'Primeros pasos: español para conectar', level: 'A1', price: 0, color: '#d96d45', units: ['Presentarnos y conocernos', 'La vida en el barrio', 'Pequeños planes'], person: 'Ana', place: 'Rosario', object: 'un cuaderno azul', goal: 'conocer a sus vecinos' },
+  { key: 'historias-cotidianas', altTitle: 'Relatos del día a día: comprender sin traducir', title: 'Historias cotidianas: entender sin traducir', level: 'A1', price: 4900, color: '#9d445c', units: ['Personas y rutinas', 'Encuentros inesperados', 'Celebrar juntos'], person: 'Diego', place: 'Córdoba', object: 'una mochila verde', goal: 'organizar una merienda para sus amigos' },
+  { key: 'viajar-con-confianza', altTitle: 'Viaje sin miedo: español para recorrer Latinoamérica', title: 'Viajar con confianza por América Latina', level: 'A2', price: 6900, color: '#347e80', units: ['Llegar y orientarse', 'Sabores y mercados', 'Un viaje para recordar'], person: 'Lucía', place: 'Mendoza', object: 'un mapa de la ciudad', goal: 'encontrar una feria de libros' },
+  { key: 'conversaciones-reales', altTitle: 'Charlas de verdad: relatos para hablar con soltura', title: 'Conversaciones reales: historias que nos unen', level: 'B1', price: 8900, color: '#496c9f', units: ['Contar experiencias', 'Resolver imprevistos', 'Mirar hacia adelante'], person: 'Martín', place: 'Salta', object: 'una cámara pequeña', goal: 'preparar una exposición de fotografías' },
+  { key: 'voces-y-perspectivas', altTitle: 'Miradas y voces: un club de lectura en español', title: 'Voces y perspectivas: un club de lectura', level: 'B2', price: 9900, color: '#67764d', draft: true, units: ['Memoria e identidad', 'Decisiones compartidas', 'Imaginar otros futuros'], person: 'Valentina', place: 'La Plata', object: 'un libro de cuentos', goal: 'fundar un club de lectura en el barrio' }
 ];
+// Cada docente recibe sus propios títulos (C-04): el primero conserva el título base, el segundo usa la variante `altTitle`
+// y cualquier docente posterior añade el número de edición, de modo que el catálogo nunca repite títulos entre docentes.
+function courseTitle(spec, teacherIndex) {
+  if (teacherIndex === 0) return spec.title;
+  if (teacherIndex === 1) return spec.altTitle;
+  return `${spec.title} (edición ${teacherIndex + 1})`;
+}
 const MOMENTS = [
   ['Un encuentro en la plaza', 'la plaza', 'por la mañana', 'Marta'],
   ['Una mesa junto a la ventana', 'el café', 'al mediodía', 'Pablo'],
@@ -87,4 +94,4 @@ const EXPECTATIONS = {
   es: { audience: 'Adultos que aprenden español mediante historias comprensibles.', prerequisites: 'Lee la descripción de nivel y avanza a tu ritmo.', objective: 'Comprender historias y usar expresiones frecuentes en contexto.', contents: 'Tres unidades, nueve historias, lectura guiada, vocabulario y evaluaciones.', selfStudy: 'Reserva veinte minutos, tres veces por semana, para leer y repasar.', outcomes: 'Reconocer expresiones, seguir una narración y contar una experiencia breve.', supportIncluded: 'Preguntas sobre las lecciones mediante comentarios del curso.', supportExcluded: 'Las clases individuales se contratan por separado; no se garantiza un nivel oficial.' },
   en: { audience: 'Adults learning Spanish through comprehensible stories.', prerequisites: 'Read the level description and work at your own pace.', objective: 'Understand stories and use common expressions in context.', contents: 'Three units, nine stories, guided reading, vocabulary and quizzes.', selfStudy: 'Set aside twenty minutes, three times a week, to read and review.', outcomes: 'Recognize expressions, follow a narrative and tell a short experience.', supportIncluded: 'Questions about the lessons through course comments.', supportExcluded: 'Individual classes are purchased separately; no official proficiency level is guaranteed.' }
 };
-module.exports = { PEOPLE, COURSES, lesson, EXPECTATIONS };
+module.exports = { PEOPLE, COURSES, courseTitle, lesson, EXPECTATIONS };

@@ -81,6 +81,29 @@ describe('seed maestro persistido',()=>{
     expect((await require('../src/services/liveClassService').list(existingStudent)).length).toBeGreaterThan(0);
     for(const file of assets.files.filter(f=>f.endsWith('.pdf')))expect(fs.readFileSync(path.join(directory,file)).subarray(0,5).toString()).toBe('%PDF-');
   },120000);
+  test('cada docente tiene títulos de curso propios y cada quiz tres preguntas distintas (C-04, A-09, A-08)',async()=>{
+    const {courseTitle,COURSES}=require('../seeds/master/content');
+    expect(new Set(COURSES.map(c=>courseTitle(c,1))).size).toBe(COURSES.length);
+    const titles=new Set(COURSES.flatMap(c=>[0,1,2,3].map(i=>courseTitle(c,i))));
+    expect(titles.size).toBe(COURSES.length*4);
+    const courses=await M.Course.findAll({where:{id:{[Op.in]:result.manifest.rows.Course}}});
+    expect(courses.length).toBe(10);
+    expect(new Set(courses.map(c=>c.title)).size).toBe(courses.length);
+    expect(new Set(courses.map(c=>c.slug)).size).toBe(courses.length);
+    // Un alumno que compra a ambos docentes ya no ve «el mismo curso» dos veces en sus compras (A-08).
+    const orders=await M.Order.findAll({where:{id:{[Op.in]:result.manifest.rows.Order},userId:existingStudent.id,status:'paid'}});
+    expect(orders.length).toBeGreaterThan(2);
+    const bought=orders.map(o=>courses.find(c=>c.id===o.courseId).title);
+    expect(new Set(bought).size).toBe(bought.length);
+    const quizzes=await M.UnitQuiz.findAll({where:{id:{[Op.in]:result.manifest.rows.UnitQuiz}}});
+    for(const quiz of quizzes){
+      const questions=await M.UnitQuizQuestion.findAll({where:{quizId:quiz.id},order:[['order','ASC']]});
+      expect(questions).toHaveLength(3);
+      const texts=questions.map(q=>q.prompt.replace(/^En «[^»]*»: /,''));
+      expect(new Set(texts).size).toBe(3);
+      expect(new Set(questions.map(q=>q.explanation)).size).toBe(3);
+    }
+  },120000);
   test('ninguna sesión sembrada dispara el aviso de reglas de zona (A-10)',async()=>{
     const time=require('../src/domain/classTime');
     const sessions=await M.ClassSession.findAll({where:{id:{[Op.in]:result.manifest.rows.ClassSession}}});

@@ -1,6 +1,6 @@
 const { randomBytes, randomUUID } = require('crypto');
 const { Op } = require('sequelize');
-const { PEOPLE, COURSES, lesson, EXPECTATIONS } = require('./content');
+const { PEOPLE, COURSES, courseTitle, lesson, EXPECTATIONS } = require('./content');
 const initialCatalog = require('../../src/domain/classInitialCatalog');
 const { DEFAULT_POLICY_V1 } = require('../../src/domain/classPolicy');
 const { FIELDS } = require('../../src/services/classCatalog');
@@ -110,7 +110,7 @@ async function run({ models: M, sequelize, options, assets, log = () => {} }) {
           dashboardToken: randomBytes(32).toString('base64url'), active: i !== 2, notes: 'Colaboración ficticia del seed maestro local.' }, historyDay(0.02)));
         for (const [ci, spec] of COURSES.entries()) {
           const courseAt = historyDay(0.03 + ci * 0.01);
-          const course = await add('Course', { teacherId: teacher.id, title: spec.title, slug: `master-${teacher.id}-${spec.key}`, description: `Aprende español con ${spec.person} en ${spec.place}. ${EXPECTATIONS.es.contents}`,
+          const course = await add('Course', { teacherId: teacher.id, title: courseTitle(spec, teacherIndex), slug: `master-${teacher.id}-${spec.key}`, description: `Aprende español con ${spec.person} en ${spec.place}. ${EXPECTATIONS.es.contents}`,
             level: spec.level, price: spec.price, currency: 'usd', isPublished: !spec.draft, imageUrl: assets.url(`${spec.key}.svg`), salesDescription: `${EXPECTATIONS.en.objective}\n\n${EXPECTATIONS.en.selfStudy}` }, courseAt);
           await add('CourseExpectations', { courseId: course.id, version: 1, expectations: EXPECTATIONS, updatedById: teacher.id }, courseAt);
           const data = { course, spec, units: [], stories: [] }; courses.push(data);
@@ -134,7 +134,7 @@ async function run({ models: M, sequelize, options, assets, log = () => {} }) {
               const plan = await add('LessonPlan', { storyId: story.id, revision: 1, status: spec.draft ? 'draft' : 'published', audioSlowUrl: audio('slow'), audioNormalUrl: audio('normal') }, courseAt);
               const blocks = vocabulary.slice(0,2).map(v => ({ planId: plan.id, blockKey: randomUUID(), type: 'expression', phase: 'before', vocabularyId: v.id, vocabularyRole: 'target', vocabularySnapshot: { word: v.word, translation: v.translation, example: v.example, partOfSpeech: v.partOfSpeech, audioUrl: null, imageUrl: v.imageUrl } }));
               for (const [fi, text] of content.frames.entries()) {
-                const blockKey = randomUUID(); blocks.push({ planId: plan.id, blockKey, type: 'keyframe', phase: 'during', text, required: true, imageUrl: assets.url(`${spec.key}.svg`), imageAlt: `Ilustración de ${spec.title}` });
+                const blockKey = randomUUID(); blocks.push({ planId: plan.id, blockKey, type: 'keyframe', phase: 'during', text, required: true, imageUrl: assets.url(`${spec.key}.svg`), imageAlt: `Ilustración de ${course.title}` });
                 const q = questions[fi];
                 blocks.push({ planId: plan.id, blockKey: randomUUID(), type: 'question', phase: 'during', questionId: q.id, contextBlockKey: blockKey,
                   questionSnapshot: { questionText: q.questionText, answerType: q.answerType, options: q.options, correctAnswer: q.correctAnswer, audioUrl: null } });
@@ -146,8 +146,8 @@ async function run({ models: M, sequelize, options, assets, log = () => {} }) {
               const selectedText = spec.person;
               await add('Tooltip', { targetType: 'keyframe', targetId: story.id, blockKey: kf.blockKey, startOffset: 0, endOffset: selectedText.length, selectedText,
                 tooltipContent: `${spec.person} es el personaje principal de esta historia.`, createdBy: teacher.id, isActive: true }, courseAt);
-              await add('UnitQuizQuestion', { quizId: quiz.id, order: si, prompt: `En «${content.title}»: ${content.questions[1].text}`, options: questions[1].options,
-                correctIndex: 0, explanation: content.frames[1] }, courseAt);
+              await add('UnitQuizQuestion', { quizId: quiz.id, order: si, prompt: `En «${content.title}»: ${content.questions[si].text}`, options: questions[si].options,
+                correctIndex: 0, explanation: content.frames[si] }, courseAt);
             }
             await add('Material', { courseId: course.id, unitId: unit.id, title: `Cuaderno de práctica: ${title}`, fileUrl: assets.url(`${spec.key}-${ui}.pdf`), sizeBytes: assets.sizes[`${spec.key}-${ui}.pdf`], order: ui }, courseAt);
           }
