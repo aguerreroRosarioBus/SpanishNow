@@ -121,3 +121,30 @@ describe('Tanda C: catálogo vacío',()=>{
     expect(labels.every(l=>l.includes('Cuatro clases'))).toBe(true);
   });
 });
+
+describe('D-06: catálogo legible para quien aún no está habilitado',()=>{
+  const setup=(items:CompleteTemplate[],settings$=of({classesEnabledAt:null,salesPausedAt:null,acceptsInquiries:false,sessionBufferMinutes:10,minLeadTimeHours:24}),list$=of(items))=>{
+    TestBed.configureTestingModule({imports:[PackageCatalogComponent],providers:[provideRouter([]),{provide:I18N_CATALOGS,multi:true,useValue:TUTORIAL_MESSAGES},{provide:I18N_CATALOGS,multi:true,useValue:PACKAGE_MESSAGES},{provide:PackagesService,useValue:{list:()=>list$,settings:()=>settings$,importInitial:()=>of(items),error:()=>''}}]});
+    TestBed.inject(I18nService).setLocale('es');
+    const f=TestBed.createComponent(PackageCatalogComponent);f.detectChanges();return f;
+  };
+  it('la vigencia se muestra en días cuando es múltiplo de 24 y en horas si no',()=>{
+    const f=setup([item,{...item,id:2,current:{...item.current,validityHours:720}},{...item,id:3,current:{...item.current,validityHours:30}}]);
+    const values=Array.from<HTMLElement>(f.nativeElement.querySelectorAll('.package-validity dd')).map(e=>e.textContent!.replace(/\s+/g,' ').trim());
+    expect(values).toEqual(['90 días transcurridos desde el pago','30 días transcurridos desde el pago','30 horas transcurridos desde el pago']);
+  });
+  it('el contador de paquetes no aparece hasta que llegó la respuesta',()=>{
+    const list$=new Subject<CompleteTemplate[]>();
+    const f=setup([],undefined,list$ as never);
+    expect(f.nativeElement.querySelector('.item-count')).toBeNull();
+    list$.next([item]);list$.complete();f.detectChanges();
+    expect(f.nativeElement.querySelector('.item-count')?.textContent?.trim()).toBe('1');
+  });
+  it('sin habilitación explica que puede crear borradores pero no vender; habilitado no muestra el aviso',()=>{
+    const f=setup([item]);
+    expect(f.nativeElement.querySelector('[data-testid="create-hint"]')?.textContent).toContain('no se pueden vender hasta que quien administra te habilite');
+    TestBed.resetTestingModule();
+    const g=setup([item],of({classesEnabledAt:'2026-10-01T00:00:00Z',salesPausedAt:null,acceptsInquiries:true,sessionBufferMinutes:10,minLeadTimeHours:24}) as never);
+    expect(g.nativeElement.querySelector('[data-testid="create-hint"]')).toBeNull();
+  });
+});

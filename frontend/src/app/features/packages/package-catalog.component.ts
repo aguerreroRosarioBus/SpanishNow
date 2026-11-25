@@ -42,6 +42,8 @@ export class PackageCatalogComponent implements OnInit {
   visibleItems=computed(()=>this.items().filter(t=>this.statusFilter()==='all'||t.status===this.statusFilter()).slice().sort((a,b)=>({active:0,draft:1,paused:2,archived:3}[a.status]-{active:0,draft:1,paused:2,archived:3}[b.status])));
 
   items = signal<PackageTemplate[]>([]);
+  /** D-06: el contador «Tus paquetes» no aparece hasta que llegó la primera respuesta (antes mostraba 0). */
+  loaded = signal(false);
   settings = signal<ClassSettings|null>(null);
   readonly limits = SCHEDULE_LIMITS;
   /** Texto de cada campo de agenda: se valida al escribir y recién entonces pasa a número. */
@@ -68,10 +70,12 @@ export class PackageCatalogComponent implements OnInit {
     ...Object.fromEntries(editable.map(k=>[k,['',k.startsWith('name') ? Validators.required : []]])),
     expectations:this.fb.group(Object.fromEntries(this.locales.map(l=>[l,this.fb.group(Object.fromEntries(EXPECTATION_FIELDS.map(k=>[k,['',Validators.maxLength(4000)]])))])))
   });
+  /** D-06: 720 h se leen como 30 días; si no es múltiplo de 24 se conservan las horas. */
+  validityLabel(hours:number){return hours>0&&hours%24===0?this.i18n.t('packages.ui.validityDays',{count:hours/24}):this.i18n.t('packages.ui.validityHours',{count:hours});}
   ngOnInit() { this.reload(); }
   reload() {
     this.busy.set(true); this.failure.set(null);
-    forkJoin({items:this.api.list(),settings:this.api.settings()}).subscribe({next:r=>{this.items.set(r.items);this.settings.set(r.settings);this.showSchedule(r.settings);this.busy.set(false);},error:e=>this.fail(e)});
+    forkJoin({items:this.api.list(),settings:this.api.settings()}).subscribe({next:r=>{this.items.set(r.items);this.settings.set(r.settings);this.showSchedule(r.settings);this.loaded.set(true);this.busy.set(false);},error:e=>this.fail(e)});
   }
   importInitial() {
     if(this.busy()) return; this.busy.set(true); this.failure.set(null);
