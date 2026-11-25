@@ -1,5 +1,5 @@
 const sequelize=require('../config/database');
-const {User,Conversation,ClassPackageTemplate:Template,ClassPackageTemplateVersion:Version,ClassPolicyVersion:Policy,ClassCohort:Cohort,ClassCohortMember:Member,ClassPackagePurchase:Purchase,AuditLog}=require('../models');
+const {User,Conversation,ClassPackageTemplate:Template,ClassPackageTemplateVersion:Version,ClassPolicyVersion:Policy,ClassCohort:Cohort,ClassCohortMember:Member,ClassPackagePurchase:Purchase,ClassSession,AuditLog}=require('../models');
 const {fail,invalid,validId,only,persistedSecond}=require('./legalDocuments');
 const offers=require('./classOffers');
 const outbox=require('./outbox');
@@ -12,7 +12,7 @@ async function load(user,id,{transaction,lock=false}={}){
   if(row.teacherId!==user.id&&!me)throw fail(404,'not_found');
   return {row,me};
 }
-async function present(user,row,{transaction}={}){
+async function present(user,row,{transaction,confirmedSession=null}={}){
   const members=await Member.findAll({where:{cohortId:row.id},order:[['userId','ASC']],transaction});
   const own=members.find(m=>m.userId===user.id);
   const teacherMembers=[];
@@ -20,9 +20,32 @@ async function present(user,row,{transaction}={}){
   return {id:row.id,teacherId:row.teacherId,templateVersionId:row.templateVersionId,groupSize:row.groupSize,status:row.status,formingDeadlineAt:row.formingDeadlineAt,tentativeStartsAt:row.tentativeStartsAt,
     acceptedCount:members.filter(m=>m.status==='accepted').length,
     // La invitación no revela otras identidades, ofertas ni pagos.
-    ...(row.teacherId===user.id?{members:teacherMembers}:{invitation:{status:own.status}})};
+    ...(row.teacherId===user.id?{members:teacherMembers,confirmedSession}:{invitation:{status:own.status}})};
 }
-async function detail(user,id){const {row}=await load(user,id);return present(user,row);}
+async function confirmedSessions(teacherId, cohorts) {
+  const ids = cohorts.filter(cohort => cohort.status === 'ready').map(cohort => cohort.id);
+  const byCohort = new Map();
+  if (!ids.length) return byCohort;
+  const sessions = await ClassSession.findAll({
+    where: { teacherId, cohortId: ids, status: 'confirmed' },
+    attributes: ['id', 'cohortId', 'startsAt', 'endsAt'],
+    order: [['startsAt', 'DESC'], ['id', 'DESC']]
+  });
+  const now = new Date();
+  for (const session of sessions) {
+    // Primera próxima clase; si todas pasaron, la confirmada más reciente.
+    if (!byCohort.has(session.cohortId) || session.endsAt > now) {
+      byCohort.set(session.cohortId, { id: session.id, startsAt: session.startsAt });
+    }
+  }
+  return byCohort;
+}
+async function detail(user, id) {
+  const { row } = await load(user, id);
+  if (user.id !== row.teacherId) return present(user, row);
+  const confirmed = await confirmedSessions(user.id, [row]);
+  return present(user, row, { confirmedSession: confirmed.get(row.id) });
+}
 async function create(user,body){
   if(user.role!=='teacher')throw fail(403,'forbidden');
   if(!only(body,['templateVersionId','tentativeStartsAt','invitedIds'])||!Number.isInteger(body.templateVersionId)||!validId(body.templateVersionId)||!Array.isArray(body.invitedIds)||body.invitedIds.some(id=>!Number.isInteger(id)||!validId(id))||new Set(body.invitedIds).size!==body.invitedIds.length)throw invalid();
@@ -78,5 +101,10 @@ async function deadline(job){
   });
 }
 outbox.register('cohort.deadline',deadline);
-async function list(user){if(user.role!=='teacher')throw fail(403,'forbidden');const rows=await Cohort.findAll({where:{teacherId:user.id},order:[['id','DESC']],limit:200});return Promise.all(rows.map(row=>present(user,row)));}
+async function list(user) {
+  if (user.role !== 'teacher') throw fail(403, 'forbidden');
+  const rows = await Cohort.findAll({ where: { teacherId: user.id }, order: [['id', 'DESC']], limit: 200 });
+  const confirmed = await confirmedSessions(user.id, rows);
+  return Promise.all(rows.map(row => present(user, row, { confirmedSession: confirmed.get(row.id) })));
+}
 module.exports={load,present,detail,list,create,respond,deadline};

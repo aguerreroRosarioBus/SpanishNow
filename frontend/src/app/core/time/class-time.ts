@@ -214,8 +214,7 @@ export function presentSessionTime(session: TimeInterval, recipientZone: string,
   return {
     recipient, teacher,
     differentDates: recipient.start.date !== teacher.start.date || recipient.end.date !== teacher.end.date,
-    // El horario del docente solo se oculta cuando es la misma zona IANA con los mismos desplazamientos.
-    teacherDiffers: recipientZone !== teacherZone || recipient.start.offset !== teacher.start.offset || recipient.end.offset !== teacher.end.offset
+    teacherDiffers: recipient.start.offset !== teacher.start.offset || recipient.end.offset !== teacher.end.offset
   };
 }
 

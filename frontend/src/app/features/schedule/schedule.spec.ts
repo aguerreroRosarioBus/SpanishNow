@@ -84,6 +84,60 @@ describe('W06: interfaz conectada por contratos de agenda', () => {
     fixture.destroy();
   });
 
+  it('D2-10: la agenda pinta las tarjetas con la lista, con una sola carga de opciones y sin GET por tarjeta', () => {
+    auth.currentUser.set({ id: 2, role: 'teacher' });
+    const first = session();
+    api.list.mockReturnValue(of({ items: [first, { ...first, id: 11 }], truncated: false }));
+    const f = TestBed.createComponent(ScheduleComponent);
+    f.detectChanges();
+    expect(f.nativeElement.querySelectorAll('[data-testid="session-card"] h2')).toHaveLength(2);
+    expect(api.list).toHaveBeenCalledOnce();
+    expect(api.reminders).toHaveBeenCalledOnce();
+    expect(api.options).toHaveBeenCalledOnce();
+    expect(api.get).not.toHaveBeenCalled();
+    f.destroy();
+  });
+
+  it('D2-04: oculta el horario del docente para sí mismo y para zonas con el mismo desfase', () => {
+    const fixture = TestBed.createComponent(ClassSessionCardComponent);
+    fixture.componentRef.setInput('sessionId', 10);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="teacher-time"]')).toBeTruthy();
+    auth.currentUser.set({ id: 2, role: 'teacher' });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="teacher-time"]')).toBeNull();
+    auth.currentUser.set({ id: 1, role: 'student' });
+    const s = session();
+    api.get.mockReturnValue(of({ ...s, teacher: { ...s.teacher, timeZone: 'America/Cordoba' } }));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="teacher-time"]')).toBeNull();
+    fixture.destroy();
+  });
+
+  it('D2-05: ambos paneles explican la zona pendiente y bloquean el envío o aceptación', () => {
+    const preferences = TestBed.inject(UserPreferencesService).preferences as ReturnType<typeof signal<any>>;
+    preferences.set({ timeZone: 'America/Cordoba', timeZoneConfirmedAt: null });
+    const card = TestBed.createComponent(ClassSessionCardComponent);
+    card.componentRef.setInput('sessionId', 10);
+    card.detectChanges();
+    card.componentInstance.startDecision('accept');
+    card.componentInstance.acknowledge = true;
+    card.detectChanges();
+    expect(document.querySelector('[data-testid="accept-zone-hint"]')?.textContent).toContain('Confirma tu zona');
+    card.componentInstance.respond();
+    expect(api.respond).not.toHaveBeenCalled();
+    card.destroy();
+
+    auth.currentUser.set({ id: 2, role: 'teacher' });
+    const schedule = TestBed.createComponent(ScheduleComponent);
+    schedule.detectChanges();
+    schedule.componentInstance.openForm();
+    schedule.detectChanges();
+    expect(document.querySelector('[data-testid="proposal-zone-hint"]')?.textContent).toContain('confirma tu zona');
+    expect(document.querySelector<HTMLButtonElement>('button[form="scheduleProposalForm"]')?.disabled).toBe(true);
+    schedule.destroy();
+  });
+
   it('horas inexistentes y repetidas se resuelven explícitamente, sin normalización oculta', () => {
     auth.currentUser.set({ id: 2, role: 'teacher' });
     const fixture = TestBed.createComponent(ScheduleComponent); fixture.detectChanges(); const c = fixture.componentInstance;

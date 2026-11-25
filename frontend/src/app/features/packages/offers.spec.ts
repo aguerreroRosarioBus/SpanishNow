@@ -24,7 +24,7 @@ describe('W05 ofertas UI',()=>{
     const get=vi.fn(()=>of(offer));
     TestBed.configureTestingModule({imports:[OfferDetailComponent],providers:[provideRouter([]),{provide:I18N_CATALOGS,multi:true,useValue:PACKAGE_MESSAGES},{provide:ActivatedRoute,useValue:{paramMap:of(convertToParamMap({id:'10'}))}},{provide:ChatFormat,useValue:{timeZone:()=> 'America/Argentina/Cordoba'}},{provide:PackagesService,useValue:{offer:get,error:()=> 'Error'}}]});
     const f=TestBed.createComponent(OfferDetailComponent);f.detectChanges();const c=f.componentInstance;const before=c.offer();TestBed.inject(I18nService).setLocale('es');f.detectChanges();
-    expect(c.name()).toBe('Cuatro sesiones');expect(c.offer()).toBe(before);expect(c.offer()!.amount).toBe(9000);expect(get).toHaveBeenCalledTimes(1);expect(f.nativeElement.textContent).toContain('America/Argentina/Cordoba');
+    expect(f.nativeElement.textContent).toContain('90 días');expect(c.name()).toBe('Cuatro sesiones');expect(c.offer()).toBe(before);expect(c.offer()!.amount).toBe(9000);expect(get).toHaveBeenCalledTimes(1);expect(f.nativeElement.textContent).toContain('America/Argentina/Cordoba');
   });
 });
 describe('Tanda B: ofertas con plantillas sin versión',()=>{
@@ -58,7 +58,7 @@ describe('Tanda B: ofertas con plantillas sin versión',()=>{
     expect(c.items().map(p=>p.id)).toEqual([2]);
     const options=Array.from<HTMLElement>(f.nativeElement.querySelectorAll('#packageChoice option')).map(o=>o.textContent!.trim());
     expect(options).toContain('Cuatro sesiones');
-    c.select(2);f.detectChanges();expect(f.nativeElement.textContent).toContain('USD');
+    c.select(2);f.detectChanges();expect(f.nativeElement.textContent).toContain('USD');expect(f.nativeElement.textContent).toContain('90 días');
     const button=Array.from<HTMLButtonElement>(f.nativeElement.querySelectorAll('button')).find(b=>b.textContent!.includes('Enviar esta oferta'));
     expect(button).toBeTruthy();c.send();
     expect(send).toHaveBeenCalledTimes(1);expect(send.mock.calls[0]).toEqual([9,{templateVersionId:33},expect.any(String)]);

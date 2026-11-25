@@ -22,6 +22,15 @@
   .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 }
 
+.affiliate-list {
+  th, td { padding-inline: 8px; }
+  thead th, thead th.num { white-space: normal; }
+  td:first-child { overflow-wrap: anywhere; min-width: 9rem; }
+  th:last-child, td:last-child { position: sticky; right: 0; }
+  td:last-child { background: var(--color-bg); }
+  tr:hover td:last-child { background: var(--color-row-hover); }
+}
+
 .stat-line { display: block; }
 .stat-line--owed { font-weight: 700; }
 .actions { display: flex; flex-wrap: nowrap; justify-content: flex-end; align-items: center; gap: 4px; }

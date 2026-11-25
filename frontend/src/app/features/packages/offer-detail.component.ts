@@ -6,6 +6,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject, switchMap, takeUntil } from 'rxjs';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { I18nService } from '../../core/i18n/i18n.service';
+import { formatPackageValidity } from './package-validity';
 import { ChatFormat } from '../chat/chat-format';
 import { PackagesService } from './packages.service';
 import { ClassOffer, ClassOrder, CheckoutState } from './packages.model';
@@ -54,4 +55,5 @@ export class OfferDetailComponent implements OnInit {
   }
   completeFake(){const o=this.offer();if(!o||this.order()?.provider!=='fake'||this.busy())return;this.busy.set(true);this.failure.set(null);this.api.fakeComplete(o.id).pipe(takeUntil(this.routeChanges),takeUntilDestroyed(this.destroyRef)).subscribe({next:s=>{this.apply(s);this.busy.set(false);},error:e=>{this.failure.set(e);this.busy.set(false);}});}
   cancel(){const o=this.offer();if(!o||!o.canManage||!this.reason().trim()||this.busy())return;this.busy.set(true);this.api.cancelOffer(o.id,this.reason().trim()).pipe(takeUntil(this.routeChanges),takeUntilDestroyed(this.destroyRef)).subscribe({next:s=>{this.offer.set({...s,canManage:true});this.busy.set(false);},error:e=>{this.failure.set(e);this.busy.set(false);}});}
+  validityLabel(hours: number) { return formatPackageValidity(this.i18n, hours); }
 }

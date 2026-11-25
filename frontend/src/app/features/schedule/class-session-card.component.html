@@ -9,10 +9,10 @@
       </div>
       <span class="badge-status badge-status--dot status-{{ statusTone() }}" data-testid="session-status">{{ ('schedule.status.' + displayStatus()) | t }}</span>
     </header>
-    @if (proposalView(); as p) { <app-session-time [interval]="p" [recipientZone]="zone()" [teacherZone]="s.teacher.timeZone || s.timeZone" /> }
+    @if (proposalView(); as p) { <app-session-time [interval]="p" [recipientZone]="zone()" [teacherZone]="s.teacher.timeZone || s.timeZone" [showTeacherTime]="!teacher()" /> }
     @if (s.proposal?.status === 'pending' && s.proposal?.kind === 'reschedule') {
       <p class="notice">{{ 'schedule.original' | t }}</p>
-      <details class="card-details"><summary>{{ 'schedule.current' | t }}</summary><app-session-time [interval]="s" [recipientZone]="zone()" [teacherZone]="s.teacher.timeZone || s.timeZone" /></details>
+      <details class="card-details"><summary>{{ 'schedule.current' | t }}</summary><app-session-time [interval]="s" [recipientZone]="zone()" [teacherZone]="s.teacher.timeZone || s.timeZone" [showTeacherTime]="!teacher()" /></details>
     }
     @if (selectedProposal(); as p) {
       @if (p.status === 'pending' && proposalExpired()) { <p class="notice" data-testid="proposal-expired">{{ 'schedule.expiredOn' | t }}: {{ displayProposal(p) }}</p> }
@@ -31,7 +31,7 @@
     @if (s.rules && !inactive()) { <p class="notice">{{ 'schedule.freeCancel' | t:{ hours: s.rules.freeCancelHours } }}</p> }
     <div class="card-actions">
       @if (canRespond()) {
-        <button type="button" class="btn btn-primary" (click)="startDecision('accept')" [disabled]="busy() || !zoneReady()">{{ 'schedule.accept' | t }}</button>
+        <button type="button" class="btn btn-primary" (click)="startDecision('accept')" [disabled]="busy()">{{ 'schedule.accept' | t }}</button>
         <button type="button" class="btn btn-secondary" (click)="startDecision('decline')" [disabled]="busy()">{{ 'schedule.decline' | t }}</button>
       } @else if (canJoin()) {
         @if (meeting(); as link) { <a class="btn btn-primary" [href]="link" target="_blank" rel="noopener noreferrer" data-testid="meeting-link">{{ 'schedule.openMeeting' | t }}</a> }
@@ -49,9 +49,12 @@
       <div data-testid="session-confirmation">
       @if (error()) { <p class="alert alert-danger" role="alert">{{ error() }}</p> }
       @if (action === 'accept' || action === 'decline') {
-        @if (selectedProposal(); as p) { <app-session-time [interval]="p" [recipientZone]="zone()" [teacherZone]="s.teacher.timeZone || s.timeZone" /> }
+        @if (selectedProposal(); as p) { <app-session-time [interval]="p" [recipientZone]="zone()" [teacherZone]="s.teacher.timeZone || s.timeZone" [showTeacherTime]="!teacher()" /> }
         @if (action === 'decline') { <p class="notice" data-testid="decline-hint">{{ (selectedProposal()?.kind === 'reschedule' ? 'schedule.declineHintReschedule' : 'schedule.declineHintInitial') | t }}</p> }
-        @if (action === 'accept') { <label><input type="checkbox" [(ngModel)]="acknowledge" /> {{ 'schedule.acknowledge' | t }}</label> }
+        @if (action === 'accept') {
+          @if (!zoneReady()) { <p class="notice" role="status" data-testid="accept-zone-hint">{{ 'schedule.acceptZoneHint' | t }}</p> }
+          <label><input type="checkbox" [(ngModel)]="acknowledge" /> {{ 'schedule.acknowledge' | t }}</label>
+        }
       } @else {
         @if (cancelHint(); as hint) { <p class="notice" data-testid="cancel-hint">{{ hint | t }}</p> }
         <p>{{ (lateCancel() ? 'schedule.lateCancel' : 'schedule.freeCancellation') | t }}</p>
@@ -68,7 +71,7 @@
         @if (action === 'cancel') {
           <button type="button" class="btn btn-danger" (click)="cancel()" [disabled]="busy() || reason.trim().length < 3 || (lateCancel() && !acknowledge)">{{ 'schedule.cancel' | t }}</button>
         } @else {
-          <button type="button" class="btn btn-primary" (click)="respond()" [disabled]="busy() || (action === 'accept' && !acknowledge)">{{ 'schedule.confirm' | t }}</button>
+          <button type="button" class="btn btn-primary" (click)="respond()" [disabled]="busy() || (action === 'accept' && (!acknowledge || !zoneReady()))">{{ 'schedule.confirm' | t }}</button>
         }
       </div>
       </div>

@@ -45,6 +45,19 @@ describe('D-03: detalle de grupo', () => {
     expect(f.nativeElement.textContent).toContain('Podrás enviar las ofertas cuando todas las personas hayan aceptado');
   });
 
+  it('D2-08: un grupo listo con clase confirmada muestra ese horario y no espera invitaciones', () => {
+    group.mockReturnValue(of(cohort(3, {
+      status: 'ready', members: [{ userId: 5, status: 'accepted', name: 'Ana' }],
+      confirmedSession: { id: 24, startsAt: '2099-02-03T14:00:00Z' }
+    })));
+    const f = TestBed.createComponent(CohortInvitationComponent);
+    f.detectChanges();
+    expect(f.nativeElement.textContent).toContain('Clase confirmada para el');
+    expect(f.nativeElement.textContent).not.toContain('falta aceptar el horario');
+    expect(f.nativeElement.textContent).not.toContain('Podrás enviar las ofertas');
+    expect(f.nativeElement.querySelector('a[href="/schedule?sessionId=24"]')).toBeTruthy();
+  });
+
   it('quien recibe la invitación ve su título, volver a Mensajes y puede aceptar o rechazar', () => {
     group.mockImplementation((id: number) => of(cohort(id, { acceptedCount: 1, invitation: { status: 'invited' } })));
     const f = TestBed.createComponent(CohortInvitationComponent); f.detectChanges();

@@ -4,6 +4,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { I18nService } from '../../core/i18n/i18n.service';
+import { formatPackageValidity } from './package-validity';
 import { ChatService } from '../../core/services/chat.service';
 import { ToastService } from '../../core/services/toast.service';
 import { PackagesService } from './packages.service';
@@ -46,4 +47,5 @@ export class OfferCreateComponent implements OnInit {
     const request=this.replacesOfferId?this.api.replaceOffer(this.replacesOfferId,body,this.key):this.api.sendOffer(this.conversationId,body,this.key);
     request.subscribe({next:o=>void this.router.navigate(['/class-offers',o.id]),error:e=>{this.busy.set(false);this.failure.set(e);}});
   }
+  validityLabel(hours: number) { return formatPackageValidity(this.i18n, hours); }
 }

@@ -44,7 +44,7 @@
           <dl class="preview-facts">
             <div><dt>{{ 'packages.field.sessionsCount' | t }}</dt><dd>{{ p.current.sessionsCount }} × {{ p.current.minutesPerSession }} min</dd></div>
             <div><dt>{{ 'packages.ui.seats' | t }}</dt><dd>{{ p.current.seatsCovered }}</dd></div>
-            <div><dt>{{ 'packages.ui.validity' | t }}</dt><dd>{{ i18n.formatNumber(p.current.validityHours) }} h <small>{{ 'packages.ui.fromPayment' | t }}</small></dd></div>
+            <div><dt>{{ 'packages.ui.validity' | t }}</dt><dd>{{ validityLabel(p.current.validityHours) }} <small>{{ 'packages.ui.fromPayment' | t }}</small></dd></div>
           </dl>
           @if (expectationEntries().length) {
             <section class="preview-section"><h3>{{ 'packages.ui.includes' | t }}</h3>

@@ -437,6 +437,24 @@ test('Tanda B: la misma clave tras cancelar devuelve la clase cancelada (200) y 
 });
 
 
+test('D2-08: el listado y detalle del docente muestran el horario confirmado sin ampliar la invitación', async () => {
+  process.env.FEATURE_CLASS_PACKAGES = '1';
+  try {
+    const c = await chain({ size: 2 });
+    await c.cohort.update({ status: 'ready' });
+    const session = await confirmed(c);
+    const expected = { id: session.id, startsAt: session.startsAt.toISOString() };
+    const list = await as(c.teacher).get('/api/teacher/class-cohorts');
+    expect(list.status).toBe(200);
+    expect(list.body).toEqual(expect.arrayContaining([expect.objectContaining({ id: c.cohort.id, confirmedSession: expected })]));
+    const detail = await as(c.teacher).get(`/api/class-cohorts/${c.cohort.id}`);
+    expect(detail.body.confirmedSession).toEqual(expected);
+    const invite = await as(c.students[0]).get(`/api/class-cohorts/${c.cohort.id}`);
+    expect(invite.status).toBe(200);
+    expect(invite.body.confirmedSession).toBeUndefined();
+  } finally { delete process.env.FEATURE_CLASS_PACKAGES; }
+});
+
 test('D2-01: reintentos concurrentes de una clase antigua crean una referencia y un job por proveedor', async () => {
   const old = { zoom: process.env.FEATURE_ZOOM, calendar: process.env.FEATURE_GOOGLE_CALENDAR };
   process.env.FEATURE_ZOOM = '1'; process.env.FEATURE_GOOGLE_CALENDAR = '1';

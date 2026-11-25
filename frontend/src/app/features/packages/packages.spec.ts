@@ -133,6 +133,10 @@ describe('D-06: catálogo legible para quien aún no está habilitado',()=>{
     const values=Array.from<HTMLElement>(f.nativeElement.querySelectorAll('.package-validity dd')).map(e=>e.textContent!.replace(/\s+/g,' ').trim());
     expect(values).toEqual(['90 días transcurridos desde el pago','30 días transcurridos desde el pago','30 horas transcurridos desde el pago']);
   });
+  it('D2-07: la confirmación para archivar usa tuteo neutro', () => {
+    setup([item]);
+    expect(TestBed.inject(I18nService).t('packages.archMsg')).toContain('duplícalo');
+  });
   it('el contador de paquetes no aparece hasta que llegó la respuesta',()=>{
     const list$=new Subject<CompleteTemplate[]>();
     const f=setup([],undefined,list$ as never);

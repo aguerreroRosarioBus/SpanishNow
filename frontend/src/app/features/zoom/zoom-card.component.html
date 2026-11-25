@@ -22,7 +22,7 @@
   <h2>{{ 'zoom.sessions' | t }}</h2>
   @for (s of sessions(); track s.id) {
     <article class="zoom-panel">
-      <p><time [attr.datetime]="s.startsAt">{{ i18n.formatInstant(s.startsAt, preferences.preferences()?.timeZone || 'UTC') }}</time> · {{ s.minutes }} min · {{ ('zoom.status.' + s.status) | t }}</p>
+      <p><time [attr.datetime]="s.startsAt">{{ i18n.formatInstant(s.startsAt, zone(), { hourCycle: 'h23' }) }}</time> · {{ s.minutes }} min · {{ ('zoom.status.' + s.status) | t }}</p>
       @if (s.manual) { <p>{{ 'zoom.manualActive' | t }}</p> }
       @if (s.upcomingWithoutMeeting) { <p class="alert alert-warning" role="alert">{{ 'zoom.upcoming' | t }}</p> }
       <a [routerLink]="['/zoom/sessions', s.id]" class="btn btn-secondary">{{ 'zoom.openSession' | t }}</a>

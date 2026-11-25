@@ -24,6 +24,7 @@ export class ClassSessionCardComponent {
   private readonly pilotTheme = inject(PilotTheme);
   sessionId = input.required<number>();
   proposalVersion = input<number | null>(null);
+  listedSession = input<ClassSession | null>(null);
   /** La agenda muestra una sola vez los avisos de zona de toda la página; la tarjeta no los repite (D-04). */
   pageNotices = input(false);
   changed = output<ClassSession>();
@@ -149,17 +150,28 @@ export class ClassSessionCardComponent {
     this.features.load();
     effect(() => { const id = this.sessionId(); const account = this.auth.currentUser()?.id; untracked(() => {
       this.generation++; this.request?.unsubscribe(); this.actionRequest?.unsubscribe(); this.busy.set(false);
-      this.session.set(null); this.decision.set(null); this.meeting.set(null); this.meetingFailure.set(null); this.syncFailure.set(null); this.syncQueued.set(false); if (id && account) this.refresh();
+      this.session.set(null); this.decision.set(null); this.meeting.set(null); this.meetingFailure.set(null); this.syncFailure.set(null); this.syncQueued.set(false); if (id && account && !this.listedSession()) this.refresh();
     }); });
-    const timer = setInterval(() => { if (this.document.visibilityState === 'visible' && !this.busy() && !this.decision()) this.refresh(false); }, 15000);
+    effect(() => {
+      const listed = this.listedSession();
+      if (!listed || listed.id !== this.sessionId() || !this.auth.currentUser()) return;
+      untracked(() => this.setSession(listed));
+    });
+    const timer = setInterval(() => {
+      if (!this.listedSession() && this.document.visibilityState === 'visible' && !this.busy() && !this.decision()) this.refresh(false);
+    }, 15000);
     this.destroyRef.onDestroy(() => { clearInterval(timer); this.request?.unsubscribe(); this.actionRequest?.unsubscribe(); });
   }
   refresh(showLoading = true): void {
     const generation = this.generation;
     this.request?.unsubscribe(); if (showLoading) { this.loading.set(true); this.failure.set(null); }
     this.request = this.api.get(this.sessionId()).subscribe({ next: s => {
-      if (generation !== this.generation) return; this.clockOffset = Date.parse(s.serverNow) - Date.now(); this.session.set(s); this.loading.set(false);
+      if (generation !== this.generation) return; this.setSession(s); this.loading.set(false);
     }, error: err => { if (generation === this.generation) { this.failure.set(err); this.loading.set(false); } } });
+  }
+  private setSession(value: ClassSession): void {
+    this.clockOffset = Date.parse(value.serverNow) - Date.now();
+    this.session.set(value);
   }
   startDecision(action: 'accept' | 'decline' | 'cancel'): void { this.decision.set(action); this.acknowledge = false; this.failure.set(null); }
   closeDecision(): void { if (!this.busy()) this.decision.set(null); }
@@ -167,7 +179,7 @@ export class ClassSessionCardComponent {
     if (this.busy()) return;
     const generation = this.generation; this.request?.unsubscribe(); this.busy.set(true); this.failure.set(null);
     this.actionRequest = request.subscribe({ next: s => {
-      if (generation !== this.generation) return; this.busy.set(false); this.session.set(s); this.decision.set(null);
+      if (generation !== this.generation) return; this.busy.set(false); this.setSession(s); this.decision.set(null);
       if (sync) this.syncQueued.set(s.sync.some(ref => ref.status === 'pending'));
       this.changed.emit(s);
     }, error: err => { if (generation !== this.generation) return; this.busy.set(false);

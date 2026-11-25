@@ -1,7 +1,7 @@
-import { Component, DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
+import { Component, DestroyRef, DOCUMENT, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { Subscription } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 import { ClassSession, ClassSessionsService, ScheduleOptions, SessionRequest } from '../../core/services/class-sessions.service';
@@ -54,7 +54,7 @@ export class ScheduleComponent {
   private key = crypto.randomUUID(); private submittedHash = '';
   private lastSavedZone: string | null | undefined;
   private zoneWasSaving = false;
-  private generation = 0; private reads = new Subscription(); private write?: Subscription;
+  private generation = 0; private reads = new Subscription(); private listRequest?: Subscription; private write?: Subscription;
   error = computed(() => this.failure() ? this.i18n.errorMessage(this.failure()) : '');
   teacher = computed(() => this.auth.currentUser()?.role === 'teacher');
   zone = computed(() => this.preferences.preferences()?.timeZone || this.zoneInput() || this.deviceZone || 'UTC');
@@ -85,31 +85,42 @@ export class ScheduleComponent {
       if (this.zoneWasSaving && !saving && !this.preferences.errorMessage() && this.zoneConfirmed()) this.zoneEditorOpen.set(false);
       this.zoneWasSaving = saving;
     });
-    effect(() => { const account = this.auth.currentUser()?.id; untracked(() => {
-      this.generation++; this.reads.unsubscribe(); this.reads = new Subscription(); this.write?.unsubscribe();
-      this.sessions.set([]); this.selected.set(null); this.editing.set(null); this.options.set(null); this.busy.set(false);
-      this.studentId.set(0); this.purchaseId.set(0); this.cohortId.set(0); this.reason = ''; this.waiver = ''; this.exception = false;
-      this.whiteboardId = 0;
-      this.draft.set({ localStart: '', timeZone: this.zone(), offset: '', disambiguation: 'none', minutes: 50 });
-      if (account) { this.reload(); this.loadSelection(); }
-    }); });
     effect(() => { const zone = this.preferences.preferences()?.timeZone; untracked(() => {
       if (zone && zone !== this.lastSavedZone) { this.zoneInput.set(zone); this.lastSavedZone = zone; }
       if (!this.draft().timeZone) this.patch({ timeZone: zone || this.zone() }); // D-12: la zona de programación nace con la del docente (o la del dispositivo)
     }); });
     this.zoneInput.set(this.preferences.preferences()?.timeZone || this.suggested || 'UTC');
-    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe(query => {
-      this.generation++; this.reads.unsubscribe(); this.reads = new Subscription(); this.write?.unsubscribe(); this.busy.set(false);
-      this.selected.set(null); this.editing.set(null);
-      if (this.conversationId !== (Number(query.get('conversationId')) || 0)) { this.studentId.set(0); this.purchaseId.set(0); this.cohortId.set(0); }
-      this.conversationId = Number(query.get('conversationId')) || 0;
-      // Llegar desde una conversación para proponer una clase abre el formulario directamente.
-      this.formOpen.set(this.conversationId > 0);
-      this.selectedId = Number(query.get('sessionId')); this.editingId = Number(query.get('reschedule'));
-      this.loadSelection();
-      this.reload();
+    const queryParams = toSignal(this.route.queryParamMap);
+    const document = inject(DOCUMENT);
+    let previousAccount: number | undefined;
+    effect(() => {
+      const account = this.auth.currentUser()?.id;
+      const query = queryParams();
+      untracked(() => {
+        this.generation++; this.reads.unsubscribe(); this.reads = new Subscription();
+        this.listRequest?.unsubscribe(); this.write?.unsubscribe(); this.busy.set(false); this.loading.set(false);
+        this.selected.set(null); this.editing.set(null);
+        const conversationId = Number(query?.get('conversationId')) || 0;
+        if (account !== previousAccount) {
+          this.sessions.set([]); this.options.set(null); this.notices.set([]);
+          this.reason = ''; this.waiver = ''; this.exception = false; this.whiteboardId = 0;
+          this.draft.set({ localStart: '', timeZone: this.zone(), offset: '', disambiguation: 'none', minutes: 50 });
+        }
+        if (account !== previousAccount || conversationId !== this.conversationId) {
+          this.studentId.set(0); this.purchaseId.set(0); this.cohortId.set(0);
+        }
+        previousAccount = account;
+        this.conversationId = conversationId;
+        this.formOpen.set(conversationId > 0);
+        this.selectedId = Number(query?.get('sessionId')) || 0;
+        this.editingId = Number(query?.get('reschedule')) || 0;
+        if (account && query) { this.loadSelection(); this.reload(); }
+      });
     });
-    this.destroyRef.onDestroy(() => { this.reads.unsubscribe(); this.write?.unsubscribe(); });
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible' && this.auth.currentUser() && !this.busy() && !this.loading()) this.loadSessions(true);
+    }, 15000);
+    this.destroyRef.onDestroy(() => { clearInterval(timer); this.reads.unsubscribe(); this.listRequest?.unsubscribe(); this.write?.unsubscribe(); });
   }
   private loadSelection(): void {
     const selected = this.selectedId, editing = this.editingId;
@@ -125,14 +136,27 @@ export class ScheduleComponent {
     this.reads.add(source.subscribe({ next: v => { if (generation === this.generation) next(v); }, error: e => { if (generation === this.generation) { this.failure.set(e); this.loading.set(false); } } }));
   }
   reload(): void {
-    this.failure.set(null); this.loading.set(true);
+    this.failure.set(null);
+    this.loadSessions();
+    this.read(this.api.reminders(), page => this.notices.set(page.items));
+    if (this.teacher()) this.loadOptions();
+  }
+  private loadSessions(background = false): void {
+    if (background && this.listRequest && !this.listRequest.closed) return;
+    this.listRequest?.unsubscribe();
+    if (!background) this.loading.set(true);
     let from: string | undefined, to: string | undefined;
     // Filtros expresan límites UTC explícitos, no una hora local reinterpretada.
     if (this.fromDate) from = `${this.fromDate}T00:00:00Z`;
     if (this.toDate) to = `${this.toDate}T00:00:00Z`;
-    this.read(this.api.list(from, to), page => { this.sessions.set(page.items); this.truncated.set(page.truncated); this.loading.set(false); });
-    this.read(this.api.reminders(), page => this.notices.set(page.items));
-    if (this.teacher()) this.loadOptions();
+    this.listRequest = this.api.list(from, to).subscribe({
+      next: page => {
+        this.sessions.set(page.items); this.truncated.set(page.truncated); this.loading.set(false);
+        const selected = page.items.find(session => session.id === this.selected()?.id);
+        if (selected) this.selected.set(selected);
+      },
+      error: error => { if (!background) { this.failure.set(error); this.loading.set(false); } }
+    });
   }
   private loadOptions(): void { this.read(this.api.options(this.conversationId || undefined), value => { this.options.set(value); if (value.studentId) this.studentId.set(value.studentId); }); }
   clearDates(): void { this.fromDate = ''; this.toDate = ''; this.reload(); }

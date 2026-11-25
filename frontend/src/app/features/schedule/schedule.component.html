@@ -236,6 +236,7 @@
             [interval]="resolved"
             [recipientZone]="zone()"
             [teacherZone]="draft().timeZone"
+            [showTeacherTime]="false"
           />
         </div>
       }
@@ -267,6 +268,9 @@
       }
     </form>
     <ng-template #footer>
+      @if (!zoneReady() && !preferences.saving()) {
+        <p class="notice w-100" role="status" data-testid="proposal-zone-hint">{{ 'schedule.proposeZoneHint' | t }}</p>
+      }
       <button type="button" class="btn btn-secondary" (click)="closeScheduleEditor()" [disabled]="busy()">{{ 'schedule.ui.cancelEdit' | t }}</button>
       <button
         type="submit"
@@ -298,7 +302,7 @@
   }
   @if (rulesChanged()) { <p class="alert alert-warning" data-testid="rules-changed">{{ (teacher() ? 'schedule.rulesChangedTeacher' : 'schedule.rulesChanged') | t }}</p> }
   @if (selected(); as selected) {
-    <app-class-session-card [sessionId]="selected.id" [pageNotices]="true" (changed)="updated($event)" />
+    <app-class-session-card [sessionId]="selected.id" [listedSession]="selected" [pageNotices]="true" (changed)="updated($event)" />
   }
   <section class="class-list" aria-labelledby="classListTitle">
     <div class="list-head">
@@ -355,7 +359,7 @@
     }
     @for (s of visibleSessions(); track s.id) {
       @if (s.id !== selected()?.id) {
-        <app-class-session-card [sessionId]="s.id" [pageNotices]="true" (changed)="updated($event)" />
+        <app-class-session-card [sessionId]="s.id" [listedSession]="s" [pageNotices]="true" (changed)="updated($event)" />
       }
     }
     @if (!loading() && !visibleSessions().length) {
