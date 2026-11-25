@@ -42,7 +42,7 @@ describe('Tanda B: ofertas con plantillas sin versión',()=>{
   it('Tanda C: sin paquete disponible muestra un estado vacío con el requisito, el enlace al catálogo y cómo volver a revisar o a la conversación',()=>{
     const {f}=setup([]);
     const empty=f.nativeElement.querySelector('[data-testid="offer-empty"]') as HTMLElement;
-    expect(empty).toBeTruthy();expect(empty.textContent).toContain('No tenés ningún paquete disponible');
+    expect(empty).toBeTruthy();expect(empty.textContent).toContain('No tienes ningún paquete disponible');
     expect(empty.querySelector('a[href="/teacher/class-packages"]')).toBeTruthy();
     expect(empty.querySelector('a[href="/messages/9"]')).toBeTruthy();
     expect(Array.from(empty.querySelectorAll('button')).some(b=>b.textContent!.includes('volver a revisar'))).toBe(true);

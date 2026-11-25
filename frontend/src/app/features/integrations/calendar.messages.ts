@@ -22,7 +22,7 @@ const pairs: Record<string, [string, string]> = {
   groupCalendar: ['Calendar', 'Calendario'],
   groupMeetings: ['Online meetings', 'Reuniones en línea'],
   target: ['Calendar for your classes', 'Calendario de tus clases'],
-  targetHint: ['SpanishNow created this calendar in your account and all class events go here. You can show or hide it from Google Calendar.', 'SpanishNow creó este calendario en tu cuenta y todos los eventos de clase van aquí. Podés mostrarlo u ocultarlo desde Google Calendar.'],
+  targetHint: ['SpanishNow created this calendar in your account and all class events go here. You can show or hide it from Google Calendar.', 'SpanishNow creó este calendario en tu cuenta y todos los eventos de clase van aquí. Puedes mostrarlo u ocultarlo desde Google Calendar.'],
   busy: ['Calendars that make you busy', 'Calendarios que te marcan como ocupado'],
   busyHint: ['A class cannot be confirmed over these calendars. Only free/busy is read.', 'No se puede confirmar una clase sobre estos calendarios. Solo se lee libre/ocupado.'],
   readOnly: ['read only', 'solo lectura'],

@@ -4,7 +4,7 @@ const {frontendUrl}=require('../config/payments');
 const outbox=require('./outbox');
 const MESSAGES={
   en:{'packages.email.subject':'Your class package is confirmed','packages.email.body':'{name}: {sessions} sessions × {minutes} minutes. Paid: {price}. Valid until {expiry} ({zone}). Agree on session dates in your private conversation. View your balance: {url}'},
-  es:{'packages.email.subject':'Tu paquete de clases está confirmado','packages.email.body':'{name}: {sessions} sesiones × {minutes} minutos. Pagado: {price}. Vigente hasta {expiry} ({zone}). Acordá las fechas en tu conversación privada. Consultá tu saldo: {url}'}
+  es:{'packages.email.subject':'Tu paquete de clases está confirmado','packages.email.body':'{name}: {sessions} sesiones × {minutes} minutos. Pagado: {price}. Vigente hasta {expiry} ({zone}). Acuerda las fechas en tu conversación privada. Consulta tu saldo: {url}'}
 };
 const t=(locale,key,params={})=>MESSAGES[locale][key].replace(/\{(\w+)\}/g,(_,k)=>String(params[k]));
 async function sent(job,action){return AuditLog.findOne({where:{action,entityType:job.aggregateType,entityId:job.aggregateId,reason:job.dedupeKey}});}

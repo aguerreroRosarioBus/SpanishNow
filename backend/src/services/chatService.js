@@ -362,7 +362,7 @@ async function listMessages(user, conversationId, { beforeSeq, afterSeq, limit }
   const { conversation, participants } = await loadForParticipant(user, conversationId);
   const before = seqParam(beforeSeq, 'beforeSeq');
   const after = seqParam(afterSeq, 'afterSeq');
-  if (before !== null && after !== null) throw invalid(['beforeSeq', 'afterSeq'], 'Usá beforeSeq o afterSeq, no ambos');
+  if (before !== null && after !== null) throw invalid(['beforeSeq', 'afterSeq'], 'Usa beforeSeq o afterSeq, no ambos');
   const size = pageSize(limit);
   const where = { conversationId: conversation.id };
   if (before !== null) where.seq = { [Op.lt]: before };
@@ -497,7 +497,7 @@ async function setBlocked(user, conversationId, blocked) {
 /** Reports the contact (CHAT-08); it also blocks, so the reporter stops receiving messages. */
 async function report(user, conversationId, reason) {
   const text = typeof reason === 'string' ? reason.trim() : '';
-  if (!text || text.length > 500) throw invalid(['reason'], 'Contanos el motivo (hasta 500 caracteres)');
+  if (!text || text.length > 500) throw invalid(['reason'], 'Cuéntanos el motivo (hasta 500 caracteres)');
   const { conversation, me, other } = await loadForParticipant(user, conversationId);
   await sequelize.transaction(async transaction => {
     const now = new Date();
@@ -568,7 +568,7 @@ async function readReportedMessages(moderator, conversationId, { beforeSeq, limi
 /** Hides a message of a reported conversation with a reason (CHAT-10). The row and its references stay. */
 async function hideMessage(moderator, messageId, reason, { impersonatedById = null } = {}) {
   const text = typeof reason === 'string' ? reason.trim() : '';
-  if (!text || text.length > 500) throw invalid(['reason'], 'Indicá el motivo (hasta 500 caracteres)');
+  if (!text || text.length > 500) throw invalid(['reason'], 'Indica el motivo (hasta 500 caracteres)');
   const id = Number(messageId);
   if (!Number.isSafeInteger(id) || id <= 0) throw new ChatError(404, 'not_found', 'Mensaje no encontrado');
   return sequelize.transaction(async transaction => {

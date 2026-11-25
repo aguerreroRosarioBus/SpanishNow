@@ -7,7 +7,7 @@ const { RateLimitBucket } = require('../models');
 
 class RateLimitError extends Error {
   constructor(retryAt, params = {}) {
-    super('Demasiados intentos; probá de nuevo más tarde');
+    super('Demasiados intentos; prueba de nuevo más tarde');
     this.name = 'RateLimitError';
     this.statusCode = 429;
     this.code = 'rate_limited';
