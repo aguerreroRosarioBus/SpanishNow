@@ -135,6 +135,11 @@ export class PackageCatalogComponent implements OnInit {
     const s=this.settings(); if(!s || this.busy()) return; this.busy.set(true); this.failure.set(null);
     this.api.pause(!s.salesPausedAt).subscribe({next:s=>{this.settings.set(s);this.busy.set(false);},error:e=>this.fail(e)});
   }
+  /** Aparecer (o no) en «Nueva consulta» del chat; solo cambia `acceptsInquiries`, sin tocar las ventas. */
+  toggleInquiries() {
+    const s=this.settings(); if(!s || this.busy()) return; this.busy.set(true); this.failure.set(null);
+    this.api.inquiries(!s.acceptsInquiries).subscribe({next:s=>{this.settings.set(s);this.busy.set(false);},error:e=>this.fail(e)});
+  }
   modality(value: string) {
     const size=Number(value); this.form.patchValue({modality:size===1?'individual':'group',groupSize:size,billing:size===1?'per_buyer':size===2?'per_group':'per_seat',seatsCovered:size===2?2:1});
   }

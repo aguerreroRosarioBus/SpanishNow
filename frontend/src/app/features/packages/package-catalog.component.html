@@ -18,6 +18,16 @@
         {{ (s.salesPausedAt ? 'packages.sales.resume' : 'packages.sales.pause') | t }}
       </button>
     </details>
+    <details class="sales-strip inquiries-strip" aria-labelledby="inquiriesTitle"><summary>
+      <span class="sales-icon"><app-icon name="messages-square" [size]="20" /></span>
+      <div class="sales-copy">
+        <h2 id="inquiriesTitle">{{ 'packages.catalog.inquiriesTitle' | t }}</h2>
+        <p>{{ (!s.classesEnabledAt ? 'packages.sales.notEnabled' : s.acceptsInquiries ? 'packages.inquiries.on' : 'packages.inquiries.off') | t }}</p>
+      </div>
+      </summary><button type="button" class="btn btn-secondary mt-3" data-testid="toggle-inquiries" [disabled]="busy() || !s.classesEnabledAt" (click)="toggleInquiries()">
+        {{ (s.acceptsInquiries ? 'packages.inquiries.turnOff' : 'packages.inquiries.turnOn') | t }}
+      </button>
+    </details>
   }
   <section aria-labelledby="packagesTitle">
     <div class="catalog-heading">
