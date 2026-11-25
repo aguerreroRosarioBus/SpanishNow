@@ -52,7 +52,7 @@ import { ClassCohort } from './packages.model';
 
       @if (c.members) {
         <section class="card mb-3" aria-labelledby="cohort-members">
-          <div class="card-header"><h2 id="cohort-members" class="h5 mb-0">{{ 'packages.group.members' | t }}</h2></div>
+          <div class="card-header"><h2 id="cohort-members" class="h5 mb-0">{{ 'packages.group.membersTitle' | t }}</h2></div>
           <div class="card-body">
             @for (m of c.members; track m.userId) {
               <div class="member-row">

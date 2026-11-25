@@ -189,6 +189,7 @@ export const PACKAGE_MESSAGES: TranslationBundle = {
 
     "packages.group.invitation":"Group invitation",
     "packages.group.title":"Class group",
+    "packages.group.membersTitle":"Members",
     "packages.group.backMessages":"Messages",
     "packages.group.scheduleTitle":"Schedule",
     "packages.group.tentativeLabel":"Tentative session",
@@ -524,6 +525,7 @@ export const PACKAGE_MESSAGES: TranslationBundle = {
 
     "packages.group.invitation":"Invitación al grupo",
     "packages.group.title":"Grupo de clases",
+    "packages.group.membersTitle":"Integrantes",
     "packages.group.backMessages":"Mensajes",
     "packages.group.scheduleTitle":"Horario",
     "packages.group.tentativeLabel":"Sesión tentativa",
