@@ -356,7 +356,13 @@
       }
     }
     @if (!loading() && !visibleSessions().length) {
-      <p class="state-box">{{ 'schedule.empty' | t }}</p>
+      <div class="state-box" data-testid="schedule-empty">
+        <p class="mb-0">{{ 'schedule.empty' | t }}</p>
+        @if (!teacher()) {
+          <p class="mb-0" data-testid="student-empty-hint">{{ 'schedule.studentEmptyHint' | t }}</p>
+          <a class="btn btn-secondary btn-sm" routerLink="/messages">{{ 'schedule.openMessages' | t }}</a>
+        }
+      </div>
     }
   </section>
 </div>

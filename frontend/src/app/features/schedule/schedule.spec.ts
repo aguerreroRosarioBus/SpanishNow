@@ -437,4 +437,18 @@ describe('W06: interfaz conectada por contratos de agenda', () => {
     const prefs = TestBed.inject(UserPreferencesService) as unknown as { preferences: ReturnType<typeof signal> };
     prefs.preferences.set({ timeZone: 'America/Argentina/Cordoba', timeZoneConfirmedAt: null });
   };
+  describe('A-11: agenda vacía del alumno', () => {
+    it('explica que el docente propone el horario y ofrece abrir Mensajes; la docente no ve esa ayuda', () => {
+      let fixture = TestBed.createComponent(ScheduleComponent); fixture.detectChanges();
+      let el: HTMLElement = fixture.nativeElement;
+      expect(el.querySelector('[data-testid="student-empty-hint"]')!.textContent).toContain('Tu docente te propondrá un horario');
+      expect(el.querySelector('[data-testid="schedule-empty"] a')!.getAttribute('href')).toBe('/messages');
+      fixture.destroy();
+      auth.currentUser.set({ id: 2, role: 'teacher' });
+      fixture = TestBed.createComponent(ScheduleComponent); fixture.detectChanges(); el = fixture.nativeElement;
+      expect(el.querySelector('[data-testid="schedule-empty"]')).not.toBeNull();
+      expect(el.querySelector('[data-testid="student-empty-hint"]')).toBeNull();
+      fixture.destroy();
+    });
+  });
 });
