@@ -49,3 +49,24 @@ describe('Gestión comercial: jerarquía visual',()=>{
     expect(keys('en')).toEqual(keys('es'));expect(keys('en').length).toBe(19);
   });
 });
+
+describe('D-02: gestión comercial sin permiso',()=>{
+  it('sin ningún permiso de clases avisa en vez de dejar la pantalla vacía y no pide datos',()=>{
+    const refundRequests=vi.fn(()=>of([])),providerState=vi.fn(()=>of(null));
+    const f=render([],{refundRequests,providerState});
+    expect(f.nativeElement.querySelector('[data-testid="permission-notice"]')?.textContent).toContain('Tu cuenta no tiene este permiso. Pídelo a quien administra la plataforma.');
+    expect(f.nativeElement.querySelector('[data-test="provider-card"]')).toBeNull();
+    expect(refundRequests).not.toHaveBeenCalled();
+    expect(providerState).not.toHaveBeenCalled();
+  });
+  it('si el servidor responde 403 al cargar muestra el aviso',()=>{
+    const f=render(['class_payments.review'],{refundRequests:()=>throwError(()=>({status:403}))});
+    f.detectChanges();
+    expect(f.nativeElement.querySelector('[data-testid="permission-notice"]')).not.toBeNull();
+    expect(headings(f)).toEqual([]);
+  });
+  it('en inglés usa el texto en inglés',()=>{
+    const f=render([]);TestBed.inject(I18nService).setLocale('en');f.detectChanges();
+    expect(f.nativeElement.textContent).toContain('Your account does not have this permission. Ask whoever manages the platform for it.');
+  });
+});

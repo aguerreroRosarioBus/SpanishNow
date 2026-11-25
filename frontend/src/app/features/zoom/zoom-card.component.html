@@ -1,5 +1,7 @@
 <section class="zoom-page" data-testid="zoom-card" [attr.aria-busy]="busy()">
   <header><h1>{{ 'zoom.title' | t }}</h1><p>{{ 'zoom.intro' | t }}</p></header>
+  @if (denied()) { <app-permission-notice /> }
+  @else {
   @if (failure()) { <p class="alert alert-warning" role="alert">{{ api.error(failure()) }}</p> }
   @if (status(); as s) {
     @if (s.fake) { <p class="test-notice">{{ 'zoom.fake' | t }}</p> }
@@ -26,4 +28,5 @@
       <a [routerLink]="['/zoom/sessions', s.id]" class="btn btn-secondary">{{ 'zoom.openSession' | t }}</a>
     </article>
   } @empty { @if (!busy()) { <p>{{ 'zoom.empty' | t }}</p> } }
+  }
 </section>

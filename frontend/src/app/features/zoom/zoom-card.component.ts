@@ -2,18 +2,21 @@ import { DOCUMENT } from '@angular/common';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { finalize, forkJoin } from 'rxjs';
+import { finalize, switchMap } from 'rxjs';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { UserPreferencesService } from '../../core/services/user-preferences.service';
 import { FeaturesService } from '../../core/services/features.service';
+import { PermissionNoticeComponent } from '../../shared/components/permission-notice/permission-notice.component';
 import { ZoomApi, ZoomSession, ZoomStatus } from './zoom-api.service';
-@Component({ selector: 'app-zoom-card', standalone: true, imports: [TranslatePipe, RouterLink],
+@Component({ selector: 'app-zoom-card', standalone: true, imports: [TranslatePipe, RouterLink, PermissionNoticeComponent],
   templateUrl: './zoom-card.component.html', styleUrl: './zoom.component.scss' })
 export class ZoomCardComponent {
   readonly api = inject(ZoomApi); readonly i18n = inject(I18nService); readonly features = inject(FeaturesService); readonly preferences = inject(UserPreferencesService);
   private document = inject(DOCUMENT); private destroy = inject(DestroyRef);
   readonly status = signal<ZoomStatus | null>(null); readonly sessions = signal<ZoomSession[]>([]);
+  /** La cuenta no puede usar Zoom (403 al leer el estado): se explica en lugar de mostrar un estado vacío (D-01). */
+  readonly denied = signal(false);
   readonly busy = signal(false); readonly failure = signal<unknown>(null); readonly disconnecting = signal(false);
   constructor() {
     const route = inject(ActivatedRoute), router = inject(Router);
@@ -43,9 +46,15 @@ export class ZoomCardComponent {
   isConnected(s: ZoomStatus): boolean { return s.status === 'connected'; }
   refresh(): void {
     if (this.busy()) return;
-    this.busy.set(true); this.failure.set(null);
-    forkJoin({ status: this.api.status(), sessions: this.api.sessions() }).pipe(takeUntilDestroyed(this.destroy), finalize(() => this.busy.set(false))).subscribe({
-      next: r => { this.status.set(r.status); this.sessions.set(r.sessions.items); }, error: e => this.failure.set(e)
+    this.busy.set(true); this.failure.set(null); this.denied.set(false);
+    // Primero el estado: si la cuenta no tiene acceso (403) no se pide la lista de clases, que fallaría igual.
+    let status: ZoomStatus | null = null;
+    this.api.status().pipe(
+      switchMap(current => { status = current; return this.api.sessions(); }),
+      takeUntilDestroyed(this.destroy), finalize(() => this.busy.set(false))
+    ).subscribe({
+      next: r => { this.status.set(status); this.sessions.set(r.items); },
+      error: e => { if ((e as { status?: number })?.status === 403) this.denied.set(true); else this.failure.set(e); }
     });
   }
   connect(): void {
