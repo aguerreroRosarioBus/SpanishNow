@@ -236,10 +236,17 @@ test('opciones solo del docente dueño y enlace Zoom solo de participante, sin a
   expect((await as(other).get(`/api/class-sessions/options?conversationId=${c.conversations[0].id}`)).status).toBe(404);
   await M.ExternalSyncRef.update({ joinUrl: 'https://zoom.us/j/12345', status: 'ready' }, { where: { sessionId: s.id, provider: 'zoom' } });
   process.env.FEATURE_ZOOM = '1'; // W08 integra el join con su feature flag.
+  const fake = process.env.INTEGRATIONS_FAKE;
   try {
-    expect((await as(c.students[0]).get(`/api/class-sessions/${s.id}/join`)).body).toEqual({ joinUrl: 'https://zoom.us/j/12345', manual: false });
+    for (const [flag, host] of [['0', 'zoom.us'], ['1', 'zoom.fake.invalid']]) {
+      process.env.INTEGRATIONS_FAKE = flag;
+      expect((await as(c.students[0]).get(`/api/class-sessions/${s.id}/join`)).body).toEqual({ joinUrl: `https://${host}/j/12345`, manual: false });
+    }
     expect((await as(c.teacher).get(`/api/class-sessions/${s.id}/join`)).body.code).toBe('zoom_meeting_pending');
-  } finally { delete process.env.FEATURE_ZOOM; }
+  } finally {
+    delete process.env.FEATURE_ZOOM;
+    if (fake === undefined) delete process.env.INTEGRATIONS_FAKE; else process.env.INTEGRATIONS_FAKE = fake;
+  }
   expect((await as(c.teacher).post(`/api/class-sessions/${s.id}/sync/retry`)).body.code).toBe('integration_not_connected');
 });
 

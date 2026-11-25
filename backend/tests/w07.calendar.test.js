@@ -344,7 +344,9 @@ describe('calendar.sync (CAL-02, CAL-04, CAL-05)', () => {
     const s = await confirmed(c);
     await M.ExternalSyncRef.update({ joinUrl: 'https://us02web.zoom.us/j/12345?pwd=abc', status: 'ready' }, { where: { sessionId: s.id, provider: 'zoom' } });
     await drain();
-    expect(fake.events()[0].description).toContain('https://us02web.zoom.us/j/12345?pwd=abc');
+    expect(fake.events()[0].description).toContain('https://zoom.fake.invalid/j/12345?pwd=abc');
+    const ics = await as(c.students[0]).get(`/api/class-sessions/${s.id}/calendar.ics`);
+    expect(ics.text.replace(/\r\n /g, '')).toContain('https://zoom.fake.invalid/j/12345?pwd=abc');
   });
 
   test('timeout tras crear el evento: el reintento adopta el mismo evento (sin duplicar)', async () => {

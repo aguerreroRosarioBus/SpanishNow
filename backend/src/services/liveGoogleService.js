@@ -15,7 +15,12 @@ const COMPLETION_TTL_MS = 300000;
 function encryptionKey() {
   const raw = process.env.GOOGLE_TOKEN_ENCRYPTION_KEY || '';
   const key = Buffer.from(raw, 'base64');
-  if (key.length !== 32 || key.toString('base64') !== raw) fail('Falta configurar la clave de cifrado de Google en el servidor.', 503);
+  if (key.length !== 32 || key.toString('base64') !== raw) {
+    const error = new LiveError(503, 'Configura GOOGLE_TOKEN_ENCRYPTION_KEY con una clave de 32 bytes en base64.',
+      'integration_encryption_not_configured');
+    error.statusCode = 503;
+    throw error;
+  }
   return key;
 }
 function config() {

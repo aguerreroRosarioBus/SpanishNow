@@ -330,16 +330,18 @@ async function ics(user, sessionId) {
   if (session.teacherId !== user.id && !seats.some(s => s.userId === user.id && (s.status !== 'cancelled' || session.status === 'cancelled'))) fail('not_found', {}, 404);
   if (!session.confirmedAt || !['confirmed', 'cancelled', 'completed'].includes(session.status)) fail('not_found', {}, 404);
   const ref = await M.ExternalSyncRef.findOne({ where: { sessionId: session.id, provider: 'zoom' } });
+  const { participantUrl } = require('./zoomService');
   let zoomJoinUrl = null;
   try {
-    const url = new URL(ref?.manualJoinUrl || (ref?.status === 'ready' ? ref.joinUrl : '') || '');
-    if (url.protocol === 'https:' && (url.hostname === 'zoom.us' || url.hostname.endsWith('.zoom.us'))) zoomJoinUrl = url.href;
+    const automatic = !ref?.manualJoinUrl;
+    const url = ref?.manualJoinUrl || (ref?.status === 'ready' ? ref.joinUrl : null);
+    if (url) zoomJoinUrl = participantUrl(url, { automatic, legacy: automatic });
   } catch { /* sin enlace de participante listo */ }
   // Clase partida en reuniones consecutivas (tope de 40 min de Zoom Basic): los enlaces de los tramos siguientes.
   const zoomExtraUrls = [];
   if (!ref?.manualJoinUrl && ref?.status === 'ready') {
     for (const p of Array.isArray(ref.parts) ? ref.parts : []) {
-      try { zoomExtraUrls.push({ index: p.index, url: require('./zoomService').participantUrl(p.joinUrl) }); } catch { /* tramo sin enlace válido */ }
+      try { zoomExtraUrls.push({ index: p.index, url: participantUrl(p.joinUrl, { automatic: true }) }); } catch { /* tramo sin enlace válido */ }
     }
   }
   const frontend = require('./googleCalendarService').frontendUrl(); // validado: https fuera de desarrollo

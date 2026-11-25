@@ -176,6 +176,19 @@ describe('W06: interfaz conectada por contratos de agenda', () => {
     fixture.destroy();
   });
 
+  it('C2-03: la agenda muestra el enlace del adaptador fake', () => {
+    const api2 = api as typeof api & { join: ReturnType<typeof vi.fn> };
+    api2.join = vi.fn(() => of({ joinUrl: 'https://zoom.fake.invalid/j/123456789', manual: false }));
+    api.get.mockReturnValue(of(confirmed([])));
+    const f = TestBed.createComponent(ClassSessionCardComponent);
+    f.componentRef.setInput('sessionId', 10);
+    f.detectChanges();
+    f.nativeElement.querySelector('[data-testid="join-button"]').click();
+    f.detectChanges();
+    expect(f.nativeElement.querySelector('[data-testid="meeting-link"]').getAttribute('href')).toBe('https://zoom.fake.invalid/j/123456789');
+    f.destroy();
+  });
+
   it('la docente inicia la reunión con hostUrl de zoom.us; la alumna solo entra como participante', () => {
     const sync = [{ provider: 'zoom', status: 'ready', syncedVersion: 1 }];
     const api2 = api as typeof api & { join: ReturnType<typeof vi.fn> };

@@ -5,10 +5,15 @@ const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const features = require('../config/features');
-const { ZoomError, fail, hash } = require('./zoomAdapterCore');
+const { ZoomError, fail, hash, FAKE_ZOOM_HOST } = require('./zoomAdapterCore');
 function assertFake() {
   features.assertSafe();
   if (process.env.INTEGRATIONS_FAKE !== '1') fail('zoom_fake_required', 503);
+}
+// Conserva los códigos de acceso de reuniones generadas por el simulador anterior.
+function normalizeMeeting(meeting) {
+  if (!meeting) return null;
+  return { ...meeting, joinUrl: meeting.joinUrl.replace(/^https:\/\/zoom\.us\//, `https://${FAKE_ZOOM_HOST}/`) };
 }
 async function store(account, fn) {
   assertFake();
@@ -74,13 +79,13 @@ module.exports = {
   },
   async capabilities(credentials) { assertFake(); return fakeCapabilities(); },
   async find(credentials, correlationKey) {
-    return store(credentials.accountId, data => Object.values(data).find(m => m.correlationKey === correlationKey) || null);
+    return store(credentials.accountId, data => normalizeMeeting(Object.values(data).find(m => m.correlationKey === correlationKey)));
   },
   async create(credentials, wanted) {
     return store(credentials.accountId, data => {
       // El endpoint simulado NO es idempotente: el servicio debe reconciliar antes de llamar.
       const id = String(crypto.randomInt(100000000, 999999999));
-      const meeting = { ...wanted, id, joinUrl: `https://zoom.us/j/${id}?pwd=${crypto.randomBytes(12).toString('hex')}`,
+      const meeting = { ...wanted, id, joinUrl: `https://${FAKE_ZOOM_HOST}/j/${id}?pwd=${crypto.randomBytes(12).toString('hex')}`,
         // El simulador respeta la sala de espera pedida; ZOOM_FAKE_FORCE_WAITING_ROOM_OFF simula una cuenta que la bloquea.
         waitingRoom: wanted.settings?.waitingRoom === true && process.env.ZOOM_FAKE_FORCE_WAITING_ROOM_OFF !== '1' };
       data[id] = meeting; return meeting;
@@ -89,7 +94,7 @@ module.exports = {
   async update(credentials, id, wanted) {
     return store(credentials.accountId, data => {
       if (!data[id]) fail('zoom_meeting_missing', 404);
-      return (data[id] = { ...data[id], ...wanted,
+      return (data[id] = { ...normalizeMeeting(data[id]), ...wanted,
         waitingRoom: wanted.settings?.waitingRoom === true && process.env.ZOOM_FAKE_FORCE_WAITING_ROOM_OFF !== '1' });
     });
   },
@@ -97,7 +102,7 @@ module.exports = {
   async host(credentials, id) {
     return store(credentials.accountId, data => {
       if (!data[id]) fail('zoom_meeting_missing', 404);
-      return `https://zoom.us/s/${id}?zak=fake-${crypto.randomUUID()}`;
+      return `https://${FAKE_ZOOM_HOST}/s/${id}?zak=fake-${crypto.randomUUID()}`;
     });
   },
   async revoke() { assertFake(); }

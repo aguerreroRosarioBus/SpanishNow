@@ -1,4 +1,5 @@
 const crypto = require('node:crypto');
+const FAKE_ZOOM_HOST = 'zoom.fake.invalid';
 
 class ZoomError extends Error {
   constructor(code, statusCode = 409, params = {}, { retryable = false, retryAt = null } = {}) {
@@ -12,4 +13,4 @@ const fail = (code, status = 409, params = {}, options = {}) => {
 };
 const hash = value => crypto.createHash('sha256').update(value).digest('hex');
 
-module.exports = { ZoomError, fail, hash };
+module.exports = { ZoomError, fail, hash, FAKE_ZOOM_HOST };

@@ -171,6 +171,10 @@ export class ClassSessionCardComponent {
   }
   private setSession(value: ClassSession): void {
     this.clockOffset = Date.parse(value.serverNow) - Date.now();
+    const meetingCode = this.errorCode(this.meetingFailure());
+    if ((meetingCode === 'zoom_meeting_pending' || meetingCode === 'integration_not_connected')
+      && value.sync.some(ref => ref.provider === 'zoom' && ref.status === 'ready')) this.meetingFailure.set(null);
+    if (this.syncQueued() && !value.sync.some(ref => ref.status === 'pending')) this.syncQueued.set(false);
     this.session.set(value);
   }
   startDecision(action: 'accept' | 'decline' | 'cancel'): void { this.decision.set(action); this.acknowledge = false; this.failure.set(null); }
@@ -239,7 +243,7 @@ export class ClassSessionCardComponent {
     this.actionRequest = this.api.join(s.id).subscribe({ next: result => {
       if (generation !== this.generation) return;
       this.busy.set(false);
-      try { const u = new URL((this.teacher() && result.hostUrl) || result.joinUrl || ''); if (u.protocol === 'https:' && (u.hostname === 'zoom.us' || u.hostname.endsWith('.zoom.us'))) this.meeting.set(u.href); } catch { /* no se muestra una URL inválida */ }
+      try { const u = new URL((this.teacher() && result.hostUrl) || result.joinUrl || ''); if (u.protocol === 'https:' && (u.hostname === 'zoom.us' || u.hostname.endsWith('.zoom.us') || u.hostname === 'zoom.fake.invalid')) this.meeting.set(u.href); } catch { /* no se muestra una URL inválida */ }
     }, error: error => {
       if (generation !== this.generation) return;
       this.busy.set(false);
