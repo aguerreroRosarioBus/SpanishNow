@@ -230,7 +230,7 @@ Andrés pidió comprobar si los hallazgos eran reales o producto de una prueba d
 | A-02 | **Artefacto** | Solo 3 de 276 bloques de lección tienen `imageUrl` absoluta a `localhost:3001/uploads-dev`; 273 son relativas. `/uploads-dev` es el sustituto local de Cloudinary y el proxy solo cubre `/api`. Guardar una URL absoluta es frágil, pero no afecta a producción. |
 | A-06 | **Producto** | `liveClassService.list` muestra a un alumno todas las pizarras no borrador de los cursos en los que está inscrito. Los nombres de otros alumnos vienen de la semilla, que crea una pizarra por alumno ligada al curso. La duda es si eso debe ser visible para todo el curso. |
 | A-07 | **Confirmado** (privacidad) | `GET /api/users/teachers` (cualquier usuario autenticado) devuelve `email` de cada docente. Decisión de producto si se mantiene. |
-| A-08 | **Artefacto** | Las órdenes 5-7 y 10-12 de Lucas repiten los mismos cursos en dos lotes de semilla (22/10 00:11 y 21:51); `receiptUrl` vacío por ser registros ficticios. |
+| A-08 | **Artefacto** | Corregido tras el Lote 4: no eran dos lotes de semilla. La semilla maestra crea una orden por alumno y por curso de pago de cada docente, y con los mismos cinco títulos para ambos docentes (C-04) Lucas parecía haber comprado dos veces. Los recibos vacíos son por diseño (`verify.js` exige `provider=fake` sin `receiptUrl`). |
 | C-04 | **Artefacto** | La semilla maestra creó los mismos cinco títulos para los dos docentes (ids 1 y 10). |
 | A-09 | **Artefacto** | Preguntas de demostración repetidas (el propio informe lo marcaba). |
 | C-05 | **Producto** | Página estática de agradecimiento de Hotmart, sin datos de compra por diseño; mostrar «Pago recibido» al abrirla directo es una decisión de copy. |
@@ -284,6 +284,6 @@ Andrés delegó las decisiones de producto de este informe. Criterio: lo más se
 | 1 · sesión y privacidad | A-01, A-07, D-01, D-02 | #103 | Mergeado |
 | 2 · honestidad de pantallas | D-03, D-04, D-05, D-10, C-05, C-02, A-03, A-11 | #106 | Mergeado |
 | 3 · pulido | C-01, D-06, D-07, D-08, D-12, D-13, D-14, A-04, A-05, C-06 | #107 | Mergeado |
-| 4 · semilla y entorno | C-03 (solo la tarea de contenido), A-10, D-04 (dato), D-01 (dato), A-02, A-08, C-04, A-09 | Ver el PR del Lote 4 | En curso |
+| 4 · semilla y entorno | A-10, D-01/D-02 (permisos), A-02, A-08, C-04, A-09, D-04 (documentación del worker), C-03 (lista de prelanzamiento) | #110 | Abierto, revisado |
 
 Pendientes sin lote: **D-09** (pizarra en móvil) y **A-06** (pizarras visibles solo para sus miembros), ambos a la espera de #68; **D-11** (nombres del menú y ayuda del panel docente), sin lote asignado. La segunda pasada de la auditoría, con una base clonada, permisos cargados y el worker activo, cubrirá los flujos que esta no pudo ejecutar (guardar, publicar, cancelar, reembolsar, ofertas con datos).
