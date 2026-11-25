@@ -12,6 +12,8 @@ module.exports = sequelize.define('ExternalSyncRef', {
   // Sent to the provider so a lost response can be reconciled instead of creating a duplicate.
   correlationKey: { type: D.STRING(64), allowNull: false, unique: true },
   joinUrl: D.STRING(1000), manualJoinUrl: D.STRING(1000), manualJoinUrlById: D.INTEGER,
+  // Zoom Basic corta cada reunión a los 40 min: los tramos 2, 3… de una clase más larga (el 1.º está en externalId/joinUrl).
+  parts: D.JSON,
   lastError: D.STRING(500),
   attempts: { type: D.INTEGER, allowNull: false, defaultValue: 0 }
 }, { tableName: 'external_sync_refs', timestamps: true });

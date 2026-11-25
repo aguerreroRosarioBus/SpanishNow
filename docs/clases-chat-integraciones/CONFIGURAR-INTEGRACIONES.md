@@ -296,7 +296,7 @@ El OAuth de servidor usa PKCE S256; el intercambio, refresh y revoke autentican 
 
 Fuente: [Zoom: límites del plan Basic](https://support.zoom.com/hc/en/article?id=zm_kb&sysparm_article=KB0067966) y [capacidad de participantes](https://support.zoom.com/hc/en/article?id=zm_kb&sysparm_article=KB0068002).
 
-- La API devuelve `type=1` para Basic y `type=2` para una licencia paga. SpanishNow guarda el plan y la capacidad de participantes que devuelve `GET /users/me`; Basic admite hasta **40 minutos y 100 participantes** y Licensed hasta **30 horas** (el número de participantes usa `feature.meeting_capacity`, incluidos add-ons asignados).
+- La API devuelve `type=1` para Basic y `type=2` para una licencia paga. SpanishNow guarda el plan y la capacidad de participantes que devuelve `GET /users/me`; Basic admite hasta **40 minutos por reunión y 100 participantes** y Licensed hasta **30 horas** (el número de participantes usa `feature.meeting_capacity`, incluidos add-ons asignados).
 - Para ZOOM-05, programá una sesión de **60 minutos** con la cuenta gratuita y comprobá que SpanishNow **avisa antes de confirmar** que la cuenta no soporta esa duración. Una sesión de 30 minutos debe confirmarse sin aviso.
 - Los límites de reuniones simultáneas no se prueban con una sola cuenta; la regla de SpanishNow ya impide que un docente dicte dos clases a la vez.
 
@@ -391,7 +391,7 @@ Hallazgos que pueden requerir cambios en los nombres fijados o en el CONTRATO. L
 3. No hay sondeo periódico de Zoom: cuando llega `meeting.updated`, la sincronización durable restaura los datos de SpanishNow; `meeting.deleted` marca la referencia para reintento.
 4. Los scopes granulares están fijados en §4.3, incluidos `user:read:settings` y `meeting:read:list_meetings` para configuración y reconciliación.
 5. Cada refresh persiste el nuevo refresh token bajo un lease propio. `invalid_grant` y la revocación pasan la conexión a «requiere atención».
-6. El plan, la duración máxima y los participantes se consultan al conectar y quedan cacheados; Basic se limita a 40 minutos. El preflight no lee tokens ni llama a Zoom.
+6. El plan, la duración máxima y los participantes se consultan al conectar y quedan cacheados; Basic corta cada reunión a los 40 minutos, así que una clase más larga se parte en hasta 4 tramos consecutivos (una reunión por tramo; ver «Clases largas con Zoom Basic»). El preflight no lee tokens ni llama a Zoom.
 7. Las cuatro variables obligatorias del adaptador real y el modo fake están documentados en §4.5.
 
 ---
@@ -409,3 +409,17 @@ Hallazgos que pueden requerir cambios en los nombres fijados o en el CONTRATO. L
 - Zoom, webhooks: <https://developers.zoom.us/docs/api/webhooks/>
 - Zoom, plan Basic (40 min): <https://support.zoom.com/hc/en/article?id=zm_kb&sysparm_article=KB0063110>
 - Acceso público de la copia fija: DEVELOPMENT.md, «Acceso público (platform.spanishnow.ar)»
+
+
+## Clases largas con Zoom Basic (tramos de 40 minutos)
+
+Decisión de producto de Andrés (25/11/2026), que reemplaza el rechazo de ZOOM-01/ZOOM-05 para clases que superan `maxMinutes`:
+
+- Una clase de más de `maxMinutes` (40 en Basic) se parte en tramos consecutivos de hasta `maxMinutes`; cada tramo es su **propia reunión** de Zoom, con sala de espera y código. Con licencia (`maxMinutes` alto) hay un solo tramo y nada cambia.
+- Máximo **4 tramos** (`MAX_PARTS`): una clase que necesitaría más sigue rechazándose con `zoom_capacity_exceeded`.
+- El primer tramo vive en la fila de `external_sync_refs` como siempre; los siguientes se guardan en la columna JSON `parts` (`index`, `correlationKey` = `<clave>:p<n>`, `externalId`, `joinUrl` de participante, `startsAt`, `minutes`). Nunca se guarda el `start_url`.
+- Al reprogramar o cambiar la duración se actualizan los tramos; los que sobran, o todos si la clase se cancela, se borran en Zoom.
+- `GET /class-sessions/:id/join?part=n`: sin `part` devuelve el tramo que corresponde por hora (con 5 minutos de margen). Participante: `joinUrl` y la lista `parts` con los enlaces de cada tramo; docente: `hostUrl` del tramo y la lista sin enlaces. `GET /integrations/zoom/sessions/:id` incluye `parts` (índice, inicio y minutos, sin enlaces) solo si hay más de un tramo.
+- Calendar y el `.ics` incluyen un enlace por tramo.
+- Límite conocido: el webhook de Zoom solo reconcilia el primer tramo; los demás se reconcilian en cada sincronización de la clase.
+- Zoom no pasa de un tramo al siguiente por sí solo: al terminar el tramo, el docente abre el siguiente desde la pantalla de la clase y los alumnos entran con el suyo.

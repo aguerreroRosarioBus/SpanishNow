@@ -315,11 +315,11 @@ async function remindersFeed(user) {
   return { items };
 }
 
-async function join(user, sessionId) {
+async function join(user, sessionId, part) {
   const { session, seats } = await load(user, sessionId);
   if (session.status !== 'confirmed' || (session.teacherId !== user.id && !seats.some(s => s.userId === user.id && s.status !== 'cancelled'))) fail('proposal_stale');
   // W08: la ruta y pertenencia siguen en W06; Zoom obtiene host efímero o participante/manual validado.
-  return require('./zoomService').join(user, session.id);
+  return require('./zoomService').join(user, session.id, part);
 }
 
 // W07 (CAL-05): archivo ICS de la versión vigente para el docente y los participantes activos; sin conectar cuenta.
@@ -334,8 +334,15 @@ async function ics(user, sessionId) {
     const url = new URL(ref?.manualJoinUrl || (ref?.status === 'ready' ? ref.joinUrl : '') || '');
     if (url.protocol === 'https:' && (url.hostname === 'zoom.us' || url.hostname.endsWith('.zoom.us'))) zoomJoinUrl = url.href;
   } catch { /* sin enlace de participante listo */ }
+  // Clase partida en reuniones consecutivas (tope de 40 min de Zoom Basic): los enlaces de los tramos siguientes.
+  const zoomExtraUrls = [];
+  if (!ref?.manualJoinUrl && ref?.status === 'ready') {
+    for (const p of Array.isArray(ref.parts) ? ref.parts : []) {
+      try { zoomExtraUrls.push({ index: p.index, url: require('./zoomService').participantUrl(p.joinUrl) }); } catch { /* tramo sin enlace válido */ }
+    }
+  }
   const frontend = require('./googleCalendarService').frontendUrl(); // validado: https fuera de desarrollo
-  const body = require('./calendarIcs').buildIcs({ session, locale: user.locale, host: new URL(frontend).hostname, url: `${frontend}/schedule`, zoomJoinUrl });
+  const body = require('./calendarIcs').buildIcs({ session, locale: user.locale, host: new URL(frontend).hostname, url: `${frontend}/schedule`, zoomJoinUrl, zoomExtraUrls });
   return { id: session.id, body };
 }
 

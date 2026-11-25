@@ -31,8 +31,8 @@ function eventIdFor(correlationKey) {
 }
 
 const TEXT = {
-  es: { summary: 'Clase de español · SpanishNow', details: 'Gestiona la clase desde SpanishNow (no cambies el horario desde este calendario).', zoom: 'Enlace de Zoom' },
-  en: { summary: 'Spanish class · SpanishNow', details: 'Manage this class in SpanishNow (do not change the time from this calendar).', zoom: 'Zoom link' }
+  es: { summary: 'Clase de español · SpanishNow', details: 'Gestiona la clase desde SpanishNow (no cambies el horario desde este calendario).', zoom: 'Enlace de Zoom', zoomParts: 'La clase se divide en reuniones de Zoom consecutivas por el límite de tiempo de la cuenta del docente.' },
+  en: { summary: 'Spanish class · SpanishNow', details: 'Manage this class in SpanishNow (do not change the time from this calendar).', zoom: 'Zoom link', zoomParts: 'The class is split into consecutive Zoom meetings because of the teacher account time limit.' }
 };
 
 /** Evento normalizado de una sesión. Sin mensajes privados, sin enlace de anfitrión, sin importes (CAL-04/05). */
@@ -41,15 +41,22 @@ async function buildEvent(session, ref) {
   const text = TEXT[teacher?.locale === 'en' ? 'en' : 'es'];
   const seats = await M.ClassSessionParticipant.findAll({ where: { sessionId: session.id, status: { [Op.ne]: 'cancelled' } } });
   const students = await M.User.findAll({ where: { id: seats.map(s => s.userId) }, attributes: ['id', 'email'] });
-  const zoom = await M.ExternalSyncRef.findOne({ where: { sessionId: session.id, provider: 'zoom' }, attributes: ['status', 'joinUrl', 'manualJoinUrl'] });
+  const zoom = await M.ExternalSyncRef.findOne({ where: { sessionId: session.id, provider: 'zoom' }, attributes: ['status', 'joinUrl', 'manualJoinUrl', 'parts'] });
   const link = `${calendar.frontendUrl()}/schedule`;
   const lines = [text.details, link];
   // Solo el enlace de participante; el de anfitrión nunca se guarda ni se envía aquí.
   const zoomLink = zoom?.manualJoinUrl || (zoom?.status === 'ready' ? zoom.joinUrl : null);
+  // Clase partida por el tope de 40 min de Zoom Basic: un enlace por tramo, nunca en modo manual (un solo enlace).
+  const extra = zoom?.manualJoinUrl || zoom?.status !== 'ready' ? [] : (Array.isArray(zoom.parts) ? zoom.parts : []);
+  const label = n => (extra.length ? `${text.zoom} (${n}/${extra.length + 1})` : text.zoom);
   if (zoomLink) {
-    try { lines.push(`${text.zoom}: ${require('./zoomService').participantUrl(zoomLink, !zoom.manualJoinUrl)}`); }
+    try { lines.push(`${label(1)}: ${require('./zoomService').participantUrl(zoomLink, !zoom.manualJoinUrl)}`); }
     catch { /* W08: sin enlace de participante válido; nunca enviar un start_url heredado. */ }
   }
+  for (const p of extra) {
+    try { lines.push(`${label(p.index)}: ${require('./zoomService').participantUrl(p.joinUrl)}`); } catch { /* tramo sin enlace válido */ }
+  }
+  if (extra.length) lines.push(text.zoomParts);
   return {
     id: eventIdFor(ref.correlationKey), summary: text.summary, description: lines.join('\n\n'),
     startsAt: session.startsAt.toISOString(), endsAt: session.endsAt.toISOString(), timeZone: session.timeZone,
