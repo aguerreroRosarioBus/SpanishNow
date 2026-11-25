@@ -1,6 +1,7 @@
 // Test teacher and student (seeds/local-test-accounts.json). Idempotent: existing users are left as they are
 // (password included) unless --reset-passwords is passed. The password hash comes from the User model hook.
-// An account may list admin "permissions" (keys of src/config/permissions.js): applied on create and on existing users too.
+// An account may list admin "permissions" (keys of src/config/permissions.js): applied on create and on existing users too,
+// idempotently, but only when the database host is local, so a run against a remote database never grants permissions to a real account.
 const { loadAccounts } = require('./lib/content');
 const { PERMISSION_KEYS } = require('../../src/config/permissions');
 
@@ -12,8 +13,11 @@ function resolvePassword({ host, filePassword }) {
   throw new Error(`The database host is not local: set SEED_TEST_PASSWORD to choose the test accounts' password (the password in local-test-accounts.json is only used on localhost)`);
 }
 
+const isLocalHost = host => LOCAL_HOSTS.has(String(host).toLowerCase());
+
 module.exports = {
   resolvePassword,
+  isLocalHost,
   name: 'accounts',
   async run({ models: { User }, sequelize, options, log, state }) {
     const { accounts, filePassword } = loadAccounts();
@@ -37,8 +41,12 @@ module.exports = {
         log(`kept ${account.email}`);
       }
       if (account.permissions && JSON.stringify(user.permissions) !== JSON.stringify(account.permissions)) {
-        await user.update({ permissions: account.permissions });
-        log(`set permissions of ${account.email}: ${account.permissions.join(', ')}`);
+        if (isLocalHost(sequelize.config.host)) {
+          await user.update({ permissions: account.permissions });
+          log(`set permissions of ${account.email}: ${account.permissions.join(', ')}`);
+        } else {
+          log(`warning: permissions of ${account.email} not applied (the database host is not local)`);
+        }
       }
       state.users[account.email] = user;
     }

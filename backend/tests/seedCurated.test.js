@@ -5,7 +5,8 @@ const { spawnSync } = require('child_process');
 const bcrypt = require('bcryptjs');
 const { loadContent, loadAccounts, assertCleanText, MOJIBAKE } = require('../seeds/curated/lib/content');
 const { buildBlocks, signature, sameSignature, isUncurated } = require('../seeds/curated/lib/plan');
-const { resolvePassword } = require('../seeds/curated/01-accounts');
+const accountsSeed = require('../seeds/curated/01-accounts');
+const { resolvePassword, isLocalHost } = accountsSeed;
 const { createScratchDb, dropScratchDb } = require('./helpers/scratchDb');
 
 const BACKEND = path.resolve(__dirname, '..');
@@ -44,6 +45,40 @@ describe('seed content files', () => {
   test('test accounts: at least a teacher and a student', () => {
     const roles = new Set(loadAccounts().accounts.map(a => a.role));
     expect([...roles].sort()).toEqual(['student', 'teacher']);
+  });
+});
+
+describe('permissions of the test accounts (D-01, D-02)', () => {
+  const makeUser = (permissions = null) => ({ role: 'teacher', permissions, update: jest.fn(async function (values) { Object.assign(this, values); }) });
+  const runSeed = async (host, user) => {
+    const logs = [];
+    const User = { findOne: jest.fn(async () => user), create: jest.fn() };
+    await accountsSeed.run({ models: { User }, sequelize: { config: { host } }, options: {}, log: message => logs.push(message), state: {} });
+    return logs;
+  };
+
+  test('isLocalHost only accepts loopback hosts', () => {
+    for (const host of ['localhost', '127.0.0.1', '::1', 'LOCALHOST']) expect(isLocalHost(host)).toBe(true);
+    for (const host of ['viaduct.proxy.rlwy.net', 'db.example.test', undefined]) expect(isLocalHost(host)).toBe(false);
+  });
+
+  test('on a local host an existing account with empty permissions gets the file permissions, and a second run changes nothing', async () => {
+    const { accounts } = loadAccounts();
+    const expected = accounts.find(a => a.permissions).permissions;
+    const user = makeUser();
+    await runSeed('localhost', user);
+    expect(user.permissions).toEqual(expected);
+    expect(user.update).toHaveBeenCalledTimes(1);
+    await runSeed('localhost', user);
+    expect(user.update).toHaveBeenCalledTimes(1);
+  });
+
+  test('on a remote host permissions are never granted to an existing account', async () => {
+    const user = makeUser();
+    const logs = await runSeed('db.example.test', user);
+    expect(user.update).not.toHaveBeenCalled();
+    expect(user.permissions).toBeNull();
+    expect(logs.some(line => line.includes('not applied'))).toBe(true);
   });
 });
 
