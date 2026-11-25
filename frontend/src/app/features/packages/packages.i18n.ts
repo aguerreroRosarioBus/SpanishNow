@@ -1,6 +1,7 @@
 import { TranslationBundle } from '../../core/i18n/i18n.types';
 export const PACKAGE_MESSAGES: TranslationBundle = {
   en: {
+    "packages.ui.offerNeedsConversation":"Open a conversation first: offers are sent from a student's chat.",
     "packages.ui.sendHint":"Prepare the package and review its conditions before sharing the offer.",
     "packages.ui.offerFor":"Offer for",
     "packages.ui.privateConversation":"Private conversation",
@@ -187,6 +188,16 @@ export const PACKAGE_MESSAGES: TranslationBundle = {
     "packages.event.package_cancelled":"Package #{purchaseId} cancelled for new bookings.",
 
     "packages.group.invitation":"Group invitation",
+    "packages.group.title":"Class group",
+    "packages.group.backMessages":"Messages",
+    "packages.group.scheduleTitle":"Schedule",
+    "packages.group.tentativeLabel":"Tentative session",
+    "packages.group.tentativePastLabel":"Tentative session (date already passed)",
+    "packages.group.deadlineLabel":"Group formation deadline",
+    "packages.group.deadlinePassed":"The formation deadline has passed.",
+    "packages.group.openChat":"Open conversation",
+    "packages.group.waitingHint":"Offers can be sent once every person has accepted their invitation.",
+    "packages.group.yourReply":"Your reply",
     "packages.group.tentative":"Tentative session: {time} ({zone})",
     "packages.group.deadline":"Group formation deadline: {time} ({zone})",
     "packages.group.accepted":"{count} of {total} invitations accepted",
@@ -325,6 +336,7 @@ export const PACKAGE_MESSAGES: TranslationBundle = {
     "packages.errors.payment_review_required":"This order is under review and cannot be changed this way.",
   },
   es: {
+    "packages.ui.offerNeedsConversation":"Abre primero una conversación: las ofertas se envían desde el chat de un alumno.",
     "packages.ui.sendHint":"Prepará el paquete y revisá sus condiciones antes de compartir la oferta.",
     "packages.ui.offerFor":"Oferta para",
     "packages.ui.privateConversation":"Conversación privada",
@@ -511,6 +523,16 @@ export const PACKAGE_MESSAGES: TranslationBundle = {
     "packages.event.package_cancelled":"Paquete #{purchaseId} cancelado para nuevas reservas.",
 
     "packages.group.invitation":"Invitación al grupo",
+    "packages.group.title":"Grupo de clases",
+    "packages.group.backMessages":"Mensajes",
+    "packages.group.scheduleTitle":"Horario",
+    "packages.group.tentativeLabel":"Sesión tentativa",
+    "packages.group.tentativePastLabel":"Sesión tentativa (fecha ya pasada)",
+    "packages.group.deadlineLabel":"Plazo para formar el grupo",
+    "packages.group.deadlinePassed":"El plazo para formar el grupo venció.",
+    "packages.group.openChat":"Abrir conversación",
+    "packages.group.waitingHint":"Podrás enviar las ofertas cuando todas las personas hayan aceptado su invitación.",
+    "packages.group.yourReply":"Tu respuesta",
     "packages.group.tentative":"Sesión tentativa: {time} ({zone})",
     "packages.group.deadline":"Plazo para formar el grupo: {time} ({zone})",
     "packages.group.accepted":"{count} de {total} invitaciones aceptadas",
