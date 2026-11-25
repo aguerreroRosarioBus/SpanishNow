@@ -13,7 +13,7 @@ import { PACKAGE_MESSAGES } from './packages.i18n';
 
 // W11 (#96): el docente puede activar «recibir consultas»; sin esta pantalla nadie aparecía en «Nueva consulta».
 describe('W11 catálogo: recibir consultas por chat', () => {
-  const settings = (over: Partial<ClassSettings> = {}): ClassSettings => ({ classesEnabledAt: '2026-11-25T00:00:00Z', salesPausedAt: '2026-11-25T00:00:00Z', acceptsInquiries: false, ...over });
+  const settings = (over: Partial<ClassSettings> = {}): ClassSettings => ({ classesEnabledAt: '2026-11-25T00:00:00Z', salesPausedAt: '2026-11-25T00:00:00Z', acceptsInquiries: false, sessionBufferMinutes: 10, minLeadTimeHours: 24, ...over });
   const inquiries = vi.fn();
   function setup(initial: ClassSettings) {
     inquiries.mockReset().mockImplementation((accepts: boolean) => of({ ...initial, acceptsInquiries: accepts }));

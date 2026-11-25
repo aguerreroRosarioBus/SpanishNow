@@ -2,7 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { I18nService } from '../../core/i18n/i18n.service';
-import { ClassCohort, ClassOffer, ClassSettings, PackageTemplate, ClassOrder, CheckoutState, ClassPurchase, RefundPreview, PaymentJob, ClassProviderState, ProviderVerifyBody } from './packages.model';
+import { ClassCohort, ClassOffer, ClassSettings, ScheduleRules, PackageTemplate, ClassOrder, CheckoutState, ClassPurchase, RefundPreview, PaymentJob, ClassProviderState, ProviderVerifyBody } from './packages.model';
 @Injectable({providedIn:'root'})
 export class PackagesService {
   private http = inject(HttpClient);
@@ -50,6 +50,7 @@ export class PackagesService {
   settings() { return this.http.get<ClassSettings>(`${this.base}/teacher/class-settings`); }
   pause(salesPaused: boolean) { return this.http.patch<ClassSettings>(`${this.base}/teacher/class-settings`, {salesPaused}); }
   inquiries(acceptsInquiries: boolean) { return this.http.patch<ClassSettings>(`${this.base}/teacher/class-settings`, {acceptsInquiries}); }
+  schedule(rules: ScheduleRules) { return this.http.patch<ClassSettings>(`${this.base}/teacher/class-settings`, rules); }
   create(body: unknown) { return this.http.post<PackageTemplate>(`${this.base}/teacher/class-packages`, body); }
   save(id: number, body: unknown) { return this.http.post<PackageTemplate>(`${this.base}/teacher/class-packages/${id}/versions`, body); }
   status(id: number, status: string, version: number) { return this.http.patch<PackageTemplate>(`${this.base}/teacher/class-packages/${id}/status`, {status, version}); }

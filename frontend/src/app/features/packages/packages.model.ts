@@ -18,7 +18,10 @@ export interface PackageTemplate {
 /** Plantilla con versión vigente: la única que se puede ofrecer, activar o agrupar. */
 export type CompleteTemplate = PackageTemplate & { current: PackageVersion };
 export const hasVersion = (t: PackageTemplate): t is CompleteTemplate => t.current != null;
-export interface ClassSettings { classesEnabledAt: string | null; salesPausedAt: string | null; acceptsInquiries: boolean }
+export interface ClassSettings { classesEnabledAt: string | null; salesPausedAt: string | null; acceptsInquiries: boolean; sessionBufferMinutes: number; minLeadTimeHours: number }
+/** Reglas de agenda del docente; los topes son los mismos que valida el servidor (`SCHEDULE_LIMITS`). */
+export interface ScheduleRules { sessionBufferMinutes: number; minLeadTimeHours: number }
+export const SCHEDULE_LIMITS: ScheduleRules = { sessionBufferMinutes: 120, minLeadTimeHours: 720 };
 export interface ClassOffer {
   canCheckout?:boolean;canManage?:boolean;
   id: number; conversationId: number; teacherId: number; buyerId: number; cohortId: number | null;

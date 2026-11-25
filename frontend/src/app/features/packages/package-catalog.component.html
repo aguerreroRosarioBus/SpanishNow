@@ -28,6 +28,30 @@
         {{ (s.acceptsInquiries ? 'packages.inquiries.turnOff' : 'packages.inquiries.turnOn') | t }}
       </button>
     </details>
+    <details class="sales-strip schedule-strip" aria-labelledby="scheduleTitle"><summary>
+      <span class="sales-icon"><app-icon name="calendar" [size]="20" /></span>
+      <div class="sales-copy">
+        <h2 id="scheduleTitle">{{ 'packages.catalog.scheduleTitle' | t }}</h2>
+        <p data-testid="schedule-summary">{{ 'packages.schedule.summary' | t:{ minutes: s.sessionBufferMinutes, hours: s.minLeadTimeHours } }}</p>
+      </div>
+      </summary>
+      <form class="schedule-form" (ngSubmit)="saveSchedule()" novalidate>
+        <div class="schedule-field">
+          <label for="sessionBuffer" class="form-label">{{ 'packages.schedule.bufferLabel' | t }}</label>
+          <input id="sessionBuffer" name="sessionBuffer" class="form-control" inputmode="numeric" autocomplete="off" [ngModel]="bufferText()" (ngModelChange)="setBuffer($event)" [attr.aria-invalid]="bufferValue()===null" aria-describedby="sessionBufferHint">
+          <small id="sessionBufferHint" class="form-text" [class.text-danger]="bufferValue()===null">{{ (bufferValue()===null ? 'packages.schedule.invalid' : 'packages.schedule.bufferHint') | t:{ max: limits.sessionBufferMinutes } }}</small>
+        </div>
+        <div class="schedule-field">
+          <label for="minLeadTime" class="form-label">{{ 'packages.schedule.leadLabel' | t }}</label>
+          <input id="minLeadTime" name="minLeadTime" class="form-control" inputmode="numeric" autocomplete="off" [ngModel]="leadText()" (ngModelChange)="setLead($event)" [attr.aria-invalid]="leadValue()===null" aria-describedby="minLeadTimeHint">
+          <small id="minLeadTimeHint" class="form-text" [class.text-danger]="leadValue()===null">{{ (leadValue()===null ? 'packages.schedule.invalid' : 'packages.schedule.leadHint') | t:{ max: limits.minLeadTimeHours } }}</small>
+        </div>
+        <div class="schedule-actions">
+          <button type="submit" class="btn btn-primary" data-testid="save-schedule" [disabled]="busy() || bufferValue()===null || leadValue()===null || !scheduleChanged()">{{ 'packages.schedule.save' | t }}</button>
+          @if (scheduleSaved()) { <span role="status" data-testid="schedule-saved">{{ 'packages.schedule.saved' | t }}</span> }
+        </div>
+      </form>
+    </details>
   }
   <section aria-labelledby="packagesTitle">
     <div class="catalog-heading">
