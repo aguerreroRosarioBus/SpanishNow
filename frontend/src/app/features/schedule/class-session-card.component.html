@@ -7,7 +7,7 @@
         <h2>{{ title() }}</h2>
         <p class="card-meta">{{ ('schedule.' + s.kind) | t }} · {{ 'schedule.minutesShort' | t:{ minutes: s.minutes } }}</p>
       </div>
-      <span class="badge-status badge-status--dot status-{{ statusTone() }}" data-testid="session-status">{{ ('schedule.status.' + s.status) | t }}</span>
+      <span class="badge-status badge-status--dot status-{{ statusTone() }}" data-testid="session-status">{{ ('schedule.status.' + displayStatus()) | t }}</span>
     </header>
     @if (proposalView(); as p) { <app-session-time [interval]="p" [recipientZone]="zone()" [teacherZone]="s.teacher.timeZone || s.timeZone" /> }
     @if (s.proposal?.status === 'pending' && s.proposal?.kind === 'reschedule') {
@@ -15,13 +15,14 @@
       <details class="card-details"><summary>{{ 'schedule.current' | t }}</summary><app-session-time [interval]="s" [recipientZone]="zone()" [teacherZone]="s.teacher.timeZone || s.timeZone" /></details>
     }
     @if (selectedProposal(); as p) {
-      @if (p.status === 'pending') { <p class="notice">{{ 'schedule.expires' | t }}: {{ displayProposal(p) }}</p> }
+      @if (p.status === 'pending' && proposalExpired()) { <p class="notice" data-testid="proposal-expired">{{ 'schedule.expiredOn' | t }}: {{ displayProposal(p) }}</p> }
+      @else if (p.status === 'pending' && !lapsed()) { <p class="notice">{{ 'schedule.expires' | t }}: {{ displayProposal(p) }}</p> }
       @if (p.version !== s.version) { <p class="notice">{{ 'schedule.stale' | t }}</p> }
     }
     @if (s.proposal?.charge === 'consumed_and_new_credit') { <p class="alert alert-warning">{{ 'schedule.lateCharge' | t }}</p> }
-    @if (s.timeZoneRulesChanged) { <p class="alert alert-warning">{{ 'schedule.rulesChanged' | t }}</p> }
+    @if (s.timeZoneRulesChanged && !pageNotices()) { <p class="alert alert-warning">{{ (teacher() ? 'schedule.rulesChangedTeacher' : 'schedule.rulesChanged') | t }}</p> }
     @if (s.groupResolutionRequired) { <p class="alert alert-warning">{{ 'schedule.groupDecision' | t }}</p> }
-    @if (!zoneReady()) { <p class="notice">{{ 'schedule.zoneHint' | t }} <a routerLink="/schedule">{{ 'schedule.confirmZone' | t }}</a></p> }
+    @if (!zoneReady() && !pageNotices()) { <p class="notice">{{ 'schedule.zoneHint' | t }} <a routerLink="/schedule">{{ 'schedule.confirmZone' | t }}</a></p> }
     @if (s.replacementSessionId) { <p class="notice">{{ 'schedule.replaced' | t }} <a routerLink="/schedule" [queryParams]="{ sessionId: s.replacementSessionId }">{{ 'schedule.open' | t }}</a></p> }
     @if (s.participants.length > 1) {
       <ul class="participants" [attr.aria-label]="'schedule.participants' | t">@for (p of s.participants; track p.userId) { <li>{{ p.name }} <span class="notice">· {{ ('schedule.status.' + p.status) | t }}@if (p.attendance !== 'pending') { · {{ ('schedule.status.' + p.attendance) | t }} }</span></li> }</ul>
@@ -36,9 +37,9 @@
         @if (meeting(); as link) { <a class="btn btn-primary" [href]="link" target="_blank" rel="noopener noreferrer" data-testid="meeting-link">{{ 'schedule.openMeeting' | t }}</a> }
         @else { <button type="button" class="btn btn-primary" (click)="join()" [disabled]="busy()" data-testid="join-button">{{ (teacher() ? 'schedule.start' : 'schedule.join') | t }}</button> }
       }
-      @if (teacher() && (['forming','proposed','confirmed'].includes(s.status) || (s.kind === 'group' && ['expired','declined'].includes(s.status))) && features.enabled('class_scheduling')) { <a routerLink="/schedule" [queryParams]="{ reschedule: s.id }" class="btn btn-secondary">{{ 'schedule.reschedule' | t }}</a> }
+      @if (canReschedule()) { <a routerLink="/schedule" [queryParams]="{ reschedule: s.id }" class="btn btn-secondary">{{ 'schedule.reschedule' | t }}</a> }
       @if (s.liveClassId && (teacher() || s.whiteboardJoinCode) && !inactive()) { <a class="btn btn-secondary" [routerLink]="teacher() ? ['/live', s.liveClassId] : ['/live/join', s.whiteboardJoinCode]">{{ 'schedule.whiteboard' | t }}</a> }
-      @if (['forming','proposed','confirmed'].includes(s.status) && !rejectIsEnough()) { <button type="button" class="btn btn-ghost card-actions-end" (click)="startDecision('cancel')" [disabled]="busy()">{{ 'schedule.cancel' | t }}</button> }
+      @if (canCancel()) { <button type="button" class="btn btn-ghost card-actions-end" (click)="startDecision('cancel')" [disabled]="busy()">{{ 'schedule.cancel' | t }}</button> }
     </div>
     @if (meetingNotReady()) { <p class="notice" role="status">{{ 'schedule.meetingNotReady' | t }}</p> }
     @if (decision(); as action) {

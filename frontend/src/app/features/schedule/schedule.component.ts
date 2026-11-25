@@ -14,6 +14,7 @@ import { ClassSessionCardComponent } from './class-session-card.component';
 import { TimeZoneSelectComponent } from '../../shared/components/time-zone-select/time-zone-select.component';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { SessionTimeComponent } from './session-time.component';
+import { isLapsed } from './session-lapse';
 import { DialogModule } from 'primeng/dialog';
 import { RestoreFocusDirective } from '../../shared/directives/restore-focus.directive';
 
@@ -31,7 +32,11 @@ export class ScheduleComponent {
   private route = inject(ActivatedRoute); private router = inject(Router); private destroyRef = inject(DestroyRef);
   listView=signal('upcoming');
   sessions = signal<ClassSession[]>([]);
-  visibleSessions=computed(()=>this.sessions().filter(s=>this.listView()==='all'||(this.listView()==='upcoming'?Date.parse(s.endsAt)>=Date.now()&&!['completed','cancelled','declined','expired','student_no_show','teacher_no_show'].includes(s.status):Date.parse(s.endsAt)<Date.now()||['completed','cancelled','declined','expired','student_no_show','teacher_no_show'].includes(s.status))).slice().sort((a,b)=>this.listView()==='history'?Date.parse(b.startsAt)-Date.parse(a.startsAt):Date.parse(a.startsAt)-Date.parse(b.startsAt)));
+  /** Una clase sin respuesta cuyo plazo o fecha pasó va al historial, no a «Próximas» (D-04). */
+  private closed(s: ClassSession): boolean { return Date.parse(s.endsAt) < Date.now() || isLapsed(s) || ['completed','cancelled','declined','expired','student_no_show','teacher_no_show'].includes(s.status); }
+  visibleSessions=computed(()=>this.sessions().filter(s=>this.listView()==='all'||(this.listView()==='upcoming'?!this.closed(s):this.closed(s))).slice().sort((a,b)=>this.listView()==='history'?Date.parse(b.startsAt)-Date.parse(a.startsAt):Date.parse(a.startsAt)-Date.parse(b.startsAt)));
+  /** Aviso de reglas de zona: una vez por página, con el texto del rol (D-04). */
+  rulesChanged=computed(()=>[...this.sessions(),...(this.selected()?[this.selected()!]:[])].some(s=>s.timeZoneRulesChanged&&!isLapsed(s)));
  options = signal<ScheduleOptions | null>(null);
   notices = signal<{ id: string; sessionId: number; startsAt: string; minutes: number }[]>([]);
   loading = signal(false); busy = signal(false); failure = signal<unknown>(null); truncated = signal(false);
