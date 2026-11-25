@@ -1,0 +1,15 @@
+# SpanishNow (/root/spanishnow). Se copia a /root/gestion/deploy/sitios/spanishnow.caddy, que el Caddy compartido
+# importa (DEP-07). El contenedor spanishnow-web se une a deploy_default con ese nombre.
+#
+# Antes de recargar: caddy validate; después: caddy reload (ver README.md §Dominio y HTTPS).
+platform.spanishnow.ar {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+	reverse_proxy spanishnow-web:80
+}
