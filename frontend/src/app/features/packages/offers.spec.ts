@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
+import { ToastService } from '../../core/services/toast.service';
 import { of, throwError } from 'rxjs';
 import { OfferCreateComponent } from './offer-create.component';
 import { OfferDetailComponent } from './offer-detail.component';
@@ -61,5 +62,19 @@ describe('Tanda B: ofertas con plantillas sin versión',()=>{
     const button=Array.from<HTMLButtonElement>(f.nativeElement.querySelectorAll('button')).find(b=>b.textContent!.includes('Enviar esta oferta'));
     expect(button).toBeTruthy();c.send();
     expect(send).toHaveBeenCalledTimes(1);expect(send.mock.calls[0]).toEqual([9,{templateVersionId:33},expect.any(String)]);
+  });
+});
+
+describe('D-05: oferta sin conversación',()=>{
+  it('redirige a Mensajes con un aviso y no consulta la conversación 0',()=>{
+    const get=vi.fn();const list=vi.fn(()=>of([]));
+    TestBed.configureTestingModule({imports:[OfferCreateComponent],providers:[provideRouter([]),{provide:I18N_CATALOGS,multi:true,useValue:PACKAGE_MESSAGES},{provide:ActivatedRoute,useValue:{snapshot:{queryParamMap:convertToParamMap({})}}},{provide:ChatService,useValue:{get}},{provide:PackagesService,useValue:{list,error:()=> 'Error'}}]});
+    TestBed.inject(I18nService).setLocale('es');
+    const router=TestBed.inject(Router);const nav=vi.spyOn(router,'navigate').mockResolvedValue(true);
+    const toast=TestBed.inject(ToastService);
+    const f=TestBed.createComponent(OfferCreateComponent);f.detectChanges();
+    expect(nav).toHaveBeenCalledWith(['/messages'],{replaceUrl:true});
+    expect(get).not.toHaveBeenCalled();expect(list).not.toHaveBeenCalled();
+    expect(toast.getToasts()[0].message).toContain('Abre primero una conversación');
   });
 });
