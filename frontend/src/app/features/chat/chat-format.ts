@@ -24,6 +24,23 @@ export class ChatFormat {
     }
   }
 
+  /**
+   * Texto de un evento del sistema (CHAT-04, I18N-04): `chat.event.<eventCode>` en cualquier catálogo registrado
+   * (W05/W06 agregan los suyos) con sus parámetros estructurados; un código desconocido usa el genérico.
+   */
+  eventText(eventCode: string | null, eventParams?: Record<string, unknown> | null): string {
+    const packageKey = `packages.event.${eventCode}`;
+    const key = eventCode?.startsWith('session_')
+      ? `schedule.event.${eventCode}`
+      : this.i18n.has(packageKey) ? packageKey : `chat.event.${eventCode}`;
+    if (!eventCode || !this.i18n.has(key)) return this.i18n.t('chat.event.generic');
+    const params: Record<string, string | number> = {};
+    for (const [name, value] of Object.entries(eventParams ?? {})) {
+      if (typeof value === 'string' || (typeof value === 'number' && Number.isFinite(value))) params[name] = value;
+    }
+    return this.i18n.t(key, params);
+  }
+
   error(error: unknown): string {
     const res = error as { error?: { code?: string; params?: Record<string, unknown> } } | null;
     const retryAt = res?.error?.params?.['retryAt'];

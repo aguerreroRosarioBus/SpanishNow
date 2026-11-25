@@ -323,16 +323,7 @@ export class ChatConversationComponent implements OnInit {
    * (W05/W06 agregan los suyos) con sus parámetros estructurados; un código desconocido usa el genérico.
    */
   eventText(m: ChatMessage): string {
-    const packageKey = `packages.event.${m.eventCode}`;
-    const key = m.eventCode?.startsWith('session_')
-      ? `schedule.event.${m.eventCode}`
-      : this.i18n.has(packageKey) ? packageKey : `chat.event.${m.eventCode}`;
-    if (!m.eventCode || !this.i18n.has(key)) return this.i18n.t('chat.event.generic');
-    const params: Record<string, string | number> = {};
-    for (const [name, value] of Object.entries(m.eventParams ?? {})) {
-      if (typeof value === 'string' || (typeof value === 'number' && Number.isFinite(value))) params[name] = value;
-    }
-    return this.i18n.t(key, params);
+    return this.fmt.eventText(m.eventCode, m.eventParams);
   }
 
   offerSummary(m: ChatMessage): string {

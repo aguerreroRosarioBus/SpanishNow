@@ -309,6 +309,43 @@ describe('W06: interfaz conectada por contratos de agenda', () => {
     });
   });
 
+  describe('D-12: formulario «Proponer una clase»', () => {
+    const students = [{ id: 7, name: 'Alumno con paquete' }, { id: 8, name: 'Alumno sin paquete' }, { id: 9, name: 'Alumno solo en grupo' }];
+    const purchases = [
+      { id: 5, cohortId: null, minutesPerSession: 50, seatsCovered: 1, status: 'active', expiresAt: '2027-06-01T00:00:00Z', available: 4, beneficiaryIds: [7] },
+      { id: 6, cohortId: 3, minutesPerSession: 50, seatsCovered: 2, status: 'active', expiresAt: '2027-06-01T00:00:00Z', available: 4, beneficiaryIds: [9] }
+    ];
+    it('el selector de alumnos lista solo a quienes tienen un paquete individual disponible', () => {
+      auth.currentUser.set({ id: 2, role: 'teacher' });
+      api.options.mockReturnValue(of({ studentId: null, students, cohorts: [], purchases }));
+      const fixture = TestBed.createComponent(ScheduleComponent); fixture.detectChanges();
+      expect(fixture.componentInstance.studentsWithPackage().map(s => s.name)).toEqual(['Alumno con paquete']);
+      fixture.componentInstance.openForm(); fixture.detectChanges();
+      const select = document.body.querySelector('select[name="student"]') as HTMLSelectElement;
+      expect(Array.from(select.options).map(o => o.textContent?.trim())).toEqual(['Elegir…', 'Alumno con paquete']);
+      expect(document.body.querySelector('[data-testid="no-students"]')).toBeNull();
+      fixture.destroy();
+    });
+    it('sin ningún alumno con paquete se explica en vez de dejar el selector vacío', () => {
+      auth.currentUser.set({ id: 2, role: 'teacher' });
+      api.options.mockReturnValue(of({ studentId: null, students, cohorts: [], purchases: [] }));
+      const fixture = TestBed.createComponent(ScheduleComponent); fixture.detectChanges();
+      fixture.componentInstance.openForm(); fixture.detectChanges();
+      expect(fixture.componentInstance.studentsWithPackage()).toEqual([]);
+      expect(document.body.querySelector('[data-testid="no-students"]')?.textContent).toContain('Ningún alumno tiene todavía un paquete de clases disponible');
+      fixture.destroy();
+    });
+    it('la zona de programación nace con la del docente y la etiqueta no usa la jerga «IANA»', () => {
+      auth.currentUser.set({ id: 2, role: 'teacher' });
+      const fixture = TestBed.createComponent(ScheduleComponent); fixture.detectChanges();
+      expect(fixture.componentInstance.draft().timeZone).toBe(fixture.componentInstance.zone());
+      expect(fixture.componentInstance.draft().timeZone).not.toBe('');
+      expect(SCHEDULE_MESSAGES.es['schedule.programmingZone']).toBe('Zona horaria de la clase');
+      expect(Object.values(SCHEDULE_MESSAGES.es).join(' ')).not.toContain('IANA');
+      fixture.destroy();
+    });
+  });
+
   describe('Tanda B: clave de idempotencia al proponer una clase', () => {
     const setup = () => {
       auth.currentUser.set({ id: 2, role: 'teacher' });

@@ -13,7 +13,7 @@
     <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" novalidate>
       <div class="mb-3">
         <label for="email" class="form-label">{{ 'common.email' | t }}</label>
-        <input type="email" class="form-control" id="email" formControlName="email"
+        <input #emailField type="email" class="form-control" id="email" formControlName="email"
                [class.is-invalid]="hasError('email')" [placeholder]="'common.emailPlaceholder' | t" autocomplete="email">
         @if (hasError('email')) {
           <div class="invalid-feedback">{{ getErrorMessage('email') }}</div>

@@ -104,6 +104,7 @@ export class ChatInboxComponent implements OnInit {
     const last = c.lastMessage;
     if (!last) return this.i18n.t('chat.inbox.noMessages');
     if (last.hidden) return this.i18n.t('chat.preview.hidden');
+    if (last.type === 'system_event' && last.eventCode) return this.fmt.eventText(last.eventCode, last.eventParams);
     if (last.type !== 'text') return this.i18n.t(`chat.preview.${last.type}`);
     return (last.senderIsMe ? this.i18n.t('chat.inbox.you') : '') + (last.preview ?? '');
   }

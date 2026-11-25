@@ -55,7 +55,7 @@
   }
   <section aria-labelledby="packagesTitle">
     <div class="catalog-heading">
-      <h2 id="packagesTitle">{{ 'packages.catalog.listTitle' | t }} <span class="item-count">{{ items().length }}</span></h2>
+      <h2 id="packagesTitle">{{ 'packages.catalog.listTitle' | t }} @if (loaded()) { <span class="item-count">{{ items().length }}</span> }</h2>
       <div class="catalog-tools">
         <button type="button" class="btn btn-primary" [disabled]="busy()" data-tour="catalog-create" aria-haspopup="dialog" [attr.aria-expanded]="editorOpen() && !selected()" (click)="startCreate()"><app-icon name="plus" [size]="16" />{{ 'packages.create' | t }}</button>
         @if (items().length) {
@@ -63,6 +63,7 @@
         }
       </div>
     </div>
+    @if (settings() && !settings()?.classesEnabledAt) { <p class="notice" data-testid="create-hint">{{ 'packages.catalog.createWhileDisabled' | t }}</p> }
     @if (notice()) { <p class="alert alert-success" role="status">{{ 'packages.created' | t }}</p> }
     @if (busy()) { <p class="small" role="status">{{ 'packages.loading' | t }}</p> }
     <label for="catalogStatus" class="form-label">{{'student.status'|t}}</label><select id="catalogStatus" class="form-select mb-3" style="max-width:260px" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event)"><option value="all">{{'refine.all'|t}}</option>@for(s of ['active','draft','paused','archived'];track s){<option [value]="s">{{('packages.status.'+s)|t}}</option>}</select>
@@ -79,7 +80,7 @@
             <dl class="package-facts">
               <div><dt>{{ 'packages.field.sessionsCount' | t }}</dt><dd>{{ current.sessionsCount }} × {{ current.minutesPerSession }} min</dd></div>
               <div><dt>{{ 'packages.ui.seats' | t }}</dt><dd>{{ current.seatsCovered }}</dd></div>
-              <div class="package-validity"><dt>{{ 'packages.ui.validity' | t }}</dt><dd>{{ i18n.formatNumber(current.validityHours) }} h <span>{{ 'packages.ui.fromPayment' | t }}</span></dd></div>
+              <div class="package-validity"><dt>{{ 'packages.ui.validity' | t }}</dt><dd>{{ validityLabel(current.validityHours) }} <span>{{ 'packages.ui.fromPayment' | t }}</span></dd></div>
             </dl>
             <footer class="package-card__footer">
               <small>{{ 'packages.version' | t:{version:current.version} }}</small>

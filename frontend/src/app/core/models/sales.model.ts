@@ -175,7 +175,7 @@ export interface MyOrder {
 
 /** Curso siguiente que se ofrece al terminar (GET /enrollments/:id/progress → next). */
 export interface NextCourseOffer {
-  course: { slug: string; title: string; price: number; currency: string };
+  course: { id?: number; slug: string; title: string; price: number; currency: string };
   couponCode: string | null;
   alreadyEnrolled: boolean;
 }

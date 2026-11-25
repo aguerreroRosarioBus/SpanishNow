@@ -8,6 +8,7 @@ import { Course } from '../../../core/models/course.model';
 import { Coupon, CouponInput } from '../../../core/models/sales.model';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { ModalFocusDirective } from '../../../shared/directives/modal-focus.directive';
 import { applyDiscount, normalizeCouponCode } from '../../../shared/utils/coupon-price';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
@@ -18,7 +19,7 @@ type DiscountKind = 'percent' | 'amount';
 @Component({
   selector: 'app-teacher-coupons',
   standalone: true,
-  imports: [NgbTooltip, ReactiveFormsModule, IconComponent, ConfirmDialogComponent, TranslatePipe],
+  imports: [NgbTooltip, ReactiveFormsModule, IconComponent, ConfirmDialogComponent, ModalFocusDirective, TranslatePipe],
   templateUrl: './teacher-coupons.component.html',
   styleUrl: './teacher-coupons.component.scss'
 })
@@ -65,6 +66,8 @@ export class TeacherCouponsComponent implements OnInit {
   toDelete = signal<Coupon | null>(null);
   /** Curso elegido para el link de un cupón válido para todos los cursos. */
   linkCourse = signal<Record<number, number>>({});
+  /** Cupón «todos los cursos» cuyo enlace se está armando en el diálogo (D-07). */
+  linkFor = signal<Coupon | null>(null);
 
   /** Ejemplo de precio para el curso elegido (solo orientativo; el servidor calcula el real). */
   example = computed(() => {
@@ -120,6 +123,13 @@ export class TeacherCouponsComponent implements OnInit {
   }
   /** El vencimiento se elige como día de calendario (se guarda a 00:00 UTC): se muestra en UTC para no correrlo de día. */
   date(value: string): string { return this.i18n.formatInstant(value, 'UTC', {dateStyle: 'medium'}); }
+  /** Un solo estado por cupón (D-07): vencido manda sobre activo/inactivo. */
+  statusOf(c: Coupon): 'expired' | 'active' | 'inactive' { return this.isExpired(c) ? 'expired' : c.active ? 'active' : 'inactive'; }
+
+  /** Con curso fijo se copia el link directo; si el cupón vale para todos los cursos se abre el diálogo para elegirlo. */
+  onLink(c: Coupon): void { if (c.courseId == null) this.linkFor.set(c); else void this.copyLink(c); }
+  closeLink(): void { this.linkFor.set(null); }
+
   isExpired(c: Coupon): boolean { return !!c.expiresAt && new Date(c.expiresAt).getTime() < Date.now(); }
   coursesWithSlug = computed(() => this.courses().filter(c => !!c.slug));
 

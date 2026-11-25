@@ -3,14 +3,16 @@ import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatchingComponent } from '../matching/matching.component';
+import { ModalFocusDirective } from '../../../shared/directives/modal-focus.directive';
 import { ToastService } from '../../../core/services/toast.service';
 
 @Component({
   selector: 'app-matching-modal',
   standalone: true,
-  imports: [TranslatePipe, CommonModule, MatchingComponent],
+  imports: [TranslatePipe, CommonModule, MatchingComponent, ModalFocusDirective],
   template: `
-    <div class="modal fade" [class.show]="show" [style.display]="show ? 'block' : 'none'" tabindex="-1" (click)="onBackdropClick($event)">
+    <div class="modal fade" [class.show]="show" [style.display]="show ? 'block' : 'none'" tabindex="-1" role="dialog" aria-modal="true"
+         [appModalFocus]="show" (modalDismiss)="onClose()" (click)="onBackdropClick($event)">
       <div class="modal-dialog modal-xl" (click)="$event.stopPropagation()">
         <div class="modal-content">
           <div class="modal-header bg-success text-white">

@@ -90,6 +90,7 @@ export const STUDENT_EN = {
   "student.nextCourse": "Continue with {course}",
   "student.withCoupon": "with your coupon {coupon}",
   "student.alreadyNext": "You are already enrolled in this course.",
+  "student.nextInSeries": "Next course in the series: {course}",
   "student.goToCourse": "Go to course",
   "student.free": "Free",
   "student.enrollmentCount": {
@@ -205,7 +206,8 @@ export const STUDENT_ES = {
   "student.teachersEmptyHelp": "Aún no hay profesores en la plataforma.",
   "student.nextCourse": "Sigue con {course}",
   "student.withCoupon": "con tu cupón {coupon}",
-  "student.alreadyNext": "Ya estás inscripto en este curso.",
+  "student.alreadyNext": "Ya estás inscrito en este curso.",
+  "student.nextInSeries": "Siguiente curso de la serie: {course}",
   "student.goToCourse": "Ir al curso",
   "student.free": "Gratis",
   "student.enrollmentCount": {
