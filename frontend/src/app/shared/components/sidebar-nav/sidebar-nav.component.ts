@@ -90,7 +90,7 @@ export class SidebarNavComponent {
       }] }, ...groups.slice(1)];
     }
     if (this.features.enabled('class_packages') && this.currentUser()?.role === 'teacher' && groups.length) {
-      groups = [{ ...groups[0], items: [...groups[0].items, { label: 'packages.nav', description: 'tutorial.nav.catalog', icon: 'package', link: '/teacher/class-packages' }, {label:'packages.group.nav',description:'tutorial.nav.groups',icon:'users',link:'/teacher/class-cohorts'}] }, ...groups.slice(1)];
+      groups = [{ ...groups[0], items: [...groups[0].items, { label: 'packages.commerce.title', description: 'tutorial.nav.catalog', icon: 'package', link: '/teacher/class-commerce', alsoActiveUnder: '/teacher/class-packages' }, {label:'packages.group.nav',description:'tutorial.nav.groups',icon:'users',link:'/teacher/class-cohorts'}] }, ...groups.slice(1)];
     }
     if (this.features.enabled('google_calendar') && this.currentUser()?.role === 'teacher' && groups.length) {
       groups = [{ ...groups[0], items: [...groups[0].items, { label: 'calendar.nav', icon: 'plug', link: '/teacher/integrations' }] }, ...groups.slice(1)];
@@ -117,7 +117,7 @@ export class SidebarNavComponent {
     if (!(this.currentUser()?.permissions?.length)) return groups;
     // «Administración» va antes de «Cuenta», que siempre es el último grupo
     const admin: NavGroup = { title: 'nav.admin', items: [{ label: 'nav.users', icon: 'id-card', link: '/admin/users' }] };
-    if(['class_payments.review','class_credits.adjust','class_packages.manage_all','class_teachers.manage'].some(p=>this.authService.hasPermission(p))) admin.items.push({label:'packages.admin.nav',icon:'credit-card',link:'/admin/class-commerce'});
+    if(['class_provider.verify','class_payments.review','class_credits.adjust','class_packages.manage_all','class_teachers.manage'].some(p=>this.authService.hasPermission(p))) admin.items.push({label:'packages.admin.nav',icon:'credit-card',link:'/admin/class-commerce'});
     if (this.authService.hasPermission('legal.manage')) admin.items.push({ label: 'legal.nav', icon: 'file-text', link: '/admin/legal' });
     return [...groups.slice(0, -1), admin, groups[groups.length - 1]];
   });

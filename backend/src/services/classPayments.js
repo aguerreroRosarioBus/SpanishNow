@@ -85,17 +85,27 @@ async function applyRefund(order,offer,{refundedAmount,operationKey},transaction
   if(offer.status!=='paid')await offer.update({status:'cancelled',cancelledAt:persistedSecond(new Date()),cancelReason:'Reembolso confirmado por el proveedor'},{transaction});
   await chat.appendSystemMessage(offer.conversationId,{eventCode:'package_refund_confirmed',offerId:offer.id,eventParams:{offerId:offer.id,...(purchase?{purchaseId:purchase.id}:{})},dedupeKey:`order:${order.id}:refunded`},{transaction});
 }
-async function handleEvent(body,{provider='hotmart'}={}){
+async function handleEvent(body,{provider='hotmart',connectionId=null,teacherId}={}){
   const n=normalize(body);
   const knownOrder=n.checkoutRef?await Order.findOne({where:{checkoutRef:n.checkoutRef}}):null;
-  const byTransaction=n.transactionId?await Order.findOne({where:{providerTransactionId:n.transactionId}}):null;
-  const version=n.productId?await Version.findOne({where:{hotmartProductId:n.productId},attributes:['id']}):null;
+  const byTransaction=!knownOrder&&n.transactionId?await Order.findOne({where:{providerTransactionId:n.transactionId}}):null;
+  const ref=knownOrder||byTransaction;
+  // Los enlaces emitidos antes del cambio siguen entrando por su cuenta original.
+  if(ref&&(ref.hotmartConnectionId??null)!==connectionId)return {handled:false};
+  if(ref&&teacherId!=null&&!await Offer.findOne({where:{id:ref.offerId,teacherId},attributes:['id']}))return {handled:false};
+  const version=!ref&&n.productId?await Version.findOne({
+    where:{hotmartProductId:n.productId},attributes:['id'],
+    ...(teacherId!=null?{include:[{association:'template',where:{teacherId},attributes:[]}]}:{})
+  }):null;
+  if(connectionId){
+    if(!ref&&!version)return {handled:false};
+    n.eventKey=`class:${connectionId}:${createHash('sha256').update(n.eventKey).digest('hex')}`;
+  }
   if(!knownOrder&&!byTransaction&&!version){
     await Event.findOrCreate({where:{provider,eventKey:n.eventKey},defaults:{eventType:n.eventType,providerTransactionId:n.transactionId,payload:n.payload,occurredAt:n.approvedAt||new Date(),outcome:'ignored',processedAt:new Date()}});
     return {handled:false};
   }
   // La atribución jamás usa el email del comprador: una referencia ausente/ambigua pasa a revisión.
-  const ref=knownOrder||byTransaction;
   const work=()=>sequelize.transaction(async transaction=>{
     const [event]=await Event.findOrCreate({where:{provider,eventKey:n.eventKey},defaults:{eventType:n.eventType,providerTransactionId:n.transactionId,payload:n.payload,occurredAt:n.approvedAt||new Date(),orderId:ref?.id||null},transaction});
     const lockedEvent=await Event.findByPk(event.id,{transaction,lock:transaction.LOCK.UPDATE});

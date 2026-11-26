@@ -119,6 +119,31 @@ async function newVersion(user, id, body) {
     return present(row, { transaction });
   });
 }
+async function linkHotmart(user, id, body) {
+  if (user.role !== 'teacher') throw fail(403, 'forbidden');
+  if (!only(body, ['version', 'url', 'productId', 'offerCode']) || typeof body.url !== 'string' || body.url.length > 500) {
+    throw invalid(['hotmartCheckoutUrl']);
+  }
+  const row = await owned(user, id);
+  if (row.teacherId !== user.id) throw fail(404, 'not_found');
+  const previous = await Version.findByPk(row.currentVersionId);
+  if (!previous || previous.version !== body.version) throw fail(409, 'version_conflict');
+  let url;
+  try { url = new URL(body.url); } catch { throw invalid(['hotmartCheckoutUrl']); }
+  if (url.origin !== 'https://pay.hotmart.com' || url.username || url.password || url.hash || !/^\/[A-Za-z0-9]+\/?$/.test(url.pathname)) {
+    throw invalid(['hotmartCheckoutUrl']);
+  }
+  const offers = url.searchParams.getAll('off');
+  if (offers.length > 1 || (offers.length && body.offerCode && offers[0] !== body.offerCode)) throw invalid(['hotmartOfferCode']);
+  const offerCode = offers.length ? offers[0] : body.offerCode;
+  if (typeof offerCode !== 'string' || !ID.test(offerCode)) throw invalid(['hotmartOfferCode']);
+  if (typeof body.productId !== 'string' || !ID.test(body.productId)) throw invalid(['hotmartProductId']);
+  const values = Object.fromEntries(FIELDS.map(key => [key, previous[key]]));
+  // El checkout para cada alumno agrega de nuevo la oferta y la referencia de su pedido.
+  const checkoutBase = `${url.origin}${url.pathname}`;
+  return newVersion(user, id, {...values,version:body.version,hotmartProductId:body.productId,
+    hotmartOfferCode:offerCode,hotmartCheckoutUrl:checkoutBase});
+}
 async function setStatus(user, id, body) {
   if (!only(body, ['status', 'version']) || !['active', 'paused', 'archived'].includes(body.status) || !positive(body.version)) throw invalid(['status', 'version']);
   return sequelize.transaction(async transaction => {
@@ -176,7 +201,7 @@ async function settings(user) {
 const SCHEDULE_LIMITS = { sessionBufferMinutes: 120, minLeadTimeHours: 720 };
 async function saveSettings(user, body) {
   if (!only(body, ['salesPaused', 'acceptsInquiries', 'sessionBufferMinutes', 'minLeadTimeHours'])) throw invalid();
-  if (body.salesPaused === false) await require('./classPackageProvider').assertSelling();
+  if (body.salesPaused === false) await require('./classPackageProvider').assertSelling({teacherId:user.id});
   const values = {};
   for (const key of ['salesPaused', 'acceptsInquiries']) if (body[key] !== undefined && typeof body[key] !== 'boolean') throw invalid([key]);
   if (body.salesPaused !== undefined) values.salesPausedAt = body.salesPaused ? new Date() : null;
@@ -213,4 +238,4 @@ async function createPolicy(actor, body) {
     return Policy.create({ version: body.version, rules: body.rules, createdById: actor.id }, { transaction });
   });
 }
-module.exports = { FIELDS, owned, assertReady, assertProductFree, present, list, detail, create, newVersion, setStatus, importInitial, publicCatalog, settings, saveSettings, enableTeacher, createPolicy, SCHEDULE_LIMITS };
+module.exports = { FIELDS, owned, assertReady, assertProductFree, present, list, detail, create, newVersion, linkHotmart, setStatus, importInitial, publicCatalog, settings, saveSettings, enableTeacher, createPolicy, SCHEDULE_LIMITS };

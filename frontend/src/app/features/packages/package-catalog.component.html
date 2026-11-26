@@ -1,11 +1,12 @@
-<div class="page-container catalog-page pilot-ui">
-  <header class="page-header">
+<div class="catalog-page pilot-ui" [class.page-container]="!embedded()">
+  @if (!embedded()) { <header class="page-header">
     <div class="page-header__main">
       <h1 class="page-title">{{ 'refine.catalogTitle' | t }}</h1>
       <p class="page-summary">{{ 'refine.salesSummary' | t }}</p>
     </div>
+    <a class="btn btn-secondary" routerLink="/teacher/class-commerce">{{ 'packages.commerce.tab.setup' | t }}</a>
   </header>
-  <app-package-orientation section="catalog" />
+  <app-package-orientation section="catalog" /> }
   @if (error() && !selected()) { <p class="alert alert-danger" role="alert">{{ error() }}</p> }
   @if (settings(); as s) {
     <details class="sales-strip" aria-labelledby="salesTitle"><summary>

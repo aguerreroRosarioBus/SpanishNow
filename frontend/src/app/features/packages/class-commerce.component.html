@@ -1,0 +1,237 @@
+<main class="page-container class-commerce">
+  <header class="page-header">
+    <h1 class="page-title">{{ 'packages.commerce.title' | t }}</h1>
+  </header>
+  <nav class="commerce-nav" [attr.aria-label]="'packages.commerce.title' | t">
+    @for (item of tabs; track item) {
+      <button type="button" class="btn" [class.btn-secondary]="tab() === item"
+        [attr.aria-pressed]="tab() === item" (click)="chooseTab(item)">
+        {{ ('packages.commerce.tab.' + item) | t }}
+      </button>
+    }
+  </nav>
+
+  @if (error()) { <p class="alert alert-danger" role="alert">{{ error() }}</p> }
+  @if (feedback()) { <p class="alert alert-info" role="status">{{ feedback() | t }}</p> }
+
+  @switch (tab()) {
+    @case ('setup') {
+      @if (setup(); as connection) {
+        <section class="surface commerce-guide" [attr.aria-busy]="busy()">
+          @switch (step()) {
+            @case ('home') {
+              <h2>{{ ('packages.commerce.state.' + setupState() + '.title') | t }}</h2>
+              <p>{{ ('packages.commerce.state.' + setupState() + '.detail') | t }}</p>
+              @if (packageReviewPending() && setupState() !== 'review') {
+                <p>{{ 'packages.commerce.packageReviewPending' | t }}</p>
+                <button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="load()">{{ 'packages.commerce.checkApproval' | t }}</button>
+              }
+              <div class="commerce-actions">
+                @switch (setupState()) {
+                  @case ('ready') {
+                    <a class="btn btn-primary" routerLink="/messages">{{ 'packages.commerce.openChat' | t }}</a>
+                    <button type="button" class="btn btn-secondary" (click)="start()">{{ 'packages.commerce.prepare' | t }}</button>
+                  }
+                  @case ('start') { <button type="button" class="btn btn-primary" (click)="start()">{{ 'packages.commerce.connect' | t }}</button> }
+                  @case ('continue') { <button type="button" class="btn btn-primary" (click)="start()">{{ 'packages.commerce.continue' | t }}</button> }
+                  @case ('paused') { <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="resume()">{{ 'packages.commerce.resume' | t }}</button> }
+                  @case ('publish') { <button type="button" class="btn btn-primary" (click)="chooseTab('packages')">{{ 'packages.commerce.tab.packages' | t }}</button> }
+                  @case ('review') {
+                    <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="load()">{{ 'packages.commerce.checkApproval' | t }}</button>
+                    <button type="button" class="btn btn-secondary" (click)="go('events')">{{ 'packages.commerce.eventsTitle' | t }}</button>
+                  }
+                  @case ('changed') { <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="load()">{{ 'packages.commerce.checkApproval' | t }}</button> }
+                  @case ('disabled') { <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="load()">{{ 'packages.commerce.checkApproval' | t }}</button> }
+                  @default {
+                    <button type="button" class="btn btn-primary" (click)="start()">{{ 'packages.commerce.prepare' | t }}</button>
+                    @if (approval() || connection.approval === 'fake') {
+                      <button type="button" class="btn btn-secondary" (click)="chooseTab('packages')">{{ 'packages.commerce.tab.packages' | t }}</button>
+                    }
+                  }
+                }
+              </div>
+              @if (connection.verifiedAt || connection.approval === 'shared') {
+                <details>
+                  <summary>{{ 'packages.commerce.connectionDetails' | t }}</summary>
+                  <p>{{ (connection.pending ? 'packages.commerce.keyPending' : 'packages.commerce.connectionDetailsHint') | t }}</p>
+                  <div class="commerce-actions">
+                    @if (connection.verifiedAt) {
+                      <button type="button" class="btn btn-secondary" (click)="go('events')">{{ 'packages.commerce.eventsTitle' | t }}</button>
+                    }
+                    <button type="button" class="btn btn-secondary" (click)="go(connection.pending ? 'address' : 'key')">{{ (connection.pending ? 'packages.commerce.continue' : 'packages.commerce.changeKey') | t }}</button>
+                  </div>
+                </details>
+              }
+            }
+            @case ('key') {
+              <p class="step">{{ 'packages.commerce.step' | t: { number: 1 } }}</p>
+              <h2>{{ 'packages.commerce.openTitle' | t }}</h2>
+              <p>{{ 'packages.commerce.openHelp' | t }}</p>
+              <a class="btn btn-secondary" href="https://app.hotmart.com/tools/webhook" target="_blank" rel="noopener noreferrer">{{ 'teacherManage.courseEdit.hotmartOpen' | t }}</a>
+              <details>
+                <summary>{{ 'teacherManage.courseEdit.hotmartOpenFallbackTitle' | t }}</summary>
+                <p>{{ 'teacherManage.courseEdit.hotmartOpenFallback' | t }}</p>
+              </details>
+              <p>{{ 'teacherManage.courseEdit.hotmartKeyHelp' | t }}</p>
+              <app-hotmart-guide-image file="authentication" label="teacherManage.courseEdit.hotmartImageAuth" />
+              <form (ngSubmit)="saveKey()">
+                <label class="form-label" for="class-hotmart-key">{{ 'teacherManage.courseEdit.hotmartKey' | t }}</label>
+                <input id="class-hotmart-key" name="key" class="form-control" type="password" autocomplete="off"
+                  spellcheck="false" maxlength="512" [ngModel]="key()" (ngModelChange)="key.set($event)" />
+                <div class="commerce-actions">
+                  <button type="submit" class="btn btn-primary" [disabled]="busy() || !key().trim()">{{ 'packages.commerce.continue' | t }}</button>
+                  <button type="button" class="btn btn-secondary" (click)="go('home')">{{ 'packages.commerce.back' | t }}</button>
+                </div>
+              </form>
+            }
+            @case ('address') {
+              <p class="step">{{ 'packages.commerce.step' | t: { number: 2 } }}</p>
+              <h2>{{ 'packages.commerce.addressTitle' | t }}</h2>
+              <p>{{ 'packages.commerce.addressHelp' | t }}</p>
+              @if (connection.webhookUrl; as address) {
+                <label class="form-label" for="class-hotmart-address">{{ 'teacherManage.courseEdit.hotmartNotifyUrl' | t }}</label>
+                <div class="commerce-copy">
+                  <input #input id="class-hotmart-address" class="form-control" [value]="address" readonly />
+                  <button type="button" class="btn btn-secondary" (click)="copyAddress(input)">{{ 'teacherManage.courseEdit.copy' | t }}</button>
+                </div>
+                @if (!address.startsWith('https://')) {
+                  <p class="alert alert-warning" role="status">{{ 'teacherManage.courseEdit.hotmartHttps' | t }}</p>
+                }
+              }
+              <app-hotmart-guide-image file="register" label="teacherManage.courseEdit.hotmartImageRegister" />
+              <p>{{ 'teacherManage.courseEdit.hotmartEventForTest' | t }}</p>
+              <app-hotmart-guide-image file="cart-abandonment" label="teacherManage.courseEdit.hotmartImageCart" />
+              <div class="commerce-actions">
+                <button type="button" class="btn btn-primary" (click)="go('test')" [disabled]="!connection.webhookUrl">{{ 'packages.commerce.testContinue' | t }}</button>
+                <button type="button" class="btn btn-secondary" (click)="go('key')">{{ 'packages.commerce.back' | t }}</button>
+              </div>
+            }
+            @case ('test') {
+              <p class="step">{{ 'packages.commerce.step' | t: { number: 3 } }}</p>
+              <h2>{{ 'teacherManage.courseEdit.hotmartTestTitle' | t }}</h2>
+              <p>{{ 'teacherManage.courseEdit.hotmartTestHelp' | t }}</p>
+              <app-hotmart-guide-image file="run-test" label="teacherManage.courseEdit.hotmartImageTest" />
+              <details>
+                <summary>{{ 'teacherManage.courseEdit.hotmartTroubleTitle' | t }}</summary>
+                <p>{{ 'teacherManage.courseEdit.hotmartTroubleHelp' | t }}</p>
+              </details>
+              <div class="commerce-actions">
+                <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="checkTest()">{{ 'teacherManage.courseEdit.hotmartCheckTest' | t }}</button>
+                <button type="button" class="btn btn-secondary" (click)="go('address')">{{ 'packages.commerce.back' | t }}</button>
+              </div>
+            }
+            @case ('events') {
+              <h2>{{ 'packages.commerce.eventsTitle' | t }}</h2>
+              <p class="alert alert-success" role="status">{{ 'packages.commerce.testReceived' | t }}</p>
+              <p>{{ 'packages.commerce.eventsHelp' | t }}</p>
+              <ul>
+                @for (event of ['Approved', 'Complete', 'Refunded', 'Chargeback']; track event) {
+                  <li>{{ ('teacherManage.courseEdit.hotmartEvent' + event) | t }}</li>
+                }
+                <li>{{ 'packages.commerce.failedEvents' | t }}</li>
+              </ul>
+              <div class="commerce-actions">
+                <button type="button" class="btn btn-primary" (click)="go('package')">{{ 'packages.commerce.prepare' | t }}</button>
+                <button type="button" class="btn btn-secondary" (click)="go('home')">{{ 'packages.commerce.back' | t }}</button>
+              </div>
+            }
+            @case ('package') {
+              <h2>{{ 'packages.commerce.prepareTitle' | t }}</h2>
+              @if (!products().length) {
+                <p>{{ 'packages.commerce.noPackages' | t }}</p>
+                <button type="button" class="btn btn-primary" (click)="chooseTab('packages')">{{ 'packages.commerce.tab.packages' | t }}</button>
+              } @else {
+                <label class="form-label" for="class-hotmart-package">{{ 'packages.commerce.package' | t }}</label>
+                <select id="class-hotmart-package" class="form-select" [ngModel]="selectedId()" (ngModelChange)="selectPackage($event)">
+                  <option [ngValue]="null">{{ 'packages.commerce.selectPackage' | t }}</option>
+                  @for (item of products(); track item.id) {
+                    @if (item.current; as version) {
+                      <option [ngValue]="item.id">{{ name(item) }} · {{ i18n.formatMoney(version.priceAmount, version.currency) }}</option>
+                    }
+                  }
+                </select>
+                @if (selected()) {
+                  <label class="form-label" for="class-hotmart-link">{{ 'packages.commerce.link' | t }}</label>
+                  <p>{{ 'packages.commerce.linkHelp' | t }}</p>
+                  <input id="class-hotmart-link" class="form-control" type="url" maxlength="500"
+                    [ngModel]="url()" (ngModelChange)="setLink($event)" placeholder="https://pay.hotmart.com/…" />
+                  @if (url() && !checkout()) { <p class="text-danger">{{ 'packages.commerce.linkInvalid' | t }}</p> }
+                  <app-hotmart-guide-image file="checkout" label="teacherManage.courseEdit.hotmartImageCheckout" />
+                  <label class="form-label" for="class-hotmart-product">{{ 'packages.commerce.productNumber' | t }}</label>
+                  <p>{{ 'packages.commerce.productHelp' | t }}</p>
+                  <input id="class-hotmart-product" class="form-control" maxlength="40" [ngModel]="productId()" (ngModelChange)="productId.set($event)" />
+                  <app-hotmart-guide-image file="product-id" label="teacherManage.courseEdit.hotmartImageProduct" />
+                  @if (checkout() && !linkHasOffer()) {
+                    <label class="form-label" for="class-hotmart-offer">{{ 'packages.commerce.offerCode' | t }}</label>
+                    <p>{{ 'packages.commerce.offerHelp' | t }}</p>
+                    <input id="class-hotmart-offer" class="form-control" maxlength="40" [ngModel]="offerCode()" (ngModelChange)="offerCode.set($event)" />
+                  } @else if (linkHasOffer() && !offer()) {
+                    <p class="text-danger">{{ 'packages.commerce.offerInvalid' | t }}</p>
+                  }
+                  <button type="button" class="btn btn-primary" [disabled]="!checkoutPreview()" (click)="go('preview')">{{ 'packages.commerce.seePreview' | t }}</button>
+                }
+              }
+              <button type="button" class="btn btn-secondary" (click)="go('home')">{{ 'packages.commerce.back' | t }}</button>
+            }
+            @case ('preview') {
+              @if (selected(); as item) {
+                @if (item.current; as version) {
+                  <h2>{{ 'packages.commerce.previewTitle' | t }}</h2>
+                  <div class="package-preview">
+                    <strong>{{ name(item) }}</strong>
+                    <span>{{ i18n.formatMoney(version.priceAmount, version.currency) }}</span>
+                  </div>
+                  <p>{{ 'packages.commerce.previewHint' | t }}</p>
+                  @if (checkoutPreview(); as link) {
+                    <a class="btn btn-secondary" [href]="link" target="_blank" rel="noopener noreferrer">{{ 'packages.commerce.openCheckout' | t }}</a>
+                  }
+                  <div class="commerce-actions">
+                    <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="savePackage()">{{ 'packages.commerce.savePackage' | t }}</button>
+                    <button type="button" class="btn btn-secondary" (click)="go('package')">{{ 'packages.commerce.back' | t }}</button>
+                  </div>
+                }
+              }
+            }
+          }
+        </section>
+      } @else if (busy()) {
+        <p role="status">{{ 'packages.commerce.loading' | t }}</p>
+      } @else {
+        <button type="button" class="btn btn-secondary" (click)="load()">{{ 'packages.admin.reload' | t }}</button>
+      }
+    }
+    @case ('packages') {
+      <app-package-catalog [embedded]="true" />
+    }
+    @case ('sales') {
+      <section class="surface commerce-guide" [attr.aria-busy]="busy()">
+        <h2>{{ 'packages.commerce.salesTitle' | t }}</h2>
+        @if (sales(); as items) {
+          <ul class="sales">
+            @for (sale of items; track sale.id) {
+              <li>
+                <div>
+                  <strong>{{ i18n.locale() === 'es' ? sale.nameEs : sale.nameEn }}</strong>
+                  <p>{{ sale.buyerName }} · {{ i18n.formatInstant(sale.createdAt, fmt.timeZone()) }}</p>
+                </div>
+                <div class="sale-amount">
+                  <strong>{{ i18n.formatMoney(sale.amount, sale.currency) }}</strong>
+                  <span>{{ ('packages.admin.orderStatus.' + sale.status) | t }}</span>
+                </div>
+              </li>
+            } @empty {
+              <li>{{ 'packages.commerce.salesEmpty' | t }}</li>
+            }
+          </ul>
+          @if (nextSale(); as next) {
+            <button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="loadSales(next)">{{ 'packages.commerce.moreSales' | t }}</button>
+          }
+        } @else if (busy()) {
+          <p role="status">{{ 'packages.commerce.loading' | t }}</p>
+        } @else {
+          <button type="button" class="btn btn-secondary" (click)="loadSales()">{{ 'packages.admin.reload' | t }}</button>
+        }
+      </section>
+    }
+  }
+</main>

@@ -10,6 +10,9 @@ module.exports = sequelize.define('ClassPackageProviderVerification', {
   guaranteeDays: { type: D.SMALLINT.UNSIGNED, allowNull: false },
   checks: { type: D.JSON, allowNull: false },
   reason: { type: D.STRING(500), allowNull: false },
+  teacherId: D.INTEGER,
+  connectionDigest: D.STRING(64),
+  mappingDigests: D.JSON,
   revokedById: D.INTEGER,
   revokedAt: D.DATE,
   revokeReason: D.STRING(500)

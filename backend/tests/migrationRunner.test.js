@@ -69,6 +69,8 @@ describe('migration runner', () => {
     const before = await schemaOf(EMPTY_DB);
     const reverted = await emptyMigrator.umzug.down({ to: '20261021000000-add-keyframe-tooltips.js' });
     expect(reverted.map(m => m.name)).toEqual([
+      '20261125000200-bind-class-package-hotmart-account.js',
+      '20261125000100-add-teacher-hotmart-connections.js',
       '20261125000000-add-zoom-continuation-parts.js',
       '20261113000000-add-class-order-checkout-expires-at.js',
       '20261112000001-add-class-purchase-frozen-from-status.js',
@@ -87,7 +89,7 @@ describe('migration runner', () => {
       '20261101000000-add-course-sales-fields.js', '20261027120000-create-zoom-webhook-receipts.js', '20261023000000-add-keyframe-images.js', '20261022180000-create-hotmart-product-locks.js', '20261022010000-create-sales-legal.js', '20261022000000-drop-legacy-progress.js',
       '20261021000000-add-keyframe-tooltips.js'
     ]);
-    expect((await status(emptyMigrator)).pending).toHaveLength(32);
+    expect((await status(emptyMigrator)).pending).toHaveLength(34);
     await emptyMigrator.umzug.up();
     expect(diff(before, await schemaOf(EMPTY_DB))).toEqual([]);
   });

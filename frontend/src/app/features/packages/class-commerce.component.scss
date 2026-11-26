@@ -1,0 +1,73 @@
+.class-commerce {
+  max-width: 960px;
+}
+
+.commerce-nav,
+.commerce-actions,
+.commerce-copy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.commerce-nav {
+  margin-bottom: var(--spacing-md);
+}
+
+.commerce-guide {
+  display: grid;
+  justify-items: start;
+  gap: var(--spacing-sm);
+  overflow-wrap: anywhere;
+
+  h2 { margin: 0; font-size: clamp(1.25rem, 4vw, 1.65rem); }
+  p, ul, .form-label { margin: 0; }
+  form, .commerce-copy, app-hotmart-guide-image { width: 100%; }
+  form .commerce-actions { margin-top: var(--spacing-sm); }
+  details p { margin-top: var(--spacing-xs); }
+  .btn { max-width: 100%; white-space: normal; }
+}
+
+.step {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.commerce-copy input {
+  min-width: min(16rem, 100%);
+  flex: 1;
+}
+
+.package-preview {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-bg-light);
+  border-radius: var(--radius-md);
+}
+
+.sales {
+  width: 100%;
+  list-style: none;
+  padding: 0;
+
+  li {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  p, span { color: var(--color-text-light); }
+}
+
+.sale-amount {
+  display: grid;
+  gap: var(--spacing-xs);
+}

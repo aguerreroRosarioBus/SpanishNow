@@ -26,7 +26,6 @@ async function status(user,id){
 async function start(user,id,idempotencyKey,body={}){
   offers.key(idempotencyKey);
   const ref=await buyerOffer(user,id);
-  await require('./classPackageProvider').assertSelling();
   payments.assertSafe();
   return sequelize.transaction(async transaction=>{
     await offers.teacherSettings(ref.teacherId,transaction,{selling:true});
@@ -34,6 +33,7 @@ async function start(user,id,idempotencyKey,body={}){
     const offer=await buyerOffer(user,id,{transaction,lock:transaction.LOCK.UPDATE});
     // También serializa una clave reutilizada por el mismo comprador entre ofertas/docentes distintos.
     await User.findByPk(user.id,{transaction,lock:transaction.LOCK.UPDATE});
+    const hotmartConnectionId=await require('./classPackageProvider').assertSelling({teacherId:offer.teacherId,packageVersion:offer.snapshot,transaction});
     const prior=await Order.findOne({where:{buyerId:user.id,idempotencyKey},order:[['id','DESC']],transaction});
     if(prior&&prior.offerId!==offer.id)throw fail(409,'operation_key_conflict');
     // Un intento fallido o vencido no bloquea otro: la misma clave puede abrir un link nuevo mientras la oferta siga vigente.
@@ -51,7 +51,7 @@ async function start(user,id,idempotencyKey,body={}){
     if(existing?.checkoutExpiresAt&&existing.checkoutExpiresAt<=now){await existing.update({status:'failed',failedAt:persistedSecond(now),reviewReason:'checkout_link_expired'},{transaction});existing=null;}
     const docs=offer.snapshot.legalDocuments||[];const contractual=docs.filter(d=>d.documentKey!=='privacy');
     const locale=body.locale||user.locale||'en';legal.validateConsent(body.legalConsent,contractual,locale);
-    const order=existing||await Order.create({offerId:offer.id,buyerId:user.id,amount:offer.amount,currency:offer.currency,provider:payments.fake()?'fake':'hotmart',status:'pending',checkoutRef:randomBytes(16).toString('hex'),idempotencyKey,checkoutExpiresAt:new Date(Math.min(now.getTime()+payments.checkoutLinkTtlMinutes()*60000,offer.expiresAt.getTime()))},{transaction});
+    const order=existing||await Order.create({offerId:offer.id,buyerId:user.id,amount:offer.amount,currency:offer.currency,provider:payments.fake()?'fake':'hotmart',hotmartConnectionId,status:'pending',checkoutRef:randomBytes(16).toString('hex'),idempotencyKey,checkoutExpiresAt:new Date(Math.min(now.getTime()+payments.checkoutLinkTtlMinutes()*60000,offer.expiresAt.getTime()))},{transaction});
     if(existing&&existing.provider!==(payments.fake()?'fake':'hotmart'))throw fail(409,'offer_not_payable');
     await legal.recordAcceptances(user.id,docs,{locale,context:'checkout',contextType:'class_offer',contextId:offer.id,transaction});
     await offer.update({status:'checkout_pending'},{transaction});

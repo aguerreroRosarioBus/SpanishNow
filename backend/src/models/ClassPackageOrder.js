@@ -13,6 +13,8 @@ module.exports = sequelize.define('ClassPackageOrder', {
   status: { type: D.ENUM('pending', 'paid', 'failed', 'refunded', 'partially_refunded', 'paid_needs_review'), allowNull: false, defaultValue: 'pending' },
   // Sent to Hotmart as the tracking parameter; the webhook finds the order with it.
   checkoutRef: { type: D.CHAR(32), allowNull: false, unique: true },
+  // Los intentos anteriores a la conexión docente conservan el destino compartido.
+  hotmartConnectionId: D.UUID,
   idempotencyKey: D.STRING(64),
   providerTransactionId: { type: D.STRING(64), unique: true },
   providerProductId: D.STRING(40), providerOfferCode: D.STRING(40),

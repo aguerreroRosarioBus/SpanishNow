@@ -94,7 +94,7 @@ describe('Conexión propia de Hotmart en el editor de cursos', () => {
     expect(el.querySelector<HTMLInputElement>('#teacher-hotmart-url')?.value).toBe(pending.webhookUrl);
     expect(el.querySelector('#teacher-hotmart-key')).toBeNull();
     expect(el.textContent).toContain('Esperando la prueba de Hotmart');
-    expect(guide.textContent).toContain('marcá solo Abandono de carrito');
+    expect(guide.textContent).toContain('marca solo Abandono de carrito');
     expect(guide.textContent).toContain('Run test on settings');
     expect(guide.textContent).not.toContain('Compra aprobada');
     expect(guide.querySelector('img[src="help/hotmart/run-test.webp"]')).toBeTruthy();
@@ -102,14 +102,14 @@ describe('Conexión propia de Hotmart en el editor de cursos', () => {
     const form = f.componentInstance.form;
     form.patchValue({ hotmartCheckoutUrl: 'https://pay.hotmart.com/DEMO' });
     f.detectChanges();
-    expect(el.textContent).toContain('Ingresá el ID del producto');
+    expect(el.textContent).toContain('Ingresa el ID del producto');
     form.patchValue({ hotmartProductId: 'PRODUCT-123' });
     expect(f.componentInstance.needsVerifiedHotmart()).toBe(true);
     connection.mockReturnValue(of(verified));
     button('Comprobar prueba').click();
     f.detectChanges();
     expect(el.textContent).toContain('Cuenta verificada');
-    expect(guide.textContent).toContain('Activá los avisos de compra');
+    expect(guide.textContent).toContain('Activa los avisos de compra');
     expect(guide.textContent).toContain('Compra aprobada');
     expect(guide.textContent).not.toContain('Run test on settings');
     expect(el.querySelector('a[href="https://app.hotmart.com/products/producer"]')).toBeTruthy();

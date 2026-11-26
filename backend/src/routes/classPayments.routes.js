@@ -1,7 +1,8 @@
 const router=require('express').Router();
+const {Op}=require('sequelize');
 const {authMiddleware,requirePermission}=require('../middlewares/auth.middleware');
 const {requireFeature}=require('../config/features');
-const {fail}=require('../services/legalDocuments');
+const {fail,validId}=require('../services/legalDocuments');
 const checkout=require('../services/classCheckout');
 const payments=require('../services/classPayments');
 const review=require('../services/classPaymentReview');
@@ -14,6 +15,23 @@ const purchaseView=p=>({purchaseStatus:p?.status??null,frozenFromStatus:p?.froze
 router.post('/class-offers/:id/checkout',...secure,requireFeature('class_packages'),wrap(async(req,res)=>res.json(await checkout.start(req.user,req.params.id,req.get('Idempotency-Key'),req.body))));
 router.get('/class-offers/:id/checkout',...secure,wrap(async(req,res)=>res.json(await checkout.status(req.user,req.params.id))));
 router.post('/class-offers/:id/checkout/fake-complete',...secure,requireFeature('class_packages'),wrap(async(req,res)=>res.json(await checkout.completeFake(req.user,req.params.id))));
+router.get('/teacher/class-sales',...secure,requireFeature('class_packages'),wrap(async(req,res)=>{
+  if(req.user.role!=='teacher')throw fail(403,'forbidden');
+  const {before}=req.query;
+  if(before!==undefined&&!validId(before))throw fail(400,'validation_failed');
+  const pageSize=50;
+  const rows=await Order.findAll({
+    where:before===undefined?{}:{id:{[Op.lt]:Number(before)}},
+    include:[
+      {association:'offer',where:{teacherId:req.user.id},attributes:['snapshot']},
+      {association:'buyer',attributes:['name']}
+    ],
+    order:[['id','DESC']],limit:pageSize+1
+  });
+  const items=rows.slice(0,pageSize).map(o=>({...checkout.present(o),createdAt:o.createdAt,buyerName:o.buyer?.name??null,
+    nameEn:o.offer.snapshot.nameEn,nameEs:o.offer.snapshot.nameEs}));
+  res.json({items,next:rows.length>pageSize?items.at(-1).id:null});
+}));
 router.get('/admin/class-payments',...secure,requirePermission('class_payments.review'),wrap(async(req,res)=>{
   const status=req.query.status||'paid_needs_review';if(!['paid_needs_review','paid','refunded','partially_refunded','pending','failed'].includes(status))throw fail(400,'validation_failed');
   const items=await Order.findAll({where:{status},order:[['id','DESC']],limit:200});
