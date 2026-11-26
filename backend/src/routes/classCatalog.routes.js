@@ -11,10 +11,24 @@ router.get('/public/teachers/:id/class-packages', enabled, wrap(async (req, res)
 router.get('/teacher/class-settings', ...secure, wrap(async (req, res) => res.json(await catalog.settings(req.user))));
 router.patch('/teacher/class-settings', ...secure, enabled, wrap(async (req, res) => res.json(await catalog.saveSettings(req.user, req.body))));
 router.get('/teacher/class-packages', ...secure, enabled, wrap(async (req, res) => res.json(await catalog.list(req.user, req.query.teacherId))));
+const hotmartScope = { classPackages: true };
+router.get('/teacher/class-packages/hotmart', ...secure, enabled, wrap(async (req, res) => {
+  const sales = await require('../services/classPackageProvider').teacherStatus(req.user);
+  const hotmart = require('../services/teacherHotmart');
+  res.set('Cache-Control','no-store').json({...hotmart.present(await hotmart.read(req.user.id),req,hotmartScope),...sales});
+}));
+router.put('/teacher/class-packages/hotmart', ...secure, enabled, wrap(async (req, res) => {
+  const sales = await require('../services/classPackageProvider').teacherStatus(req.user);
+  const hotmart = require('../services/teacherHotmart');
+  const token = typeof req.body?.hottok === 'string' ? req.body.hottok.trim() : '';
+  if (!hotmart.tokenPattern.test(token)) throw fail(400,'hotmart_hottok_invalid');
+  res.set('Cache-Control','no-store').json({...hotmart.present(await hotmart.stage(req.user.id,token,hotmartScope),req,hotmartScope),...sales});
+}));
 router.post('/teacher/class-packages/import-initial', ...secure, enabled, wrap(async (req, res) => res.json(await catalog.importInitial(req.user, req.query.teacherId))));
 router.post('/teacher/class-packages', ...secure, enabled, wrap(async (req, res) => res.status(201).json(await catalog.create(req.user, req.body, req.query.teacherId))));
 router.get('/teacher/class-packages/:id', ...secure, enabled, wrap(async (req, res) => res.json(await catalog.detail(req.user, req.params.id))));
 router.post('/teacher/class-packages/:id/versions', ...secure, enabled, wrap(async (req, res) => res.status(201).json(await catalog.newVersion(req.user, req.params.id, req.body))));
+router.put('/teacher/class-packages/:id/hotmart', ...secure, enabled, wrap(async (req, res) => res.json(await catalog.linkHotmart(req.user, req.params.id, req.body))));
 router.patch('/teacher/class-packages/:id/status', ...secure, enabled, wrap(async (req, res) => res.json(await catalog.setStatus(req.user, req.params.id, req.body))));
 router.get('/admin/class-teachers', ...secure, requirePermission('class_teachers.manage'), wrap(async (req, res) => {
   const teachers = await User.findAll({ where: { role: 'teacher' }, attributes: ['id', 'name', 'suspendedAt'], order: [['id', 'ASC']], limit: 200 });

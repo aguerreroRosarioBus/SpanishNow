@@ -20,16 +20,19 @@ router.post('/stripe/webhook', express.raw({ type: '*/*', limit: '1mb' }), async
 
 const hotmartJson = express.json({ limit: '1mb' });
 
-router.post('/hotmart/webhook/teachers/:publicId', hotmartJson, async (req, res) => {
+async function teacherWebhook(req, res, { classPackages = false } = {}) {
   try {
-    const result = await teacherHotmart.receive(req.params.publicId, req.header('x-hotmart-hottok'), req.body);
+    const result = await teacherHotmart.receive(req.params.publicId, req.header('x-hotmart-hottok'), req.body, { classPackages });
     if (result.status) return res.sendStatus(result.status);
     res.json(result.test ? { received: true, test: true } : { received: true, ...(result.handled ? {} : { ignored: true }) });
   } catch (error) {
     console.error('Teacher Hotmart webhook failed:', error.name);
     res.status(500).json({ error: 'Webhook processing failed' });
   }
-});
+}
+router.post('/hotmart/webhook/teachers/:publicId', hotmartJson, (req, res) => teacherWebhook(req, res));
+router.post('/hotmart/webhook/teachers/:publicId/class-packages', hotmartJson,
+  (req, res) => teacherWebhook(req, res, { classPackages: true }));
 
 // Hotmart purchase webhook (2.0.0). Answers 200 to everything it does not handle: Hotmart turns the webhook off after errors.
 router.post('/hotmart/webhook', hotmartJson, async (req, res) => {

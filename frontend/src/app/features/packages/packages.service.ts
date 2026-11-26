@@ -2,7 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { I18nService } from '../../core/i18n/i18n.service';
-import { ClassCohort, ClassOffer, ClassSettings, ScheduleRules, PackageTemplate, ClassOrder, CheckoutState, ClassPurchase, RefundPreview, PaymentJob, ClassProviderState, ProviderVerifyBody } from './packages.model';
+import { ClassCohort, ClassHotmartSetup, ClassOffer, ClassSale, ClassSettings, ScheduleRules, PackageTemplate, ClassOrder, CheckoutState, ClassPurchase, RefundPreview, PaymentJob, ClassProviderState, ProviderVerifyBody } from './packages.model';
 @Injectable({providedIn:'root'})
 export class PackagesService {
   private http = inject(HttpClient);
@@ -46,6 +46,15 @@ export class PackagesService {
     return this.http.post<ClassOffer>(`${this.base}/conversations/${conversationId}/offers`,body,{headers:{'Idempotency-Key':key}});
   }
   list() { return this.http.get<PackageTemplate[]>(`${this.base}/teacher/class-packages`); }
+  hotmartSetup() { return this.http.get<ClassHotmartSetup>(`${this.base}/teacher/class-packages/hotmart`); }
+  saveHotmartKey(hottok: string) { return this.http.put<ClassHotmartSetup>(`${this.base}/teacher/class-packages/hotmart`, {hottok}); }
+  linkHotmart(id: number, body: {version:number;url:string;productId:string;offerCode?:string}) {
+    return this.http.put<PackageTemplate>(`${this.base}/teacher/class-packages/${id}/hotmart`, body);
+  }
+  classSales(before?:number) {
+    return this.http.get<{items:ClassSale[];next:number|null}>(`${this.base}/teacher/class-sales`,
+      {params:before===undefined?{}:{before}});
+  }
   detail(id: number) { return this.http.get<PackageTemplate>(`${this.base}/teacher/class-packages/${id}`); }
   importInitial() { return this.http.post<PackageTemplate[]>(`${this.base}/teacher/class-packages/import-initial`, {}); }
   settings() { return this.http.get<ClassSettings>(`${this.base}/teacher/class-settings`); }

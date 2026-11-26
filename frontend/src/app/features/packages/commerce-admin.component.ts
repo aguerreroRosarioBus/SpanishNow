@@ -1,6 +1,7 @@
 import { ModalFocusDirective } from '../../shared/directives/modal-focus.directive';
 import {Component,OnInit,DestroyRef,computed,inject,signal} from '@angular/core';
 import {FormsModule} from '@angular/forms';
+import {RouterLink} from '@angular/router';
 import {Observable} from 'rxjs';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {TranslatePipe} from '../../core/i18n/translate.pipe';
@@ -11,31 +12,72 @@ import {ChatFormat} from '../chat/chat-format';
 import {localTimeChoice} from '../../shared/utils/local-time-choice';
 import {PackagesService} from './packages.service';
 import {ClassOrder,ClassPurchase,ClassSettings,RefundPreview,PaymentJob,ClassProviderState,isFrozenOrder} from './packages.model';
-@Component({selector:'app-commerce-admin',standalone:true,imports:[FormsModule,TranslatePipe,ModalFocusDirective,PermissionNoticeComponent],
+type CommerceSection = 'setup'|'payments'|'refunds'|'settings';
+@Component({selector:'app-commerce-admin',standalone:true,imports:[FormsModule,RouterLink,TranslatePipe,ModalFocusDirective,PermissionNoticeComponent],
 styles:[`.commerce{max-width:960px}.block{margin:var(--spacing-md) 0}.block-title{margin:0 0 var(--spacing-xs);font-size:1.125rem}.sub-title{margin:var(--spacing-md) 0 var(--spacing-sm);font-size:.9375rem;font-weight:700}.notice{margin:var(--spacing-xs) 0 0;font-size:.8125rem;color:var(--color-text-light);overflow-wrap:anywhere}.item{margin:var(--spacing-sm) 0;padding:var(--spacing-md);border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-bg)}.item-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--spacing-sm)}.item-head h4,.item-head h3{margin:0;font-size:1rem}.item p{margin:var(--spacing-xs) 0 0}.item-actions{display:flex;flex-wrap:wrap;gap:var(--spacing-sm);margin-top:var(--spacing-sm)}.empty{padding:var(--spacing-md);border:1px dashed var(--color-border);border-radius:var(--radius-md);background:var(--color-bg-light)}.empty p{margin:0 0 var(--spacing-sm)}.badge-status{flex:none;white-space:normal}.status-success{background:var(--color-success-soft);color:var(--color-success-text)}.status-warning{background:var(--color-warning-soft);color:#6b4a00}.status-danger{background:var(--color-danger-soft);color:var(--color-danger)}.status-neutral{background:var(--color-bg-dark);color:var(--color-text-light)}@media (max-width:480px){.item-actions .btn{flex:1 1 auto;max-width:100%;white-space:normal}}`],
 template:`
 <div class="page-container commerce"><h1>{{'packages.admin.title'|t}}</h1>
 @if(denied()){<app-permission-notice />}@else{
-<p class="notice">{{'packages.admin.realBlocked'|t}}</p>
+<nav class="item-actions" [attr.aria-label]="'packages.admin.title'|t">
+  @for(s of sections();track s){<button type="button" class="btn" [class.btn-secondary]="currentSection()===s"
+    [attr.aria-pressed]="currentSection()===s" (click)="section.set(s)">{{('packages.commerce.admin.'+s)|t}}</button>}
+</nav>
 @if(error()){<p class="alert alert-danger mt-3" role="alert">{{error()}}</p>}
 @if(saved()){<p class="alert alert-success mt-3" role="status">{{'packages.admin.saved'|t}}</p>}
 @if(provider();as pv){
-<section class="surface block" aria-labelledby="adminProviderTitle" data-test="provider-card">
+<section class="surface block" aria-labelledby="adminProviderTitle" data-test="provider-card" [hidden]="currentSection()!=='setup'">
   <h2 id="adminProviderTitle" class="block-title">{{'packages.pv.title'|t}}</h2>
   <p data-test="provider-mode"><span class="badge-status badge-status--dot status-{{pv.mode==='verified'?'success':pv.mode==='blocked'?'warning':'neutral'}}">{{('packages.pv.mode.'+pv.mode)|t:{name:pv.verification?.verifiedBy?.name||'—',date:pv.verification?i18n.formatInstant(pv.verification.verifiedAt,fmt.timeZone()):'',days:pv.verification?.guaranteeDays||''} }}</span></p>
   @if(pv.verification){<p class="notice">{{'packages.pv.verifiedReason'|t:{reason:pv.verification.reason} }}</p>}
-  @if(pv.lastRevocation;as lr){<p class="notice" data-test="provider-revoked">{{'packages.pv.revoked'|t:{name:revoker(lr),date:i18n.formatInstant(lr.revokedAt,fmt.timeZone()),reason:lr.reason} }}</p>}
-  @if(pv.mode!=='verified'&&!verifyOpen()){<div class="item-actions"><button type="button" class="btn btn-primary" (click)="verifyOpen.set(true)">{{'packages.pv.verifyOpen'|t}}</button></div>}
-  @if(pv.mode!=='verified'&&verifyOpen()){<form class="item" (ngSubmit)="verifyProvider()" aria-labelledby="providerVerifyTitle">
+  @if(!pv.verification){@if(pv.lastRevocation;as lr){<p class="notice" data-test="provider-revoked">{{'packages.pv.revoked'|t:{name:revoker(lr),date:i18n.formatInstant(lr.revokedAt,fmt.timeZone()),reason:lr.reason} }}</p>}}
+  @if(pv.account==='changed'){<p class="notice">{{'packages.commerce.admin.changed'|t}}</p>}
+  @if(auth.currentUser()?.role==='teacher'){
+    <a class="btn btn-secondary mt-2" routerLink="/teacher/class-commerce">{{'packages.commerce.title'|t}}</a>
+  }
+  @if(canReview()){
+    @if(!eligible().length){
+      <p>{{((pv.candidates?.length??0)>0?'packages.commerce.admin.waitingPackage':'packages.commerce.admin.waiting')|t}}</p>
+      <button type="button" class="btn btn-secondary" (click)="loadProvider()">{{'packages.admin.reload'|t}}</button>
+    }@else if(!verifyOpen()){
+      <div class="item-actions"><button type="button" class="btn btn-primary" (click)="openReview()">{{'packages.pv.verifyOpen'|t}}</button></div>
+    }@else{
+    <form class="item" (ngSubmit)="verifyProvider()" aria-labelledby="providerVerifyTitle">
     <h3 id="providerVerifyTitle" class="sub-title">{{'packages.pv.verifyTitle'|t}}</h3>
-    @for(k of checkKeys;track k){<label class="d-block mt-2"><input type="checkbox" [name]="'check_'+k" [(ngModel)]="vChecks[k]"> {{('packages.pv.check.'+k)|t}}</label>}
+    <p>{{'packages.commerce.admin.reviewIntro'|t}}</p>
+    <label for="providerCandidate" class="form-label mt-2">{{'packages.commerce.admin.candidate'|t}}</label>
+    <select id="providerCandidate" name="candidate" class="form-select" [ngModel]="candidateId()" (ngModelChange)="selectCandidate($event)">
+      <option [ngValue]="null">{{'packages.commerce.admin.chooseCandidate'|t}}</option>
+      @for(c of eligible();track c.id){<option [ngValue]="c.id">{{c.name}}</option>}
+    </select>
+    @if(candidate();as c){
+      <ul class="mt-2">
+        @for(p of c.packages;track p.id){
+          <li>
+            <strong>{{i18n.locale()==='es'?p.nameEs:p.nameEn}} · {{i18n.formatMoney(p.priceAmount,p.currency)}}</strong>
+            @if(p.approved){<span class="notice"> · {{'packages.commerce.admin.packageApproved'|t}}</span>}
+            <p class="notice">{{'packages.commerce.admin.productCodes'|t:{product:p.productId,offer:p.offerCode} }}</p>
+            @if(paymentPreview(p.url,p.offerCode);as link){
+              <a [href]="link" target="_blank" rel="noopener noreferrer">{{'packages.commerce.openCheckout'|t}}</a>
+            }
+          </li>
+        }
+      </ul>
+    }
+    @for(k of checkKeys;track k){
+      <fieldset class="mt-3">
+        <legend class="sub-title mt-0">{{('packages.pv.check.'+k)|t}}</legend>
+        <p class="notice mb-2" [id]="'provider-hint-'+k">{{('packages.commerce.admin.check.'+k)|t}}</p>
+        <label><input type="checkbox" [name]="'check_'+k" [attr.aria-describedby]="'provider-hint-'+k" [(ngModel)]="vChecks[k]"> {{'packages.commerce.admin.checked'|t}}</label>
+      </fieldset>
+    }
     <label for="providerDays" class="form-label mt-2">{{'packages.pv.guaranteeDays'|t}}</label><select id="providerDays" name="days" class="form-select" [(ngModel)]="vDays"><option [ngValue]="null">{{'packages.pv.guaranteeChoose'|t}}</option>@for(d of guaranteeOptions;track d){<option [ngValue]="d">{{'packages.pv.days'|t:{days:d} }}</option>}</select>
     <label for="providerReason" class="form-label mt-2">{{'packages.pv.reason'|t}}</label><textarea id="providerReason" name="reason" class="form-control" maxlength="500" [(ngModel)]="vReason"></textarea>
     <p class="notice">{{'packages.pv.verifyWarn'|t}}</p>
     <div class="item-actions"><button type="submit" class="btn btn-primary" [disabled]="!verifyReady()">{{'packages.pv.verifySubmit'|t}}</button><button type="button" class="btn btn-secondary" (click)="verifyOpen.set(false)">{{'packages.pv.cancel'|t}}</button></div>
-  </form>}
-  @if(pv.mode==='verified'&&!revokeOpen()){<div class="item-actions"><button type="button" class="btn btn-outline-danger" (click)="revokeOpen.set(true)">{{'packages.pv.revokeOpen'|t}}</button></div>}
-  @if(pv.mode==='verified'&&revokeOpen()){<form class="item" (ngSubmit)="revokeProvider()" aria-labelledby="providerRevokeTitle">
+    </form>}
+  }
+  @if(pv.verification&&can('class_provider.verify')&&!revokeOpen()){<div class="item-actions"><button type="button" class="btn btn-outline-danger" (click)="revokeOpen.set(true)">{{'packages.pv.revokeOpen'|t}}</button></div>}
+  @if(pv.verification&&can('class_provider.verify')&&revokeOpen()){<form class="item" (ngSubmit)="revokeProvider()" aria-labelledby="providerRevokeTitle">
     <h3 id="providerRevokeTitle" class="sub-title">{{'packages.pv.revokeTitle'|t}}</h3>
     <label for="providerRevokeReason" class="form-label">{{'packages.pv.reason'|t}}</label><textarea id="providerRevokeReason" name="rreason" class="form-control" maxlength="500" [(ngModel)]="rReason"></textarea>
     <label class="d-block mt-2"><input type="checkbox" name="rconfirm" [(ngModel)]="rConfirmed"> {{'packages.pv.revokeConfirm'|t}}</label>
@@ -45,7 +87,7 @@ template:`
 </section>
 }
 @if(can('class_payments.review')){
-<section class="surface block" aria-labelledby="adminSalesTitle">
+<section class="surface block" aria-labelledby="adminSalesTitle" [hidden]="currentSection()!=='payments'">
   <h2 id="adminSalesTitle" class="block-title">{{'packages.admin.salesTitle'|t}}</h2>
   <h3 class="sub-title">{{'packages.admin.payments'|t}}</h3>
   <label for="paymentFilter" class="form-label">{{'packages.admin.filter'|t}}</label><select id="paymentFilter" class="form-select" [(ngModel)]="filter" (ngModelChange)="loadPayments()">@for(s of statuses;track s){<option [value]="s">{{('packages.admin.orderStatus.'+s)|t}}</option>}</select>
@@ -72,7 +114,7 @@ template:`
   </article>}@empty{<div class="empty mt-2"><p>{{'packages.admin.paymentsEmpty'|t}}</p><button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="loadPayments()">{{'packages.admin.reload'|t}}</button></div>}
   @for(e of events();track e.id){<p class="notice">{{'packages.admin.unmatched'|t}} #{{e.id}} · {{e.eventType}} · {{i18n.formatInstant(e.createdAt,fmt.timeZone())}}</p>}
 </section>
-<section class="surface block" aria-labelledby="adminProceduresTitle">
+<section class="surface block" aria-labelledby="adminProceduresTitle" [hidden]="currentSection()!=='refunds'">
   <h2 id="adminProceduresTitle" class="block-title">{{'packages.admin.proceduresTitle'|t}}</h2>
   <h3 class="sub-title">{{'packages.refund.title'|t}}</h3>
   @for(v of refunds();track v.purchaseId){@for(r of v.requests;track r.id){<article class="item">
@@ -102,7 +144,7 @@ template:`
     @if(j.lastError){<p>{{j.lastError}}</p>}
     <p class="notice">{{jobTopic(j.topic)}}@if(j.buyerNames.length){ · {{j.buyerNames.join(', ')}}}@if(j.attempts>0){ · {{'packages.admin.jobAttempts'|t:{attempts:j.attempts} }}}</p>
     <div class="item-actions">
-      @for(id of j.purchaseIds;track id){<button class="btn btn-secondary" (click)="purchaseId=id;loadPurchase()">{{'packages.admin.purchase'|t}} #{{id}}</button>}
+      @for(id of j.purchaseIds;track id){<button class="btn btn-secondary" (click)="section.set('settings');purchaseId=id;loadPurchase()">{{'packages.admin.purchase'|t}} #{{id}}</button>}
       @if(j.topic.startsWith('review.')){<button class="btn btn-secondary" [disabled]="!ready()" (click)="acknowledge(j.id)">{{'packages.admin.acknowledge'|t}}</button>}
       @if(j.status==='failed'){<button class="btn btn-secondary" [disabled]="!ready()" (click)="retry(j.id)">{{'packages.admin.retry'|t}}</button>}
     </div>
@@ -110,14 +152,14 @@ template:`
 </section>
 }
 @if(can('class_teachers.manage')){
-<section class="surface block" aria-labelledby="adminTeachersTitle">
+<section class="surface block" aria-labelledby="adminTeachersTitle" [hidden]="currentSection()!=='settings'">
   <h2 id="adminTeachersTitle" class="block-title">{{'packages.admin.teachers'|t}}</h2>
   @for(t of teachers();track t.id){<article class="item"><div class="item-head"><h3>{{t.name}}</h3><span class="badge-status badge-status--dot status-{{t.settings?.classesEnabledAt?'success':'neutral'}}">{{(t.settings?.classesEnabledAt?'packages.admin.enabled':'packages.admin.disabled')|t}}</span></div>
     <div class="item-actions"><button class="btn" [class.btn-primary]="!t.settings?.classesEnabledAt" [class.btn-secondary]="t.settings?.classesEnabledAt" [disabled]="busy()" (click)="enable(t.id,!t.settings?.classesEnabledAt)" [attr.aria-label]="((t.settings?.classesEnabledAt?'packages.admin.disable':'packages.admin.enable')|t)+' — '+t.name">{{(t.settings?.classesEnabledAt?'packages.admin.disable':'packages.admin.enable')|t}}</button></div></article>}
   @empty{<div class="empty"><p>{{'packages.admin.teachersEmpty'|t}}</p><button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="load()">{{'packages.admin.reload'|t}}</button></div>}
 </section>}
 @if(can('class_packages.manage_all')&&policy();as p){
-<section class="surface block" aria-labelledby="adminPolicyTitle">
+<section class="surface block" aria-labelledby="adminPolicyTitle" [hidden]="currentSection()!=='settings'">
   <h2 id="adminPolicyTitle" class="block-title">{{'packages.admin.policy'|t}}</h2>
   <p class="notice">{{'packages.admin.policyVersion'|t:{version:p.version} }} · {{'packages.catalog.immutable'|t}}</p>
   <label for="policyHours" class="form-label mt-2">{{'packages.admin.guarantee'|t}}</label><input id="policyHours" class="form-control" type="number" min="360" step="1" [(ngModel)]="refundHours">
@@ -126,7 +168,7 @@ template:`
   <div class="item-actions"><button class="btn btn-primary" [disabled]="busy()" (click)="publishPolicy()">{{'packages.save'|t}}</button></div>
 </section>}
 @if(can('class_credits.adjust')||can('class_payments.review')){
-<section class="surface block" aria-labelledby="adminAdjustTitle">
+<section class="surface block" aria-labelledby="adminAdjustTitle" [hidden]="currentSection()!=='settings'">
   <h2 id="adminAdjustTitle" class="block-title">{{'packages.admin.purchaseTools'|t}}</h2>
   <label for="adjustPurchase" class="form-label mt-2">{{'packages.admin.purchaseNumber'|t}}</label><input id="adjustPurchase" class="form-control" type="number" min="1" [(ngModel)]="purchaseId"><div class="item-actions"><button class="btn btn-secondary" [disabled]="busy()" (click)="loadPurchase()">{{'packages.admin.load'|t}}</button></div>
   @if(purchase();as p){<p class="mt-3 fw-bold">{{'packages.admin.purchaseSummary'|t:{id:p.id,buyer:p.buyerName||'—',status:purchaseStatus(p.status),expires:i18n.t('packages.admin.purchaseExpires',{time:i18n.formatInstant(p.expiresAt,fmt.timeZone())})} }}</p>
@@ -160,11 +202,48 @@ template:`
 
 </div>`})
 export class CommerceAdminComponent implements OnInit{
-  private api=inject(PackagesService);private auth=inject(AuthService);private destroy=inject(DestroyRef);readonly i18n=inject(I18nService);readonly fmt=inject(ChatFormat);
+  private api=inject(PackagesService);protected readonly auth=inject(AuthService);private destroy=inject(DestroyRef);readonly i18n=inject(I18nService);readonly fmt=inject(ChatFormat);
   refunds=signal<RefundPreview[]>([]);orders=signal<ClassOrder[]>([]);provider=signal<ClassProviderState|null>(null);verifyOpen=signal(false);revokeOpen=signal(false);events=signal<{id:number;orderId:number|null;eventType:string;createdAt:string}[]>([]);jobs=signal<PaymentJob[]>([]);jobsFailed=signal(false);teachers=signal<{id:number;name:string;settings:ClassSettings|null}[]>([]);policy=signal<{version:number;rules:Record<string,unknown>}|null>(null);purchase=signal<ClassPurchase|null>(null);
   busy=signal(false);saved=signal(false);private failure=signal<unknown>(null);error=computed(()=>this.failure()?this.api.error(this.failure()):'');
   vChecks:Record<string,boolean>={account:false,format:false,guarantee:false,mapping:false};vDays:number|null=null;vReason='';rReason='';rConfirmed=false;refundInputs:Record<number,string>={};
   readonly checkKeys=['account','format','guarantee','mapping'] as const;readonly guaranteeOptions=[7,15,21,30];
+  readonly section=signal<CommerceSection|null>(null);
+  readonly sections=computed<CommerceSection[]>(()=>{
+    const sections:CommerceSection[]=[];
+    if(this.provider()||this.can('class_provider.verify'))sections.push('setup');
+    if(this.can('class_payments.review'))sections.push('payments','refunds');
+    if(this.can('class_teachers.manage')||this.can('class_packages.manage_all')||this.can('class_credits.adjust')||this.can('class_payments.review'))sections.push('settings');
+    return sections;
+  });
+  readonly currentSection=computed(()=>this.section()??this.sections()[0]);
+  readonly candidateId=signal<number|null>(null);
+  readonly canReview=computed(()=>{
+    const provider=this.provider();
+    return this.can('class_provider.verify')&&((provider?.mode==='blocked'&&!provider.verification)
+      || (provider?.mode==='verified'&&provider.account==='connected'&&this.eligible().length>0));
+  });
+  readonly eligible=computed(()=>{
+    const provider=this.provider();
+    return (provider?.candidates??[]).filter(candidate=>
+      (!provider?.verification||provider.verification.teacherId===candidate.id)&&candidate.packages.some(item=>!item.approved));
+  });
+  readonly candidate=computed(()=>this.eligible().find(candidate=>candidate.id===this.candidateId()));
+  private resetChecks(){this.vChecks={account:false,format:false,guarantee:false,mapping:false};this.vDays=null;this.vReason='';}
+  selectCandidate(id:number|null){this.candidateId.set(id);this.resetChecks();}
+  openReview(){
+    const candidates=this.eligible();
+    this.selectCandidate(candidates.length===1?candidates[0].id:null);
+    this.verifyOpen.set(true);
+  }
+  paymentPreview(value:string,offer:string){
+    try{
+      const url=new URL(value);
+      if(url.origin!=='https://pay.hotmart.com'||url.username||url.password)return null;
+      const preview=new URL(url.pathname,url.origin);
+      preview.searchParams.set('off',offer);
+      return preview.toString();
+    }catch{return null;}
+  }
   reason='';deadline='';confirmed=false;filter='paid_needs_review';refundHours=360;pauseHours=720;ttlHours=168;purchaseId=0;direction='add';units=1;buyerMessage='';readonly maxUnits=50;private adjustKey=crypto.randomUUID();private adjustAttempt='';
   readonly statuses=['paid_needs_review','paid','partially_refunded','refunded','pending','failed'];readonly directions=['add','remove','restore'];
   orderTone(s:string){return s==='paid'?'success':s==='paid_needs_review'||s==='pending'||s==='partially_refunded'?'warning':s==='failed'?'danger':'neutral';}
@@ -177,10 +256,25 @@ export class CommerceAdminComponent implements OnInit{
   frozen(o:ClassOrder){return isFrozenOrder(o);}
   purchaseStatus(s:string){const k=`packages.purchase.status.${s}`;return this.i18n.has(k)?this.i18n.t(k):s;}
   revoker(r:{revokedBy:{name:string}|number|null}){const b=r.revokedBy;return b&&typeof b==='object'?b.name:b!=null?`#${b}`:'—';}
-  verifyReady(){return !this.busy()&&this.checkKeys.every(k=>this.vChecks[k])&&this.guaranteeOptions.includes(this.vDays as number)&&Boolean(this.vReason.trim());}
-  revokeReady(){return !this.busy()&&this.rConfirmed&&Boolean(this.rReason.trim());}
-  loadProvider(){if(!this.can('class_provider.verify')&&!this.can('class_payments.review'))return;this.api.providerState().pipe(takeUntilDestroyed(this.destroy)).subscribe({next:v=>this.provider.set(v),error:()=>this.provider.set(null)});}
-  verifyProvider(){if(!this.verifyReady())return;this.act(this.api.verifyProvider({checks:{account:true,format:true,guarantee:true,mapping:true},guaranteeDays:this.vDays as number,reason:this.vReason.trim()}),()=>{this.verifyOpen.set(false);this.vChecks={account:false,format:false,guarantee:false,mapping:false};this.vDays=null;this.vReason='';});}
+  verifyReady(){return !this.busy()&&this.canReview()&&Boolean(this.candidate())&&this.checkKeys.every(k=>this.vChecks[k])&&this.guaranteeOptions.includes(this.vDays as number)&&Boolean(this.vReason.trim());}
+  revokeReady(){return !this.busy()&&this.can('class_provider.verify')&&!!this.provider()?.verification&&this.rConfirmed&&Boolean(this.rReason.trim());}
+  loadProvider(){
+    if(!this.can('class_provider.verify')&&!this.can('class_payments.review'))return;
+    this.api.providerState().pipe(takeUntilDestroyed(this.destroy)).subscribe({
+      next:value=>{
+        const revision=this.candidate()?.revision;
+        this.provider.set(value);
+        if(revision&&this.candidate()?.revision!==revision)this.resetChecks();
+      },
+      error:()=>this.provider.set(null)
+    });
+  }
+  verifyProvider(){
+    const candidate=this.candidate();
+    if(!candidate||!this.verifyReady())return;
+    this.act(this.api.verifyProvider({checks:{account:true,format:true,guarantee:true,mapping:true},guaranteeDays:this.vDays as number,reason:this.vReason.trim(),teacherId:candidate.id,revision:candidate.revision}),
+      ()=>{this.verifyOpen.set(false);this.selectCandidate(null);});
+  }
   revokeProvider(){if(!this.revokeReady())return;this.act(this.api.revokeProvider(this.rReason.trim()),()=>{this.revokeOpen.set(false);this.rReason='';this.rConfirmed=false;});}
   private fractionDigits(c:string){return new Intl.NumberFormat('en',{style:'currency',currency:c.toUpperCase()}).resolvedOptions().maximumFractionDigits??2;}
   refundText(o:ClassOrder){return this.refundInputs[o.id]??(o.amount/10**this.fractionDigits(o.currency)).toFixed(this.fractionDigits(o.currency));}

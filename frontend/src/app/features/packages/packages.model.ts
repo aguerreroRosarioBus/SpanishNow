@@ -1,4 +1,5 @@
 import { Expectations } from '../legal/legal.model';
+import type { TeacherHotmartConnection } from '../../core/services/hotmart.service';
 export interface PackageVersion {
   id: number; templateId: number; version: number;
   nameEn: string; nameEs: string; descriptionEn: string | null; descriptionEs: string | null;
@@ -67,5 +68,23 @@ export const FROZEN_REASONS=['refund_mapping_mismatch','refund_amount_review','p
 export const isFrozenOrder=(o:ClassOrder)=>o.status==='paid_needs_review'&&!!o.reviewReason&&(FROZEN_REASONS as readonly string[]).includes(o.reviewReason);
 export interface ProviderVerification{id:number;verifiedAt:string;verifiedBy:{id:number;name:string};guaranteeDays:number;checks:Record<string,boolean>;reason:string}
 export interface ProviderRevocation{id:number;revokedAt:string;revokedBy:{id:number;name:string}|number|null;reason:string;verifiedAt:string}
-export interface ClassProviderState{mode:'fake'|'verified'|'blocked';verification:ProviderVerification|null;lastRevocation:ProviderRevocation|null}
-export interface ProviderVerifyBody{checks:{account:true;format:true;guarantee:true;mapping:true};guaranteeDays:number;reason:string}
+export interface ProviderCandidate {
+  id:number; name:string; testedAt:string; revision:string;
+  packages: {id:number;nameEs:string;nameEn:string;priceAmount:number;currency:string;productId:string;offerCode:string;url:string;approved:boolean}[];
+}
+export interface ClassProviderState{mode:'fake'|'verified'|'blocked';account?:'blocked'|'shared'|'connected'|'changed';candidates?:ProviderCandidate[];verification:(ProviderVerification & {teacherId?:number|null})|null;lastRevocation:ProviderRevocation|null}
+export interface ProviderVerifyBody{checks:{account:true;format:true;guarantee:true;mapping:true};guaranteeDays:number;reason:string;teacherId?:number;revision?:string}
+
+export interface ClassHotmartSetup extends TeacherHotmartConnection {
+  approval: 'blocked' | 'changed' | 'connected' | 'shared' | 'fake';
+  approvedPackageIds: number[] | null;
+  classesEnabled: boolean;
+  salesPaused: boolean;
+}
+
+export interface ClassSale extends ClassOrder {
+  createdAt: string;
+  buyerName: string | null;
+  nameEs: string;
+  nameEn: string;
+}

@@ -50,7 +50,7 @@ describe('W05 proveedor verificado y órdenes congeladas',()=>{
  const setup=(opts:{state?:unknown;orders?:unknown[];perms?:string[];providerError?:boolean}={})=>{
   const api={providerState:vi.fn(()=>opts.providerError?throwError(()=>({status:403})):of(opts.state)),verifyProvider:vi.fn((..._a:unknown[])=>of({})),revokeProvider:vi.fn((..._a:unknown[])=>of({})),resolvePayment:vi.fn((..._a:unknown[])=>of({})),
    refundRequests:()=>of([]),paymentList:()=>of({items:opts.orders||[],events:[]}),paymentJobs:()=>of([]),error:()=>''};
-  TestBed.configureTestingModule({imports:[CommerceAdminComponent],providers:[...providers,{provide:AuthService,useValue:{currentUser:()=>null,hasPermission:(k:string)=>(opts.perms||['class_payments.review']).includes(k)}},{provide:PackagesService,useValue:api}]});
+  TestBed.configureTestingModule({imports:[CommerceAdminComponent],providers:[...providers,{provide:AuthService,useValue:{currentUser:()=>null,hasPermission:(k:string)=>(opts.perms||['class_payments.review','class_provider.verify']).includes(k)}},{provide:PackagesService,useValue:api}]});
   const f=TestBed.createComponent(CommerceAdminComponent);f.detectChanges();return {f,c:f.componentInstance,api,el:f.nativeElement as HTMLElement,t:(k:string,p?:Record<string,string|number>)=>TestBed.inject(I18nService).t(k,p)};
  };
  it('muestra los tres modos y oculta la tarjeta si el estado da 403',()=>{
@@ -62,12 +62,14 @@ describe('W05 proveedor verificado y órdenes congeladas',()=>{
   TestBed.resetTestingModule();const none=setup({providerError:true});expect(none.el.querySelector('[data-test=provider-card]')).toBeNull();
  });
  it('verificar exige 4 casillas, garantía y motivo, y envía el cuerpo exacto',()=>{
-  const {c,api}=setup({state:{mode:'blocked',verification:null,lastRevocation:null}});c.verifyOpen.set(true);
+  const {c,api}=setup({state:{mode:'blocked',verification:null,lastRevocation:null,candidates:[
+    {id:9,name:'Docente ficticia',revision:'vigente',packages:[{id:2}]}
+  ]}});c.openReview();
   c.verifyProvider();expect(api.verifyProvider).not.toHaveBeenCalled();
   c.vChecks={account:true,format:true,guarantee:true,mapping:false};c.vDays=15;c.vReason='ok';c.verifyProvider();expect(api.verifyProvider).not.toHaveBeenCalled();
   c.vChecks['mapping']=true;c.vDays=null;expect(c.verifyReady()).toBe(false);c.vDays=15;c.vReason='  ';expect(c.verifyReady()).toBe(false);
   c.vReason='  Cuenta revisada  ';c.verifyProvider();expect(api.verifyProvider).toHaveBeenCalledTimes(1);
-  expect(api.verifyProvider.mock.calls[0][0]).toEqual({checks:{account:true,format:true,guarantee:true,mapping:true},guaranteeDays:15,reason:'Cuenta revisada'});
+  expect(api.verifyProvider.mock.calls[0][0]).toEqual({checks:{account:true,format:true,guarantee:true,mapping:true},guaranteeDays:15,reason:'Cuenta revisada',teacherId:9,revision:'vigente'});
  });
  it('revocar exige motivo y confirmación',()=>{
   const {c,api}=setup({state:{mode:'verified',verification:{id:3,verifiedAt:'2026-10-21T12:00:00Z',verifiedBy:{id:2,name:'Ana'},guaranteeDays:7,checks:{},reason:'x'},lastRevocation:null}});

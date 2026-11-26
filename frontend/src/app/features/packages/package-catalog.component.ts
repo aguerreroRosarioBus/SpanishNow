@@ -1,6 +1,7 @@
 import { parseMoneyInput, moneyInputValue } from '../../shared/utils/money-input';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { FormsModule, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { I18nService } from '../../core/i18n/i18n.service';
@@ -17,10 +18,11 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/c
 import { RestoreFocusDirective } from '../../shared/directives/restore-focus.directive';
 const editable = ['nameEn','nameEs','descriptionEn','descriptionEs','modality','groupSize','billing','sessionsCount','minutesPerSession','seatsCovered','priceAmount','currency','validityHours','policyVersionId','hotmartProductId','hotmartOfferCode','hotmartCheckoutUrl'] as const;
 @Component({
-  selector:'app-package-catalog', standalone:true, imports:[TranslatePipe,FormsModule,ReactiveFormsModule,PackageOrientationComponent,DialogModule,NgbDropdownModule,IconComponent,RestoreFocusDirective,ConfirmDialogComponent],
+  selector:'app-package-catalog', standalone:true, imports:[TranslatePipe,FormsModule,ReactiveFormsModule,RouterLink,PackageOrientationComponent,DialogModule,NgbDropdownModule,IconComponent,RestoreFocusDirective,ConfirmDialogComponent],
   templateUrl:'./package-catalog.component.html', styleUrl:'./package-catalog.component.scss'
 })
 export class PackageCatalogComponent implements OnInit {
+  readonly embedded = input(false);
   private readonly pilotTheme = inject(PilotTheme);
   private api = inject(PackagesService);
   readonly i18n = inject(I18nService);
