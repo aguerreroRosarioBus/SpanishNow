@@ -53,7 +53,9 @@ async function settleLocked(p,transaction,now){
 // Las lecturas no toman locks si no hay nada que liquidar (evita competir con las confirmaciones de agenda).
 const dueSettlement=(p,now)=>p.status==='paused'&&now-p.pausedAt>=Math.max(0,p.snapshot.policy.maxPauseHours-p.pausedHoursUsed)*3600000||['active','exhausted'].includes(p.status)&&p.expiresAt<=now;
 async function settle(id){const ref=await Purchase.findByPk(id);if(!ref)return;if(!dueSettlement(ref,persistedSecond(new Date())))return ref;return sequelize.transaction(async transaction=>{await offers.teacherSettings(ref.teacherId,transaction);const p=await Purchase.findByPk(id,{transaction,lock:transaction.LOCK.UPDATE});await settleLocked(p,transaction,persistedSecond(new Date()));return p;});}
-async function detail(user,id){await load(user,id);const p=await settle(id);const [view]=await decorate([present(p)]);return {...view,ledger:await Ledger.findAll({where:{purchaseId:p.id},order:[['id','ASC']]})};}
+async function detail(user,id){await load(user,id);const p=await settle(id);const [view]=await decorate([present(p)]);// El motivo de un ajuste es una nota interna de quien lo hizo: el comprador ve qué cambió, no por qué (D3-DIN-07).
+  const ledger=(await Ledger.findAll({where:{purchaseId:p.id},order:[['id','ASC']]})).map(e=>e.operation==='adjust'?{...e.toJSON(),reason:null,actorId:null}:e);
+  return {...view,ledger};}
 async function list(user){const refs=await Beneficiary.findAll({where:{userId:user.id},attributes:['purchaseId']});const rows=await Purchase.findAll({where:{[Op.or]:[{buyerId:user.id},{id:refs.map(r=>r.purchaseId)}]},order:[['expiresAt','ASC'],['id','ASC']]});const result=[];for(const row of rows)result.push(present(await settle(row.id)));return decorate(result);}
 async function teacherList(user,studentId){
   if(user.role!=='teacher')throw fail(403,'forbidden');if(studentId!==undefined&&!validId(studentId))throw invalid(['studentId']);
