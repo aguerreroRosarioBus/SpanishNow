@@ -23,9 +23,6 @@
         </div>
       }
     </div>
-    @if (nextPending(); as pending) {
-      <button type="button" class="btn btn-primary practice__start" (click)="open(pending)">{{ 'player.practiceStart' | t: {name: label(pending)} }}</button>
-    }
   </section>
 }
 

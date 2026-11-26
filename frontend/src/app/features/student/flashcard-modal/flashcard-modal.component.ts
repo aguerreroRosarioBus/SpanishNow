@@ -17,7 +17,8 @@ import { FlashcardComponent } from '../flashcard/flashcard.component';
             <button type="button" class="btn-close btn-close-white" (click)="onClose()" [attr.aria-label]="'activities.close' | t"></button>
           </div>
           <div class="modal-body">
-            <app-flashcard
+            <!-- Se crea al abrir: así carga el vocabulario de la historia actual y no el de la primera vez. -->
+            <app-flashcard *ngIf="show"
               [unitId]="unitId"
               [vocabularyIds]="vocabularyIds"
               (allViewed)="onAllViewed()">

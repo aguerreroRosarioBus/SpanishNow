@@ -62,12 +62,12 @@ describe('A-03: «Listen and repeat» solo se ofrece si la historia tiene activi
     expect(fixture.nativeElement.querySelector('.practice')).toBeNull();
   });
 
-  it('muestra el contador y el botón principal para el primer pendiente', () => {
+  it('muestra el contador; el botón principal queda solo en el pie de la lección', () => {
     stories.set([{ id: 5, repetitionActivities: [{ id: 1 }] }]);
     const el = render();
     expect(el.querySelector('.practice__count')?.textContent?.trim()).toBe('0 de 3');
     expect(el.querySelector('.practice')?.textContent).not.toContain('aria-labelledby');
-    expect(el.querySelector('.practice__start')?.textContent?.trim()).toBe('Empezar: Flashcards');
+    expect(el.querySelector('.practice__start')).toBeNull();
   });
 
   it('calcula los ids de vocabulario de las expresiones del plan antes de la narración', () => {

@@ -23,7 +23,8 @@ import { ToastService } from '../../../core/services/toast.service';
             <div class="alert alert-info mb-3">
               <strong>{{ 'activities.objective' | t }}</strong> {{ 'activities.matchingGoal' | t }}
             </div>
-            <app-matching
+            <!-- Se crea al abrir: así carga el vocabulario de la historia actual y no el de la primera vez. -->
+            <app-matching *ngIf="show"
               [unitId]="unitId"
               [vocabularyIds]="vocabularyIds"
               (completed)="onMatchingCompleted($event)">

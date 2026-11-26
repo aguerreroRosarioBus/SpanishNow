@@ -28,10 +28,6 @@
   font-size: 0.8125rem;
 }
 
-.practice__start {
-  align-self: flex-start;
-}
-
 .practice__grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
