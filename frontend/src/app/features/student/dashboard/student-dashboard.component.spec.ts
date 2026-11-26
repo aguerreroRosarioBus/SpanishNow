@@ -59,6 +59,17 @@ describe('StudentDashboardComponent (reiniciar progreso)', () => {
     expect(fixture.nativeElement.textContent).toContain('seguirá disponible');
   });
 
+  it('resumeStory: curso sin empezar no devuelve historia (abre en la bienvenida) y uno empezado retoma', async () => {
+    const { fixture } = await create();
+    const c = fixture.componentInstance;
+    c.progressByEnrollment.set({ 5: { stories: [{ storyId: 1, narrativeCompleted: false }, { storyId: 2, narrativeCompleted: false }], quizzes: [], certificate: null } as any });
+    expect(c.resumeStory(enrollment as any)).toBeNull();
+    c.progressByEnrollment.set({ 5: { stories: [{ storyId: 1, narrativeCompleted: true }, { storyId: 2, narrativeCompleted: false }], quizzes: [], certificate: null } as any });
+    expect(c.resumeStory(enrollment as any)).toBe(2);
+    c.progressByEnrollment.set({ 5: { stories: [{ storyId: 1, narrativeCompleted: false }, { storyId: 2, narrativeCompleted: false, lastBlockKey: 'x' }], quizzes: [], certificate: null } as any });
+    expect(c.resumeStory(enrollment as any)).toBe(2);
+  });
+
   it('cancelar no llama al backend', async () => {
     const { fixture, enrollments } = await create();
     fixture.componentInstance.resetCourseProgress(enrollment as any);
