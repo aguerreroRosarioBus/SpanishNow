@@ -7,6 +7,7 @@ import { RepetitionActivityService } from '../../../core/services/repetition-act
 import { ToastService } from '../../../core/services/toast.service';
 import { RepetitionActivity } from '../../../core/models/course.model';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
+import { toastFrom } from '../../../core/services/toast.service';
 
 @Component({
   selector: 'app-listen-repeat',
@@ -16,6 +17,7 @@ import { IconComponent } from '../../../shared/components/icon/icon.component';
   styleUrl: './listen-repeat.component.scss'
 })
 export class ListenRepeatComponent implements OnInit, OnDestroy {
+  constructor() { toastFrom(() => this.errorMessage()); }
   i18n = inject(I18nService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);

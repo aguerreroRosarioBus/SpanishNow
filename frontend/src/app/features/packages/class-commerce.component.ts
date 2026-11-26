@@ -1,7 +1,11 @@
+import { IconComponent } from '../../shared/components/icon/icon.component';
+import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
+import { SectionHeaderComponent } from '../../shared/components/section-header/section-header.component';
+import { TabBarComponent } from '../../shared/components/tab-bar/tab-bar.component';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { finalize, forkJoin, Observable } from 'rxjs';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
@@ -10,6 +14,7 @@ import { HotmartGuideImageComponent } from '../teacher/course-manage/components/
 import { PackageCatalogComponent } from './package-catalog.component';
 import { ClassHotmartSetup, ClassSale, PackageTemplate } from './packages.model';
 import { PackagesService } from './packages.service';
+import { ToastService } from '../../core/services/toast.service';
 
 type Tab = 'setup' | 'packages' | 'sales';
 type Step = 'home' | 'key' | 'address' | 'test' | 'events' | 'package' | 'preview';
@@ -17,23 +22,24 @@ const codePattern = /^[A-Za-z0-9-]{1,40}$/;
 
 @Component({
   selector: 'app-class-commerce',
-  imports: [FormsModule, RouterLink, TranslatePipe, HotmartGuideImageComponent, PackageCatalogComponent],
+  imports: [IconComponent, EmptyStateComponent, SectionHeaderComponent, TabBarComponent, FormsModule, RouterLink, TranslatePipe, HotmartGuideImageComponent, PackageCatalogComponent],
   templateUrl: './class-commerce.component.html',
   styleUrl: './class-commerce.component.scss',
 })
 export class ClassCommerceComponent {
   private readonly api = inject(PackagesService);
   private readonly destroy = inject(DestroyRef);
+  private readonly toast = inject(ToastService);
+  private readonly route = inject(ActivatedRoute);
   readonly i18n = inject(I18nService);
   readonly fmt = inject(ChatFormat);
   readonly tabs = ['setup', 'packages', 'sales'] as const;
   readonly tab = signal<Tab>('setup');
+  readonly tabItems = computed(() => this.tabs.map(id => ({ id, label: this.i18n.t('packages.commerce.tab.' + id) })));
   readonly step = signal<Step>('home');
   readonly setup = signal<ClassHotmartSetup | null>(null);
   readonly items = signal<PackageTemplate[]>([]);
   readonly busy = signal(false);
-  readonly error = signal('');
-  readonly feedback = signal('');
   readonly key = signal('');
   readonly selectedId = signal<number | null>(null);
   readonly url = signal('');
@@ -96,16 +102,52 @@ export class ClassCommerceComponent {
     return preview.toString();
   });
 
-  constructor() { this.load(); }
+  /** Si la persona eligió la pestaña a mano (o vino en la URL), no se la cambia al recargar el estado. */
+  private tabPinned = false;
+  private tabApplied = false;
+  /** Paquete que viene en la URL para vincularlo con Hotmart (`?package=`). */
+  private readonly packageParam = Number(this.route.snapshot.queryParamMap.get('package')) || null;
+
+  constructor() {
+    const requested = this.route.snapshot.queryParamMap.get('tab');
+    if (requested && (this.tabs as readonly string[]).includes(requested)) {
+      this.tab.set(requested as Tab);
+      this.tabPinned = true;
+    }
+    this.load();
+  }
+
+  /** Con la venta habilitada y nada pendiente de configurar, lo útil es ver los paquetes. */
+  private defaultTab(): Tab {
+    return ['ready', 'paused', 'publish'].includes(this.setupState()) ? 'packages' : 'setup';
+  }
+
+  /** Desde la lista de paquetes: abre el paso de vincular con Hotmart con ese paquete elegido. */
+  linkPackage(id: number) {
+    this.tabPinned = true;
+    this.tab.set('setup');
+    this.start();
+    if (this.step() === 'package') this.selectPackage(id);
+  }
+
+  private applyInitialState() {
+    if (this.tabApplied) return;
+    this.tabApplied = true;
+    if (!this.tabPinned) this.tab.set(this.defaultTab());
+    if (this.tab() === 'sales') Promise.resolve().then(() => this.loadSales());
+    if (this.packageParam && this.tab() === 'setup') {
+      this.start();
+      const target = this.products().find(item => item.id === this.packageParam);
+      if (target && this.step() === 'package') this.selectPackage(target.id);
+    }
+  }
 
   private run<T>(request: Observable<T>, done: (value: T) => void, failed?: (error: unknown) => string) {
     if (this.busy()) return;
     this.busy.set(true);
-    this.error.set('');
-    this.feedback.set('');
     request.pipe(takeUntilDestroyed(this.destroy), finalize(() => this.busy.set(false))).subscribe({
       next: done,
-      error: error => this.error.set(failed?.(error) ?? this.api.error(error)),
+      error: error => this.toast.error(failed?.(error) ?? this.api.error(error)),
     });
   }
 
@@ -113,22 +155,20 @@ export class ClassCommerceComponent {
     this.run(forkJoin({setup:this.api.hotmartSetup(), items:this.api.list()}), ({ setup, items }) => {
       this.setup.set(setup);
       this.items.set(items);
+      this.applyInitialState();
     });
   }
 
   chooseTab(tab: Tab) {
     if (this.busy()) return;
+    this.tabPinned = true;
     this.tab.set(tab);
-    this.error.set('');
-    this.feedback.set('');
     if (tab === 'setup') this.load();
     if (tab === 'sales') this.loadSales();
   }
 
   go(step: Step) {
     if (step !== 'key') this.key.set('');
-    this.error.set('');
-    this.feedback.set('');
     if (step !== 'preview') this.resetConfirmation();
     this.step.set(step);
   }
@@ -161,11 +201,11 @@ export class ClassCommerceComponent {
   async copyAddress(input: HTMLInputElement) {
     try {
       await navigator.clipboard.writeText(input.value);
-      this.feedback.set('teacherManage.courseEdit.copied');
+      this.toast.success(this.i18n.t('teacherManage.courseEdit.copied'));
     } catch {
       input.focus();
       input.select();
-      this.feedback.set('teacherManage.courseEdit.copyError');
+      this.toast.error(this.i18n.t('teacherManage.courseEdit.copyError'));
     }
   }
 
@@ -173,7 +213,7 @@ export class ClassCommerceComponent {
     this.run(this.api.hotmartSetup(), setup => {
       this.setup.set(setup);
       if (setup.verifiedAt && !setup.pending) this.go('events');
-      else this.feedback.set('packages.commerce.testWaiting');
+      else this.toast.info(this.i18n.t('packages.commerce.testWaiting'));
     });
   }
 
@@ -214,7 +254,7 @@ export class ClassCommerceComponent {
       this.items.update(items => items.map(item => item.id === updated.id ? updated : item));
       this.selectPackage(updated.id);
       this.go('home');
-      this.feedback.set('packages.commerce.packageSaved');
+      this.toast.success(this.i18n.t('packages.commerce.packageSaved'));
     });
   }
 

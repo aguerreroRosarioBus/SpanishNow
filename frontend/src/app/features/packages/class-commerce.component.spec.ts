@@ -1,5 +1,6 @@
+import { ToastService } from '../../core/services/toast.service';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
 import { AuthService } from '../../core/services/auth.service';
@@ -17,18 +18,20 @@ const connected = { ...pending, verifiedAt: '2026-11-25T18:00:00Z', pending: fal
 const draft = {id:8,status:'draft',current:{version:3,nameEs:'Cuatro clases',nameEn:'Four classes',priceAmount:8000,currency:'USD'}} as PackageTemplate;
 const mapped = {...draft,current:{...draft.current!,hotmartProductId:'123',hotmartOfferCode:'H4',hotmartCheckoutUrl:'https://pay.hotmart.com/X'}} as PackageTemplate;
 
-function render() {
+function render(opts:{setup?:ClassHotmartSetup;items?:PackageTemplate[];query?:Record<string,string>}={}) {
+  TestBed.resetTestingModule();
   const api = {
-    hotmartSetup:vi.fn(() => of(empty)),
+    hotmartSetup:vi.fn(() => of(opts.setup ?? empty)),
     saveHotmartKey:vi.fn((_key:string) => of(pending)),
-    list:vi.fn(() => of([draft])),
+    list:vi.fn(() => of(opts.items ?? [draft])),
     linkHotmart:vi.fn((_id:number, _body:unknown) => of(mapped)),
     classSales:vi.fn(() => of({items:[],next:null})),
+    settings:vi.fn(() => of({sessionBufferMinutes:10,minLeadTimeHours:24,classesEnabledAt:'2026-11-01T00:00:00Z',salesPausedAt:null,acceptsInquiries:true})),
     error:vi.fn(() => 'Error'),
   };
   TestBed.configureTestingModule({
     imports:[ClassCommerceComponent],
-    providers:[provideRouter([]),{provide:I18N_CATALOGS,multi:true,useValue:PACKAGE_MESSAGES},
+    providers:[provideRouter([]),...(opts.query?[{provide:ActivatedRoute,useValue:{snapshot:{queryParamMap:convertToParamMap(opts.query)}}}]:[]),{provide:I18N_CATALOGS,multi:true,useValue:PACKAGE_MESSAGES},
       {provide:AuthService,useValue:{currentUser:()=>null}},{provide:PackagesService,useValue:api}],
   });
   const i18n = TestBed.inject(I18nService);
@@ -40,7 +43,7 @@ function render() {
 
 describe('Cobros de paquetes para docentes', () => {
   it('ofrece un inicio claro y diferencia una clave guardada de la recepción de la prueba', () => {
-    const {api, fixture, component, root} = render();
+    const {api, i18n, fixture, component, root} = render();
     expect(root.textContent).toContain('Conectar mi cuenta de Hotmart');
     expect(root.querySelector('input[type="checkbox"]')).toBeNull();
     component.start();
@@ -55,7 +58,7 @@ describe('Cobros de paquetes para docentes', () => {
     component.go('test');
     api.hotmartSetup.mockReturnValueOnce(of(pending));
     component.checkTest();
-    expect(component.feedback()).toBe('packages.commerce.testWaiting');
+    expect(TestBed.inject(ToastService).getToasts().map(t => t.message)).toContain(i18n.t('packages.commerce.testWaiting'));
     api.hotmartSetup.mockReturnValueOnce(of(connected));
     component.checkTest();
     fixture.detectChanges();
@@ -128,5 +131,38 @@ describe('Cobros de paquetes para docentes', () => {
     fixture.detectChanges();
     expect(api.classSales).toHaveBeenCalledOnce();
     expect(root.textContent).toContain('Tus ventas de paquetes');
+  });
+
+  const approved = {...connected,approval:'connected' as const,approvedPackageIds:[8]};
+  const active = {...mapped,status:'active'} as PackageTemplate;
+
+  it('abre «Paquetes» si la venta ya está habilitada y «Configurar cobros» si falta algo', () => {
+    expect(render({setup:approved,items:[active]}).component.tab()).toBe('packages');
+    expect(render({setup:approved,items:[mapped]}).component.tab()).toBe('packages');
+    expect(render({setup:{...approved,salesPaused:true},items:[active]}).component.tab()).toBe('packages');
+    expect(render().component.tab()).toBe('setup');
+    expect(render({setup:{...approved,classesEnabled:false},items:[active]}).component.tab()).toBe('setup');
+  });
+
+  it('no pisa la pestaña elegida a mano y respeta ?tab= de la URL', () => {
+    const manual = render({setup:approved,items:[active]});
+    manual.component.chooseTab('sales');
+    manual.component.load();
+    expect(manual.component.tab()).toBe('sales');
+    expect(render({setup:approved,items:[active],query:{tab:'setup'}}).component.tab()).toBe('setup');
+  });
+
+  it('con ?package= abre el paso de vincular con ese paquete elegido', () => {
+    const {component} = render({setup:approved,items:[draft],query:{tab:'setup',package:'8'}});
+    expect(component.step()).toBe('package');
+    expect(component.selectedId()).toBe(8);
+  });
+
+  it('«Vincular con Hotmart» desde la lista lleva al paso de vincular con el paquete', () => {
+    const {component} = render({setup:approved,items:[draft]});
+    component.linkPackage(8);
+    expect(component.tab()).toBe('setup');
+    expect(component.step()).toBe('package');
+    expect(component.selectedId()).toBe(8);
   });
 });

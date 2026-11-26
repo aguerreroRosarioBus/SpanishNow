@@ -9,6 +9,7 @@ import { ToastService } from '../../../core/services/toast.service';
 import { IconComponent } from '../icon/icon.component';
 import { ConfirmDialogComponent } from '../confirm-dialog/confirm-dialog.component';
 import { contentLockedFrom } from '../../utils/release-date';
+import { toastFrom } from '../../../core/services/toast.service';
 
 export const COMMENT_MAX_LENGTH = 2000;
 const PAGE_SIZE = 20;
@@ -65,6 +66,9 @@ export class LessonCommentsComponent {
   toDelete = signal<LessonComment | null>(null);
 
   constructor() {
+    toastFrom(() => this.actionError());
+    toastFrom(() => this.postError());
+    toastFrom(() => this.error());
     effect(() => {
       const id = this.storyId();
       untracked(() => this.reset(id));

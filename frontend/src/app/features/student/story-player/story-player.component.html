@@ -5,10 +5,6 @@
   </div>
 
   <div class="player__main">
-    @if (nav.errorMessage()) {
-      <div class="alert alert-danger" role="alert">{{ nav.errorMessage() }}</div>
-    }
-
     @if (!nav.isLoading() && nav.currentUnitLocked() && !nav.currentItem()) {
       <app-unit-locked-view />
     } @else if (!nav.isLoading() && nav.currentItem(); as item) {

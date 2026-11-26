@@ -5,7 +5,7 @@ import { of, throwError } from 'rxjs';
 import { describe, expect, it } from 'vitest';
 import { LessonCommentsComponent } from './lesson-comments.component';
 import { CommentService } from '../../../core/services/comment.service';
-import { ToastService } from '../../../core/services/toast.service';
+import { toastText } from '../../testing/toasts';
 import { LessonComment } from '../../../core/models/community.model';
 
 const evil = '<img src=x onerror="window.__pwned=1"><b>hola</b>\nsegunda línea';
@@ -20,8 +20,7 @@ function setup(list: () => any) {
   TestBed.configureTestingModule({
     providers: [
       {provide: UserPreferencesService, useValue: {preferences: () => ({timeZone: 'America/Argentina/Cordoba'})}},
-      { provide: CommentService, useValue: { list: list, create: () => of({}), update: () => of({}), remove: () => of(undefined) } },
-      { provide: ToastService, useValue: { success: () => {}, error: () => {} } }
+      { provide: CommentService, useValue: { list: list, create: () => of({}), update: () => of({}), remove: () => of(undefined) } }
     ]
   });
   TestBed.inject(I18nService).setLocale('es');
@@ -57,7 +56,8 @@ describe('LessonCommentsComponent', () => {
 
   it('con otro error ofrece reintentar', () => {
     const fixture = setup(() => throwError(() => ({ status: 500, error: {} })));
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain('No se pudieron cargar los comentarios.');
+    expect(toastText()).toContain('No se pudieron cargar los comentarios.');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Reintentar');
   });
 });
 
@@ -78,6 +78,7 @@ it('error ya visible cambia de idioma sin repetir carga', () => {
   const list = vi.fn(() => throwError(() => ({error: {code: 'unknown', error: 'PRIVATE_INTERNAL'}})));
   const f = setup(list);
   TestBed.inject(I18nService).setLocale('en'); f.detectChanges();
-  expect(f.nativeElement.textContent).toContain('Could not load comments.');
-  expect(f.nativeElement.textContent).not.toContain('PRIVATE_INTERNAL'); expect(list).toHaveBeenCalledTimes(1);
+  expect(toastText()).toContain('No se pudieron cargar los comentarios.');
+  expect(f.componentInstance.error()).toContain('Could not load comments.');
+  expect(f.nativeElement.textContent).not.toContain('PRIVATE_INTERNAL'); expect(toastText()).not.toContain('PRIVATE_INTERNAL'); expect(list).toHaveBeenCalledTimes(1);
 });

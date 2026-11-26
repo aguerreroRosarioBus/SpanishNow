@@ -18,6 +18,7 @@ import { newId, pageFrame, parsePdfPageSelection, pdfGridLayout, previewBoard, W
 import { downloadBlob, exportBoardPdf, exportPagePng } from './board/board.export';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { LiveNotice, noticeError, noticeKey, noticeText, liveStatusText } from './live-notice';
+import { toastFrom } from '../../core/services/toast.service';
 
 type Confirmation = 'clear' | 'delete-page' | 'restore' | 'end' | 'discard';
 interface BoardHistoryChange { pageId: string; elementId: string; before: BoardElement | null; after: BoardElement | null; current: BoardElement | null; }
@@ -39,6 +40,7 @@ function isBoardOperation(value: unknown): value is BoardOperation {
   templateUrl: './live-room.component.html', styleUrls: ['./live-room.component.scss', './live-room-controls.scss']
 })
 export class LiveRoomComponent implements OnInit, OnDestroy {
+  constructor() { toastFrom(() => this.error()); }
   readonly WORLD_W = WORLD_W;
   readonly WORLD_H = WORLD_H;
   readonly pageFrame = pageFrame;

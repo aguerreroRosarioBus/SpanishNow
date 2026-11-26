@@ -1,3 +1,4 @@
+import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { LocaleDatePipe } from '../../../core/i18n/locale-format.pipe';
 import { UserPreferencesService } from '../../../core/services/user-preferences.service';
 import { I18nService } from '../../../core/i18n/i18n.service';
@@ -13,16 +14,18 @@ import { snapshotLink } from '../../legal/legal.service';
 import { PackagesService } from '../../packages/packages.service';
 import { ClassPurchase } from '../../packages/packages.model';
 import { purchaseStatusKey, purchaseTone } from '../../packages/purchase-state';
+import { toastFrom } from '../../../core/services/toast.service';
 
 /** «Mis compras»: historial de compras del alumno con link al recibo. */
 @Component({
   selector: 'app-purchases',
   standalone: true,
-  imports: [LocaleDatePipe, TranslatePipe, RouterLink, ExpectationsViewComponent],
+  imports: [EmptyStateComponent, LocaleDatePipe, TranslatePipe, RouterLink, ExpectationsViewComponent],
   templateUrl: './purchases.component.html',
   styleUrl: './purchases.component.scss'
 })
 export class PurchasesComponent implements OnInit {
+  constructor() { toastFrom(() => this.errorMessage()); }
   readonly i18n = inject(I18nService);
   private readonly preferences = inject(UserPreferencesService);
   readonly timeZone = computed(() => this.preferences.preferences()?.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');

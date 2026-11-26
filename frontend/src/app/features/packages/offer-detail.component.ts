@@ -14,8 +14,10 @@ import { EXPECTATION_FIELDS } from '../legal/legal.model';
 import { LegalConsentComponent } from '../legal/legal-consent/legal-consent.component';
 import { consentFor } from '../legal/legal.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
+import { toastFrom } from '../../core/services/toast.service';
 @Component({selector:'app-offer-detail',standalone:true,imports:[FormsModule,RouterLink,TranslatePipe,LegalConsentComponent,IconComponent],templateUrl:'./offer-detail.component.html',styleUrl:'./offer-detail.component.scss'})
 export class OfferDetailComponent implements OnInit {
+  constructor() { toastFrom(() => this.error()); }
   readonly api=inject(PackagesService); readonly i18n=inject(I18nService); readonly fmt=inject(ChatFormat);
   private route=inject(ActivatedRoute); private destroyRef=inject(DestroyRef);private document=inject(DOCUMENT);
   readonly fields=EXPECTATION_FIELDS; offer=signal<ClassOffer|null>(null);order=signal<ClassOrder|null>(null);purchaseId=signal<number|null>(null);

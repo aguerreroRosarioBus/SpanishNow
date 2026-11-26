@@ -7,6 +7,7 @@ import { QuizViewComponent } from './quiz-view.component';
 import { LessonNavigationStore } from '../lesson-navigation.store';
 import { QuizService } from '../../../../core/services/quiz.service';
 import { I18nService } from '../../../../core/i18n/i18n.service';
+import { toastText } from '../../../../shared/testing/toasts';
 
 it('quiz: conserva selección/borrador y error sin recargar ni reenviar al alternar idioma', () => {
   const quiz = Object.freeze({id: 9, title: 'Evaluación original', passingScore: 70, questions: [{id: 1, prompt: '¿Dónde está María?', options: ['En Córdoba', 'En Madrid']}], bestAttempt: null});
@@ -25,9 +26,9 @@ it('quiz: conserva selección/borrador y error sin recargar ni reenviar al alter
   expect(f.nativeElement.querySelectorAll('input')[1].checked).toBe(true);
   expect(c.answers()).toBe(answers); expect(c.quiz()).toBe(quiz); expect(api.getForStudent).toHaveBeenCalledTimes(1);
   c.submit(); f.detectChanges();
-  expect(f.nativeElement.textContent).toContain('Could not submit your answers');
+  expect(toastText()).toContain('Could not submit your answers');
   i18n.setLocale('es'); f.detectChanges();
-  expect(f.nativeElement.textContent).toContain('No se pudo enviar tus respuestas');
-  expect(f.nativeElement.textContent).not.toContain('PRIVATE_INTERNAL');
+  expect(c.submitError()).toContain('No se pudo enviar tus respuestas');
+  expect(f.nativeElement.textContent).not.toContain('PRIVATE_INTERNAL'); expect(toastText()).not.toContain('PRIVATE_INTERNAL');
   expect(c.answers()).toBe(answers); expect(api.submitAttempt).toHaveBeenCalledTimes(1);
 });

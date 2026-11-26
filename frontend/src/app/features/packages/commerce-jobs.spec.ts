@@ -6,6 +6,7 @@ import {PackagesService} from './packages.service';
 import {AuthService} from '../../core/services/auth.service';
 import {I18N_CATALOGS,I18nService} from '../../core/i18n/i18n.service';
 import {PACKAGE_MESSAGES} from './packages.i18n';
+import { toastText } from '../../shared/testing/toasts';
 function render(paymentJobs:()=>unknown){
   TestBed.configureTestingModule({imports:[CommerceAdminComponent],providers:[provideRouter([]),{provide:I18N_CATALOGS,multi:true,useValue:PACKAGE_MESSAGES},
     {provide:AuthService,useValue:{currentUser:()=>null,hasPermission:(k:string)=>k==='class_payments.review'}},
@@ -18,6 +19,6 @@ describe('Administración de clases: trámites del proveedor',()=>{
     const text=render(()=>of([]));expect(text).toContain('Trámites del proveedor y recuperación');expect(text).toContain('No hay trámites del proveedor');
   });
   it('si la carga falla muestra el error de la sección y no el vacío',()=>{
-    const text=render(()=>throwError(()=>({status:500})));expect(text).toContain('No pudimos cargar los trámites');expect(text).not.toContain('No hay trámites del proveedor');
+    const text=render(()=>throwError(()=>({status:500})));expect(toastText()).toContain('No pudimos cargar los trámites');expect(text).not.toContain('No hay trámites del proveedor');
   });
 });

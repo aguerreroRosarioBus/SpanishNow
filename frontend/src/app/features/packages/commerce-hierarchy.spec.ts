@@ -26,14 +26,17 @@ describe('Gestión comercial: jerarquía visual',()=>{
     const f=render(['class_teachers.manage']);
     expect(headings(f)).toEqual(['Docentes habilitados para clases']);
   });
-  it('estados vacíos con una acción que vuelve a cargar',()=>{
+  it('estados vacíos centrados con ícono y texto secundario, y una sola recarga por pestaña',()=>{
     const paymentList=vi.fn(()=>of({items:[],events:[]}));
     const f=render(['class_payments.review','class_teachers.manage'],{paymentList});
-    const empties=[...f.nativeElement.querySelectorAll('.empty')] as HTMLElement[];
-    expect(empties.map(e=>e.querySelector('p')!.textContent)).toEqual(['No hay pagos con este estado.','No hay solicitudes de reembolso para revisar.','No hay trámites del proveedor ni recuperaciones pendientes.','Todavía no hay docentes para habilitar.']);
-    expect(empties.every(e=>e.querySelector('button')?.textContent?.trim()==='Volver a cargar')).toBe(true);
+    const empties=[...f.nativeElement.querySelectorAll('app-empty-state')] as HTMLElement[];
+    expect(empties.map(e=>e.querySelector('strong')!.textContent)).toEqual(['No hay pagos con este estado.','No hay solicitudes de reembolso para revisar.','No hay trámites del proveedor ni recuperaciones pendientes.','Todavía no hay docentes para habilitar.']);
+    expect(empties.every(e=>e.querySelector('app-icon')&&e.querySelector('.empty-state__hint')?.textContent?.trim())).toBe(true);
+    expect(empties.some(e=>e.querySelector('button'))).toBe(false);
+    const reloads=[...f.nativeElement.querySelectorAll('.toolbar button')] as HTMLButtonElement[];
+    expect(reloads.map(b=>b.textContent?.trim())).toEqual(['Volver a cargar','Volver a cargar']);
     const before=paymentList.mock.calls.length;
-    (empties[0].querySelector('button') as HTMLButtonElement).click();
+    reloads[0].click();
     expect(paymentList.mock.calls.length).toBe(before+1);
   });
   it('los datos del proveedor van como texto secundario y la versión de la política fuera del encabezado',()=>{
@@ -46,7 +49,7 @@ describe('Gestión comercial: jerarquía visual',()=>{
   });
   it('el catálogo EN y ES tiene las mismas claves nuevas de gestión comercial',()=>{
     const keys=(l:'en'|'es')=>Object.keys(PACKAGE_MESSAGES[l]).filter(k=>/^packages\.admin\.(confirmTitle|confirmHint|salesTitle|proceduresTitle|order|refundsEmpty|paymentsEmpty|teachersEmpty|reload|policyVersion|providerIds|jobMeta|job\.title|orderStatus\.)/.test(k)).sort();
-    expect(keys('en')).toEqual(keys('es'));expect(keys('en').length).toBe(21);
+    expect(keys('en')).toEqual(keys('es'));expect(keys('en').length).toBe(24);
   });
 });
 

@@ -1,3 +1,4 @@
+import { TabBarComponent } from '../../../shared/components/tab-bar/tab-bar.component';
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '../../../core/services/auth.service';
@@ -6,6 +7,7 @@ import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { Locale } from '../../../core/i18n/i18n.types';
 import { AdminLegalDocument, BUSINESS_FIELDS, LEGAL_KEYS, LegalDraftInput, LegalKey } from '../legal.model';
 import { LegalService } from '../legal.service';
+import { toastFrom } from '../../../core/services/toast.service';
 
 type VersionStatus = 'draft' | 'scheduled' | 'current' | 'published';
 
@@ -16,11 +18,16 @@ type VersionStatus = 'draft' | 'scheduled' | 'current' | 'published';
 @Component({
   selector: 'app-admin-legal',
   standalone: true,
-  imports: [TranslatePipe, ReactiveFormsModule],
+  imports: [TabBarComponent, TranslatePipe, ReactiveFormsModule],
   templateUrl: './admin-legal.component.html',
   styleUrl: './admin-legal.component.scss'
 })
 export class AdminLegalComponent implements OnInit {
+  constructor() {
+    toastFrom(() => this.notice() ? this.i18n.t(this.notice()!.key, { version: this.notice()!.version }) : '', 'success');
+    toastFrom(() => this.state() === 'error' ? this.i18n.t('legal.admin.loadError') : '');
+    toastFrom(() => this.error() ? this.error() + (this.missingLabels() ? ' ' + this.i18n.t('legal.admin.missing', { fields: this.missingLabels() }) : '') : '');
+  }
   private legal = inject(LegalService);
   private fb = inject(FormBuilder);
   private auth = inject(AuthService);
@@ -28,6 +35,7 @@ export class AdminLegalComponent implements OnInit {
   readonly allowed = computed(() => this.auth.hasPermission('legal.manage'));
   readonly i18n = inject(I18nService);
   readonly keys = LEGAL_KEYS;
+  readonly keyItems = computed(() => this.keys.map(k => ({ id: k, label: this.i18n.t('legal.doc.' + k) })));
   readonly businessFields = BUSINESS_FIELDS;
   readonly locales: readonly Locale[] = ['en', 'es'];
 

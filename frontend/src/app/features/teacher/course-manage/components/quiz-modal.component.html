@@ -9,11 +9,8 @@
         @if (isLoading()) {
           <div class="text-center py-4" role="status"><div class="spinner-border text-primary" aria-hidden="true"></div></div>
         } @else if (loadError()) {
-          <div class="alert alert-danger" role="alert">{{ loadError() | t }}</div>
+          <div class="state-box state-box--error" role="status"><span>{{ loadError() | t }}</span></div>
         } @else {
-          @if (errorMessage()) {
-            <div class="alert alert-danger" role="alert">{{ errorMessage() }}</div>
-          }
           @if (showErrors() && validation().general.length) {
             <ul class="text-danger small ps-3">
               @for (e of validation().general; track e) { <li>{{ e | t:{ max: limits.maxQuestions } }}</li> }

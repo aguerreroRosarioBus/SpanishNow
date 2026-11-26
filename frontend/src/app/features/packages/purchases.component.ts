@@ -1,3 +1,5 @@
+import { IconComponent } from '../../shared/components/icon/icon.component';
+import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -14,10 +16,11 @@ import { presentInstant } from '../../core/time/class-time';
 import { PackageOrientationComponent } from './package-orientation.component';
 import { formatPackageValidity } from './package-validity';
 import { isClosedPurchase, purchaseStatusKey, purchaseTone, refundKind } from './purchase-state';
-@Component({selector:'app-class-purchases',standalone:true,imports:[FormsModule,RouterLink,TranslatePipe,RefundRequestComponent,PackageOrientationComponent],styleUrl:'./purchases.component.scss',template:`
+import { toastFrom } from '../../core/services/toast.service';
+@Component({selector:'app-class-purchases',standalone:true,imports:[IconComponent, EmptyStateComponent, FormsModule,RouterLink,TranslatePipe,RefundRequestComponent,PackageOrientationComponent],styleUrl:'./purchases.component.scss',template:`
 <div class="page-container"><h1>{{ 'packages.purchase.title' | t }}</h1>
 @if(teacher){<app-package-orientation section="purchases" />}
-@if(error()){<div class="alert alert-danger d-flex justify-content-between align-items-center gap-2" role="alert">{{error()}}<button type="button" class="btn btn-secondary btn-sm" [disabled]="busy()" (click)="read()">{{'packages.purchase.retry'|t}}</button></div>}
+@if(error()){<div class="toolbar"><button type="button" class="btn btn-secondary btn-sm toolbar-end" [disabled]="busy()" (click)="read()"><app-icon name="rotate-ccw" [size]="14" />{{'packages.purchase.retry'|t}}</button></div>}
 @if(busy()){<p role="status">{{ 'packages.loading' | t }}</p>}
 @if(!id && items().length){<div class="purchase-filters" role="search">
 <label for="purchaseSearch">{{(teacher?'refine.searchPurchases':'refine.searchPackages')|t}}<input id="purchaseSearch" type="search" class="form-control" [ngModel]="search()" (ngModelChange)="search.set($event)"></label>
@@ -76,9 +79,10 @@ import { isClosedPurchase, purchaseStatusKey, purchaseTone, refundKind } from '.
     @if(id && !teacher && p.buyerId===auth.currentUser()?.id){<app-refund-request [purchaseId]="p.id" [hours]="p.snapshot.policy.refundWindowHours" [mode]="p.snapshot.policy.refundMode" />}
     @if(p.ledger){<details class="card-details" open><summary>{{'packages.purchase.history'|t}}</summary><ol class="ledger">@for(entry of p.ledger;track entry.id){<li>{{ledgerText(entry)}} · {{instant(entry.createdAt)}} @if(entry.reason){<span>— {{entry.reason}}</span>}</li>}</ol></details>}
   </article>
-}@empty{@if(!busy()){<p role="status">{{(items().length?'refine.noResults':'packages.purchase.empty')|t}}</p>}}
+}@empty{@if(!busy()){<app-empty-state [icon]="items().length?'search':'package'" [title]="(items().length?'refine.noResults':'packages.purchase.empty')|t" />}}
 </div>`})
 export class PurchasesComponent implements OnInit{
+  constructor() { toastFrom(() => this.error()); }
   private api=inject(PackagesService);readonly i18n=inject(I18nService);readonly fmt=inject(ChatFormat);readonly auth=inject(AuthService);
   private route=inject(ActivatedRoute);private router=inject(Router);private destroy=inject(DestroyRef);private requests=new Subscription();
   readonly teacher=this.route.snapshot.data['teacher']===true;id=0;

@@ -1,6 +1,6 @@
 <article class="schedule-card pilot-ui" [class.is-inactive]="inactive()" [attr.data-status]="session()?.status" data-testid="session-card">
   @if (loading() && !session()) { <p role="status">{{ 'schedule.loading' | t }}</p> }
-  @if (error()) { <div class="alert alert-danger d-flex justify-content-between align-items-center gap-2" role="alert">{{ error() }}<button type="button" class="btn btn-secondary btn-sm" (click)="refresh()" [disabled]="busy()">{{ 'schedule.tryAgain' | t }}</button></div> }
+  @if (error()) { <div class="d-flex justify-content-end"><button type="button" class="btn btn-secondary btn-sm" (click)="refresh()" [disabled]="busy()">{{ 'schedule.tryAgain' | t }}</button></div> }
   @if (session(); as s) {
     <header class="card-head">
       <div class="card-title">
@@ -47,7 +47,6 @@
         [modal]="true" [draggable]="false" [resizable]="false" [blockScroll]="true" [closable]="!busy()" [closeOnEscape]="!busy()"
         [closeAriaLabel]="'schedule.back' | t" appendTo="body" styleClass="pilot-dialog">
       <div data-testid="session-confirmation">
-      @if (error()) { <p class="alert alert-danger" role="alert">{{ error() }}</p> }
       @if (action === 'accept' || action === 'decline') {
         @if (selectedProposal(); as p) { <app-session-time [interval]="p" [recipientZone]="zone()" [teacherZone]="s.teacher.timeZone || s.timeZone" [showTeacherTime]="!teacher()" /> }
         @if (action === 'decline') { <p class="notice" data-testid="decline-hint">{{ (selectedProposal()?.kind === 'reschedule' ? 'schedule.declineHintReschedule' : 'schedule.declineHintInitial') | t }}</p> }

@@ -3,11 +3,13 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { LiveClassService } from '../../core/services/live-class.service';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { toastFrom } from '../../core/services/toast.service';
 @Component({
   standalone: true, imports: [RouterLink, TranslatePipe],
-  template: `<div class="page-container"><h1 class="page-title">{{ 'liveBoard.join.title' | t }}</h1>@if (error()) { <p role="alert" class="alert alert-danger">{{ error() }}</p><button type="button" class="btn btn-primary" (click)="join()" [disabled]="loading()">{{ 'liveBoard.join.retry' | t }}</button> } @else { <p role="status">{{ 'liveBoard.join.entering' | t }}</p> } <a routerLink="/live" class="btn btn-secondary ms-2">{{ 'liveBoard.join.myClasses' | t }}</a></div>`
+  template: `<div class="page-container"><h1 class="page-title">{{ 'liveBoard.join.title' | t }}</h1>@if (error()) { <button type="button" class="btn btn-primary" (click)="join()" [disabled]="loading()">{{ 'liveBoard.join.retry' | t }}</button> } @else { <p role="status">{{ 'liveBoard.join.entering' | t }}</p> } <a routerLink="/live" class="btn btn-secondary ms-2">{{ 'liveBoard.join.myClasses' | t }}</a></div>`
 })
 export class LiveJoinComponent implements OnInit {
+  constructor() { toastFrom(() => this.error()); }
   private api = inject(LiveClassService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);

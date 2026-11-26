@@ -12,6 +12,7 @@ import { CourseManageStore } from '../course-manage.store';
 import {
   QUIZ_LIMITS, addOption, emptyQuestion, emptyQuiz, moveQuestion, removeOption, toPayload, validateQuiz
 } from '../quiz-editor.logic';
+import { toastFrom } from '../../../../core/services/toast.service';
 
 /** Editor del quiz de una unidad: título, puntaje, publicación y preguntas de opción múltiple. */
 @Component({
@@ -21,6 +22,10 @@ import {
   templateUrl: './quiz-modal.component.html'
 })
 export class QuizModalComponent implements OnInit {
+  constructor() {
+    toastFrom(() => this.errorMessage());
+    toastFrom(() => this.loadError() ? this.i18n.t(this.loadError()) : '');
+  }
   private store = inject(CourseManageStore);
   private content = inject(CourseContentStore);
   private api = inject(QuizService);

@@ -8,6 +8,7 @@ import { GoogleCalendarService, GoogleCalendarStatus } from '../../core/services
 import { I18N_CATALOGS } from '../../core/i18n/i18n.service';
 import { CALENDAR_MESSAGES } from './calendar.messages';
 import { CalendarCardComponent } from './calendar-card.component';
+import { toastText } from '../../shared/testing/toasts';
 
 const connected = (): GoogleCalendarStatus => ({ provider: 'google_calendar', enabled: true, fake: true, status: 'connected', connected: true, accountEmail: 'docente@example.test',
   targetCalendarId: 'primary', busyCalendarIds: ['primary'], version: 3,
@@ -55,7 +56,7 @@ describe('W07: tarjeta de Google Calendar', () => {
     component.save();
     expect(api.update).toHaveBeenCalledWith({ targetCalendarId: 'primary', busyCalendarIds: ['primary', 'ro'], version: 3 });
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Elecciones guardadas.');
+    expect(toastText()).toContain('Elecciones guardadas.');
   });
 
   it('revocado o con atención: aviso accionable y reconexión; desconectar pide confirmación y explica qué se conserva', () => {
@@ -89,7 +90,7 @@ describe('W07: tarjeta de Google Calendar', () => {
     TestBed.resetTestingModule();
     api.complete = vi.fn(() => throwError(() => ({ status: 400, error: { error: 'x', code: 'oauth_state_invalid', params: {} } })));
     fixture = create({ calendar: 'confirm', token: 'a'.repeat(43) });
-    expect(fixture.nativeElement.textContent).toContain('El enlace de conexión venció');
+    expect(toastText()).toContain('El enlace de conexión venció');
   });
 
   it('el resultado del callback se muestra una vez y errores del servidor salen traducidos, sin texto libre', () => {
@@ -101,7 +102,7 @@ describe('W07: tarjeta de Google Calendar', () => {
     fixture.componentInstance.save();
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).not.toContain('texto libre');
-    expect(fixture.nativeElement.querySelector('[role=alert]')).not.toBeNull();
+    expect(toastText()).not.toBe('');
   });
 
   it('con el flag apagado no ofrece conectar', () => {

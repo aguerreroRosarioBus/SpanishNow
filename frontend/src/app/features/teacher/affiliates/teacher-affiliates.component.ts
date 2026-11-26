@@ -1,3 +1,4 @@
+import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { NgbTooltip } from '@ng-bootstrap/ng-bootstrap';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -13,6 +14,7 @@ import { copyText } from '../../../shared/utils/clipboard';
 import { UserPreferencesService } from '../../../core/services/user-preferences.service';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
+import { toastFrom } from '../../../core/services/toast.service';
 
 const CURRENCIES = [
   { code: 'usd', label: 'USD' },
@@ -24,11 +26,17 @@ const CURRENCIES = [
 @Component({
   selector: 'app-teacher-affiliates',
   standalone: true,
-  imports: [NgbTooltip, ReactiveFormsModule, TranslatePipe, NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem, IconComponent, ConfirmDialogComponent],
+  imports: [EmptyStateComponent, NgbTooltip, ReactiveFormsModule, TranslatePipe, NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem, IconComponent, ConfirmDialogComponent],
   templateUrl: './teacher-affiliates.component.html',
   styleUrl: './teacher-affiliates.component.scss'
 })
 export class TeacherAffiliatesComponent implements OnInit {
+  constructor() {
+    toastFrom(() => this.payoutError());
+    toastFrom(() => this.detailError());
+    toastFrom(() => this.errorMessage());
+    toastFrom(() => this.formError());
+  }
   private service = inject(AffiliateService);
   private courseService = inject(CourseService);
   private toast = inject(ToastService);

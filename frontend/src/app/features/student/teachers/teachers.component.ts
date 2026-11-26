@@ -1,3 +1,4 @@
+import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { Component, inject, OnInit, signal, computed } from '@angular/core';
@@ -19,7 +20,7 @@ interface Teacher {
 @Component({
   selector: 'app-teachers',
   standalone: true,
-  imports: [TranslatePipe, IconComponent],
+  imports: [EmptyStateComponent, TranslatePipe, IconComponent],
   templateUrl: './teachers.component.html',
   styleUrl: './teachers.component.scss'
 })

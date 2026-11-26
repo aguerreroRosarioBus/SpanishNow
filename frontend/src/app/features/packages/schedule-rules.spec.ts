@@ -10,6 +10,7 @@ import { PackageCatalogComponent } from './package-catalog.component';
 import { PackagesService } from './packages.service';
 import { ClassSettings } from './packages.model';
 import { PACKAGE_MESSAGES } from './packages.i18n';
+import { toastText } from '../../shared/testing/toasts';
 
 // W06: descanso entre clases y anticipación mínima las configura el docente (antes solo existían en la base).
 describe('W06 catálogo: reglas de agenda del docente', () => {
@@ -45,7 +46,7 @@ describe('W06 catálogo: reglas de agenda del docente', () => {
     expect(schedule).toHaveBeenCalledTimes(1);
     expect(schedule).toHaveBeenCalledWith({ sessionBufferMinutes: 15, minLeadTimeHours: 48 });
     expect(root(f).querySelector('[data-testid="schedule-summary"]')!.textContent).toContain('15 min entre clases · 48 h de anticipación');
-    expect(root(f).querySelector('[data-testid="schedule-saved"]')!.textContent).toContain('Guardado');
+    expect(toastText()).toContain('Guardado');
     expect(save(f).disabled).toBe(true);
   });
 
@@ -69,18 +70,19 @@ describe('W06 catálogo: reglas de agenda del docente', () => {
     const f = await setup(() => throwError(() => ({ error: { code: 'validation_failed' } })));
     await type(f, field(f, 'minLeadTime'), '36');
     save(f).click(); f.detectChanges();
-    expect(root(f).querySelector('[role="alert"]')!.textContent).toContain('Error de prueba');
+    expect(toastText()).toContain('Error de prueba');
     expect(field(f, 'minLeadTime').value).toBe('36');
-    expect(root(f).querySelector('[data-testid="schedule-saved"]')).toBeNull();
+    expect(toastText()).not.toContain('Guardado');
     expect(root(f).querySelector('[data-testid="schedule-summary"]')!.textContent).toContain('24 h');
   });
 
-  it('el aviso de guardado desaparece al volver a editar', async () => {
+  it('el estado de guardado se reinicia al volver a editar', async () => {
     const f = await setup();
     await type(f, field(f, 'sessionBuffer'), '20'); save(f).click(); f.detectChanges();
-    expect(root(f).querySelector('[data-testid="schedule-saved"]')).not.toBeNull();
+    expect(toastText()).toContain('Guardado');
+    expect(f.componentInstance.scheduleSaved()).toBe(true);
     await type(f, field(f, 'sessionBuffer'), '25');
-    expect(root(f).querySelector('[data-testid="schedule-saved"]')).toBeNull();
+    expect(f.componentInstance.scheduleSaved()).toBe(false);
   });
 
   it('en inglés usa los textos en inglés', async () => {

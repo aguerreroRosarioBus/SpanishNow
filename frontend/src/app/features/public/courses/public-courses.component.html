@@ -21,7 +21,7 @@
       <p class="text-muted mt-2 mb-0">{{ 'catalog.loading' | t }}</p>
     </div>
   } @else if (errorMessage()) {
-    <div class="alert alert-danger" role="alert">{{ errorMessage() }}</div>
+    <div class="state-box state-box--error" role="status"><span>{{ errorMessage() }}</span></div>
   } @else if (courses().length === 0) {
     <div class="state-box">
       <strong>{{ 'catalog.empty' | t }}</strong>

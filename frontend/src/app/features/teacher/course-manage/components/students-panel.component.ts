@@ -9,6 +9,7 @@ import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { UserPreferencesService } from '../../../../core/services/user-preferences.service';
 import { presentationZone } from '../../../live-classes/live-notice';
 import { CourseManageStore } from '../course-manage.store';
+import { toastFrom } from '../../../../core/services/toast.service';
 
 const SOURCE_KEYS: Record<EnrollmentSource, string> = {
   purchase: 'teacherDashboard.students.sourcePurchase',
@@ -40,6 +41,11 @@ const REASON_KEYS: Record<string, string> = {
   styleUrl: './students-panel.component.scss'
 })
 export class StudentsPanelComponent implements OnInit {
+  constructor() {
+    toastFrom(() => this.importDone() ? this.i18n.t('teacherDashboard.students.importDone', { added: this.importDone()!.summary.new, existing: this.importDone()!.summary.existingUser, enrolled: this.importDone()!.summary.alreadyEnrolled, invalid: this.importDone()!.summary.invalid }) : '', 'success');
+    toastFrom(() => this.errorMessage());
+    toastFrom(() => this.importError());
+  }
   private store = inject(CourseManageStore);
   private service = inject(CourseStudentsService);
   private toast = inject(ToastService);

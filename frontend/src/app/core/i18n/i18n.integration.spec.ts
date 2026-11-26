@@ -16,6 +16,7 @@ import { AuthService } from '../services/auth.service';
 import { I18nService, LOCALE_STORAGE_KEY } from './i18n.service';
 import { LocaleDatePipe, LocaleMoneyPipe, LocaleNumberPipe } from './locale-format.pipe';
 import { environment } from '../../../environments/environment';
+import { toastText } from '../../shared/testing/toasts';
 
 @Component({
   imports: [LanguageSelectorComponent, LocaleDatePipe, LocaleMoneyPipe, LocaleNumberPipe],
@@ -49,10 +50,10 @@ describe('I18N: integración sin destruir formularios ni datos', () => {
     TestBed.inject(HttpTestingController).expectOne(`${environment.apiUrl}/auth/login`)
       .flush({ error: 'Texto antiguo' }, { status: 401, statusText: 'Unauthorized' });
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Email o contraseña incorrectos.');
+    expect(toastText()).toContain('Email o contraseña incorrectos.');
     TestBed.inject(I18nService).setLocale('en');
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Incorrect email or password.');
+    expect(component.errorMessage()).toContain('Incorrect email or password.');
     expect(fixture.nativeElement.querySelector('label[for="password"]').textContent).toBe('Password');
     expect(component.loginForm).toBe(originalForm);
     expect(component.loginForm.value).toEqual({ email: 'ficticio@example.test', password: 'prueba123' });
@@ -112,10 +113,10 @@ describe('I18N: integración sin destruir formularios ni datos', () => {
     TestBed.inject(HttpTestingController).expectOne(`${environment.apiUrl}/auth/change-password`)
       .flush({ error: 'Current password is incorrect', code: 'current_password_invalid', params: {} }, { status: 401, statusText: 'Unauthorized' });
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('[role="alert"]').textContent).toContain('La contraseña actual es incorrecta.');
+    expect(toastText()).toContain('La contraseña actual es incorrecta.');
     TestBed.inject(I18nService).setLocale('en');
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('[role="alert"]').textContent).toContain('The current password is incorrect.');
+    expect(component.errorMessage()).toContain('The current password is incorrect.');
     expect(component.changePasswordForm.value).toEqual(values);
   });
 

@@ -7,6 +7,7 @@ import { VocabularyService } from '../../../core/services/vocabulary.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { Vocabulary } from '../../../core/models/course.model';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
+import { toastFrom } from '../../../core/services/toast.service';
 
 @Component({
   selector: 'app-flashcard',
@@ -35,6 +36,7 @@ export class FlashcardComponent implements OnInit {
   playedIndices = signal<Set<number>>(new Set());
 
   constructor() {
+    toastFrom(() => this.errorMessage());
     // Track when all flashcards have been viewed
     effect(() => {
       const played = this.playedIndices();

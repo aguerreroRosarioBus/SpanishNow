@@ -10,7 +10,7 @@
       <span>{{ 'affiliate.invalid' | t }}</span>
     </div>
   } @else if (loadError()) {
-    <div class="alert alert-danger" role="alert">{{ 'affiliate.error' | t }}</div>
+    <div class="state-box state-box--error" role="status"><span>{{ 'affiliate.error' | t }}</span></div>
   } @else if (data(); as d) {
     <div class="page-header">
       <div class="page-header__main">

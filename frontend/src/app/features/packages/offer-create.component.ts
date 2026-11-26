@@ -11,11 +11,13 @@ import { PackagesService } from './packages.service';
 import { ClassCohort,CompleteTemplate,hasVersion } from './packages.model';
 import { EXPECTATION_FIELDS } from '../legal/legal.model';
 import { IconComponent } from '../../shared/components/icon/icon.component';
+import { toastFrom } from '../../core/services/toast.service';
 @Component({
   selector: 'app-offer-create', standalone: true, imports: [FormsModule, RouterLink, TranslatePipe, IconComponent],
   templateUrl: './offer-create.component.html', styleUrl: './offer-create.component.scss'
 })
 export class OfferCreateComponent implements OnInit {
+  constructor() { toastFrom(() => this.error()); }
   private api=inject(PackagesService); private chat=inject(ChatService); private router=inject(Router);private toast=inject(ToastService);
   readonly i18n=inject(I18nService); readonly fields=EXPECTATION_FIELDS;
   readonly conversationId=Number(inject(ActivatedRoute).snapshot.queryParamMap.get('conversationId'));

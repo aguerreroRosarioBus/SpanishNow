@@ -7,9 +7,6 @@
       </div>
       <form [formGroup]="form" (ngSubmit)="save()" class="d-flex flex-column overflow-hidden">
         <div class="modal-body">
-          @if (errorMessage()) {
-            <div class="alert alert-danger" role="alert">{{ errorMessage() }}</div>
-          }
           <div class="mb-3">
             <label for="courseTitle" class="form-label">{{ 'teacherManage.courseEdit.titleLabel' | t }}</label>
             <input type="text" class="form-control" id="courseTitle" formControlName="title" [attr.placeholder]="'teacherManage.courseEdit.titlePlaceholder' | t" />

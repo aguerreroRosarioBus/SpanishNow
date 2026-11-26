@@ -7,6 +7,7 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { isLocale } from '../../core/i18n/i18n.types';
 import { TimeZoneSelectComponent } from '../../shared/components/time-zone-select/time-zone-select.component';
+import { toastFrom } from '../../core/services/toast.service';
 
 @Component({
   selector: 'app-settings',
@@ -27,6 +28,7 @@ export class SettingsComponent {
   showChangePasswordModal = signal<boolean>(false);
 
   constructor() {
+    toastFrom(() => this.preferences.errorMessage());
     effect(() => {
       const zone = this.preferences.preferences()?.timeZone;
       untracked(() => { if (!this.editedZone) this.zoneDraft.set(zone ?? ''); });

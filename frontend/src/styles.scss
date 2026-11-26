@@ -1114,3 +1114,30 @@ a {
   .dropdown-item.active { background: var(--color-primary-soft); color: var(--color-text); }
 }
 .user-details-panel.offcanvas { --bs-offcanvas-width: 480px; }
+
+/* Barra de herramientas compacta: filtros con ancho automático a la izquierda y la recarga a la derecha */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+  margin-bottom: var(--spacing-md);
+}
+
+.toolbar-field {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+
+  .form-label { margin: 0; }
+}
+
+.toolbar .form-select { width: auto; max-width: 100%; }
+
+.toolbar-end {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}

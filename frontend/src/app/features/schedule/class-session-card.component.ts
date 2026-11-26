@@ -15,6 +15,7 @@ import { isLapsed } from './session-lapse';
 import { DialogModule } from 'primeng/dialog';
 import { PilotTheme } from '../../shared/styles/primeng-theme';
 import { RestoreFocusDirective } from '../../shared/directives/restore-focus.directive';
+import { toastFrom } from '../../core/services/toast.service';
 
 @Component({ selector: 'app-class-session-card', standalone: true, imports: [FormsModule, RouterLink, TranslatePipe, SessionTimeComponent, DialogModule, RestoreFocusDirective],
   templateUrl: './class-session-card.component.html',
@@ -147,6 +148,7 @@ export class ClassSessionCardComponent {
   }
 
   constructor() {
+    toastFrom(() => this.error());
     this.features.load();
     effect(() => { const id = this.sessionId(); const account = this.auth.currentUser()?.id; untracked(() => {
       this.generation++; this.request?.unsubscribe(); this.actionRequest?.unsubscribe(); this.busy.set(false);

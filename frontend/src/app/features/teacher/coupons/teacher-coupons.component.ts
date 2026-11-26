@@ -1,3 +1,4 @@
+import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { NgbTooltip } from '@ng-bootstrap/ng-bootstrap';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -12,6 +13,7 @@ import { ModalFocusDirective } from '../../../shared/directives/modal-focus.dire
 import { applyDiscount, normalizeCouponCode } from '../../../shared/utils/coupon-price';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
+import { toastFrom } from '../../../core/services/toast.service';
 
 type DiscountKind = 'percent' | 'amount';
 
@@ -19,7 +21,7 @@ type DiscountKind = 'percent' | 'amount';
 @Component({
   selector: 'app-teacher-coupons',
   standalone: true,
-  imports: [NgbTooltip, ReactiveFormsModule, IconComponent, ConfirmDialogComponent, ModalFocusDirective, TranslatePipe],
+  imports: [EmptyStateComponent, NgbTooltip, ReactiveFormsModule, IconComponent, ConfirmDialogComponent, ModalFocusDirective, TranslatePipe],
   templateUrl: './teacher-coupons.component.html',
   styleUrl: './teacher-coupons.component.scss'
 })
@@ -91,6 +93,8 @@ export class TeacherCouponsComponent implements OnInit {
   }
 
   constructor() {
+    toastFrom(() => this.formError());
+    toastFrom(() => this.errorMessage());
     this.form.valueChanges.subscribe(() => this.formVersion.update(n => n + 1));
   }
 

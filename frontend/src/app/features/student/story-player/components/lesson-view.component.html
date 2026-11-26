@@ -3,8 +3,7 @@
 }
 
 @if (session.visibleError()) {
-  <div class="alert alert-danger d-flex align-items-center justify-content-between gap-2" role="alert">
-    <span>{{ session.visibleError() }}</span>
+  <div class="d-flex justify-content-end">
     <button type="button" class="btn btn-secondary btn-sm" (click)="session.retryLoad()">{{ 'player.retry' | t }}</button>
   </div>
 }

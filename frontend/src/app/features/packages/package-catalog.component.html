@@ -7,7 +7,6 @@
     <a class="btn btn-secondary" routerLink="/teacher/class-commerce">{{ 'packages.commerce.tab.setup' | t }}</a>
   </header>
   <app-package-orientation section="catalog" /> }
-  @if (error() && !selected()) { <p class="alert alert-danger" role="alert">{{ error() }}</p> }
   @if (settings(); as s) {
     <details class="sales-strip" aria-labelledby="salesTitle"><summary>
       <span class="sales-icon"><app-icon name="shopping-bag" [size]="20" /></span>
@@ -49,7 +48,6 @@
         </div>
         <div class="schedule-actions">
           <button type="submit" class="btn btn-primary" data-testid="save-schedule" [disabled]="busy() || bufferValue()===null || leadValue()===null || !scheduleChanged()">{{ 'packages.schedule.save' | t }}</button>
-          @if (scheduleSaved()) { <span role="status" data-testid="schedule-saved">{{ 'packages.schedule.saved' | t }}</span> }
         </div>
       </form>
     </details>
@@ -65,7 +63,6 @@
       </div>
     </div>
     @if (settings() && !settings()?.classesEnabledAt) { <p class="notice" data-testid="create-hint">{{ 'packages.catalog.createWhileDisabled' | t }}</p> }
-    @if (notice()) { <p class="alert alert-success" role="status">{{ 'packages.created' | t }}</p> }
     @if (busy()) { <p class="small" role="status">{{ 'packages.loading' | t }}</p> }
     <label for="catalogStatus" class="form-label">{{'student.status'|t}}</label><select id="catalogStatus" class="form-select mb-3" style="max-width:260px" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event)"><option value="all">{{'refine.all'|t}}</option>@for(s of ['active','draft','paused','archived'];track s){<option [value]="s">{{('packages.status.'+s)|t}}</option>}</select>
     <div class="package-grid">
@@ -94,7 +91,11 @@
                   <div ngbDropdown container="body" placement="bottom-end">
                     <button type="button" class="btn btn-ghost package-menu" ngbDropdownToggle [disabled]="busy()" [attr.aria-label]="('packages.ui.actions' | t) + ' — ' + name(item)"><app-icon name="more" [size]="18" /></button>
                     <div ngbDropdownMenu>
+                      @if (item.status!=='active' && !linked(item)) {
+                        <button type="button" ngbDropdownItem data-testid="link-hotmart" [attr.aria-label]="('packages.catalog.linkHotmart' | t) + ' — ' + name(item)" (click)="linkHotmart(item)">{{ 'packages.catalog.linkHotmart' | t }}</button>
+                      } @else {
                       <button type="button" ngbDropdownItem [attr.aria-label]="((item.status==='active'?'packages.pause':'packages.activate') | t) + ' — ' + name(item)" (click)="status(item,item.status==='active'?'paused':'active')">{{ (item.status==='active'?'packages.pause':'packages.activate') | t }}</button>
+                      }
                       <button type="button" ngbDropdownItem [attr.aria-label]="('packages.archive' | t) + ' — ' + name(item)" (click)="askArchive(item)">{{ 'packages.archive' | t }}</button>
                     </div>
                   </div>
@@ -112,11 +113,9 @@
         </article>
       } @empty {
         @if (!busy()) {
-          <section class="state-box" data-testid="catalog-empty">
-            <h3 class="h5 mb-0">{{ 'packages.catalog.empty' | t }}</h3>
-            <p class="mb-0">{{ 'packages.catalog.emptyHint' | t }}</p>
+          <app-empty-state icon="package" data-testid="catalog-empty" [title]="'packages.catalog.empty' | t" [hint]="'packages.catalog.emptyHint' | t">
             <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="importInitial()">{{ 'packages.catalog.import' | t }}</button>
-          </section>
+          </app-empty-state>
         }
       }
     </div>
@@ -130,7 +129,6 @@
       <section data-tour="catalog-editor">
         <p class="editor-hint">{{ (mode()!=='edit' ? 'packages.newHint' : item?.current ? 'packages.catalog.immutable' : 'packages.catalog.completeHint') | t }}</p>
         @if (mode()==='duplicate') { <p class="editor-hint">{{ 'packages.dupHint' | t }}</p> }
-        @if (error()) { <p class="alert alert-danger" role="alert">{{ error() }}</p> }
       <form id="catalogEditorForm" [formGroup]="form" (ngSubmit)="save()">
         <div class="row g-3">
           @for (field of textFields; track field) {
@@ -157,7 +155,6 @@
           }
         </div>
         </details>
-        @if (saved()) { <p role="status">{{ 'packages.saved' | t }}</p> }
       </form>
       </section>
       <ng-template #footer>

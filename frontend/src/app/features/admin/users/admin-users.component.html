@@ -72,20 +72,13 @@
     }
   </section>
 
-  @if (errorMessage()) {
-    <div class="alert alert-danger" role="alert">{{ errorMessage() }}</div>
-  }
-
   @if (isLoading()) {
     <div class="text-center py-5" role="status">
       <div class="spinner-border text-primary" aria-hidden="true"></div>
       <p class="text-muted mt-2 mb-0">{{ 'adminUsers.loading' | t }}</p>
     </div>
   } @else if (users().length === 0 && !errorMessage()) {
-    <div class="state-box">
-      <strong>{{ 'adminUsers.empty' | t }}</strong>
-      <span>{{ 'adminUsers.emptyHelp' | t }}</span>
-    </div>
+    <app-empty-state icon="users" [title]="'adminUsers.empty' | t" [hint]="'adminUsers.emptyHelp' | t" />
   } @else if (users().length > 0) {
     <section class="directory" aria-labelledby="directoryTitle">
       <div class="directory__heading">

@@ -6,6 +6,7 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { liveReturnUrl } from '../../../core/guards/live-auth.guard';
 import { AuthService } from '../../../core/services/auth.service';
+import { toastFrom } from '../../../core/services/toast.service';
 
 /**
  * Componente de Login
@@ -45,6 +46,7 @@ export class LoginComponent {
   private emailField = viewChild<ElementRef<HTMLInputElement>>('emailField');
 
   constructor() {
+    toastFrom(() => this.errorMessage());
     // Entrar a la pantalla de acceso descarta cualquier sesión vieja (el header no debe mostrar a otro usuario)
     this.authService.logout();
 

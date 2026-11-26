@@ -11,6 +11,7 @@ import { PublicCourseDetail } from '../../../core/models/sales.model';
 import { I18N_CATALOGS, I18nService } from '../../../core/i18n/i18n.service';
 import { LEGAL_SALES_MESSAGES } from '../../legal/legal-messages';
 import { CommercialSnapshot, EXPECTATION_FIELDS, Expectations } from '../../legal/legal.model';
+import { toastText } from '../../../shared/testing/toasts';
 
 function course(provider: 'hotmart' | 'site'): PublicCourseDetail {
   return { id: 7, slug: 'c', title: 'Course', level: 'A1', price: 5000, currency: 'usd', units: [], checkoutProvider: provider };
@@ -134,7 +135,7 @@ describe('CourseSalesComponent · W02 instantánea y aceptación', () => {
     fixture.componentInstance.buy();
     fixture.detectChanges();
     expect(fixture.componentInstance.alreadyEnrolled()).toBe(false);
-    expect(el.textContent).toContain('The conditions of this course changed');
+    expect(toastText()).toContain('The conditions of this course changed');
     expect(fixture.componentInstance.legalAccepted()).toBe(false);
     expect(fixture.componentInstance.commercial()?.hash).toBe('h2');
   });

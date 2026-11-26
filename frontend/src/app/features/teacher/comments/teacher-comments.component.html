@@ -21,8 +21,7 @@
   </div>
 
   @if (errorMessage()) {
-    <div class="alert alert-danger d-flex align-items-center justify-content-between gap-2" role="alert">
-      <span>{{ errorMessage() }}</span>
+    <div class="d-flex justify-content-end">
       <button type="button" class="btn btn-secondary btn-sm" (click)="load()">{{ 'lessonComments.retry' | t }}</button>
     </div>
   }
@@ -33,10 +32,7 @@
       <p class="text-muted mt-2 mb-0">{{ 'lessonComments.loading' | t }}</p>
     </div>
   } @else if (rows().length === 0 && !errorMessage()) {
-    <div class="state-box">
-      <strong>{{ (status() === 'unanswered' ? 'lessonComments.emptyUnanswered' : 'lessonComments.emptyInbox') | t }}</strong>
-      <span>{{ (status() === 'unanswered' ? 'lessonComments.upToDate' : 'lessonComments.inboxHint') | t }}</span>
-    </div>
+    <app-empty-state icon="message-square" [title]="(status() === 'unanswered' ? 'lessonComments.emptyUnanswered' : 'lessonComments.emptyInbox') | t" [hint]="(status() === 'unanswered' ? 'lessonComments.upToDate' : 'lessonComments.inboxHint') | t" />
   } @else if (rows().length > 0) {
     <ul class="inbox">
       @for (c of rows(); track c.id) {
@@ -57,7 +53,6 @@
               <label [for]="'reply-' + c.id" class="visually-hidden">{{ 'lessonComments.replyTo' | t: {name: c.author.name} }}</label>
               <textarea [id]="'reply-' + c.id" class="form-control" rows="3" [maxlength]="maxLength" [placeholder]="'lessonComments.replyPlaceholder' | t"
                         [ngModel]="replyDraft()" (ngModelChange)="replyDraft.set($event)" name="reply"></textarea>
-              @if (replyError()) { <div class="alert alert-danger mt-2 mb-0" role="alert">{{ replyError() }}</div> }
               <div class="reply__foot">
                 <small class="text-secondary-ui">{{ 'lessonComments.remaining' | t: {count: maxLength - replyDraft().length} }}</small>
                 <span class="d-flex gap-2">

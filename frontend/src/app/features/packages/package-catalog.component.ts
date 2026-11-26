@@ -1,7 +1,8 @@
+import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { parseMoneyInput, moneyInputValue } from '../../shared/utils/money-input';
-import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, input, output, signal } from '@angular/core';
 import { FormsModule, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { I18nService } from '../../core/i18n/i18n.service';
@@ -16,13 +17,23 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
 import { PilotTheme } from '../../shared/styles/primeng-theme';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { RestoreFocusDirective } from '../../shared/directives/restore-focus.directive';
+import { toastFrom, toastWhen } from '../../core/services/toast.service';
 const editable = ['nameEn','nameEs','descriptionEn','descriptionEs','modality','groupSize','billing','sessionsCount','minutesPerSession','seatsCovered','priceAmount','currency','validityHours','policyVersionId','hotmartProductId','hotmartOfferCode','hotmartCheckoutUrl'] as const;
 @Component({
-  selector:'app-package-catalog', standalone:true, imports:[TranslatePipe,FormsModule,ReactiveFormsModule,RouterLink,PackageOrientationComponent,DialogModule,NgbDropdownModule,IconComponent,RestoreFocusDirective,ConfirmDialogComponent],
+  selector:'app-package-catalog', standalone:true, imports:[EmptyStateComponent, TranslatePipe,FormsModule,ReactiveFormsModule,RouterLink,PackageOrientationComponent,DialogModule,NgbDropdownModule,IconComponent,RestoreFocusDirective,ConfirmDialogComponent],
   templateUrl:'./package-catalog.component.html', styleUrl:'./package-catalog.component.scss'
 })
 export class PackageCatalogComponent implements OnInit {
+  constructor() {
+    toastWhen(() => this.scheduleSaved(), () => this.i18n.t('packages.schedule.saved'));
+    toastWhen(() => this.saved(), () => this.i18n.t('packages.saved'));
+    toastFrom(() => this.error());
+    toastWhen(() => this.notice(), () => this.i18n.t('packages.created'));
+  }
   readonly embedded = input(false);
+  /** Dentro de «Paquetes y ventas» pide abrir el paso de vincular con Hotmart para ese paquete. */
+  readonly linkRequested = output<number>();
+  private router = inject(Router);
   private readonly pilotTheme = inject(PilotTheme);
   private api = inject(PackagesService);
   readonly i18n = inject(I18nService);
@@ -83,6 +94,13 @@ export class PackageCatalogComponent implements OnInit {
   importInitial() {
     if(this.busy()) return; this.busy.set(true); this.failure.set(null);
     this.api.importInitial().subscribe({next:items=>{this.items.set(items);this.busy.set(false);this.api.settings().subscribe(s=>this.settings.set(s));},error:e=>this.fail(e)});
+  }
+  /** Vínculo completo con Hotmart: sin él, el servidor rechaza activar el paquete (`hotmart_mapping_missing`). */
+  linked(t: PackageTemplate) { const c=t.current; return !!(c?.hotmartProductId && c.hotmartOfferCode && c.hotmartCheckoutUrl); }
+  /** En lugar de activar un paquete sin vínculo, lleva a «Configurar cobros» con ese paquete preseleccionado. */
+  linkHotmart(t: PackageTemplate) {
+    if (this.embedded()) this.linkRequested.emit(t.id);
+    else void this.router.navigate(['/teacher/class-commerce'],{queryParams:{tab:'setup',package:t.id}});
   }
   /** Plantilla sin versión vigente: no tiene nombre ni condiciones que mostrar (ver `PackageTemplate.current`). */
   incomplete(t: PackageTemplate) { return !t.current; }

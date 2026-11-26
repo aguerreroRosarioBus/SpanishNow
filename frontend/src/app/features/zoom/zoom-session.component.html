@@ -1,6 +1,5 @@
 <section class="zoom-page" data-testid="zoom-session" [attr.aria-busy]="busy()">
   <h1>{{ 'zoom.title' | t }}</h1>
-  @if (failure()) { <p class="alert alert-warning" role="alert">{{ api.error(failure()) }}</p> }
   @if (failure() && !session()) {
     <!-- Sin la clase no hay nada más que mostrar: la pantalla ofrece la salida en vez de quedar en blanco. -->
     <div class="zoom-actions" data-testid="zoom-recovery">

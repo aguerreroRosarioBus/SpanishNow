@@ -7,6 +7,8 @@ import { Locale } from '../../../core/i18n/i18n.types';
 import { EXPECTATION_FIELDS, ExpectationField, Expectations } from '../legal.model';
 import { LegalService } from '../legal.service';
 import { ExpectationsViewComponent } from '../expectations-view/expectations-view.component';
+import { toastFrom, toastWhen } from '../../../core/services/toast.service';
+import { I18nService } from '../../../core/i18n/i18n.service';
 
 /** Editor del docente dueño (SALES-01): ambos idiomas completos, con control de versión. */
 @Component({
@@ -16,7 +18,13 @@ import { ExpectationsViewComponent } from '../expectations-view/expectations-vie
   templateUrl: './expectations-editor.component.html'
 })
 export class ExpectationsEditorComponent implements OnInit {
+  constructor() {
+    toastWhen(() => !!this.message(), () => this.i18n.t('sales.editor.saved', { version: this.message() }));
+    toastFrom(() => this.state() === 'error' ? this.i18n.t('sales.editor.loadError') : '');
+    toastFrom(() => this.error());
+  }
   private legal = inject(LegalService);
+  private i18n = inject(I18nService);
   private fb = inject(FormBuilder);
   readonly courseId = Number(inject(ActivatedRoute).snapshot.paramMap.get('id'));
   readonly fields = EXPECTATION_FIELDS;

@@ -15,12 +15,10 @@
           {{ 'lessonComments.post' | t }}
         </button>
       </div>
-      @if (postError()) { <div class="alert alert-danger mt-2 mb-0" role="alert">{{ postError() }}</div> }
     </form>
 
     @if (error()) {
-      <div class="alert alert-danger d-flex align-items-center justify-content-between gap-2" role="alert">
-        <span>{{ error() }}</span>
+      <div class="d-flex justify-content-end">
         <button type="button" class="btn btn-secondary btn-sm" (click)="reload()">{{ 'lessonComments.retry' | t }}</button>
       </div>
     }
@@ -54,7 +52,6 @@
                   <button type="submit" class="btn btn-primary btn-sm" [disabled]="posting() || !valid(replyDraft())">{{ 'lessonComments.reply' | t }}</button>
                 </span>
               </div>
-              @if (actionError()) { <div class="alert alert-danger mt-2 mb-0" role="alert">{{ actionError() }}</div> }
             </form>
           }
         </li>
@@ -89,7 +86,6 @@
           <button type="submit" class="btn btn-primary btn-sm" [disabled]="busy() || !valid(editDraft())">{{ 'lessonComments.save' | t }}</button>
         </span>
       </div>
-      @if (actionError()) { <div class="alert alert-danger mt-2 mb-0" role="alert">{{ actionError() }}</div> }
     </form>
   } @else {
     <p class="comment__body">{{ c.body }}</p>

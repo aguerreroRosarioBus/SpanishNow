@@ -6,10 +6,6 @@
       <p class="auth-card__subtitle">{{ 'auth.registerTitle' | t }}</p>
     </header>
 
-    @if (errorMessage()) {
-      <div class="alert alert-danger" role="alert">{{ errorMessage() }}</div>
-    }
-
     <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" novalidate>
       <div class="mb-3">
         <label for="name" class="form-label">{{ 'auth.fullName' | t }}</label>
@@ -47,9 +43,6 @@
         <div class="mb-4">
           <app-legal-consent [documents]="consentDocs()" [(accepted)]="legalAccepted" [submitted]="consentSubmitted()" />
         </div>
-      }
-      @if (legalError()) {
-        <div class="alert alert-danger" role="alert">{{ legalError() }}</div>
       }
 
       <button type="submit" class="btn btn-primary btn-lg w-100" [disabled]="registerForm.invalid || isLoading()">

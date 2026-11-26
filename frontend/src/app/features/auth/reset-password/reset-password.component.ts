@@ -4,6 +4,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
+import { toastFrom } from '../../../core/services/toast.service';
 
 function passwordsMatch(group: AbstractControl): ValidationErrors | null {
   return group.get('password')?.value === group.get('confirm')?.value ? null : { mismatch: true };
@@ -18,6 +19,7 @@ function passwordsMatch(group: AbstractControl): ValidationErrors | null {
   styleUrl: './reset-password.component.scss'
 })
 export class ResetPasswordComponent {
+  constructor() { toastFrom(() => this.errorMessage()); }
   readonly i18n = inject(I18nService);
   private authService = inject(AuthService);
   private router = inject(Router);

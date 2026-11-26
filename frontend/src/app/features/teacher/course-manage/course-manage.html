@@ -6,9 +6,6 @@
     </div>
   }
 
-  @if (store.errorMessage()) {
-    <div class="alert alert-danger" role="alert">{{ store.errorMessage() | t }}</div>
-  }
 
   @if (!store.isLoading() && store.course(); as course) {
     <nav class="breadcrumb-nav" [attr.aria-label]="'teacherManage.page.path' | t">

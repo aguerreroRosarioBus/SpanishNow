@@ -6,6 +6,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { PublicCertificate } from '../../../core/models/content.model';
 import { CertificateService } from '../../../core/services/certificate.service';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
+import { toastFrom } from '../../../core/services/toast.service';
 
 /** Verificación pública de un certificado (sin sesión). */
 @Component({
@@ -16,6 +17,7 @@ import { IconComponent } from '../../../shared/components/icon/icon.component';
   styleUrl: './certificate-verify.component.scss'
 })
 export class CertificateVerifyComponent implements OnInit {
+  constructor() { toastFrom(() => this.loadError() ? this.i18n.t('certificate.error') : ''); }
   private i18n = inject(I18nService);
   private preferences = inject(UserPreferencesService);
   private displayZone(): string { return this.preferences.preferences()?.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; }

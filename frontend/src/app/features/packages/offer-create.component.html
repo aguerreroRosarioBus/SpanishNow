@@ -7,7 +7,6 @@
       <p class="page-summary">{{ 'packages.ui.sendHint' | t }}</p>
     </div>
   </header>
-  @if (error()) { <p role="alert" class="alert alert-danger">{{ error() }}</p> }
   @if (busy() && !loaded()) { <p role="status">{{ 'packages.loading' | t }}</p> }
   @if (loaded()) {
     <section class="recipient-strip" aria-labelledby="recipientTitle">

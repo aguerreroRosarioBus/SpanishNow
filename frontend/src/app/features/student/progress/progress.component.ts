@@ -1,3 +1,4 @@
+import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { Component, inject, OnInit, signal, computed } from '@angular/core';
@@ -13,6 +14,7 @@ import { CertificateService } from '../../../core/services/certificate.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { unitDisplayTitle } from '../../../shared/utils/unit-title';
+import { toastFrom } from '../../../core/services/toast.service';
 
 export interface CourseProgress {
   enrollment: Enrollment;
@@ -26,11 +28,15 @@ export interface CourseProgress {
 @Component({
   selector: 'app-progress',
   standalone: true,
-  imports: [TranslatePipe, CommonModule, RouterLink, IconComponent, NextCourseCardComponent],
+  imports: [EmptyStateComponent, TranslatePipe, CommonModule, RouterLink, IconComponent, NextCourseCardComponent],
   templateUrl: './progress.component.html',
   styleUrl: './progress.component.scss'
 })
 export class ProgressComponent implements OnInit {
+  constructor() {
+    toastFrom(() => this.errorMessage());
+    toastFrom(() => this.claimError());
+  }
   readonly i18n = inject(I18nService);
   private enrollmentService = inject(EnrollmentService);
   private certificateService = inject(CertificateService);

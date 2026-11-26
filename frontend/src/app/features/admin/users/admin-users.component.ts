@@ -1,3 +1,4 @@
+import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { NgbOffcanvas, NgbOffcanvasRef, NgbTooltip } from '@ng-bootstrap/ng-bootstrap';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
@@ -21,6 +22,7 @@ import { Course } from '../../../core/models/course.model';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { copyText } from '../../../shared/utils/clipboard';
+import { toastFrom } from '../../../core/services/toast.service';
 
 const PAGE_SIZE = 25;
 
@@ -37,7 +39,7 @@ interface PendingAction {
 @Component({
   selector: 'app-admin-users',
   standalone: true,
-  imports: [NgbTooltip, TranslatePipe, IconComponent, ConfirmDialogComponent],
+  imports: [EmptyStateComponent, NgbTooltip, TranslatePipe, IconComponent, ConfirmDialogComponent],
   templateUrl: './admin-users.component.html',
   styleUrl: './admin-users.component.scss',
 })
@@ -120,6 +122,7 @@ export class AdminUsersComponent implements OnInit, OnDestroy {
   pending = signal<PendingAction | null>(null);
 
   constructor() {
+    toastFrom(() => this.errorMessage());
     this.search$
       .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed())
       .subscribe((value) => {

@@ -1,3 +1,4 @@
+import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { NgbDropdownModule } from '@ng-bootstrap/ng-bootstrap';
 import { UserPreferencesService } from '../../../core/services/user-preferences.service';
 import { I18nService } from '../../../core/i18n/i18n.service';
@@ -14,6 +15,7 @@ import { InboxComment } from '../../../core/models/community.model';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { COMMENT_MAX_LENGTH } from '../../../shared/components/lesson-comments/lesson-comments.component';
 import { unitDisplayTitle } from '../../../shared/utils/unit-title';
+import { toastFrom } from '../../../core/services/toast.service';
 
 const PAGE_SIZE = 20;
 
@@ -21,11 +23,15 @@ const PAGE_SIZE = 20;
 @Component({
   selector: 'app-teacher-comments',
   standalone: true,
-  imports: [NgbDropdownModule, TranslatePipe, FormsModule, RouterLink, ConfirmDialogComponent],
+  imports: [EmptyStateComponent, NgbDropdownModule, TranslatePipe, FormsModule, RouterLink, ConfirmDialogComponent],
   templateUrl: './teacher-comments.component.html',
   styleUrl: './teacher-comments.component.scss'
 })
 export class TeacherCommentsComponent implements OnInit {
+  constructor() {
+    toastFrom(() => this.errorMessage());
+    toastFrom(() => this.replyError());
+  }
   i18n = inject(I18nService);
   private preferences = inject(UserPreferencesService);
   date(value: string): string { return this.i18n.formatInstant(value, this.preferences.preferences()?.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', {dateStyle: 'medium', timeStyle: 'short'}); }

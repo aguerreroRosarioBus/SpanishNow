@@ -9,6 +9,7 @@ import { UserPreferencesService } from '../../core/services/user-preferences.ser
 import { FeaturesService } from '../../core/services/features.service';
 import { PermissionNoticeComponent } from '../../shared/components/permission-notice/permission-notice.component';
 import { ZoomApi, ZoomSession, ZoomStatus } from './zoom-api.service';
+import { toastFrom } from '../../core/services/toast.service';
 @Component({ selector: 'app-zoom-card', standalone: true, imports: [TranslatePipe, RouterLink, PermissionNoticeComponent],
   templateUrl: './zoom-card.component.html', styleUrl: './zoom.component.scss' })
 export class ZoomCardComponent {
@@ -24,6 +25,7 @@ export class ZoomCardComponent {
   readonly denied = signal(false);
   readonly busy = signal(false); readonly failure = signal<unknown>(null); readonly disconnecting = signal(false);
   constructor() {
+    toastFrom(() => this.failure() ? this.api.error(this.failure()) : '');
     const route = inject(ActivatedRoute), router = inject(Router);
     this.features.load();
     const token = route.snapshot.queryParamMap.get('token');

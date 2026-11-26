@@ -38,9 +38,6 @@
         }
 
         <h6 class="eyebrow mb-3">{{ 'teacherManage.materials.uploadHeading' | t }}</h6>
-        @if (errorMessage()) {
-          <div class="alert alert-danger" role="alert">{{ errorMessage() }}</div>
-        }
         <div class="mb-3">
           <label for="materialFile" class="form-label">{{ 'teacherManage.materials.file' | t }}</label>
           @for (k of [fileInputKey()]; track k) {

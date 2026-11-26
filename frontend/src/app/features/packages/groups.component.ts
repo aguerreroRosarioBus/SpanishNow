@@ -1,3 +1,5 @@
+import { IconComponent } from '../../shared/components/icon/icon.component';
+import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { Component, OnInit, DestroyRef, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -13,20 +15,20 @@ import { PackageOrientationComponent } from './package-orientation.component';
 import { TimeZoneSelectComponent } from '../../shared/components/time-zone-select/time-zone-select.component';
 import { localTimeChoice } from '../../shared/utils/local-time-choice';
 import { Disambiguation } from '../../core/time/class-time';
+import { toastFrom } from '../../core/services/toast.service';
 
 @Component({ selector:'app-package-groups', standalone:true,
-imports:[FormsModule,RouterLink,TranslatePipe,PackageOrientationComponent,TimeZoneSelectComponent],
+imports:[IconComponent, EmptyStateComponent, FormsModule,RouterLink,TranslatePipe,PackageOrientationComponent,TimeZoneSelectComponent],
 styles:[`
 .group-list{display:grid;gap:12px;padding:0;list-style:none}.group-link{display:block;padding:16px;border:1px solid var(--color-border);border-radius:12px;background:var(--color-bg);color:var(--color-text);text-decoration:none}.group-link:hover{border-color:var(--color-primary)}.group-link strong{display:block;margin-bottom:6px}.group-link small{display:block;color:var(--color-text-light);margin-top:4px}.group-editor{max-width:760px;margin:20px 0;padding:20px;border:1px solid var(--color-border);border-radius:12px;background:var(--color-bg)}.group-editor>label{display:block;margin-top:16px}.contacts{max-height:340px;overflow:auto;border:1px solid var(--color-border);border-radius:8px;margin:12px 0}.contact{display:flex;gap:12px;align-items:center;min-height:48px;padding:8px 12px;border-bottom:1px solid var(--color-divider);cursor:pointer}.contact input{width:18px;height:18px;flex:none}.selected-contacts{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.selected-contacts button{min-height:44px}.group-preview{padding:12px;background:var(--color-bg-light);border-radius:8px;font-size:.875rem;margin:12px 0}.group-actions{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}
 `],template:`
 <div class="page-container">
   <header class="page-header"><div><h1 class="page-title">{{'packages.group.manage'|t}}</h1></div><button type="button" class="btn btn-primary" [attr.aria-expanded]="creating()" (click)="creating.set(!creating())">{{'refine.newGroup'|t}}</button></header>
   <app-package-orientation section="groups" />
-  @if(error()){<p class="alert alert-danger" role="alert">{{error()}}</p>}
   @if(creating()){
     @if(templatesLoading()){<p role="status">{{'packages.loading'|t}}</p>}
-    @else if(templatesFailed()){<button type="button" class="btn btn-secondary" (click)="ngOnInit()">{{'packages.purchase.retry'|t}}</button>}
-    @else if(!templates().length){<div class="state-box"><strong>{{'refine.noPackages'|t}}</strong><p>{{'refine.noPackagesHint'|t}}</p><a class="btn btn-primary" routerLink="/teacher/class-packages">{{'tutorial.packages.catalog.link'|t}}</a></div>}
+    @else if(templatesFailed()){<div class="toolbar"><button type="button" class="btn btn-secondary btn-sm toolbar-end" (click)="ngOnInit()"><app-icon name="rotate-ccw" [size]="14" />{{'packages.purchase.retry'|t}}</button></div>}
+    @else if(!templates().length){<app-empty-state icon="package" [title]="'refine.noPackages'|t" [hint]="'refine.noPackagesHint'|t"><a class="btn btn-primary" routerLink="/teacher/class-packages">{{'tutorial.packages.catalog.link'|t}}</a></app-empty-state>}
     @else{
     <section class="group-editor" aria-labelledby="groupEditorTitle"><h2 id="groupEditorTitle" class="h4">{{'refine.newGroup'|t}}</h2><p class="text-secondary-ui">{{'packages.group.agreement'|t}}</p>
       <label for="groupPackage" class="form-label">{{'packages.offer.choose'|t}}</label><select id="groupPackage" class="form-select" [ngModel]="selectedId()" (ngModelChange)="selectPackage($event)"><option [ngValue]="0">{{'packages.offer.choose'|t}}</option>@for(p of templates();track p.id){<option [ngValue]="p.id">{{name(p)}} · {{i18n.formatMoney(p.current.priceAmount,p.current.currency)}}</option>}</select>
@@ -47,14 +49,15 @@ styles:[`
   }
   <h2 class="h4">{{'packages.group.existing'|t}}</h2>
   @if(groupsLoading()){<p role="status">{{'packages.loading'|t}}</p>}
-  @else if(groupsFailed()){<button type="button" class="btn btn-secondary" (click)="ngOnInit()">{{'packages.purchase.retry'|t}}</button>}
+  @else if(groupsFailed()){<div class="toolbar"><button type="button" class="btn btn-secondary btn-sm toolbar-end" (click)="ngOnInit()"><app-icon name="rotate-ccw" [size]="14" />{{'packages.purchase.retry'|t}}</button></div>}
   @else{<ul class="group-list">@for(c of groups();track c.id){<li><a class="group-link" [routerLink]="['/class-cohorts',c.id]"><strong>{{groupName(c)}}</strong><span>@if (c.confirmedSession; as session) {
     {{ 'packages.group.confirmedSession' | t:{ date: i18n.formatInstant(session.startsAt, zone()) } }}
   } @else { {{ ('packages.group.status.' + c.status) | t }} }
   · {{c.acceptedCount}}/{{c.groupSize}}</span>
-  @if (!c.confirmedSession) { <small>{{i18n.formatInstant(c.tentativeStartsAt,zone())}} · {{zone()}}</small> }</a></li>}@empty{<li class="state-box">{{'refine.noGroups'|t}}</li>}</ul>}
+  @if (!c.confirmedSession) { <small>{{i18n.formatInstant(c.tentativeStartsAt,zone())}} · {{zone()}}</small> }</a></li>}@empty{<li class="group-empty"><app-empty-state icon="users" [title]="'refine.noGroups'|t" /></li>}</ul>}
 </div>`})
 export class GroupsComponent implements OnInit {
+  constructor() { toastFrom(() => this.error()); }
   private api=inject(PackagesService);private chat=inject(ChatService);private router=inject(Router);private destroy=inject(DestroyRef);private preferences=inject(UserPreferencesService);readonly i18n=inject(I18nService);
   templates=signal<CompleteTemplate[]>([]);groups=signal<ClassCohort[]>([]);conversations=signal<Conversation[]>([]);cursor=signal<string|null>(null);selectedId=signal(0);localStart=signal('');invited=signal<number[]>([]);busy=signal(false);creating=signal(false);templatesLoading=signal(true);groupsLoading=signal(true);templatesFailed=signal(false);groupsFailed=signal(false);search=signal('');
   zoneInput=signal('');zone=computed(()=>this.zoneInput()||this.preferences.preferences()?.timeZone||Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC');offset=signal('');disambiguation=signal<Disambiguation>('none');

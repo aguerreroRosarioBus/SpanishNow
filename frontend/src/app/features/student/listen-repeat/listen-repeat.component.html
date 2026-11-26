@@ -6,9 +6,8 @@
   </div>
 
   <!-- Error -->
-  <div *ngIf="errorMessage()" class="alert alert-warning">
-    {{ errorMessage() }}
-    <button class="btn btn-secondary mt-3" (click)="goBack()">
+  <div *ngIf="errorMessage()">
+    <button class="btn btn-secondary mb-3" (click)="goBack()">
       <app-icon name="chevron-left" [size]="16" />{{ 'activities.back' | t }}
     </button>
   </div>

@@ -2,17 +2,7 @@
   <header class="page-header">
     <h1 class="page-title">{{ 'packages.commerce.title' | t }}</h1>
   </header>
-  <nav class="commerce-nav" [attr.aria-label]="'packages.commerce.title' | t">
-    @for (item of tabs; track item) {
-      <button type="button" class="btn" [class.btn-secondary]="tab() === item"
-        [attr.aria-pressed]="tab() === item" (click)="chooseTab(item)">
-        {{ ('packages.commerce.tab.' + item) | t }}
-      </button>
-    }
-  </nav>
-
-  @if (error()) { <p class="alert alert-danger" role="alert">{{ error() }}</p> }
-  @if (feedback()) { <p class="alert alert-info" role="status">{{ feedback() | t }}</p> }
+  <app-tab-bar [items]="tabItems()" [active]="tab()" [label]="'packages.commerce.title' | t" (selected)="chooseTab($any($event))" />
 
   @switch (tab()) {
     @case ('setup') {
@@ -202,16 +192,19 @@
       } @else if (busy()) {
         <p role="status">{{ 'packages.commerce.loading' | t }}</p>
       } @else {
-        <button type="button" class="btn btn-secondary" (click)="load()">{{ 'packages.admin.reload' | t }}</button>
+        <div class="toolbar w-100"><button type="button" class="btn btn-secondary btn-sm toolbar-end" (click)="load()"><app-icon name="rotate-ccw" [size]="14" />{{ 'packages.admin.reload' | t }}</button></div>
       }
     }
     @case ('packages') {
-      <app-package-catalog [embedded]="true" />
+      <app-package-catalog [embedded]="true" (linkRequested)="linkPackage($event)" />
     }
     @case ('sales') {
       <section class="surface commerce-guide" [attr.aria-busy]="busy()">
-        <h2>{{ 'packages.commerce.salesTitle' | t }}</h2>
+        <app-section-header [title]="'packages.commerce.salesTitle' | t" />
         @if (sales(); as items) {
+          @if (!items.length) {
+            <app-empty-state icon="receipt" class="w-100" [title]="'packages.commerce.salesEmptyTitle' | t" [hint]="'packages.commerce.salesEmpty' | t" />
+          }
           <ul class="sales">
             @for (sale of items; track sale.id) {
               <li>
@@ -224,8 +217,6 @@
                   <span>{{ ('packages.admin.orderStatus.' + sale.status) | t }}</span>
                 </div>
               </li>
-            } @empty {
-              <li>{{ 'packages.commerce.salesEmpty' | t }}</li>
             }
           </ul>
           @if (nextSale(); as next) {
@@ -234,7 +225,7 @@
         } @else if (busy()) {
           <p role="status">{{ 'packages.commerce.loading' | t }}</p>
         } @else {
-          <button type="button" class="btn btn-secondary" (click)="loadSales()">{{ 'packages.admin.reload' | t }}</button>
+          <div class="toolbar w-100"><button type="button" class="btn btn-secondary btn-sm toolbar-end" (click)="loadSales()"><app-icon name="rotate-ccw" [size]="14" />{{ 'packages.admin.reload' | t }}</button></div>
         }
       </section>
     }

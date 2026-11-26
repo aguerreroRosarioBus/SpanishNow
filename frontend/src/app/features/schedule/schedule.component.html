@@ -84,8 +84,7 @@
   </section>
   }
   @if (error()) {
-    <div class="alert alert-danger" role="alert">
-      {{ error() }}
+    <div class="d-flex justify-content-end">
       <button class="btn btn-ghost btn-sm" (click)="reload()">{{ 'schedule.retry' | t }}</button>
     </div>
   }
@@ -95,7 +94,6 @@
       [modal]="true" [draggable]="false" [resizable]="false" [blockScroll]="true" [closeOnEscape]="!busy()" [closable]="!busy()" styleClass="pilot-editor pilot-sheet">
     <form id="scheduleProposalForm" class="schedule-form" (ngSubmit)="submit()" data-testid="schedule-form">
       <p class="editor-hint">{{ 'schedule.ui.proposeHint' | t }}</p>
-      @if (error()) { <p class="alert alert-danger" role="alert">{{ error() }}</p> }
       @if (options(); as opts) {
         @if (!editing()) {
           <div class="selection-fields">
@@ -363,13 +361,12 @@
       }
     }
     @if (!loading() && !visibleSessions().length) {
-      <div class="state-box" data-testid="schedule-empty">
-        <p class="mb-0">{{ 'schedule.empty' | t }}</p>
+      <app-empty-state icon="calendar" data-testid="schedule-empty" [title]="'schedule.empty' | t">
         @if (!teacher()) {
-          <p class="mb-0" data-testid="student-empty-hint">{{ 'schedule.studentEmptyHint' | t }}</p>
+          <p class="text-muted small mb-0 w-100" data-testid="student-empty-hint">{{ 'schedule.studentEmptyHint' | t }}</p>
           <a class="btn btn-secondary btn-sm" routerLink="/messages">{{ 'schedule.openMessages' | t }}</a>
         }
-      </div>
+      </app-empty-state>
     }
   </section>
 </div>

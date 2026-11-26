@@ -10,6 +10,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { LegalConsentComponent } from '../../legal/legal-consent/legal-consent.component';
 import { PublicLegalDocument } from '../../legal/legal.model';
 import { consentFor, LegalService } from '../../legal/legal.service';
+import { toastFrom } from '../../../core/services/toast.service';
 
 /**
  * Componente de Registro
@@ -52,6 +53,8 @@ export class RegisterComponent {
   readonly legalError = signal('');
 
   constructor() {
+    toastFrom(() => this.errorMessage());
+    toastFrom(() => this.legalError());
     // Formulario con campos adicionales comparado con Login
     this.registerForm = this.fb.group({
       // Nombre completo (requerido, mínimo 3 caracteres)

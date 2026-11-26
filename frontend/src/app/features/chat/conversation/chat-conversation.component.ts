@@ -15,6 +15,7 @@ import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { ChatFormat } from '../chat-format';
 import { ClassSessionCardComponent } from '../../schedule/class-session-card.component';
+import { toastFrom } from '../../../core/services/toast.service';
 
 const POLL_MS = 5_000;
 const IDLE_POLL_MS = 20_000;
@@ -55,6 +56,10 @@ const newClientMessageId = (): string =>
   styleUrl: './chat-conversation.component.scss'
 })
 export class ChatConversationComponent implements OnInit {
+  constructor() {
+    toastFrom(() => this.errorMessage());
+    toastFrom(() => this.reportError());
+  }
   private api = inject(ChatService);
   private badge = inject(ChatBadgeService);
   private route = inject(ActivatedRoute);

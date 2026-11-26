@@ -7,6 +7,7 @@ import { GoogleCalendarService, GoogleCalendarStatus } from '../../core/services
 import { FeaturesService } from '../../core/services/features.service';
 import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
+import { toastFrom, toastWhen } from '../../core/services/toast.service';
 
 const OUTCOMES = ['connected', 'denied', 'scopes', 'error', 'mismatch'];
 /** Tarjeta de Google Calendar de la pantalla común de integraciones (W07). W08 agrega la suya aparte. */
@@ -24,8 +25,6 @@ const OUTCOMES = ['connected', 'denied', 'scopes', 'error', 'mismatch'];
   @else {
     @if (state(); as s) { @if (s.accountEmail) { <p class="int-meta">{{ 'calendar.accountLine' | t:{ email: s.accountEmail } }}</p> } }
     @if (outcome(); as o) { <p class="alert" [class.alert-success]="o === 'connected'" [class.alert-warning]="o !== 'connected' && o !== 'confirming'" [class.alert-info]="o === 'confirming'" role="status">{{ ('calendar.outcome.' + o) | t }}</p> }
-    @if (error()) { <p class="alert alert-danger" role="alert">{{ error() }}</p> }
-    @if (saved()) { <p class="alert alert-success" role="status">{{ 'calendar.saved' | t }}</p> }
     @if (state(); as s) {
       @if (s.status === 'disconnected' || s.status === 'pending') {
         <div class="int-body">
@@ -72,6 +71,10 @@ const OUTCOMES = ['connected', 'denied', 'scopes', 'error', 'mismatch'];
 </section>`
 })
 export class CalendarCardComponent implements OnInit {
+  constructor() {
+    toastFrom(() => this.error());
+    toastWhen(() => this.saved(), () => this.i18n.t('calendar.saved'));
+  }
   private api = inject(GoogleCalendarService);
   private route = inject(ActivatedRoute); private router = inject(Router); private destroyRef = inject(DestroyRef);
   private document = inject(DOCUMENT);
