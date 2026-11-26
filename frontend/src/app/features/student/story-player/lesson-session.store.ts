@@ -37,6 +37,16 @@ export class LessonSessionStore {
       (this.reinforcementBlocks().some(block => block.blockKey === lastBlockKey) ? blocks[blocks.length - 1] : null) || null;
   });
   currentBlockIndex = computed(() => this.activeBlocks().findIndex(block => block.blockKey === this.currentBlock()?.blockKey));
+  /** El bloque actual es una pregunta que todavía no tiene resultado de comprobación. */
+  private questionUnchecked = computed(() => this.currentBlock()?.type === 'question' && !this.answerResult());
+  /** Pregunta sin respuesta elegida ni intento previo: no se puede continuar. */
+  questionNeedsAnswer = computed(() => {
+    const block = this.currentBlock();
+    if (!this.questionUnchecked() || this.answerText().trim()) return false;
+    return !this.lesson()?.progress.answers.some(a => a.blockKey === block?.blockKey);
+  });
+  /** Pregunta con respuesta elegida pero sin comprobar: «Continuar» la comprueba en lugar de avanzar. */
+  questionPending = computed(() => this.questionUnchecked() && Boolean(this.answerText().trim()));
   narrativeCompleted = computed(() => Boolean(this.lesson()?.progress.narrativeCompleted));
 
   load(storyId: number): void {

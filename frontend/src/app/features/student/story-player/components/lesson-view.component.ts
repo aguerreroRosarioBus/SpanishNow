@@ -56,6 +56,7 @@ export class LessonViewComponent {
   });
   /** Etiqueta del botón principal según el punto de la lección. */
   nextLabel = computed(() => {
+    if (this.session.questionPending()) return this.i18n.t('player.check');
     if (!this.isLast()) return this.i18n.t('player.continue');
     if (!this.session.narrativeCompleted()) return this.i18n.t('player.completeReading');
     const after = this.nav.afterLesson();
@@ -63,6 +64,8 @@ export class LessonViewComponent {
   });
 
   next(): void {
+    if (this.session.questionPending()) { this.session.submitAnswer(); return; }
+    if (this.session.questionNeedsAnswer()) return;
     if (!this.isLast()) { this.session.goToBlock(1); return; }
     if (!this.session.narrativeCompleted()) { this.session.completeNarrative(); return; }
     const after = this.nav.afterLesson();

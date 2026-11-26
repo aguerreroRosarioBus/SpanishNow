@@ -131,6 +131,10 @@ describe('StoryPlayerComponent (flujo TPRS)', () => {
     const next = el.querySelector('.lesson-foot .btn-primary') as HTMLButtonElement;
     next.click(); fixture.detectChanges();
     expect(text()).toBe('Paso 2 de 4 · Pregunta');
+    // La pregunta se comprueba antes de poder avanzar.
+    lessonApi.answer.mockReturnValue(of({ blockKey: 'q1', questionId: 9, isCorrect: true, attempt: 1, canRetry: false, canContinue: true }));
+    session.setAnswer('en la fiesta'); fixture.detectChanges();
+    next.click(); fixture.detectChanges();
     next.click(); fixture.detectChanges();
     expect(text()).toBe('Paso 3 de 4 · Historia');
     next.click(); fixture.detectChanges();

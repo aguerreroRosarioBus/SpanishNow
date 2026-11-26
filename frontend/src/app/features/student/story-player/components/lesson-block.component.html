@@ -55,10 +55,9 @@
           </div>
         } @else {
           <input class="form-control mt-3 answer-input" type="text" maxlength="200"
-            [value]="session.answerText()" (input)="session.setAnswer($any($event.target).value)" [placeholder]="'player.writeAnswer' | t"
+            [value]="session.answerText()" (keydown.enter)="session.submitAnswer()" (input)="session.setAnswer($any($event.target).value)" [placeholder]="'player.writeAnswer' | t"
             [disabled]="session.answerResult()?.isCorrect" [attr.aria-label]="'player.yourAnswer' | t" />
         }
-        <button type="button" class="btn btn-secondary mt-3" (click)="session.submitAnswer()" [disabled]="!session.answerText().trim() || session.answerResult()?.isCorrect">{{ 'player.check' | t }}</button>
         @if (session.answerResult(); as result) {
           <div class="alert mt-3" [class.alert-success]="result.isCorrect" [class.alert-warning]="!result.isCorrect" role="status">
             @if (result.isCorrect) {
