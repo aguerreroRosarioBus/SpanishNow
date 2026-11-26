@@ -11,7 +11,8 @@
 // app) no se toca.
 //   keyframe:      h<historia>-k<n>.mp3 -> lesson_blocks.audioUrl · images/h<historia>-k<n>.png|webp (+ alt.json) -> imageUrl, imageAlt
 //   estructura:    vocab-<slug>.mp3 -> vocabulary.audioUrl (tarjetas) y la instantánea del vocabulario de la revisión publicada
-//   portada:       images/h1-k1.png|webp -> courses.imageUrl (la primera ilustración, solo si el curso no tiene portada)
+//   portada:       images/cover.png|webp (la primera ilustración recortada apaisada, para llenar la tarjeta del curso; si falta,
+//                  h1-k1) -> courses.imageUrl, solo si el curso no tiene portada
 //   escuchar y repetir: usa repetition_activities (frase + audio por historia), no el vocabulario: se crea una actividad por
 //                  estructura objetivo de la historia, con su frase de ejemplo y el mismo audio. Solo si la historia no tiene ninguna.
 const fs = require('fs');
@@ -104,8 +105,9 @@ module.exports = {
       }
     }
 
-    // --- Portada del curso: la primera ilustración de la primera historia, si el docente no puso otra.
-    const coverFile = canUpload && !course.imageUrl && imageFor(keyframeKey(1, 1));
+    // --- Portada del curso: la primera ilustración recortada a lo ancho (la tarjeta muestra la portada entera, sin recortarla),
+    // si el docente no puso otra.
+    const coverFile = canUpload && !course.imageUrl && (imageFor('cover') || imageFor(keyframeKey(1, 1)));
     if (coverFile) {
       await course.update({ imageUrl: await upload(cloudinary, fs.readFileSync(coverFile), { folder: 'spanishnow/courses', resource_type: 'image' }) });
       counts.cover++;
