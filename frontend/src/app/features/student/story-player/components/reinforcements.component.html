@@ -1,9 +1,10 @@
-@if (blocks().length > 0) {
-  <section class="practice" aria-labelledby="practice-title">
+@if (showPanel() && blocks().length > 0) {
+  <section class="practice" aria-labelledby="practice-title"> class="practice" aria-labelledby="practice-title">
     <div class="practice__head">
       <h2 id="practice-title" class="practice__title">{{ 'player.practiceTitle' | t }}</h2>
-      <span class="practice__hint">{{ 'player.optionalUnit' | t: {number: nav.unitNumber()} }}</span>
+      <span class="practice__count" role="status">{{ 'player.practiceCount' | t: {done: doneCount(), total: blocks().length} }}</span>
     </div>
+    <p class="practice__hint">{{ 'player.practiceRecommended' | t }}</p>
     <div class="practice__grid">
       @for (extra of blocks(); track extra.blockKey) {
         <div class="practice-card">
@@ -22,6 +23,9 @@
         </div>
       }
     </div>
+    @if (nextPending(); as pending) {
+      <button type="button" class="btn btn-primary practice__start" (click)="open(pending)">{{ 'player.practiceStart' | t: {name: label(pending)} }}</button>
+    }
   </section>
 }
 

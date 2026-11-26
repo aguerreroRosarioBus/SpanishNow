@@ -246,6 +246,39 @@ describe('StoryPlayerComponent (flujo TPRS)', () => {
     expect(nav.currentItem()?.id).toBe('story-200');
   });
 
+  describe('refuerzos recomendados', () => {
+    const withReinforcements = (l: StudentLesson): StudentLesson => ({ ...l, blocks: [...l.blocks,
+      lessonBlock('r1', 10, 'flashcards', 'after'), lessonBlock('r2', 11, 'matching', 'after')] });
+    const el = () => fixture.nativeElement as HTMLElement;
+    const primary = () => el().querySelector('.lesson-foot .btn-primary') as HTMLButtonElement;
+
+    it('antes de terminar la narración no se muestra el panel de práctica', async () => {
+      await create('f1', withReinforcements);
+      expect(el().querySelector('.practice')).toBeNull();
+    });
+
+    it('al terminar, el panel muestra el contador y el primario abre el primer pendiente; saltar sigue disponible', async () => {
+      await create('f1', l => withReinforcements({ ...l, progress: { ...l.progress, narrativeCompleted: true } }));
+      const reinf = fixture.debugElement.query(sel => sel.name === 'app-reinforcements').componentInstance;
+      const open = vi.spyOn(reinf, 'open');
+      expect(el().querySelector('.practice__count')?.textContent?.trim()).toBe('0 de 2');
+      expect(primary().textContent?.trim()).toBe('Practicar: Flashcards');
+      const skip = el().querySelector('.lesson-foot .btn-secondary') as HTMLButtonElement;
+      expect(skip.textContent?.trim()).toBe('Saltar práctica');
+      primary().click();
+      expect(open).toHaveBeenCalledWith(expect.objectContaining({ blockKey: 'r1' }));
+      skip.click();
+      expect(nav.currentItem()?.id).toBe('story-200');
+    });
+
+    it('con todo completo vuelve el primario «Siguiente historia»', async () => {
+      await create('f1', l => withReinforcements({ ...l, progress: { ...l.progress, narrativeCompleted: true,
+        reinforcements: [{ blockKey: 'r1', completed: true }, { blockKey: 'r2', completed: true }] } }));
+      expect(primary().textContent?.trim()).toBe('Siguiente historia');
+      expect(el().querySelector('.lesson-foot .btn-secondary')).toBeNull();
+    });
+  });
+
   it('las flechas avanzan y retroceden cuando el ítem destino es accesible', async () => {
     await create(null);
     nav.items.update(items => items.map(i => ({ ...i, canAccess: true })));

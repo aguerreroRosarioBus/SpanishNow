@@ -51,18 +51,25 @@
       <p class="lesson-hint" id="lesson-hint">{{ 'player.chooseAnswer' | t }}</p>
     }
 
+    <app-reinforcements [showPanel]="isLast() && session.narrativeCompleted()" />
+
     <footer class="lesson-foot">
       <button type="button" class="btn btn-ghost btn-lg" (click)="session.goToBlock(-1)" [disabled]="session.currentBlockIndex() <= 0">
         <app-icon name="chevron-left" [size]="16" />{{ 'player.previous' | t }}
       </button>
+      @if (pendingReinforcement()) {
+        <div class="lesson-foot__actions">
+          <button type="button" class="btn btn-secondary btn-lg" (click)="next()">{{ 'player.practiceSkip' | t }}</button>
+          <button type="button" class="btn btn-primary btn-lg" (click)="practiceNext()">{{ practiceLabel() }}</button>
+        </div>
+      } @else {
       <button type="button" class="btn btn-primary btn-lg" (click)="next()" [disabled]="session.questionNeedsAnswer()" [attr.aria-describedby]="session.questionNeedsAnswer() ? 'lesson-hint' : null">
         {{ nextLabel() }}
         <app-icon name="chevron-right" [size]="16" />
       </button>
+      }
     </footer>
   </article>
-
-  <app-reinforcements />
 
   @if (nav.courseFinished() && nav.nextCourse(); as next) {
     <app-next-course-card [offer]="next" />

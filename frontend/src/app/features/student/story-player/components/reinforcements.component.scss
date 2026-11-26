@@ -15,9 +15,21 @@
   font: 600 0.9375rem var(--font-heading);
 }
 
+.practice__count {
+  margin-left: auto;
+  color: var(--color-success-text);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
 .practice__hint {
+  margin: 0;
   color: var(--color-text-light);
   font-size: 0.8125rem;
+}
+
+.practice__start {
+  align-self: flex-start;
 }
 
 .practice__grid {

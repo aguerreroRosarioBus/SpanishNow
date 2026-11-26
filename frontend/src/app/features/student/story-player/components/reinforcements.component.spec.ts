@@ -19,6 +19,7 @@ describe('A-03: «Listen and repeat» solo se ofrece si la historia tiene activi
 
   function render(): HTMLElement {
     const fixture = TestBed.createComponent(ReinforcementsComponent);
+    fixture.componentRef.setInput('showPanel', true);
     fixture.detectChanges();
     return fixture.nativeElement;
   }
@@ -50,5 +51,19 @@ describe('A-03: «Listen and repeat» solo se ofrece si la historia tiene activi
     blocks.set([block('l', 'listen_repeat')]);
     stories.set([{ id: 5 }]);
     expect(render().querySelector('.practice')).toBeNull();
+  });
+
+  it('no muestra el panel antes de terminar la narración', () => {
+    stories.set([{ id: 5, repetitionActivities: [{ id: 1 }] }]);
+    const fixture = TestBed.createComponent(ReinforcementsComponent);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.practice')).toBeNull();
+  });
+
+  it('muestra el contador y el botón principal para el primer pendiente', () => {
+    stories.set([{ id: 5, repetitionActivities: [{ id: 1 }] }]);
+    const el = render();
+    expect(el.querySelector('.practice__count')?.textContent?.trim()).toBe('0 de 3');
+    expect(el.querySelector('.practice__start')?.textContent?.trim()).toBe('Empezar: Flashcards');
   });
 });

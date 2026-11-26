@@ -1,6 +1,6 @@
 import { I18nService } from '../../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, input, signal } from '@angular/core';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { StudentLessonBlock } from '../../../../core/services/student-lesson.service';
 import { ToastService } from '../../../../core/services/toast.service';
@@ -26,6 +26,9 @@ export class ReinforcementsComponent {
   private vocabularyService = inject(VocabularyService);
   private toastService = inject(ToastService);
 
+  /** El panel con la lista de refuerzos solo se muestra al terminar la narración; los modales siempre están disponibles. */
+  showPanel = input(false);
+
   showFlashcardModal = signal(false);
   showMatchingModal = signal(false);
   showListenRepeatModal = signal(false);
@@ -39,6 +42,10 @@ export class ReinforcementsComponent {
     const hasRepeat = Boolean(story?.repetitionActivities?.length);
     return this.session.reinforcementBlocks().filter(block => block.type !== 'listen_repeat' || hasRepeat);
   });
+
+  doneCount = computed(() => this.blocks().filter(block => this.session.isReinforcementComplete(block.blockKey)).length);
+  /** Primer refuerzo sin completar, para el botón principal del panel y del pie de la lección. */
+  nextPending = computed(() => this.blocks().find(block => !this.session.isReinforcementComplete(block.blockKey)) ?? null);
 
   label(block: StudentLessonBlock): string {
     return block.type === 'flashcards' ? this.i18n.t('player.flashcards') : block.type === 'matching' ? this.i18n.t('player.matching') : this.i18n.t('player.listenRepeat');

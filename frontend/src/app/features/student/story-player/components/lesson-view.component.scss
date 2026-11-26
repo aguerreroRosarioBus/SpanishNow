@@ -105,6 +105,13 @@
   border-top: 1px solid var(--color-divider);
 }
 
+.lesson-foot__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 @media (max-width: 575.98px) {
   .lesson-card {
     padding: 20px 16px 16px;
