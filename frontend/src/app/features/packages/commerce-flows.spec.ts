@@ -71,6 +71,15 @@ describe('W05 proveedor verificado y órdenes congeladas',()=>{
   c.vReason='  Cuenta revisada  ';c.verifyProvider();expect(api.verifyProvider).toHaveBeenCalledTimes(1);
   expect(api.verifyProvider.mock.calls[0][0]).toEqual({checks:{account:true,format:true,guarantee:true,mapping:true},guaranteeDays:15,reason:'Cuenta revisada',teacherId:9,revision:'vigente'});
  });
+ it('muestra la marca de paquete vinculado después de aprobar',()=>{
+  const {f,c,el,t}=setup({state:{mode:'blocked',verification:null,lastRevocation:null,candidates:[
+    {id:9,name:'Docente ficticia',revision:'vigente',packages:[
+      {id:2,nameEs:'A',nameEn:'A',priceAmount:100,currency:'USD',productId:'1',offerCode:'x',url:'',approved:true,linkedAfterApproval:false},
+      {id:3,nameEs:'B',nameEn:'B',priceAmount:100,currency:'USD',productId:'2',offerCode:'y',url:'',approved:false,linkedAfterApproval:true}]}
+  ]}});c.openReview();f.detectChanges();
+  const label=t('packages.commerce.admin.linkedAfterApproval');
+  expect((el.textContent!.match(new RegExp(label,'g'))??[]).length).toBe(1);
+ });
  it('revocar exige motivo y confirmación',()=>{
   const {c,api}=setup({state:{mode:'verified',verification:{id:3,verifiedAt:'2026-10-21T12:00:00Z',verifiedBy:{id:2,name:'Ana'},guaranteeDays:7,checks:{},reason:'x'},lastRevocation:null}});
   c.revokeProvider();c.rReason='Motivo';c.revokeProvider();expect(api.revokeProvider).not.toHaveBeenCalled();c.rConfirmed=true;c.revokeProvider();expect(api.revokeProvider.mock.calls[0]).toEqual(['Motivo']);

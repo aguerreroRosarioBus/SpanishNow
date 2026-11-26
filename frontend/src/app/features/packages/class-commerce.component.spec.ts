@@ -75,6 +75,10 @@ describe('Cobros de paquetes para docentes', () => {
     i18n.setLocale('en');
     expect(component.checkoutPreview()).toBe('https://pay.hotmart.com/X?off=H4');
     component.savePackage();
+    expect(api.linkHotmart).not.toHaveBeenCalled();
+    component.checkoutOpened.set(true);
+    component.priceConfirmed.set(true);
+    component.savePackage();
     expect(api.linkHotmart).toHaveBeenCalledWith(8,expect.objectContaining({version:3,productId:'123',offerCode:'H4'}));
     expect(component.setupState()).toBe('review');
     fixture.detectChanges();
@@ -83,6 +87,38 @@ describe('Cobros de paquetes para docentes', () => {
     expect(component.setupState()).toBe('publish');
     component.items.set([{...mapped,status:'active'}]);
     expect(component.setupState()).toBe('ready');
+  });
+
+  it('exige abrir la página de pago y confirmar el precio antes de guardar, y con la cuenta aprobada no queda pendiente', () => {
+    const {api,component,fixture,root} = render();
+    component.setup.set({...connected,approval:'connected',approvedPackageIds:[]});
+    component.selectPackage(8);
+    component.setLink('https://pay.hotmart.com/X?off=H4');
+    component.productId.set('123');
+    component.go('preview');
+    fixture.detectChanges();
+    const save = () => [...root.querySelectorAll('button')].find(b => b.textContent?.includes('Guardar')) as HTMLButtonElement;
+    const box = root.querySelector('#class-hotmart-confirm') as HTMLInputElement;
+    expect(save().disabled).toBe(true);
+    expect(box.checked).toBe(false);
+    expect(root.textContent).toMatch(/USD\s80,00/);
+    box.click();
+    fixture.detectChanges();
+    expect(save().disabled).toBe(true);
+    (root.querySelector('a[target="_blank"]') as HTMLAnchorElement).addEventListener('click', e => e.preventDefault());
+    (root.querySelector('a[target="_blank"]') as HTMLAnchorElement).click();
+    fixture.detectChanges();
+    expect(save().disabled).toBe(false);
+    component.setLink('https://pay.hotmart.com/Y?off=H4');
+    expect(component.checkoutOpened()).toBe(false);
+    expect(component.priceConfirmed()).toBe(false);
+    component.setLink('https://pay.hotmart.com/X?off=H4');
+    component.checkoutOpened.set(true);
+    component.priceConfirmed.set(true);
+    component.savePackage();
+    expect(api.linkHotmart).toHaveBeenCalledOnce();
+    expect(component.setup()?.approvedPackageIds).toEqual([8]);
+    expect(component.packageReviewPending()).toBe(false);
   });
 
   it('carga ventas propias al abrir la sección de Ventas', () => {

@@ -2,7 +2,7 @@ const {randomUUID}=require('crypto');
 const request=require('supertest');
 const {app,as,createUser}=require('./helpers/fixtures');
 const {packageWorld}=require('./helpers/classPackages');
-const {ClassOffer:Offer,ClassPackageOrder:Order,TeacherClassSettings,ClassPackagePurchase:Purchase,ClassPackageBeneficiary:Beneficiary,ClassCreditLedger:Ledger,PaymentProviderEvent:Event,Message,Enrollment,User,AuditLog}=require('../src/models');
+const {ClassOffer:Offer,ClassPackageOrder:Order,TeacherClassSettings,ClassPackagePurchase:Purchase,ClassPackageBeneficiary:Beneficiary,ClassCreditLedger:Ledger,PaymentProviderEvent:Event,Message,Enrollment,User,AuditLog,ClassPackageTemplate:Template}=require('../src/models');
 const offers=require('../src/services/classOffers');
 const checkout=require('../src/services/classCheckout');
 const events=require('../src/services/classPayments');
@@ -59,6 +59,28 @@ test.each(['price','product','code'])('datos del proveedor incompatibles (%s) qu
   if(kind==='price')body.data.purchase.price.value=1;else if(kind==='product')body.data.product.id='other-product';else body.data.purchase.offer.code='other-code';
   await apply(body);expect((await order.reload()).status).toBe('paid_needs_review');expect(await Purchase.count({where:{orderId:order.id}})).toBe(0);
 });
+test('discrepancia de precio, producto u oferta pausa el paquete de origen con auditoría; un pago correcto no lo pausa',async()=>{
+  const ok=await world();const good=await pending(ok);await apply(good.body);
+  expect((await good.order.reload()).status).toBe('paid');
+  expect((await Template.findByPk(ok.template.id)).status).toBe('active');
+  expect(await AuditLog.count({where:{action:'class_package.auto_paused',entityId:ok.template.id}})).toBe(0);
+  for(const kind of ['price','product','code','missing']){
+    const w=await world();const {order,body}=await pending(w);
+    if(kind==='price')body.data.purchase.price.value=1;else if(kind==='product')body.data.product.id='other-product';
+    else if(kind==='code')body.data.purchase.offer.code='other-code';else delete body.data.purchase.price;
+    await apply(body);
+    expect((await order.reload()).status).toBe('paid_needs_review');expect(await Purchase.count({where:{orderId:order.id}})).toBe(0);
+    expect((await Template.findByPk(w.template.id)).status).toBe('paused');
+    const logs=await AuditLog.findAll({where:{action:'class_package.auto_paused',entityId:w.template.id}});
+    expect(logs).toHaveLength(1);
+    expect(logs[0].data).toMatchObject({orderId:order.id,offerId:w.offer.id,templateId:w.template.id,reason:{price:'price_mismatch',product:'product_mismatch',code:'offer_code_mismatch',missing:'price_missing'}[kind]});
+  }
+});
+test('pago tardío (offer_closed) no pausa el paquete',async()=>{
+  const w=await world();const {order,body}=await pending(w);await Offer.update({expiresAt:new Date(Date.now()-1000)},{where:{id:w.offer.id}});await offers.expire({aggregateId:w.offer.id});
+  await apply(body);expect((await order.reload()).reviewReason).toBe('offer_closed');
+  expect((await Template.findByPk(w.template.id)).status).toBe('active');expect(await AuditLog.count({where:{action:'class_package.auto_paused',entityId:w.template.id}})).toBe(0);
+});
 test('reembolso antes de aprobación es terminal y nunca acredita',async()=>{
   const w=await world();const {order,body}=await pending(w);await apply({...body,id:randomUUID(),event:'PURCHASE_REFUNDED'});await apply(body);
   expect((await order.reload()).status).toBe('refunded');expect(await Purchase.count({where:{orderId:order.id}})).toBe(0);
@@ -93,6 +115,7 @@ test('un pago en revisión bloquea cobrar de nuevo, cancelar o reemplazar hasta 
   const w=await world();const {body}=await pending(w);body.data.purchase.price.value=1;await apply(body);
   expect((await start(w)).body.code).toBe('offer_not_payable');
   expect((await as(w.teacher).post(`/api/class-offers/${w.offer.id}/cancel`,{reason:'Cambio ficticio'})).body.code).toBe('offer_payment_in_review');
+  expect((await Template.findByPk(w.template.id)).status).toBe('paused');await Template.update({status:'active'},{where:{id:w.template.id}});
   expect((await as(w.teacher).post(`/api/class-offers/${w.offer.id}/replace`,{templateVersionId:w.version.id}).set('Idempotency-Key',randomUUID())).body.code).toBe('offer_payment_in_review');
 });
 test('renovación manual crea otra oferta/compra y conserva saldo e historial anteriores',async()=>{

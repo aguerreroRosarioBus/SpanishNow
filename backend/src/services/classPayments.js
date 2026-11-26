@@ -1,7 +1,7 @@
 const {createHash}=require('crypto');
 const {Op}=require('sequelize');
 const sequelize=require('../config/database');
-const {User,Conversation,ClassPackageTemplateVersion:Version,ClassOffer:Offer,ClassOfferBeneficiary:OfferBeneficiary,ClassPackageOrder:Order,ClassPackagePurchase:Purchase,ClassPackageBeneficiary:Beneficiary,PaymentProviderEvent:Event,ClassCohort:Cohort,ClassCohortMember:Member,AuditLog}=require('../models');
+const {User,Conversation,ClassPackageTemplateVersion:Version,ClassPackageTemplate:Template,ClassOffer:Offer,ClassOfferBeneficiary:OfferBeneficiary,ClassPackageOrder:Order,ClassPackagePurchase:Purchase,ClassPackageBeneficiary:Beneficiary,PaymentProviderEvent:Event,ClassCohort:Cohort,ClassCohortMember:Member,AuditLog}=require('../models');
 const offers=require('./classOffers');
 const credits=require('./classCredits');
 const chat=require('./chatService');
@@ -38,6 +38,20 @@ async function markReview(order,offer,n,reason,transaction){
   await order.update({status:'paid_needs_review',reviewReason:reason,paidAt:order.paidAt||n.approvedAt||persistedSecond(new Date()),providerProductId:n.productId||order.providerProductId,providerOfferCode:n.offerCode||order.providerOfferCode,reportedAmount:n.reported?.amount??null,reportedCurrency:n.reported?.currency??null,buyerEmailReported:n.buyerEmail}, {transaction});
   await reviewJob(order,reason,transaction);
   await chat.appendSystemMessage(offer.conversationId,{eventCode:'package_payment_review',offerId:offer.id,eventParams:{offerId:offer.id},dedupeKey:`order:${order.id}:review`},{transaction});
+}
+// Discrepancias de un pago aprobado que indican un enlace/mapeo de Hotmart mal cargado: sin revisión previa por paquete, el
+// paquete de origen se pausa para que el link equivocado no siga cobrando.
+const MAPPING_REASONS=new Set(['product_mismatch','offer_code_mismatch','price_mismatch','price_missing']);
+// Orden de locks: handleEvent toma Conversation -> Offer -> Order y, al final, la plantilla. Quien bloquea la plantilla primero
+// (classCatalog.newVersion/setStatus, classOffers.send) nunca espera después una Offer/Order de otra conversación que este
+// flujo ya tenga tomada (send la bloquea solo tras tomar su propia Conversation), así que no hay ciclo. La plantilla va siempre última.
+async function pauseSourcePackage(offer,order,reason,transaction){
+  const version=await Version.findByPk(offer.templateVersionId,{attributes:['id','templateId'],transaction});
+  if(!version)return;
+  const template=await Template.findByPk(version.templateId,{transaction,lock:transaction.LOCK.UPDATE});
+  if(template?.status!=='active')return;
+  await template.update({status:'paused'},{transaction});
+  await AuditLog.create({action:'class_package.auto_paused',entityType:'class_package_templates',entityId:template.id,data:{orderId:order.id,offerId:offer.id,reason,templateId:template.id}},{transaction});
 }
 // Reembolso que no se puede validar: la orden pasa a revisión y la compra deja de ser usable (no reserva ni consume más).
 async function freezeForReview(order,offer,n,reason,transaction){
@@ -143,7 +157,7 @@ async function handleEvent(body,{provider='hotmart',connectionId=null,teacherId}
         order.checkoutExpiresAt&&(n.approvedAt||new Date())>order.checkoutExpiresAt?'checkout_link_expired':
         n.productId!==offer.hotmartProductId?'product_mismatch':n.offerCode!==offer.hotmartOfferCode?'offer_code_mismatch':
         !n.reported?'price_missing':n.reported.amount!==offer.amount||n.reported.currency!==offer.currency?'price_mismatch':null;
-      if(reason){await markReview(order,offer,n,reason,transaction);return finish('needs_review',{needsReview:true});}
+      if(reason){await markReview(order,offer,n,reason,transaction);if(MAPPING_REASONS.has(reason))await pauseSourcePackage(offer,order,reason,transaction);return finish('needs_review',{needsReview:true});}
       const buyer=await User.findByPk(offer.buyerId,{transaction});
       await order.update({status:'paid',paidAt:n.approvedAt||persistedSecond(new Date()),providerProductId:n.productId,providerOfferCode:n.offerCode,reportedAmount:n.reported.amount,reportedCurrency:n.reported.currency,buyerEmailReported:n.buyerEmail},{transaction});
       if(n.buyerEmail&&n.buyerEmail.toLowerCase()!==buyer.email.toLowerCase())await AuditLog.create({action:'payment.email_mismatch',entityType:'class_package_orders',entityId:order.id,data:{buyerId:buyer.id}},{transaction});

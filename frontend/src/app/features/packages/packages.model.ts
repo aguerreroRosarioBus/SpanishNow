@@ -70,7 +70,7 @@ export interface ProviderVerification{id:number;verifiedAt:string;verifiedBy:{id
 export interface ProviderRevocation{id:number;revokedAt:string;revokedBy:{id:number;name:string}|number|null;reason:string;verifiedAt:string}
 export interface ProviderCandidate {
   id:number; name:string; testedAt:string; revision:string;
-  packages: {id:number;nameEs:string;nameEn:string;priceAmount:number;currency:string;productId:string;offerCode:string;url:string;approved:boolean}[];
+  packages: {id:number;nameEs:string;nameEn:string;priceAmount:number;currency:string;productId:string;offerCode:string;url:string;approved:boolean;linkedAfterApproval?:boolean}[];
 }
 export interface ClassProviderState{mode:'fake'|'verified'|'blocked';account?:'blocked'|'shared'|'connected'|'changed';candidates?:ProviderCandidate[];verification:(ProviderVerification & {teacherId?:number|null})|null;lastRevocation:ProviderRevocation|null}
 export interface ProviderVerifyBody{checks:{account:true;format:true;guarantee:true;mapping:true};guaranteeDays:number;reason:string;teacherId?:number;revision?:string}

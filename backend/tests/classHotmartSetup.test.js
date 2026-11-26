@@ -1,7 +1,8 @@
 const {randomUUID}=require('node:crypto');
 const {as,createUser}=require('./helpers/fixtures');
 const {packageWorld}=require('./helpers/classPackages');
-const {ClassPackageProviderVerification:Verification,ClassPackageOrder:Order,ClassPackagePurchase:Purchase}=require('../src/models');
+const {ClassPackageProviderVerification:Verification,ClassPackageOrder:Order,ClassPackagePurchase:Purchase,ClassPackageTemplateVersion:Version,AuditLog}=require('../src/models');
+const catalog=require('../src/services/classCatalog');
 const offers=require('../src/services/classOffers');
 const checkout=require('../src/services/classCheckout');
 const provider=require('../src/services/classPackageProvider');
@@ -106,16 +107,18 @@ test('la aprobación usa la cuenta probada y el pago propio se acredita una sola
     version:w.version.version,url:'https://pay.hotmart.com/EXAMPLE?off=NEW',productId:w.version.hotmartProductId
   });
   expect(edited.status).toBe(200);
-  expect((await check(w.teacher)).body.approvedPackageIds).toEqual([]);
+  // La aprobación es por cuenta: el enlace nuevo se vende sin reaprobar y el frontend lo ve aprobado.
+  expect((await check(w.teacher)).body.approvedPackageIds).toEqual([w.template.id]);
   const original={teacherId:w.teacher.id,packageVersion:w.version};
   const updated={teacherId:w.teacher.id,packageVersion:edited.body.current};
   await expect(provider.assertSelling(original)).resolves.toBe(order.hotmartConnectionId);
-  await expect(provider.assertSelling(updated)).rejects.toMatchObject({code:'package_hotmart_mapping_review_required'});
+  await expect(provider.assertSelling(updated)).resolves.toBe(order.hotmartConnectionId);
   const updatedCandidate=(await check(admin,adminPath)).body.candidates.find(c=>c.id===w.teacher.id);
   expect(updatedCandidate.revision).not.toBe(candidate.revision);
-  expect((await approve({...evidence,teacherId:w.teacher.id,revision:updatedCandidate.revision})).status).toBe(200);
-  await expect(provider.assertSelling(updated)).resolves.toBe(order.hotmartConnectionId);
-  await expect(provider.assertSelling(original)).resolves.toBe(order.hotmartConnectionId);
+  expect(updatedCandidate.packages).toEqual([expect.objectContaining({id:w.template.id,approved:true,offerCode:'NEW'})]);
+  // Misma cuenta y misma conexión: reaprobar no corresponde.
+  expect((await approve({...evidence,teacherId:w.teacher.id,revision:updatedCandidate.revision})).status).toBe(409);
+  expect((await approve({...evidence,teacherId:w.teacher.id,revision:updatedCandidate.revision})).body.code).toBe('version_conflict');
 
   const newKey='clave-ficticia-rotada-w22';
   await stage(w.teacher,newKey);
@@ -123,4 +126,63 @@ test('la aprobación usa la cuenta probada y el pago propio se acredita una sola
   await send(ownPath,testEvent,newKey);
   expect((await check(w.teacher)).body.approval).toBe('changed');
   await expect(provider.assertSelling({teacherId:w.teacher.id})).rejects.toMatchObject({code:'package_provider_verification_required'});
+});
+
+test('aprobar una vez la cuenta habilita paquetes vinculados después (oferta y checkout) y el admin los ve marcados',async()=>{
+  const w=await packageWorld();
+  const admin=await createUser('student','w24-gestor');
+  await admin.update({permissions:['class_provider.verify']});
+  const path=webhook((await stage(w.teacher)).body);
+  await send(path,testEvent);
+  process.env.PAYMENTS_FAKE='0';
+  const candidate=(await check(admin,adminPath)).body.candidates.find(c=>c.id===w.teacher.id);
+  expect(candidate.packages).toEqual([expect.objectContaining({id:w.template.id,approved:false})]);
+  expect((await as(admin).post(`${adminPath}/verify`,{...evidence,teacherId:w.teacher.id,revision:candidate.revision})).status).toBe(200);
+  const afterApproval=(await check(admin,adminPath)).body.candidates.find(c=>c.id===w.teacher.id);
+  expect(afterApproval.packages).toEqual([expect.objectContaining({id:w.template.id,approved:true,linkedAfterApproval:false})]);
+
+  // Se vincula un segundo paquete (del catálogo inicial) DESPUÉS de aprobar.
+  const items=await catalog.list(w.teacher);
+  const second=items.find(t=>t.id!==w.template.id&&t.templateKey!==w.template.templateKey);
+  const linked=await as(w.teacher).put(`/api/teacher/class-packages/${second.id}/hotmart`,{
+    version:second.current.version,url:'https://pay.hotmart.com/SEGUNDO1?off=SEG1',productId:'PROD-SEGUNDO'
+  });
+  expect(linked.status).toBe(200);
+  const activated=await catalog.setStatus(w.teacher,second.id,{status:'active',version:linked.body.current.version});
+  expect(activated.status).toBe('active');
+  expect((await check(w.teacher)).body.approvedPackageIds.sort()).toEqual([w.template.id,second.id].sort());
+  // El created_at de MySQL tiene precisión de segundos: se adelanta para no depender del reloj de la prueba.
+  await Version.update({createdAt:new Date(Date.now()+3600000)},{where:{id:linked.body.current.id}});
+  const status=(await check(admin,adminPath)).body.candidates.find(c=>c.id===w.teacher.id);
+  expect(status.packages.find(p=>p.id===second.id)).toMatchObject({approved:true,linkedAfterApproval:true});
+  expect(status.packages.find(p=>p.id===w.template.id)).toMatchObject({approved:true,linkedAfterApproval:false});
+
+  const {offer}=await offers.send(w.teacher,w.conversation.id,{templateVersionId:linked.body.current.id},randomUUID());
+  const start=await as(w.buyer).post(`/api/class-offers/${offer.id}/checkout`,{}).set('Idempotency-Key',randomUUID());
+  expect(start.status).toBe(200);
+  // Sigue siendo posible bloquear: si el docente cambia la clave, nada se vende hasta reaprobar.
+  await stage(w.teacher,'clave-ficticia-rotada-w24');
+  await send(webhook((await check(w.teacher)).body),testEvent,'clave-ficticia-rotada-w24');
+  expect((await check(w.teacher)).body.approval).toBe('changed');
+  await expect(provider.assertSelling({teacherId:w.teacher.id})).rejects.toMatchObject({code:'package_provider_verification_required'});
+  const blocked=await as(w.buyer).post(`/api/class-offers/${offer.id}/checkout`,{}).set('Idempotency-Key',randomUUID());
+  expect(blocked.body.code).toBe('package_provider_verification_required');
+});
+
+test('vincular el enlace de Hotmart deja auditoría con los valores nuevos y anteriores',async()=>{
+  const w=await packageWorld();
+  const linked=await as(w.teacher).put(`/api/teacher/class-packages/${w.template.id}/hotmart`,{
+    version:w.version.version,url:'https://pay.hotmart.com/AUDIT1?off=AUD1',productId:'PROD-AUDIT'
+  });
+  expect(linked.status).toBe(200);
+  const logs=await AuditLog.findAll({where:{action:'class_package.hotmart_linked',entityId:w.template.id}});
+  expect(logs).toHaveLength(1);
+  expect(logs[0].actorId).toBe(w.teacher.id);
+  expect(logs[0].data).toMatchObject({templateId:w.template.id,versionId:linked.body.current.id,productId:'PROD-AUDIT',offerCode:'AUD1',
+    url:'https://pay.hotmart.com/AUDIT1',priceAmount:w.version.priceAmount,currency:w.version.currency,
+    previous:{productId:w.version.hotmartProductId,offerCode:w.version.hotmartOfferCode,url:w.version.hotmartCheckoutUrl}});
+  // Un vínculo rechazado no deja auditoría.
+  expect((await as(w.teacher).put(`/api/teacher/class-packages/${w.template.id}/hotmart`,{
+    version:w.version.version,url:'https://pay.hotmart.com/AUDIT2?off=AUD2',productId:'PROD-AUDIT'})).status).toBe(409);
+  expect(await AuditLog.count({where:{action:'class_package.hotmart_linked',entityId:w.template.id}})).toBe(1);
 });

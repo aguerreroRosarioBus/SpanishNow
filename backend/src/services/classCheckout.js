@@ -33,7 +33,7 @@ async function start(user,id,idempotencyKey,body={}){
     const offer=await buyerOffer(user,id,{transaction,lock:transaction.LOCK.UPDATE});
     // También serializa una clave reutilizada por el mismo comprador entre ofertas/docentes distintos.
     await User.findByPk(user.id,{transaction,lock:transaction.LOCK.UPDATE});
-    const hotmartConnectionId=await require('./classPackageProvider').assertSelling({teacherId:offer.teacherId,packageVersion:offer.snapshot,transaction});
+    const hotmartConnectionId=await require('./classPackageProvider').assertSelling({teacherId:offer.teacherId,transaction});
     const prior=await Order.findOne({where:{buyerId:user.id,idempotencyKey},order:[['id','DESC']],transaction});
     if(prior&&prior.offerId!==offer.id)throw fail(409,'operation_key_conflict');
     // Un intento fallido o vencido no bloquea otro: la misma clave puede abrir un link nuevo mientras la oferta siga vigente.

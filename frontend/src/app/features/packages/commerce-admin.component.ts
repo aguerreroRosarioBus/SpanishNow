@@ -55,6 +55,7 @@ template:`
           <li>
             <strong>{{i18n.locale()==='es'?p.nameEs:p.nameEn}} · {{i18n.formatMoney(p.priceAmount,p.currency)}}</strong>
             @if(p.approved){<span class="notice"> · {{'packages.commerce.admin.packageApproved'|t}}</span>}
+            @if(p.linkedAfterApproval){<span class="notice"> · {{'packages.commerce.admin.linkedAfterApproval'|t}}</span>}
             <p class="notice">{{'packages.commerce.admin.productCodes'|t:{product:p.productId,offer:p.offerCode} }}</p>
             @if(paymentPreview(p.url,p.offerCode);as link){
               <a [href]="link" target="_blank" rel="noopener noreferrer">{{'packages.commerce.openCheckout'|t}}</a>
