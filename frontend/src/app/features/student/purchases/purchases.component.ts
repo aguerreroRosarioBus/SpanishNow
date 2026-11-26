@@ -10,6 +10,9 @@ import { OrderBadge, orderBadge } from '../../../shared/utils/order-status';
 import { ExpectationsViewComponent } from '../../legal/expectations-view/expectations-view.component';
 import { CommercialSnapshot, SnapshotLegalDocument } from '../../legal/legal.model';
 import { snapshotLink } from '../../legal/legal.service';
+import { PackagesService } from '../../packages/packages.service';
+import { ClassPurchase } from '../../packages/packages.model';
+import { purchaseStatusKey, purchaseTone } from '../../packages/purchase-state';
 
 /** «Mis compras»: historial de compras del alumno con link al recibo. */
 @Component({
@@ -24,8 +27,11 @@ export class PurchasesComponent implements OnInit {
   private readonly preferences = inject(UserPreferencesService);
   readonly timeZone = computed(() => this.preferences.preferences()?.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
   private service = inject(SalesService);
+  private packagesApi = inject(PackagesService);
 
   orders = signal<MyOrder[]>([]);
+  /** Paquetes de clases: se pagan aparte de los cursos, pero también son dinero que movió el alumno (D3-DIN-08). */
+  packages = signal<ClassPurchase[]>([]);
   isLoading = signal(true);
   private failure = signal<unknown>(null);
   errorMessage = computed(() => this.failure() ? this.i18n.errorMessage(this.failure(), 'student.purchasesError') : '');
@@ -35,6 +41,7 @@ export class PurchasesComponent implements OnInit {
       next: list => { this.orders.set(list); this.isLoading.set(false); },
       error: error => { this.failure.set(error); this.isLoading.set(false); }
     });
+    this.packagesApi.purchases().subscribe({ next: list => this.packages.set(list), error: () => this.packages.set([]) });
   }
 
   money(cents: number, currency: string): string { return this.i18n.formatMoney(cents, currency); }
@@ -43,5 +50,8 @@ export class PurchasesComponent implements OnInit {
   docTitle(d: SnapshotLegalDocument): string { return d.content[this.i18n.locale()].title; }
   docLink = snapshotLink;
   badge(o: MyOrder): OrderBadge { return orderBadge(o.status, o.refundedAmount); }
+  packageName(p: ClassPurchase): string { return this.i18n.locale() === 'es' ? p.snapshot.nameEs : p.snapshot.nameEn; }
+  packageState(p: ClassPurchase): string { return this.i18n.t(purchaseStatusKey(p)); }
+  packageTone(p: ClassPurchase): string { return purchaseTone(p); }
   badgeLabel(o: MyOrder): string { return this.i18n.t('student.order.' + this.badge(o)); }
 }

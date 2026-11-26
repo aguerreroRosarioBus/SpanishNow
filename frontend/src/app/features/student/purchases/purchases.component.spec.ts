@@ -5,7 +5,9 @@ import { of } from 'rxjs';
 import { PurchasesComponent } from './purchases.component';
 import { SalesService } from '../../../core/services/sales.service';
 import { UserPreferencesService } from '../../../core/services/user-preferences.service';
-import { I18nService, LOCALE_STORAGE_KEY } from '../../../core/i18n/i18n.service';
+import { PackagesService } from '../../packages/packages.service';
+import { PACKAGE_MESSAGES } from '../../packages/packages.i18n';
+import { I18N_CATALOGS, I18nService, LOCALE_STORAGE_KEY } from '../../../core/i18n/i18n.service';
 
 describe('W01: compras en ambos idiomas', () => {
   afterEach(() => localStorage.removeItem(LOCALE_STORAGE_KEY));
@@ -39,5 +41,29 @@ describe('W01: compras en ambos idiomas', () => {
     expect(fixture.componentInstance.orders()[0].commercial).toBe(commercial);
     expect(row.isConnected).toBe(true);
     expect(fixture.componentInstance.orders()[0]).toBe(order);
+  });
+});
+
+describe('W20: «Mis compras» incluye los paquetes de clases (D3-DIN-08)', () => {
+  it('lista el paquete con importe pagado y devuelto, su estado y el enlace; sin cursos tampoco muestra «sin compras»', () => {
+    const pack = { id: 31, offerId: 5, paidAt: '2026-11-25T21:00:00.000Z', status: 'cancelled', paid: { amount: 5000, currency: 'USD' },
+      refund: { status: 'confirmed', amount: 5000, currency: 'USD', refundedAmount: 5000 }, snapshot: { nameEs: 'Cuatro clases', nameEn: 'Four classes' } };
+    TestBed.configureTestingModule({ providers: [provideRouter([]),
+      { provide: SalesService, useValue: { myOrders: () => of([]) } },
+      { provide: I18N_CATALOGS, multi: true, useValue: PACKAGE_MESSAGES },
+      { provide: PackagesService, useValue: { purchases: () => of([pack]) } },
+      { provide: UserPreferencesService, useValue: { preferences: signal({ timeZone: 'America/Argentina/Cordoba' }) } }
+    ] });
+    TestBed.inject(I18nService).setLocale('es');
+    const fixture = TestBed.createComponent(PurchasesComponent);
+    fixture.detectChanges();
+    const text = (fixture.nativeElement.textContent as string).replace(/\u00a0/g, ' ');
+    expect(text).toContain('Paquetes de clases');
+    expect(text).toContain('Cuatro clases');
+    expect(text).toContain('USD 50,00');
+    expect(text).toContain('Reembolsado: USD 50,00');
+    expect(text).toContain('Reembolsado');
+    expect(text).not.toContain('Todavía no tienes compras');
+    expect(fixture.nativeElement.querySelector('a[href="/class-packages/31"]')).toBeTruthy();
   });
 });

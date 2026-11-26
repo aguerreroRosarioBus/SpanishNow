@@ -15,6 +15,7 @@ const refunds=require('../services/classRefunds');
 router.get('/me/class-packages/:id/refund-preview',...secure,wrap(async(req,res)=>res.json(await refunds.ownPreview(req.user,req.params.id,req.query.type))));
 router.post('/me/class-packages/:id/refund-requests',...secure,wrap(async(req,res)=>res.json(await refunds.request(req.user,req.params.id,req.body,req.get('Idempotency-Key')))));
 router.get('/admin/class-refund-requests',...secure,requirePermission('class_payments.review'),wrap(async(req,res)=>res.json(await refunds.adminList())));
+router.post('/admin/class-refund-requests/:id/reverse',...secure,requirePermission('class_payments.review'),wrap(async(req,res)=>res.json(await refunds.reverse(req.user,req.params.id,req.body))));
 router.post('/admin/class-refund-requests/:id/review',...secure,requirePermission('class_payments.review'),wrap(async(req,res)=>res.json(await refunds.review(req.user,req.params.id,req.body))));
 router.post('/admin/class-purchases/:id/refund-deadline',...secure,requirePermission('class_payments.review'),wrap(async(req,res)=>res.json(await refunds.verifyDeadline(req.user,req.params.id,req.body))));
 router.post('/admin/class-purchases/:id/adjustments',...secure,requirePermission('class_credits.adjust'),wrap(async(req,res)=>res.json(await purchases.adjust(req.user,req.params.id,req.body,req.get('Idempotency-Key')))));
@@ -22,6 +23,10 @@ router.get('/admin/class-purchases/:id',...secure,(req,res,next)=>['class_credit
   if(!require('../services/legalDocuments').validId(req.params.id))throw fail(404,'not_found');
   const p=await require('../models').ClassPackagePurchase.findByPk(req.params.id);
   const {hasPermission}=require('../config/permissions');
-  if(!p||!(hasPermission(req.user,'class_payments.review')||purchases.canAdjust(req.user,p)))throw fail(404,'not_found');res.json(purchases.present(p));
+  if(!p||!(hasPermission(req.user,'class_payments.review')||purchases.canAdjust(req.user,p)))throw fail(404,'not_found');
+  const models=require('../models');const buyer=await models.User.findByPk(p.buyerId,{attributes:['name']});
+  // Últimos ajustes manuales: quien ajusta ve qué se sumó o restó antes de volver a hacerlo (D3-DIN-09).
+  const adjustments=(await models.ClassCreditLedger.findAll({where:{purchaseId:p.id,operation:'adjust'},order:[['id','DESC']],limit:10})).map(e=>({id:Number(e.id),units:e.units,direction:e.fromBucket==='none'?'add':e.toBucket==='none'?'remove':'restore',reason:e.reason,createdAt:e.createdAt}));
+  const [view]=await purchases.decorate([purchases.present(p)]);res.json({...view,buyerName:buyer?.name??null,adjustments});
 }));
 module.exports=router;

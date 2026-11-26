@@ -12,6 +12,7 @@ import { RefundRequestComponent } from './refund-request.component';
 import { ClassPurchase } from './packages.model';
 import { presentInstant } from '../../core/time/class-time';
 import { PackageOrientationComponent } from './package-orientation.component';
+import { isClosedPurchase, purchaseStatusKey, purchaseTone, refundKind } from './purchase-state';
 @Component({selector:'app-class-purchases',standalone:true,imports:[FormsModule,RouterLink,TranslatePipe,RefundRequestComponent,PackageOrientationComponent],styleUrl:'./purchases.component.scss',template:`
 <div class="page-container"><h1>{{ 'packages.purchase.title' | t }}</h1>
 @if(teacher){<app-package-orientation section="purchases" />}
@@ -28,11 +29,13 @@ import { PackageOrientationComponent } from './package-orientation.component';
         @if(teacher && p.buyerName){<p class="buyer">{{p.buyerName}}</p>}
         @if(!teacher && p.snapshot.teacherName){<p class="muted">{{'packages.offer.teacher'|t:{name:p.snapshot.teacherName} }}</p>}
       </div>
-      <span class="badge-status badge-status--dot status-{{tone(p.status)}}">{{('packages.purchase.status.'+p.status)|t}}</span>
+      <span class="badge-status badge-status--dot status-{{stateTone(p)}}">{{stateKey(p)|t}}</span>
+      @if(refundKind(p)==='requested'){<span class="badge-status badge-status--dot status-warning">{{'packages.purchase.refund.requested'|t}}</span>}
     </div>
-    <div class="purchase-meta"><p class="balance"><strong class="balance-num">{{p.balance.available}}</strong> {{'packages.purchase.availableOf'|t:{count:p.balance.available,granted:p.balance.granted} }}</p>
+    <div class="purchase-meta">@if(closedNote(p);as note){<p class="balance-closed">{{note}}</p>}@else{<p class="balance"><strong class="balance-num">{{p.balance.available}}</strong> {{'packages.purchase.availableOf'|t:{count:p.balance.available,granted:p.balance.granted} }}</p>
+    @if(adjustNote(p);as adjusted){<p class="muted">{{adjusted}}</p>}}
     @if(others(p);as extra){<p class="muted">{{extra}}</p>}
-    @if(expiry(p);as e){
+    @if(!closedNote(p)&&expiry(p);as e){
       <p class="expiry">{{(p.status==='expired'?'packages.purchase.expiredOn':'packages.purchase.expires')|t:{day:e.day} }}</p>
       <p class="muted">{{'packages.purchase.expiryExact'|t:{time:e.time,zone:e.timeZone,offset:e.offsetLabel} }}</p>
     }
@@ -60,7 +63,7 @@ import { PackageOrientationComponent } from './package-orientation.component';
       <button type="button" class="btn btn-danger btn-sm mt-2" [disabled]="busy()||!reason().trim()" (click)="change(p,'cancel')">{{'packages.purchase.confirmCancel'|t}}</button></div>
     }
     @if(id && !teacher && p.buyerId===auth.currentUser()?.id){<app-refund-request [purchaseId]="p.id" [hours]="p.snapshot.policy.refundWindowHours" [mode]="p.snapshot.policy.refundMode" />}
-    @if(p.ledger){<details class="card-details" open><summary>{{'packages.purchase.history'|t}}</summary><ol class="ledger">@for(entry of p.ledger;track entry.id){<li>{{('packages.ledger.'+entry.operation)|t}}: {{entry.units}} · {{instant(entry.createdAt)}} @if(entry.reason){<span>— {{entry.reason}}</span>}</li>}</ol></details>}
+    @if(p.ledger){<details class="card-details" open><summary>{{'packages.purchase.history'|t}}</summary><ol class="ledger">@for(entry of p.ledger;track entry.id){<li>{{ledgerText(entry)}} · {{instant(entry.createdAt)}} @if(entry.reason){<span>— {{entry.reason}}</span>}</li>}</ol></details>}
   </article>
 }@empty{@if(!busy()){<p role="status">{{(items().length?'refine.noResults':'packages.purchase.empty')|t}}</p>}}
 </div>`})
@@ -81,7 +84,23 @@ export class PurchasesComponent implements OnInit{
   ngOnInit(){this.destroy.onDestroy(()=>this.requests.unsubscribe());this.route.paramMap.pipe(takeUntilDestroyed(this.destroy)).subscribe(p=>{this.requests.unsubscribe();this.requests=new Subscription();this.id=Number(p.get('id'))||0;this.items.set([]);this.cancelId.set(0);this.reason.set('');this.read();});}
   read(){this.busy.set(true);this.failure.set(null);if(this.id)this.watch(this.api.purchase(this.id),p=>{this.items.set([p]);this.busy.set(false);});else this.watch(this.api.purchases(this.teacher),p=>{this.items.set(p);this.busy.set(false);});}
   tone(status:string){return status==='active'?'success':status==='paused'?'warning':status==='cancelled'?'danger':'neutral';}
-  inactive(p:ClassPurchase){return p.status==='expired'||p.status==='cancelled';}
+  inactive(p:ClassPurchase){return p.status==='expired'||isClosedPurchase(p);}
+  readonly refundKind=refundKind;
+  stateKey(p:ClassPurchase){return purchaseStatusKey(p);}
+  stateTone(p:ClassPurchase){return purchaseTone(p);}
+  /** Compra cerrada (cancelada o con reembolso aprobado o hecho): se explica en una frase en lugar de mostrar saldo y vencimiento como si valieran (D3-DIN-04). */
+  closedNote(p:ClassPurchase){
+    if(!isClosedPurchase(p))return '';const kind=refundKind(p);
+    if(kind==='refunded')return this.i18n.t('packages.purchase.closedRefunded',{amount:this.i18n.formatMoney(p.refund?.refundedAmount||p.refund?.amount||0,p.refund?.currency||'USD')});
+    if(kind==='processing')return this.i18n.t('packages.purchase.closedProcessing',{amount:this.i18n.formatMoney(p.refund?.amount||0,p.refund?.currency||'USD')});
+    return this.i18n.t('packages.purchase.closedCancelled');
+  }
+  /** Créditos sumados o restados a mano: se muestran aparte de lo comprado (D3-DIN-09). */
+  adjustNote(p:ClassPurchase){const n=p.adjustedUnits||0;return n>0?this.i18n.t('packages.purchase.adjustedUp',{count:n}):n<0?this.i18n.t('packages.purchase.adjustedDown',{count:-n}):'';}
+  ledgerText(e:NonNullable<ClassPurchase['ledger']>[number]){
+    if(e.operation==='adjust'){const kind=e.fromBucket==='none'?'add':e.toBucket==='none'?'remove':'restore';return this.i18n.t('packages.ledger.adjust_'+kind,{units:e.units});}
+    return this.i18n.t('packages.ledger.'+e.operation)+': '+e.units;
+  }
   /** Reservadas, utilizadas, vencidas y reembolsadas solo cuando son distintas de 0. */
   others(p:ClassPurchase){return this.extras.filter(b=>p.balance[b]>0).map(b=>this.i18n.t('packages.balance.'+b)+' '+p.balance[b]).join(' · ');}
   /** Instante del vencimiento: fecha compacta y, aparte, hora exacta con zona IANA y desplazamiento (TZ-07). */

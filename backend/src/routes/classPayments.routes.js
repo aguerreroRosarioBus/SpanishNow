@@ -29,7 +29,17 @@ const JOB_TOPICS=['payment.refund','review.class_payment','review.package_refund
 router.get('/admin/class-payment-jobs',...secure,requirePermission('class_payments.review'),wrap(async(req,res)=>{
   const jobs=await OutboxJob.findAll({where:{topic:JOB_TOPICS,[require('sequelize').Op.or]:[{status:['pending','running','failed']},{topic:{[require('sequelize').Op.like]:'review.%'},status:'done'}]},order:[['id','DESC']],limit:200});
   const closed=await AuditLog.findAll({where:{action:'payment.attention_resolved',entityType:'outbox_jobs',entityId:jobs.map(j=>Number(j.id))},attributes:['entityId']});
-  res.json(jobs.filter(j=>!closed.some(a=>a.entityId===Number(j.id))).map(j=>({id:Number(j.id),topic:j.topic,aggregateId:j.aggregateId,purchaseIds:j.payload?.purchaseIds||[],status:j.topic.startsWith('review.')&&j.status==='done'?'attention':j.status,attempts:j.attempts,lastError:j.lastError,runAt:j.runAt})));
+  // `aggregateId` es una compra o una orden según `aggregateType`; la pantalla debe nombrar cada cosa por lo que es (D3-DIN-06).
+  const open=jobs.filter(j=>!closed.some(a=>a.entityId===Number(j.id)));
+  const orderIds=[...new Set(open.filter(j=>j.aggregateType==='class_package_orders').map(j=>Number(j.aggregateId)))];
+  const purchaseIdsOf=j=>j.aggregateType==='class_package_purchases'?[Number(j.aggregateId)]:(j.payload?.purchaseIds||[]).map(Number);
+  const wantedPurchases=[...new Set(open.flatMap(purchaseIdsOf))];
+  const purchases=await Purchase.findAll({where:{[require('sequelize').Op.or]:[{id:wantedPurchases},{orderId:orderIds}]},attributes:['id','orderId','buyerId']});
+  const buyers=new Map((await require('../models').User.findAll({where:{id:[...new Set(purchases.map(p=>p.buyerId))]},attributes:['id','name']})).map(u=>[u.id,u.name]));
+  res.json(open.map(j=>{
+    const related=j.aggregateType==='class_package_orders'?purchases.filter(p=>Number(p.orderId)===Number(j.aggregateId)):purchases.filter(p=>purchaseIdsOf(j).includes(Number(p.id)));
+    return {id:Number(j.id),topic:j.topic,aggregateType:j.aggregateType,aggregateId:j.aggregateId,orderId:j.aggregateType==='class_package_orders'?Number(j.aggregateId):null,purchaseIds:related.map(p=>Number(p.id)),buyerNames:[...new Set(related.map(p=>buyers.get(p.buyerId)).filter(Boolean))],status:j.topic.startsWith('review.')&&j.status==='done'?'attention':j.status,attempts:j.attempts,lastError:j.lastError,runAt:j.runAt};
+  }));
 }));
 router.post('/admin/class-payment-jobs/:id/acknowledge',...secure,requirePermission('class_payments.review'),wrap(async(req,res)=>{
   if(!require('../services/legalDocuments').validId(req.params.id)||!require('../services/legalDocuments').only(req.body,['reason'])||typeof req.body.reason!=='string'||!req.body.reason.trim()||req.body.reason.length>500)throw fail(400,'validation_failed');
@@ -48,7 +58,7 @@ router.post('/admin/class-payment-jobs/:id/retry',...secure,requirePermission('c
 router.post('/admin/class-payments/:orderId/fake-refund-complete',...secure,requirePermission('class_payments.review'),wrap(async(req,res)=>{
   if(!require('../services/legalDocuments').validId(req.params.orderId))throw fail(404,'not_found');
   const config=require('../config/payments');if(!config.fake())throw fail(404,'not_found');config.assertSafe();
-  const job=await OutboxJob.findOne({where:{topic:'payment.refund',aggregateId:req.params.orderId}});if(!job)throw fail(404,'not_found');
+  const job=await OutboxJob.findOne({where:{topic:'payment.refund',aggregateId:req.params.orderId,status:{[require('sequelize').Op.ne]:'cancelled'}},order:[['id','DESC']]});if(!job)throw fail(404,'not_found');
   await review.refund(job);res.json({confirmed:true});
 }));
 module.exports=router;

@@ -17,8 +17,8 @@ import {presentInstant} from '../../core/time/class-time';
   <p class="muted">{{'packages.refund.deadline'|t:{time:when(v.deadline),kind:('packages.refund.'+(v.deadlineVerified?'verified':'calculated')|t)} }}</p>
   <p class="muted">{{'packages.refund.breakdown'|t:{available:v.available,reserved:v.reserved,consumed:v.consumed} }}</p>
   @if(v.reservationsPending){<p class="muted">{{'packages.refund.reservations'|t}}</p>}
-  <p class="muted">{{'packages.refund.notReturned'|t}}</p>
-  @for(r of v.requests;track r.id){<article class="request"><div class="request-head"><strong>#{{r.id}}</strong><span class="badge-status badge-status--dot status-{{tone(r.status)}}">{{('packages.refund.status.'+r.status)|t}}</span></div><p>{{r.reason}}</p>@for(u of r.updates;track $index){<p class="muted">{{when(u.createdAt)}} · {{('packages.refund.status.'+u.status)|t}} · {{u.reason}}</p>}</article>}
+  @if(v.orderStatus!=='refunded'){<p class="muted">{{'packages.refund.notReturned'|t}}</p>}
+  @for(r of v.requests;track r.id){<article class="request"><div class="request-head"><strong>#{{r.id}}</strong><span class="badge-status badge-status--dot status-{{tone(r.status)}}">{{('packages.refund.status.'+r.status)|t}}</span></div><p>{{r.reason}}</p>@for(u of r.updates;track $index){<p class="muted">{{when(u.createdAt)}} · {{('packages.refund.status.'+u.status)|t}}@if(u.message){ · {{u.message}}}</p>}</article>}
   @if(v.orderStatus==='refunded'){<p role="status">{{'packages.payment.refunded'|t}} {{i18n.formatMoney(v.refundedAmount,v.currency)}}</p>}
   @else if(!v.requests.length){
     <div class="refund-form">
@@ -35,7 +35,7 @@ export class RefundRequestComponent implements OnChanges{
   purchaseId=input.required<number>();hours=input.required<number>();mode=input<string>();readonly i18n=inject(I18nService);readonly fmt=inject(ChatFormat);private api=inject(PackagesService);private destroy=inject(DestroyRef);
   view=signal<RefundPreview|null>(null);type=signal('voluntary');reason=signal('');confirmed=signal(false);busy=signal(false);private key=crypto.randomUUID();private failure=signal<unknown>(null);error=computed(()=>this.failure()?this.api.error(this.failure()):'');
   readonly types=['voluntary','service_unavailable','group_incomplete','other'];
-  tone(status:string){return status==='confirmed'?'success':['rejected','denied','failed'].includes(status)?'danger':'warning';}
+  tone(status:string){return status==='confirmed'||status==='reverted'?'success':['rejected','denied','failed'].includes(status)?'danger':'warning';}
   /** Fecha compacta con hora, zona IANA y desplazamiento (TZ-07); sin formateo manual. */
   when(value:string){try{const t=presentInstant(value,this.fmt.timeZone(),this.i18n.locale());return `${t.day} ${t.time} · ${t.timeZone} · ${t.offsetLabel}`;}catch{return '';}}
   ngOnChanges(){this.load();}

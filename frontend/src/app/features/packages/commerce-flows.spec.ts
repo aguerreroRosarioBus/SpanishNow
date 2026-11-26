@@ -39,7 +39,8 @@ describe('W05 revisión comercial',()=>{
   const approve=[...f.nativeElement.querySelectorAll('button')].find((b:any)=>b.textContent.includes(TestBed.inject(I18nService).t('packages.admin.approve'))) as HTMLButtonElement;expect(approve.disabled).toBe(true);
   c.reviewRefund(preview,3,'needs_information');expect(reviewRefund).not.toHaveBeenCalled();
   c.confirmOperation();expect(reviewRefund).not.toHaveBeenCalled();c.reason='Revisión ficticia';c.confirmOperation();expect(reviewRefund).not.toHaveBeenCalled();
-  c.confirmed=true;c.confirmOperation();expect(reviewRefund.mock.calls[0]).toEqual([3,{action:'needs_information',reason:'Revisión ficticia',quote:'server-quote'}]);
+  c.confirmed=true;c.confirmOperation();expect(reviewRefund).not.toHaveBeenCalled(); // pedir información exige el mensaje al comprador (D3-DIN-07)
+  c.buyerMessage='¿Puedes contarnos qué ocurrió?';c.confirmOperation();expect(reviewRefund.mock.calls[0]).toEqual([3,{action:'needs_information',reason:'Revisión ficticia',quote:'server-quote',buyerMessage:'¿Puedes contarnos qué ocurrió?'}]);
   expect(c.pending()).toBeNull();expect(c.confirmed).toBe(false);
 
  });
@@ -91,4 +92,38 @@ describe('W05 proveedor verificado y órdenes congeladas',()=>{
    c.cancelOperation();expect(c.pending()).toBeNull();expect(api.resolvePayment).not.toHaveBeenCalled();
  });
 
+});
+describe('W20 panel comercial: ajuste, fecha y bandeja',()=>{
+ function make(){TestBed.configureTestingModule({imports:[CommerceAdminComponent],providers:[...providers,{provide:AuthService,useValue:{currentUser:()=>null,hasPermission:()=>true}},{provide:PackagesService,useValue:{providerState:()=>throwError(()=>({status:403})),refundRequests:()=>of([]),paymentList:()=>of({items:[],events:[]}),paymentJobs:()=>of([]),teachers:()=>of([]),policies:()=>of([]),error:()=>''}}]});const f=TestBed.createComponent(CommerceAdminComponent);f.detectChanges();return f.componentInstance;}
+ it('el ajuste admite enteros de 1 a 50 (D3-DIN-01)',()=>{
+  const c=make();for(const [n,ok] of [[1,true],[50,true],[51,false],[0,false],[-3,false],[1.5,false],[2147483647,false]] as const){c.units=n;expect(c.unitsValid()).toBe(ok);}
+ });
+ it('la fecha de garantía se elige con selector y viaja como instante; ninguna etiqueta habla de ISO (D3-DIN-10)',()=>{
+  const c=make();expect(c.deadlineChoice().value).toBeNull();
+  c.deadline='2026-11-30T14:00';expect(c.deadlineChoice().value?.startsAt).toMatch(/^2026-11-30T\d\d:00:00\.000Z$|^2026-12-01T\d\d:00:00\.000Z$/);
+  for(const l of ['es','en'] as const)for(const [k,v] of Object.entries(PACKAGE_MESSAGES[l]))if(k.startsWith('packages.admin.')||k.startsWith('packages.group.'))expect(typeof v==='string'?v:'').not.toMatch(/\bISO\b/);
+ });
+ it('la bandeja distingue compra de orden y no muestra nombres de tarea (D3-DIN-06)',()=>{
+  const c=make();const job={id:13,topic:'review.package_refund',aggregateType:'class_package_purchases',aggregateId:31,orderId:null,purchaseIds:[31],buyerNames:['Lucas'],status:'attention',attempts:0,lastError:null,runAt:''};
+  const i18n=TestBed.inject(I18nService);i18n.setLocale('es');
+  expect(c.jobTitle(job)).toBe('Trámite del proveedor para la compra #31');expect(c.jobTitle({...job,aggregateType:'class_package_orders',aggregateId:33,orderId:33})).toBe('Trámite del proveedor para la orden #33');
+  expect(c.jobTopic('review.package_refund')).toBe('Solicitud de reembolso para revisar');expect(c.jobTopic('review.package_refund')).not.toContain('review.');
+ });
+ it('la solicitud nombra a comprador y docente y avisa que aprobar con clases usadas devuelve el importe completo (D3-DIN-05, D3-DIN-06)',()=>{
+  TestBed.configureTestingModule({imports:[CommerceAdminComponent],providers:[...providers,{provide:AuthService,useValue:{currentUser:()=>null,hasPermission:(k:string)=>k==='class_payments.review'}},{provide:PackagesService,useValue:{providerState:()=>throwError(()=>({status:403})),refundRequests:()=>of([{...preview,purchaseId:2,consumed:1,available:3,buyerName:'Oliver Brooks',teacherName:'Andres',classification:'individual_review',requests:[{id:23,type:'voluntary',classification:'individual_review',reason:'Ficticio',createdAt:'2026-11-25T10:00:00Z',amount:9000,currency:'USD',status:'requested',updates:[{reason:'Nota interna',message:'Mensaje al comprador',status:'needs_information',createdAt:'2026-11-25T11:00:00Z'}]}]}]),paymentList:()=>of({items:[],events:[]}),paymentJobs:()=>of([]),error:()=>''}}]});
+  TestBed.inject(I18nService).setLocale('es');
+  const f=TestBed.createComponent(CommerceAdminComponent);f.detectChanges();const text=(f.nativeElement.textContent as string).replace(/\u00a0/g,' ');
+  expect(text).toContain('Oliver Brooks · Compra #2');expect(text).toContain('Docente: Andres');expect(text).not.toContain('#23');
+  expect(text).toContain('Ya se dieron 1 clase(s)');expect(text).toContain('devuelve el importe completo (USD 90,00)');
+  expect(text).toContain('Mensaje al comprador');
+ });
+ it('una aprobación en trámite se puede revertir con motivo y mensaje obligatorio al comprador (D3-DIN-02)',()=>{
+  const reverseRefund=vi.fn((..._args:unknown[])=>of(preview));
+  TestBed.configureTestingModule({imports:[CommerceAdminComponent],providers:[...providers,{provide:AuthService,useValue:{currentUser:()=>null,hasPermission:(k:string)=>k==='class_payments.review'}},{provide:PackagesService,useValue:{providerState:()=>throwError(()=>({status:403})),refundRequests:()=>of([{...preview,requests:[{id:7,type:'voluntary',classification:'standard_full_unused',reason:'Ficticio',createdAt:'2026-11-25T10:00:00Z',amount:9000,currency:'USD',status:'queued',updates:[]}]},{...preview,purchaseId:6,requests:[{id:8,type:'voluntary',classification:'standard_full_unused',reason:'Ficticio',createdAt:'2026-11-25T10:00:00Z',amount:9000,currency:'USD',status:'requested',updates:[]}]}]),paymentList:()=>of({items:[],events:[]}),paymentJobs:()=>of([]),reverseRefund,error:()=>''}}]});
+  const i18n=TestBed.inject(I18nService);i18n.setLocale('es');
+  const f=TestBed.createComponent(CommerceAdminComponent);f.detectChanges();const c=f.componentInstance;
+  const buttons=[...f.nativeElement.querySelectorAll('button')].filter((b:any)=>b.textContent.includes('Revertir aprobación'));expect(buttons).toHaveLength(1); // solo en la aprobada, no en la solicitada
+  c.reverseRefund(preview,7);c.confirmed=true;c.reason='Nota interna';c.confirmOperation();expect(reverseRefund).not.toHaveBeenCalled();
+  c.buyerMessage='Seguimos con tu paquete.';c.confirmOperation();expect(reverseRefund.mock.calls[0]).toEqual([7,{reason:'Nota interna',quote:'server-quote',buyerMessage:'Seguimos con tu paquete.'}]);
+ });
 });

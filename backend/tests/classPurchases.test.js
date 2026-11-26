@@ -72,3 +72,35 @@ test('P2-3: class_credits.adjust solo alcanza compras propias; otro docente 404,
   await other.update({permissions:['class_credits.adjust','class_credits.adjust_any']});
   expect((await as(other).post(url,body).set('Idempotency-Key',randomUUID())).status).toBe(200);
 });
+test('D3-DIN-01: un ajuste no supera el tope y un valor desbordado no llega a la base',async()=>{
+  const w=await paid();const admin=await createUser('student','credits-cap');await admin.update({permissions:['class_credits.adjust','class_credits.adjust_any']});const url=`/api/admin/class-purchases/${w.p.id}/adjustments`;
+  const body={units:purchases.MAX_ADJUST_UNITS+1,direction:'add',reason:'Corrección ficticia'};
+  const high=await as(admin).post(url,body).set('Idempotency-Key',randomUUID());expect(high.status).toBe(400);expect(high.body.code).toBe('adjust_units_too_high');expect(high.body.params).toEqual({max:purchases.MAX_ADJUST_UNITS});
+  expect((await as(admin).post(url,{...body,units:2147483647}).set('Idempotency-Key',randomUUID())).body.code).toBe('adjust_units_too_high');
+  expect((await as(admin).post(url,{...body,units:99999999999}).set('Idempotency-Key',randomUUID())).body.code).toBe('adjust_units_too_high');
+  expect((await as(admin).post(url,{...body,units:purchases.MAX_ADJUST_UNITS}).set('Idempotency-Key',randomUUID())).status).toBe(200);
+  expect(await Ledger.count({where:{purchaseId:w.p.id,operation:'adjust'}})).toBe(1);
+});
+test('D3-DIN-03: no se suman créditos a una compra cancelada, pausada o vencida; restar sigue permitido',async()=>{
+  const w=await paid();const admin=await createUser('student','credits-state');await admin.update({permissions:['class_credits.adjust','class_credits.adjust_any']});const url=`/api/admin/class-purchases/${w.p.id}/adjustments`;
+  const add=()=>as(admin).post(url,{units:1,direction:'add',reason:'Corrección ficticia'}).set('Idempotency-Key',randomUUID());
+  for(const status of ['paused','cancelled','expired']){
+    await w.p.reload();await w.p.update({status});const r=await add();expect([status,r.status,r.body.code]).toEqual([status,409,'package_not_active']);
+  }
+  expect(await Ledger.count({where:{purchaseId:w.p.id,operation:'adjust'}})).toBe(0);
+  await w.p.reload();await w.p.update({status:'paused'});
+  const remove=await as(admin).post(url,{units:1,direction:'remove',reason:'Corrección ficticia'}).set('Idempotency-Key',randomUUID());expect(remove.status).toBe(200);expect(remove.body.balance.available).toBe(3);
+  await w.p.reload();await w.p.update({status:'active'});expect((await add()).status).toBe(200);
+});
+test('D3-DIN-04/09: la compra lleva el saldo ajustado y el estado del reembolso, sin motivos internos',async()=>{
+  const w=await paid();const admin=await createUser('student','credits-view');await admin.update({permissions:['class_credits.adjust','class_credits.adjust_any','class_payments.review']});const url=`/api/admin/class-purchases/${w.p.id}/adjustments`;
+  expect((await as(admin).post(url,{units:2,direction:'add',reason:'Nota interna de ajuste'}).set('Idempotency-Key',randomUUID())).status).toBe(200);
+  expect((await as(admin).post(url,{units:1,direction:'remove',reason:'Otra nota interna'}).set('Idempotency-Key',randomUUID())).status).toBe(200);
+  const own=(await as(w.buyer).get('/api/me/class-packages')).body.find(p=>p.id===w.p.id);expect(own).toMatchObject({adjustedUnits:1,refund:null,balance:{granted:5,available:5}});
+  const detail=(await as(w.buyer).get(`/api/me/class-packages/${w.p.id}`)).body;expect(detail.adjustedUnits).toBe(1);expect(detail.ledger.filter(e=>e.operation==='adjust').map(e=>[e.fromBucket,e.toBucket])).toEqual([['none','available'],['available','none']]);expect(JSON.stringify(detail)).not.toContain('Nota interna de ajuste');expect(detail.ledger.filter(e=>e.operation==='adjust').every(e=>e.reason===null&&e.actorId===null)).toBe(true);
+  const adminView=(await as(admin).get(`/api/admin/class-purchases/${w.p.id}`)).body;expect(adminView).toMatchObject({buyerName:w.buyer.name,status:'active'});expect(adminView.adjustments.map(a=>[a.direction,a.units])).toEqual([['remove',1],['add',2]]);
+  const refunds=require('../src/services/classRefunds');const v=await refunds.ownPreview(w.buyer,w.p.id);
+  const sent=await as(w.buyer).post(`${url.replace('/admin/class-purchases/','/me/class-packages/').replace('/adjustments','')}/refund-requests`,{version:v.version,quote:v.quote,type:'voluntary',reason:'Solicitud ficticia'}).set('Idempotency-Key',randomUUID());expect(sent.status).toBe(200);
+  expect((await as(w.buyer).get('/api/me/class-packages')).body.find(p=>p.id===w.p.id).refund).toMatchObject({status:'requested',amount:9000,currency:'USD'});
+  expect((await as(w.teacher).get(`/api/teacher/class-purchases?studentId=${w.buyer.id}`)).body.find(p=>p.id===w.p.id).refund.status).toBe('requested');
+});

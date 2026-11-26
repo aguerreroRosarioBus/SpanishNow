@@ -8,6 +8,7 @@ import {I18nService} from '../../core/i18n/i18n.service';
 import {AuthService} from '../../core/services/auth.service';
 import {PermissionNoticeComponent} from '../../shared/components/permission-notice/permission-notice.component';
 import {ChatFormat} from '../chat/chat-format';
+import {localTimeChoice} from '../../shared/utils/local-time-choice';
 import {PackagesService} from './packages.service';
 import {ClassOrder,ClassPurchase,ClassSettings,RefundPreview,PaymentJob,ClassProviderState,isFrozenOrder} from './packages.model';
 @Component({selector:'app-commerce-admin',standalone:true,imports:[FormsModule,TranslatePipe,ModalFocusDirective,PermissionNoticeComponent],
@@ -75,16 +76,19 @@ template:`
   <h2 id="adminProceduresTitle" class="block-title">{{'packages.admin.proceduresTitle'|t}}</h2>
   <h3 class="sub-title">{{'packages.refund.title'|t}}</h3>
   @for(v of refunds();track v.purchaseId){@for(r of v.requests;track r.id){<article class="item">
-    <div class="item-head"><h4>#{{r.id}} · {{'packages.admin.purchase'|t}} #{{v.purchaseId}}</h4></div>
+    <div class="item-head"><h4>{{'packages.admin.refundTitle'|t:{buyer:v.buyerName||('packages.admin.purchase'|t),purchase:v.purchaseId} }}</h4></div>
+    @if(v.teacherName){<p class="notice">{{'packages.admin.refundTeacher'|t:{teacher:v.teacherName} }}</p>}
     <p>{{'packages.refund.amount'|t:{amount:i18n.formatMoney(v.amount,v.currency)} }}</p><p>{{('packages.refund.'+v.classification)|t}}</p>
     <p>{{'packages.refund.deadline'|t:{time:i18n.formatInstant(v.deadline,fmt.timeZone()),kind:('packages.refund.'+(v.deadlineVerified?'verified':'calculated')|t)} }}</p>
     <p class="notice">{{'packages.refund.breakdown'|t:{available:v.available,reserved:v.reserved,consumed:v.consumed} }}</p>
     <p>{{('packages.refund.type.'+r.type)|t}}: {{r.reason}} · {{('packages.refund.status.'+r.status)|t}}</p>
-    @for(u of r.updates;track $index){<p class="notice">{{i18n.formatInstant(u.createdAt,fmt.timeZone())}} · {{('packages.refund.status.'+u.status)|t}} · {{u.reason}}</p>}
+    @for(u of r.updates;track $index){<p class="notice">{{i18n.formatInstant(u.createdAt,fmt.timeZone())}} · {{('packages.refund.status.'+u.status)|t}} · {{u.reason}}@if(u.message){<span> · {{'packages.admin.buyerMessage'|t}}: {{u.message}}</span>}</p>}
+    @if(v.consumed>0&&r.status!=='confirmed'){<p class="alert alert-warning" role="note">{{'packages.admin.approveConsumed'|t:{consumed:v.consumed,amount:i18n.formatMoney(v.amount,v.currency)} }}</p>}
     @if(v.reservationsPending){<p class="notice">{{'packages.refund.reservations'|t}}</p>}
     @if(r.status!=='confirmed'){
       <div class="item-actions">
         <button class="btn btn-outline-danger" [disabled]="!ready()||v.reservationsPending||r.status==='queued'||r.status==='manual_hotmart'" (click)="reviewRefund(v,r.id,'approve')">{{'packages.admin.approve'|t}}</button>
+        @if(r.status==='queued'||r.status==='manual_hotmart'){<button class="btn btn-secondary" [disabled]="!ready()" (click)="reverseRefund(v,r.id)">{{'packages.admin.reverse'|t}}</button>}
         <button class="btn btn-secondary" [disabled]="!ready()" (click)="reviewRefund(v,r.id,'needs_information')">{{'packages.admin.information'|t}}</button>
         <button class="btn btn-secondary" [disabled]="!ready()" (click)="reviewRefund(v,r.id,'manual_update')">{{'packages.admin.followup'|t}}</button>
       </div>
@@ -94,9 +98,9 @@ template:`
   <h3 class="sub-title">{{'packages.admin.jobs'|t}}</h3>
   @if(jobsFailed()){<p class="alert alert-danger" role="alert">{{'packages.admin.jobsError'|t}}</p>}
   @for(j of jobs();track j.id){<article class="item">
-    <div class="item-head"><h4>{{'packages.admin.job.title'|t}} #{{j.aggregateId}}</h4><span class="badge-status badge-status--dot status-{{jobTone(j.status)}}">{{('packages.admin.job.'+j.status)|t}}</span></div>
+    <div class="item-head"><h4>{{jobTitle(j)}}</h4><span class="badge-status badge-status--dot status-{{jobTone(j.status)}}">{{('packages.admin.job.'+j.status)|t}}</span></div>
     @if(j.lastError){<p>{{j.lastError}}</p>}
-    <p class="notice">{{'packages.admin.jobMeta'|t:{id:j.id,topic:j.topic,attempts:j.attempts} }}</p>
+    <p class="notice">{{jobTopic(j.topic)}}@if(j.buyerNames.length){ · {{j.buyerNames.join(', ')}}}@if(j.attempts>0){ · {{'packages.admin.jobAttempts'|t:{attempts:j.attempts} }}}</p>
     <div class="item-actions">
       @for(id of j.purchaseIds;track id){<button class="btn btn-secondary" (click)="purchaseId=id;loadPurchase()">{{'packages.admin.purchase'|t}} #{{id}}</button>}
       @if(j.topic.startsWith('review.')){<button class="btn btn-secondary" [disabled]="!ready()" (click)="acknowledge(j.id)">{{'packages.admin.acknowledge'|t}}</button>}
@@ -123,11 +127,20 @@ template:`
 </section>}
 @if(can('class_credits.adjust')||can('class_payments.review')){
 <section class="surface block" aria-labelledby="adminAdjustTitle">
-  <h2 id="adminAdjustTitle" class="block-title">{{'packages.admin.adjust'|t}}</h2>
-  <label for="adjustPurchase" class="form-label mt-2">{{'packages.admin.purchase'|t}}</label><input id="adjustPurchase" class="form-control" type="number" min="1" [(ngModel)]="purchaseId"><div class="item-actions"><button class="btn btn-secondary" [disabled]="busy()" (click)="loadPurchase()">{{'packages.admin.load'|t}}</button></div>
-  @if(purchase();as p){<p class="mt-3">#{{p.id}} · {{'packages.refund.breakdown'|t:{available:p.balance.available,reserved:p.balance.reserved,consumed:p.balance.consumed} }}</p>
-  @if(can('class_payments.review')){<label for="verifiedDeadline" class="form-label mt-2">{{'packages.admin.verifiedDeadline'|t}}</label><input id="verifiedDeadline" class="form-control" placeholder="2026-11-30T14:00:00Z" [(ngModel)]="deadline"><div class="item-actions"><button class="btn btn-secondary" [disabled]="!ready()||!deadline.trim()" (click)="verifyDeadline()">{{'packages.admin.verifyDeadline'|t}}</button></div>}
-  @if(can('class_credits.adjust')){<label for="adjustDirection" class="form-label mt-2">{{'packages.admin.direction'|t}}</label><select id="adjustDirection" class="form-select" [(ngModel)]="direction">@for(d of directions;track d){<option [value]="d">{{('packages.admin.adjust.'+d)|t}}</option>}</select><label for="adjustUnits" class="form-label mt-2">{{'packages.admin.units'|t}}</label><input id="adjustUnits" class="form-control" type="number" min="1" [(ngModel)]="units"><div class="item-actions"><button class="btn btn-outline-danger" [disabled]="!ready()||units<1" (click)="adjust()">{{'packages.admin.confirmAdjust'|t}}</button></div>}}
+  <h2 id="adminAdjustTitle" class="block-title">{{'packages.admin.purchaseTools'|t}}</h2>
+  <label for="adjustPurchase" class="form-label mt-2">{{'packages.admin.purchaseNumber'|t}}</label><input id="adjustPurchase" class="form-control" type="number" min="1" [(ngModel)]="purchaseId"><div class="item-actions"><button class="btn btn-secondary" [disabled]="busy()" (click)="loadPurchase()">{{'packages.admin.load'|t}}</button></div>
+  @if(purchase();as p){<p class="mt-3 fw-bold">{{'packages.admin.purchaseSummary'|t:{id:p.id,buyer:p.buyerName||'—',status:purchaseStatus(p.status)} }}</p>
+  <p class="notice">{{'packages.refund.breakdown'|t:{available:p.balance.available,reserved:p.balance.reserved,consumed:p.balance.consumed} }}</p>
+  @if(can('class_payments.review')){<h3 class="sub-title">{{'packages.admin.extendTitle'|t}}</h3>
+    <label for="verifiedDeadline" class="form-label mt-2">{{'packages.admin.verifiedDeadline'|t}}</label><input id="verifiedDeadline" class="form-control" type="datetime-local" [(ngModel)]="deadline"><p class="notice">{{'packages.admin.verifiedDeadlineHint'|t:{zone:fmt.timeZone()} }}</p>
+    @if(deadline&&!deadlineChoice().value){<p class="alert alert-warning" role="alert">{{'packages.admin.deadlineInvalid'|t}}</p>}
+    <div class="item-actions"><button class="btn btn-secondary" [disabled]="!ready()||!deadlineChoice().value" (click)="verifyDeadline()">{{'packages.admin.verifyDeadline'|t}}</button></div>}
+  @if(can('class_credits.adjust')){<h3 class="sub-title">{{'packages.admin.adjust'|t}}</h3>
+    <label for="adjustDirection" class="form-label mt-2">{{'packages.admin.direction'|t}}</label><select id="adjustDirection" class="form-select" [(ngModel)]="direction">@for(d of directions;track d){<option [value]="d">{{('packages.admin.adjust.'+d)|t}}</option>}</select>
+    <label for="adjustUnits" class="form-label mt-2">{{'packages.admin.units'|t}}</label><input id="adjustUnits" class="form-control" type="number" min="1" [max]="maxUnits" step="1" inputmode="numeric" [attr.aria-invalid]="!unitsValid()" aria-describedby="adjustUnitsHint" [(ngModel)]="units"><p id="adjustUnitsHint" class="notice" [class.text-danger]="!unitsValid()">{{'packages.admin.unitsHint'|t:{max:maxUnits} }}</p>
+    <div class="item-actions"><button class="btn btn-outline-danger" [disabled]="!ready()||!unitsValid()" (click)="adjust()">{{'packages.admin.confirmAdjust'|t}}</button></div>
+    <h4 class="sub-title mt-3">{{'packages.admin.recentAdjustments'|t}}</h4>
+    <ol class="ledger">@for(a of p.adjustments??[];track a.id){<li>{{('packages.ledger.adjust_'+a.direction)|t:{units:a.units} }} · {{i18n.formatInstant(a.createdAt,fmt.timeZone())}} @if(a.reason){<span>— {{a.reason}}</span>}</li>}@empty{<li>{{'packages.admin.noAdjustments'|t}}</li>}</ol>}}
 </section>}
 <button class="btn btn-secondary mt-3" [disabled]="busy()" (click)="load()">{{'packages.offer.refresh'|t}}</button>
 }
@@ -136,11 +149,12 @@ template:`
   <div class="modal-dialog modal-dialog-centered"><form class="modal-content" (ngSubmit)="confirmOperation()">
     <div class="modal-header"><h2 id="operationTitle" class="modal-title h5">{{'refine.operation'|t}}</h2><button type="button" class="btn-close" [disabled]="busy()" [attr.aria-label]="'common.close'|t" (click)="cancelOperation()"></button></div>
     <div class="modal-body"><p class="fw-bold">{{op.context}}</p><p>{{'refine.operationHint'|t}}</p>
-      <label for="operationReason" class="form-label">{{'packages.offer.cancelReason'|t}}</label><textarea id="operationReason" name="operationReason" class="form-control" maxlength="500" [(ngModel)]="reason" [disabled]="busy()" required></textarea>
+      <label for="operationReason" class="form-label">{{'packages.admin.internalReason'|t}}</label><textarea id="operationReason" name="operationReason" class="form-control" maxlength="500" [(ngModel)]="reason" [disabled]="busy()" required></textarea>
+      @if(op.askBuyer){<label for="operationMessage" class="form-label mt-3">{{'packages.admin.buyerMessage'|t}}</label><textarea id="operationMessage" name="operationMessage" class="form-control" maxlength="500" [(ngModel)]="buyerMessage" [disabled]="busy()" required></textarea>}
       <label class="d-flex align-items-start gap-2 mt-3"><input type="checkbox" name="operationConfirmed" [(ngModel)]="confirmed" [disabled]="busy()">{{'packages.admin.confirm'|t}}</label>
       @if(error()){<p class="alert alert-danger mt-3" role="alert">{{error()}}</p>}
     </div>
-    <div class="modal-footer"><button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="cancelOperation()">{{'common.cancel'|t}}</button><button type="submit" class="btn btn-primary" [disabled]="busy()||!confirmed||!reason.trim()">{{'refine.confirmOperation'|t}}</button></div>
+    <div class="modal-footer"><button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="cancelOperation()">{{'common.cancel'|t}}</button><button type="submit" class="btn btn-primary" [disabled]="busy()||!confirmed||!reason.trim()||(op.askBuyer&&!buyerMessage.trim())">{{'refine.confirmOperation'|t}}</button></div>
   </form></div>
 </div>}
 
@@ -151,9 +165,14 @@ export class CommerceAdminComponent implements OnInit{
   busy=signal(false);saved=signal(false);private failure=signal<unknown>(null);error=computed(()=>this.failure()?this.api.error(this.failure()):'');
   vChecks:Record<string,boolean>={account:false,format:false,guarantee:false,mapping:false};vDays:number|null=null;vReason='';rReason='';rConfirmed=false;refundInputs:Record<number,string>={};
   readonly checkKeys=['account','format','guarantee','mapping'] as const;readonly guaranteeOptions=[7,15,21,30];
-  reason='';deadline='';confirmed=false;filter='paid_needs_review';refundHours=360;pauseHours=720;ttlHours=168;purchaseId=0;direction='add';units=1;private adjustKey=crypto.randomUUID();private adjustAttempt='';
+  reason='';deadline='';confirmed=false;filter='paid_needs_review';refundHours=360;pauseHours=720;ttlHours=168;purchaseId=0;direction='add';units=1;buyerMessage='';readonly maxUnits=50;private adjustKey=crypto.randomUUID();private adjustAttempt='';
   readonly statuses=['paid_needs_review','paid','partially_refunded','refunded','pending','failed'];readonly directions=['add','remove','restore'];
   orderTone(s:string){return s==='paid'?'success':s==='paid_needs_review'||s==='pending'||s==='partially_refunded'?'warning':s==='failed'?'danger':'neutral';}
+  unitsValid(){return Number.isInteger(this.units)&&this.units>=1&&this.units<=this.maxUnits;}
+  /** La fecha se escribe con el selector del navegador, en la zona de quien la carga; el servidor recibe el instante. */
+  deadlineChoice(){return localTimeChoice(this.deadline,this.fmt.timeZone(),1);}
+  jobTitle(j:PaymentJob){return j.aggregateType==='class_package_purchases'?this.i18n.t('packages.admin.job.titlePurchase',{id:j.aggregateId}):j.orderId?this.i18n.t('packages.admin.job.titleOrder',{id:j.orderId}):this.i18n.t('packages.admin.job.titleOther');}
+  jobTopic(topic:string){const k=`packages.admin.topic.${topic}`;return this.i18n.has(k)?this.i18n.t(k):topic;}
   jobTone(s:string){return s==='failed'?'danger':s==='attention'||s==='pending'||s==='running'?'warning':s==='done'?'success':'neutral';}
   frozen(o:ClassOrder){return isFrozenOrder(o);}
   purchaseStatus(s:string){const k=`packages.purchase.status.${s}`;return this.i18n.has(k)?this.i18n.t(k):s;}
@@ -174,10 +193,10 @@ export class CommerceAdminComponent implements OnInit{
   private forbidden=signal(false);
   denied=computed(()=>this.forbidden()||!this.sectionPermissions.some(p=>this.can(p)));
   ngOnInit(){if(!this.sectionPermissions.some(p=>this.can(p)))return;this.load();this.loadProvider();}can(p:string){return this.auth.hasPermission(p);}ready(){return !this.busy();}
-  pending=signal<{context:string;execute:(reason:string)=>Observable<unknown>;done?:(value:any)=>void}|null>(null);
-  requestOperation(context:string,execute:(reason:string)=>Observable<unknown>,done?:(value:any)=>void){if(this.busy())return;this.reason='';this.confirmed=false;this.failure.set(null);this.pending.set({context,execute,done});}
-  cancelOperation(){if(!this.busy()){this.pending.set(null);this.reason='';this.confirmed=false;}}
-  confirmOperation(){const op=this.pending();if(!op||this.busy()||!this.confirmed||!this.reason.trim())return;this.act(op.execute(this.reason.trim()),value=>{op.done?.(value);this.pending.set(null);this.reason='';this.confirmed=false;});}
+  pending=signal<{context:string;execute:(reason:string)=>Observable<unknown>;done?:(value:any)=>void;askBuyer?:boolean}|null>(null);
+  requestOperation(context:string,execute:(reason:string)=>Observable<unknown>,done?:(value:any)=>void,askBuyer=false){if(this.busy())return;this.reason='';this.buyerMessage='';this.confirmed=false;this.failure.set(null);this.pending.set({context,execute,done,askBuyer});}
+  cancelOperation(){if(!this.busy()){this.pending.set(null);this.reason='';this.buyerMessage='';this.confirmed=false;}}
+  confirmOperation(){const op=this.pending();if(!op||this.busy()||!this.confirmed||!this.reason.trim()||op.askBuyer&&!this.buyerMessage.trim())return;this.act(op.execute(this.reason.trim()),value=>{op.done?.(value);this.pending.set(null);this.reason='';this.buyerMessage='';this.confirmed=false;});}
   reviewReason(code:string){return this.i18n.t(code==='amount_mismatch'?'refine.amountMismatch':'refine.reviewReason');}
   orderContext(o:ClassOrder,action:string){const labels:Record<string,string>={credit:'packages.admin.credit',refund:'packages.admin.approve',confirm_refund:'packages.pv.confirmRefund',unfreeze:'packages.pv.unfreeze'};return this.i18n.t('refine.orderAction',{id:o.id,amount:this.i18n.formatMoney(o.amount,o.currency),action:this.i18n.t(labels[action])});}
 
@@ -185,14 +204,15 @@ export class CommerceAdminComponent implements OnInit{
   load(){if(this.can('class_payments.review')){this.read(this.api.refundRequests(),v=>this.refunds.set(v));this.loadPayments();this.jobsFailed.set(false);this.api.paymentJobs().pipe(takeUntilDestroyed(this.destroy)).subscribe({next:v=>this.jobs.set(v),error:()=>this.jobsFailed.set(true)});}if(this.can('class_teachers.manage'))this.read(this.api.teachers(),v=>this.teachers.set(v));if(this.can('class_packages.manage_all'))this.read(this.api.policies(),v=>{this.policy.set(v[0]||null);if(v[0]){this.refundHours=Math.max(360,Number(v[0].rules['refundWindowHours']));this.pauseHours=Number(v[0].rules['maxPauseHours']);this.ttlHours=Number(v[0].rules['offerTtlHours']);}});}
   loadPayments(){this.read(this.api.paymentList(this.filter),v=>{this.orders.set(v.items);this.events.set(v.events);});}
   private act<T>(o:Observable<T>,done?:(v:T)=>void){if(this.busy())return;this.busy.set(true);this.saved.set(false);this.failure.set(null);o.pipe(takeUntilDestroyed(this.destroy)).subscribe({next:v=>{done?.(v);this.busy.set(false);this.saved.set(true);this.confirmed=false;this.load();this.loadProvider();},error:e=>{this.busy.set(false);this.failure.set(e);}});}
-  reviewRefund(v:RefundPreview,id:number,action:string){const label=this.i18n.t(action==='approve'?'packages.admin.approve':action==='needs_information'?'packages.admin.information':'packages.admin.followup');this.requestOperation(this.i18n.t('refine.purchaseAction',{id:v.purchaseId,action:label})+' · '+this.i18n.formatMoney(v.amount,v.currency),reason=>this.api.reviewRefund(id,{action,reason,quote:v.quote}));}
+  reviewRefund(v:RefundPreview,id:number,action:string){const label=this.i18n.t(action==='approve'?'packages.admin.approve':action==='needs_information'?'packages.admin.information':'packages.admin.followup');this.requestOperation(this.i18n.t('refine.purchaseAction',{id:v.purchaseId,action:label})+' · '+this.i18n.formatMoney(v.amount,v.currency),reason=>this.api.reviewRefund(id,{action,reason,quote:v.quote,...(action==='needs_information'?{buyerMessage:this.buyerMessage.trim()}:{})}),undefined,action==='needs_information');}
+  reverseRefund(v:RefundPreview,id:number){this.requestOperation(this.i18n.t('refine.purchaseAction',{id:v.purchaseId,action:this.i18n.t('packages.admin.reverse')})+' · '+this.i18n.formatMoney(v.amount,v.currency),reason=>this.api.reverseRefund(id,{reason,quote:v.quote,buyerMessage:this.buyerMessage.trim()}),undefined,true);}
   resolve(o:ClassOrder,action:string){this.requestOperation(this.orderContext(o,action),reason=>this.api.resolvePayment(o.id,action,reason));}
   acknowledge(id:number){this.requestOperation(this.i18n.t('refine.taskAction',{id,action:this.i18n.t('packages.admin.acknowledge')}),reason=>this.api.acknowledgePaymentJob(id,reason));}
-  verifyDeadline(){const p=this.purchase();if(!p||!this.ready())return;const deadline=this.deadline.trim();this.requestOperation(this.i18n.t('refine.purchaseAction',{id:p.id,action:this.i18n.t('packages.admin.verifyDeadline')})+' · '+deadline,reason=>this.api.verifyRefundDeadline(p.id,deadline,reason));}
+  verifyDeadline(){const p=this.purchase(),time=this.deadlineChoice().value;if(!p||!time||!this.ready())return;const deadline=time.startsAt;this.requestOperation(this.i18n.t('refine.purchaseAction',{id:p.id,action:this.i18n.t('packages.admin.verifyDeadline')})+' · '+this.i18n.formatInstant(deadline,this.fmt.timeZone()),reason=>this.api.verifyRefundDeadline(p.id,deadline,reason),()=>{this.deadline='';this.loadPurchase();});}
   retry(id:number){this.requestOperation(this.i18n.t('refine.taskAction',{id,action:this.i18n.t('packages.admin.retry')}),reason=>this.api.retryPaymentJob(id,reason));}
   fake(id:number){this.act(this.api.fakeRefundComplete(id));}
   enable(id:number,enabled:boolean){this.act(this.api.enableTeacher(id,enabled));}
   publishPolicy(){const p=this.policy();if(p)this.act(this.api.createPolicy({version:p.version+1,rules:{...p.rules,refundMode:'full_unused_then_review',refundWindowHours:this.refundHours,maxPauseHours:this.pauseHours,offerTtlHours:this.ttlHours}}));}
   loadPurchase(){this.purchase.set(null);this.read(this.api.adjustmentPurchase(this.purchaseId),p=>{this.purchase.set(p);this.adjustKey=crypto.randomUUID();this.adjustAttempt='';});}
-  adjust(){const p=this.purchase();if(!p||!this.ready())return;const units=this.units,direction=this.direction;this.requestOperation(this.i18n.t('refine.purchaseAction',{id:p.id,action:this.i18n.t('packages.admin.adjust.'+direction)})+' · '+units,reason=>{const body={version:p.version,units,direction,reason};const request=JSON.stringify(body);if(this.adjustAttempt&&this.adjustAttempt!==request)this.adjustKey=crypto.randomUUID();this.adjustAttempt=request;return this.api.adjustPurchase(p.id,body,this.adjustKey);},v=>{this.purchase.set(v);this.adjustKey=crypto.randomUUID();this.adjustAttempt='';});}
+  adjust(){const p=this.purchase();if(!p||!this.ready()||!this.unitsValid())return;const units=this.units,direction=this.direction;this.requestOperation(this.i18n.t('refine.purchaseAction',{id:p.id,action:this.i18n.t('packages.admin.adjust.'+direction)})+' · '+units,reason=>{const body={version:p.version,units,direction,reason};const request=JSON.stringify(body);if(this.adjustAttempt&&this.adjustAttempt!==request)this.adjustKey=crypto.randomUUID();this.adjustAttempt=request;return this.api.adjustPurchase(p.id,body,this.adjustKey);},()=>{this.adjustKey=crypto.randomUUID();this.adjustAttempt='';this.loadPurchase();});}
 }

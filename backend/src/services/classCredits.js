@@ -80,6 +80,10 @@ async function apply({ purchaseId, operation, units, operationKey, classSessionI
   if (NEEDS_ACTIVE.has(operation) && purchase.status !== 'active') {
     throw new CreditError(409, 'package_not_active', 'El paquete no está activo', { status: purchase.status });
   }
+  // Un ajuste que suma saldo disponible solo cabe en un paquete con acceso (D3-DIN-03): cancelado, pausado o vencido no puede recibir créditos.
+  if (operation === 'adjust' && to === 'available' && !['active', 'exhausted'].includes(purchase.status)) {
+    throw new CreditError(409, 'package_not_active', 'El paquete no admite créditos nuevos en este estado', { status: purchase.status });
+  }
   // Compra con la orden reembolsada (total o parcial): el saldo no puede volver a «disponible» (ni sumando ni restaurando consumidos).
   const refundedOrder = purchase.status === 'cancelled' && to === 'available' && (operation === 'release' || operation === 'adjust')
     && ['refunded', 'partially_refunded'].includes((await ClassPackageOrder.findByPk(purchase.orderId, { transaction }))?.status);
