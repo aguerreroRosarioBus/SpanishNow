@@ -101,7 +101,8 @@ async function create(user, body, requested) {
     return present(row, { transaction });
   });
 }
-async function newVersion(user, id, body) {
+// `afterCreate(row, previous, version, transaction)` corre dentro de la misma transacción (lo usa linkHotmart para auditar).
+async function newVersion(user, id, body, { afterCreate } = {}) {
   // `version: 0` es la única forma de completar una plantilla que quedó sin versión vigente (ver `present`).
   if (!only(body, ['version', ...FIELDS]) || !(positive(body.version) || body.version === 0)) throw invalid(['version']);
   const values = validateVersion(body);
@@ -119,6 +120,7 @@ async function newVersion(user, id, body) {
     const last = previous ? previous.version : (await Version.max('version', { where: { templateId: row.id }, transaction })) || 0;
     const v = await Version.create({ ...values, templateId: row.id, version: last + 1, policyVersionId: rules.id, createdById: user.id }, { transaction });
     await row.update({ currentVersionId: v.id }, { transaction });
+    if (afterCreate) await afterCreate(row, previous, v, transaction);
     return present(row, { transaction });
   });
 }
@@ -144,8 +146,14 @@ async function linkHotmart(user, id, body) {
   const values = Object.fromEntries(FIELDS.map(key => [key, previous[key]]));
   // El checkout para cada alumno agrega de nuevo la oferta y la referencia de su pedido.
   const checkoutBase = `${url.origin}${url.pathname}`;
+  // Sin revisión por paquete, cada vínculo queda auditado (valores nuevos y anteriores) en la misma transacción.
+  const snapshot = v => v && ({ productId: v.hotmartProductId, offerCode: v.hotmartOfferCode, url: v.hotmartCheckoutUrl, priceAmount: v.priceAmount, currency: v.currency });
   return newVersion(user, id, {...values,version:body.version,hotmartProductId:body.productId,
-    hotmartOfferCode:offerCode,hotmartCheckoutUrl:checkoutBase});
+    hotmartOfferCode:offerCode,hotmartCheckoutUrl:checkoutBase}, {
+    afterCreate: (template, prior, created, transaction) => AuditLog.create({ actorId: user.id, action: 'class_package.hotmart_linked',
+      entityType: 'class_package_templates', entityId: template.id,
+      data: { templateId: template.id, versionId: created.id, version: created.version, ...snapshot(created), previous: snapshot(prior) } }, { transaction })
+  });
 }
 async function setStatus(user, id, body) {
   if (!only(body, ['status', 'version']) || !['active', 'paused', 'archived'].includes(body.status) || !positive(body.version)) throw invalid(['status', 'version']);

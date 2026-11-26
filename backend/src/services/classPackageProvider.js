@@ -1,5 +1,8 @@
 // Las ventas reales de paquetes (Hotmart) exigen una verificación auditada y vigente de cuenta, formato, garantía y mapeo,
-// hecha por una persona con class_provider.verify. Con PAYMENTS_FAKE=1 todo es simulado y no hace falta. La verificación
+// hecha por una persona con class_provider.verify. La aprobación es POR CUENTA de Hotmart del docente (teacherId + huella
+// de su conexión), no por paquete: los paquetes vinculados después se venden sin otra revisión. Si cambia la clave o la
+// conexión del docente, hace falta reaprobar. El riesgo de un enlace mal pegado se mitiga con la conciliación del webhook,
+// la pausa automática del paquete ante una discrepancia (classPayments) y la auditoría de cada vínculo (classCatalog). Con PAYMENTS_FAKE=1 todo es simulado y no hace falta. La verificación
 // nunca cambia PAYMENTS_FAKE ni convierte evidencia sintética en una verificación de Hotmart.
 const {Op}=require('sequelize');
 const {createHash}=require('node:crypto');
@@ -22,22 +25,21 @@ async function accountFor(verification,{teacherId,transaction}={}){
 const mappingDigest=version=>createHash('sha256').update(JSON.stringify([
   version.hotmartProductId,version.hotmartOfferCode,version.hotmartCheckoutUrl,version.priceAmount,version.currency
 ])).digest('hex');
-const approvedMapping=(verification,version)=>(verification.mappingDigests??[]).includes(mappingDigest(version));
-async function assertSelling({teacherId,transaction,packageVersion}={}){
+// `packageVersion` ya no condiciona la venta (la aprobación es por cuenta); se acepta por compatibilidad con quienes lo envían.
+async function assertSelling({teacherId,transaction}={}){
   payments.assertSafe();
   if(payments.fake())return null;
   const verification=await current({transaction});
   const account=await accountFor(verification,{teacherId,transaction});
   if(account.mode==='blocked'||account.mode==='changed')throw fail(503,'package_provider_verification_required');
-  if(account.mode==='connected'&&packageVersion&&!approvedMapping(verification,packageVersion))throw fail(409,'package_hotmart_mapping_review_required');
   return account.connectionId;
 }
 async function teacherStatus(user){
   if(user.role!=='teacher')throw fail(403,'forbidden');
   const [verification,settings]=await Promise.all([current(),TeacherClassSettings.findByPk(user.id)]);
   const account=await accountFor(verification,{teacherId:user.id});
-  const approvedPackageIds=account.mode==='connected'?(await preparedPackages([user.id]))
-    .filter(item=>approvedMapping(verification,item.currentVersion)).map(item=>item.id):null;
+  // Con la cuenta aprobada y conectada, todo paquete vinculado del docente queda habilitado.
+  const approvedPackageIds=account.mode==='connected'?(await preparedPackages([user.id])).map(item=>item.id):null;
   return {approval:payments.fake()?'fake':account.mode,approvedPackageIds,
     classesEnabled:Boolean(settings?.classesEnabledAt),salesPaused:!settings||Boolean(settings.salesPausedAt)};
 }
@@ -52,7 +54,7 @@ async function preparedPackages(teacherIds,transaction){
     where:{teacherId:teacherIds,status:{[Op.ne]:'archived'}},attributes:['id','teacherId','status'],
     include:[{association:'currentVersion',required:true,
       where:{hotmartProductId:{[Op.ne]:null},hotmartOfferCode:{[Op.ne]:null},hotmartCheckoutUrl:{[Op.ne]:null}},
-      attributes:['id','nameEs','nameEn','priceAmount','currency','hotmartProductId','hotmartOfferCode','hotmartCheckoutUrl']}],
+      attributes:['id','nameEs','nameEn','priceAmount','currency','createdAt','hotmartProductId','hotmartOfferCode','hotmartCheckoutUrl']}],
     order:[['id','ASC']],transaction
   });
 }
@@ -72,13 +74,16 @@ async function status(){
   const candidates=teachers.map(t=>{
     const connection=byTeacher.get(t.id);
     const ready=packages.filter(item=>item.teacherId===t.id);
+    const approved=verification?.teacherId===t.id&&account.mode==='connected';
     return {id:t.id,name:t.name,testedAt:connection.classVerifiedAt,revision:revision(connection,ready),
       packages:ready.map(item=>({
         id:item.id,nameEs:item.currentVersion.nameEs,nameEn:item.currentVersion.nameEn,
         priceAmount:item.currentVersion.priceAmount,currency:item.currentVersion.currency,
         productId:item.currentVersion.hotmartProductId,offerCode:item.currentVersion.hotmartOfferCode,
         url:item.currentVersion.hotmartCheckoutUrl,
-        approved:verification?.teacherId===t.id&&account.mode==='connected'&&approvedMapping(verification,item.currentVersion)
+        approved,
+        // Versión vigente creada después de aprobar la cuenta: se vende sin revisión previa, el admin debe poder verla.
+        linkedAfterApproval:approved&&new Date(item.currentVersion.createdAt)>new Date(verification.verifiedAt)
       }))};
   });
   return {mode:payments.fake()?'fake':['shared','connected'].includes(account.mode)?'verified':'blocked',account:account.mode,candidates,verification:present(verification),lastRevocation:revoked?{id:revoked.id,revokedAt:revoked.revokedAt,revokedBy:person(revoked.revokedBy),reason:revoked.revokeReason,verifiedAt:revoked.verifiedAt}:null};
@@ -109,11 +114,12 @@ async function verify(actor,body){
       const digests=prepared.map(item=>mappingDigest(item.currentVersion));
       const oldDigests=previous?.mappingDigests??[];
       if(previous){
-        if(previous.connectionDigest!==connection.classActiveDigest||digests.every(digest=>oldDigests.includes(digest)))throw fail(409,'version_conflict');
+        // Misma conexión ya aprobada: no hay nada que reaprobar (los paquetes nuevos no requieren revisión).
+        if(previous.connectionDigest===connection.classActiveDigest)throw fail(409,'version_conflict');
         await previous.update({revokedAt:new Date(),revokedById:actor.id,revokeReason:reason},{transaction});
         await AuditLog.create({actorId:actor.id,action:'class_provider.superseded',entityType:'class_package_provider_verifications',entityId:previous.id,reason},{transaction});
       }
-      // Las ofertas ya enviadas conservan la aprobación de su precio y enlace al revisar nuevos paquetes.
+      // `mappingDigests` queda solo como registro histórico de lo visto al aprobar; no condiciona las ventas.
       const account={teacherId:connection?.teacherId??null,connectionDigest:connection?.classActiveDigest??null,
         mappingDigests:connection?[...new Set([...oldDigests,...digests])]:null};
       const row=await Verification.create({provider:PROVIDER,verifiedById:actor.id,verifiedAt:new Date(),guaranteeDays:body.guaranteeDays,checks:body.checks,reason,...account},{transaction});

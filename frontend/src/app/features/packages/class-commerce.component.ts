@@ -37,6 +37,8 @@ export class ClassCommerceComponent {
   readonly key = signal('');
   readonly selectedId = signal<number | null>(null);
   readonly url = signal('');
+  readonly checkoutOpened = signal(false);
+  readonly priceConfirmed = signal(false);
   readonly productId = signal('');
   readonly offerCode = signal('');
   readonly sales = signal<ClassSale[] | null>(null);
@@ -53,8 +55,8 @@ export class ClassCommerceComponent {
     const ids = this.setup()?.approvedPackageIds;
     return ids ? this.mapped().filter(item => ids.includes(item.id)) : this.mapped();
   });
-  readonly packageReviewPending = computed(() => this.setup()?.approval === 'connected'
-    && this.reviewed().length < this.mapped().length);
+  // La aprobación es por cuenta: con la cuenta aprobada los paquetes nuevos no esperan otra revisión.
+  readonly packageReviewPending = computed(() => !this.approval() && this.mapped().length > 0);
   readonly ready = computed(() => this.approval() && this.setup()?.classesEnabled && !this.setup()?.salesPaused
     && this.reviewed().some(item => item.status === 'active'));
   readonly setupState = computed(() => {
@@ -127,6 +129,7 @@ export class ClassCommerceComponent {
     if (step !== 'key') this.key.set('');
     this.error.set('');
     this.feedback.set('');
+    if (step !== 'preview') this.resetConfirmation();
     this.step.set(step);
   }
 
@@ -180,10 +183,17 @@ export class ClassCommerceComponent {
     this.url.set(current?.hotmartCheckoutUrl ?? '');
     this.productId.set(current?.hotmartProductId ?? '');
     this.offerCode.set(current?.hotmartOfferCode ?? '');
+    this.resetConfirmation();
+  }
+
+  private resetConfirmation() {
+    this.checkoutOpened.set(false);
+    this.priceConfirmed.set(false);
   }
 
   setLink(value: string) {
     if (value !== this.url()) this.offerCode.set('');
+    this.resetConfirmation();
     this.url.set(value);
   }
 
@@ -193,13 +203,13 @@ export class ClassCommerceComponent {
 
   savePackage() {
     const item = this.selected();
-    if (!item?.current || !this.checkoutPreview()) return;
+    if (!item?.current || !this.checkoutPreview() || !this.checkoutOpened() || !this.priceConfirmed()) return;
     this.run(this.api.linkHotmart(item.id, {version:item.current.version,url:this.url().trim(),
       productId:this.productId().trim(),offerCode:this.offer()}), updated => {
-      const fields = ['hotmartCheckoutUrl','hotmartOfferCode','hotmartProductId'] as const;
-      if (fields.some(field => item.current?.[field] !== updated.current?.[field])) {
-        this.setup.update(setup => setup?.approvedPackageIds
-          ? {...setup,approvedPackageIds:setup.approvedPackageIds.filter(id => id !== item.id)} : setup);
+      // Con la cuenta aprobada, el paquete vinculado queda aprobado sin otra revisión.
+      if (this.setup()?.approval === 'connected') {
+        this.setup.update(setup => setup && {...setup,approvedPackageIds:setup.approvedPackageIds
+          ? [...new Set([...setup.approvedPackageIds,item.id])] : setup.approvedPackageIds});
       }
       this.items.update(items => items.map(item => item.id === updated.id ? updated : item));
       this.selectPackage(updated.id);
