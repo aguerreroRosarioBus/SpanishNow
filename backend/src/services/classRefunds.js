@@ -2,11 +2,12 @@ const {Op}=require('sequelize');
 // Solicitud, decisión interna y devolución del proveedor son hechos distintos, todos auditables.
 const {createHash}=require('crypto');
 const sequelize=require('../config/database');
-const {ClassPackagePurchase:Purchase,ClassPackageOrder:Order,AuditLog,User}=require('../models');
+const {ClassPackagePurchase:Purchase,ClassPackageOrder:Order,AuditLog,User,OutboxJob,ClassOffer:Offer}=require('../models');
 const {fail,invalid,only,validId}=require('./legalDocuments');
 const purchases=require('./classPurchases');
 const offers=require('./classOffers');
 const outbox=require('./outbox');
+const chat=require('./chatService');
 const TYPES=['voluntary','service_unavailable','group_incomplete','other'];
 const reason=value=>typeof value==='string'&&Boolean(value.trim())&&value.length<=500;
 const entityType='class_package_purchases';
@@ -65,17 +66,49 @@ async function review(actor,id,body){
     const latest=view.requests.find(r=>r.id===Number(id));
     if(latest.status==='confirmed')return view;
     let status=['queued','manual_hotmart'].includes(latest.status)?latest.status:(body.action==='needs_information'?'needs_information':'manual_followup');
+    let closure={};
     if(body.action==='approve'){
       if(view.reservationsPending)throw fail(409,'sessions_pending_resolution');
       if(!['paid','paid_needs_review'].includes(view.orderStatus))throw fail(409,'payment_review_required');
       if(['queued','manual_hotmart'].includes(latest.status))return view;
       const order=await Order.findByPk(p.orderId,{transaction});
+      const reversals=latest.updates.filter(u=>u.status==='reverted').length;
       status=order.provider==='fake'?'queued':'manual_hotmart';
       // Impedir nuevas reservas durante el trámite; todavía no hay dinero ni créditos reembolsados.
+      // Se recuerda el estado previo para poder revertir la aprobación (D3-DIN-02); una compra ya cancelada por el comprador no se toca.
+      closure={previousStatus:p.status,statusChanged:p.status!=='cancelled'};
       if(p.status!=='cancelled')await p.update({status:'cancelled',cancelledAt:new Date(),version:p.version+1},{transaction});
-      if(order.provider==='fake')await outbox.enqueue({topic:'payment.refund',aggregateType:'class_package_orders',aggregateId:p.orderId,dedupeKey:`payment.refund:${p.orderId}`,payload:{reason:body.reason.trim()},runAt:new Date()},{transaction});
+      if(order.provider==='fake')await outbox.enqueue({topic:'payment.refund',aggregateType:'class_package_orders',aggregateId:p.orderId,dedupeKey:`payment.refund:${p.orderId}${reversals?`:r${reversals}`:''}`,payload:{reason:body.reason.trim()},runAt:new Date()},{transaction});
     }
-    await AuditLog.create({actorId:actor.id,action:'refund.reviewed',entityType,entityId:p.id,reason:body.reason.trim(),data:{requestId:Number(id),status,amount:view.amount,currency:view.currency,classification:view.classification,...(body.buyerMessage?.trim()?{buyerMessage:body.buyerMessage.trim()}:{})}},{transaction});
+    await AuditLog.create({actorId:actor.id,action:'refund.reviewed',entityType,entityId:p.id,reason:body.reason.trim(),data:{requestId:Number(id),status,amount:view.amount,currency:view.currency,classification:view.classification,...closure,...(body.buyerMessage?.trim()?{buyerMessage:body.buyerMessage.trim()}:{})}},{transaction});
+    return preview(p,{transaction,type:request.data.type,internal:true});
+  });
+}
+// Revierte una aprobación que el proveedor todavía no confirmó: la compra vuelve a su estado anterior y la tarea de devolución se cancela (D3-DIN-02).
+async function reverse(actor,id,body){
+  if(!validId(id)||!only(body,['reason','quote','buyerMessage'])||!reason(body.reason)||typeof body.quote!=='string'||!reason(body.buyerMessage))throw invalid(['reason','buyerMessage']);
+  const request=await AuditLog.findOne({where:{id,action:'refund.requested',entityType}});if(!request)throw fail(404,'not_found');
+  const ref=await Purchase.findByPk(request.entityId);
+  return sequelize.transaction(async transaction=>{
+    await offers.teacherSettings(ref.teacherId,transaction);const p=await Purchase.findByPk(ref.id,{transaction,lock:transaction.LOCK.UPDATE});
+    const view=await preview(p,{transaction,type:request.data.type,internal:true});
+    if(view.quote!==body.quote)throw fail(409,'version_conflict');
+    const latest=view.requests.find(r=>r.id===Number(id));
+    if(!['queued','manual_hotmart'].includes(latest.status)||!['paid','paid_needs_review'].includes(view.orderStatus))throw fail(409,'refund_not_reversible');
+    const jobs={topic:'payment.refund',aggregateType:'class_package_orders',aggregateId:p.orderId};
+    if(await OutboxJob.count({where:{...jobs,status:'running'},transaction}))throw fail(409,'refund_in_progress');
+    await OutboxJob.update({status:'cancelled'},{where:{...jobs,status:['pending','failed']},transaction});
+    const approval=(await history(p,transaction)).filter(a=>a.action==='refund.reviewed'&&Number(a.data.requestId)===Number(id)&&['queued','manual_hotmart'].includes(a.data.status)).at(-1);
+    const studentCancelled=await AuditLog.findOne({where:{action:'purchase.cancelled',entityType,entityId:p.id},transaction});
+    const changed=approval?.data.statusChanged??!studentCancelled;let restored=p.status;
+    if(changed&&p.status==='cancelled'){
+      const now=new Date();
+      restored=approval?.data.previousStatus??(p.pausedAt?'paused':p.expiresAt<=now?'expired':p.unitsAvailable>0||p.unitsReserved>0?'active':'exhausted');
+      await p.update({status:restored,cancelledAt:null,version:p.version+1},{transaction});
+    }
+    await AuditLog.create({actorId:actor.id,action:'refund.reviewed',entityType,entityId:p.id,reason:body.reason.trim(),data:{requestId:Number(id),status:'reverted',amount:view.amount,currency:view.currency,classification:view.classification,restoredStatus:restored,buyerMessage:body.buyerMessage.trim()}},{transaction});
+    const offer=await Offer.findByPk(p.offerId,{transaction});
+    await chat.appendSystemMessage(offer.conversationId,{eventCode:'package_refund_reverted',offerId:offer.id,eventParams:{purchaseId:p.id},dedupeKey:`purchase:${p.id}:refund_reverted:${id}:${latest.updates.filter(u=>u.status==='reverted').length+1}`},{transaction});
     return preview(p,{transaction,type:request.data.type,internal:true});
   });
 }
@@ -88,4 +121,4 @@ async function verifyDeadline(actor,id,body){
     await AuditLog.create({actorId:actor.id,action:'refund.deadline_verified',entityType,entityId:p.id,reason:body.reason.trim(),data:{deadline:deadline.toISOString()}},{transaction});return preview(p,{transaction,internal:true});
   });
 }
-module.exports={preview,ownPreview,request,adminList,review,verifyDeadline};
+module.exports={preview,ownPreview,request,adminList,review,reverse,verifyDeadline};

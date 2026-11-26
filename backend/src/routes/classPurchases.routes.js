@@ -15,6 +15,7 @@ const refunds=require('../services/classRefunds');
 router.get('/me/class-packages/:id/refund-preview',...secure,wrap(async(req,res)=>res.json(await refunds.ownPreview(req.user,req.params.id,req.query.type))));
 router.post('/me/class-packages/:id/refund-requests',...secure,wrap(async(req,res)=>res.json(await refunds.request(req.user,req.params.id,req.body,req.get('Idempotency-Key')))));
 router.get('/admin/class-refund-requests',...secure,requirePermission('class_payments.review'),wrap(async(req,res)=>res.json(await refunds.adminList())));
+router.post('/admin/class-refund-requests/:id/reverse',...secure,requirePermission('class_payments.review'),wrap(async(req,res)=>res.json(await refunds.reverse(req.user,req.params.id,req.body))));
 router.post('/admin/class-refund-requests/:id/review',...secure,requirePermission('class_payments.review'),wrap(async(req,res)=>res.json(await refunds.review(req.user,req.params.id,req.body))));
 router.post('/admin/class-purchases/:id/refund-deadline',...secure,requirePermission('class_payments.review'),wrap(async(req,res)=>res.json(await refunds.verifyDeadline(req.user,req.params.id,req.body))));
 router.post('/admin/class-purchases/:id/adjustments',...secure,requirePermission('class_credits.adjust'),wrap(async(req,res)=>res.json(await purchases.adjust(req.user,req.params.id,req.body,req.get('Idempotency-Key')))));

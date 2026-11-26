@@ -58,7 +58,7 @@ router.post('/admin/class-payment-jobs/:id/retry',...secure,requirePermission('c
 router.post('/admin/class-payments/:orderId/fake-refund-complete',...secure,requirePermission('class_payments.review'),wrap(async(req,res)=>{
   if(!require('../services/legalDocuments').validId(req.params.orderId))throw fail(404,'not_found');
   const config=require('../config/payments');if(!config.fake())throw fail(404,'not_found');config.assertSafe();
-  const job=await OutboxJob.findOne({where:{topic:'payment.refund',aggregateId:req.params.orderId}});if(!job)throw fail(404,'not_found');
+  const job=await OutboxJob.findOne({where:{topic:'payment.refund',aggregateId:req.params.orderId,status:{[require('sequelize').Op.ne]:'cancelled'}},order:[['id','DESC']]});if(!job)throw fail(404,'not_found');
   await review.refund(job);res.json({confirmed:true});
 }));
 module.exports=router;

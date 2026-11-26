@@ -96,3 +96,33 @@ test('D3-DIN-06: bandeja de solicitudes y de tareas nombra a la persona y distin
  const orderJob=await OutboxJob.create({topic:'review.class_payment',aggregateType:'class_package_orders',aggregateId:w.p.orderId,dedupeKey:`review:order:${randomUUID()}`,payload:{reason:'x'},status:'done',runAt:new Date()});
  const again=(await as(w.admin).get('/api/admin/class-payment-jobs')).body.find(j=>j.id===Number(orderJob.id));expect(again).toMatchObject({orderId:w.p.orderId,purchaseIds:[w.p.id],buyerNames:[w.buyer.name]});
 });
+test('D3-DIN-02: revertir una aprobación devuelve la compra a su estado, cancela la tarea y permite aprobar de nuevo',async()=>{
+ const w=await paid();const {r}=await request(w);const id=r.body.requests[0].id;
+ const review=(path,body)=>as(w.admin).post(`/api/admin/class-refund-requests/${id}/${path}`,body);
+ const approved=await review('review',{action:'approve',reason:'Aprobación ficticia',quote:r.body.quote});expect(approved.status).toBe(200);expect((await w.p.reload()).status).toBe('cancelled');
+ expect(await OutboxJob.count({where:{topic:'payment.refund',aggregateId:w.p.orderId,status:'pending'}})).toBe(1);
+ expect((await review('reverse',{reason:'Nota interna',quote:approved.body.quote})).status).toBe(400); // exige mensaje al comprador
+ const reversed=await review('reverse',{reason:'El proveedor no respondió, nota interna',buyerMessage:'Seguimos con tu paquete mientras revisamos.',quote:approved.body.quote});expect(reversed.status).toBe(200);
+ expect(reversed.body.requests[0].status).toBe('reverted');expect(await w.p.reload()).toMatchObject({status:'active',cancelledAt:null,unitsAvailable:4,unitsRefunded:0});
+ expect(await OutboxJob.count({where:{topic:'payment.refund',aggregateId:w.p.orderId,status:'cancelled'}})).toBe(1);
+ const own=(await as(w.buyer).get(`${url(w)}/refund-preview`)).body;expect(own.requests[0].updates.at(-1)).toEqual({status:'reverted',createdAt:expect.anything(),message:'Seguimos con tu paquete mientras revisamos.'});expect(JSON.stringify(own)).not.toContain('nota interna');
+ expect((await as(w.buyer).get('/api/me/class-packages')).body.find(p=>p.id===w.p.id)).toMatchObject({status:'active',refund:{status:'reverted'}});
+ expect((await review('reverse',{reason:'Otra vez',buyerMessage:'x',quote:reversed.body.quote})).body.code).toBe('refund_not_reversible');
+ const again=await review('review',{action:'approve',reason:'Segunda aprobación ficticia',quote:reversed.body.quote});expect(again.status).toBe(200);expect(again.body.requests[0].status).toBe('queued');expect((await w.p.reload()).status).toBe('cancelled');
+ expect(await OutboxJob.count({where:{topic:'payment.refund',aggregateId:w.p.orderId,status:'pending'}})).toBe(1);
+ expect((await as(w.admin).post(`/api/admin/class-payments/${w.p.orderId}/fake-refund-complete`)).status).toBe(200);
+ expect(await w.p.reload()).toMatchObject({unitsRefunded:4,unitsAvailable:0});
+ expect((await review('reverse',{reason:'Tarde',buyerMessage:'x',quote:(await refunds.preview(w.p,{type:'voluntary',internal:true})).quote})).body.code).toBe('refund_not_reversible');
+});
+test('D3-DIN-02: revertir no reabre una compra que el comprador había cancelado ni una que estaba pausada',async()=>{
+ const cancelledByBuyer=await paid();await as(cancelledByBuyer.buyer).post(`${url(cancelledByBuyer)}/cancel`,{version:cancelledByBuyer.p.version,reason:'Cancelación ficticia'});
+ const a=await request(cancelledByBuyer);const idA=a.r.body.requests[0].id;
+ const approvedA=await as(cancelledByBuyer.admin).post(`/api/admin/class-refund-requests/${idA}/review`,{action:'approve',reason:'Aprobación ficticia',quote:a.r.body.quote});expect(approvedA.status).toBe(200);
+ expect((await as(cancelledByBuyer.admin).post(`/api/admin/class-refund-requests/${idA}/reverse`,{reason:'Nota',buyerMessage:'Mensaje',quote:approvedA.body.quote})).status).toBe(200);
+ expect((await cancelledByBuyer.p.reload()).status).toBe('cancelled');
+ const paused=await paid();await as(paused.buyer).post(`${url(paused)}/pause`,{version:paused.p.version});expect((await paused.p.reload()).status).toBe('paused');
+ const b=await request(paused);const idB=b.r.body.requests[0].id;
+ const approvedB=await as(paused.admin).post(`/api/admin/class-refund-requests/${idB}/review`,{action:'approve',reason:'Aprobación ficticia',quote:b.r.body.quote});expect(approvedB.status).toBe(200);expect((await paused.p.reload()).status).toBe('cancelled');
+ expect((await as(paused.admin).post(`/api/admin/class-refund-requests/${idB}/reverse`,{reason:'Nota',buyerMessage:'Mensaje',quote:approvedB.body.quote})).status).toBe(200);
+ expect((await paused.p.reload()).status).toBe('paused');
+});
