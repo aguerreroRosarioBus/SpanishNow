@@ -193,7 +193,7 @@ describe('semilla del curso de prueba en una base vacía', () => {
 
   test('audio: cada keyframe y cada estructura quedan con su mp3, y «escuchar y repetir» y las tarjetas lo usan', async () => {
     expect((await query("SELECT COUNT(*) AS n FROM lesson_blocks WHERE type = 'keyframe' AND audioUrl IS NULL"))[0].n).toBe(0);
-    expect((await query("SELECT COUNT(*) AS n FROM lesson_blocks WHERE type = 'keyframe' AND imageUrl IS NOT NULL"))[0].n).toBe(0); // las ilustraciones llegan con W27
+    expect((await query("SELECT COUNT(*) AS n FROM lesson_blocks WHERE type = 'keyframe' AND (imageUrl IS NULL OR imageAlt IS NULL)"))[0].n).toBe(0); // las 15 ilustraciones de W27, cada una con su texto alternativo
     expect((await query('SELECT COUNT(*) AS n FROM vocabulary WHERE audioUrl IS NULL'))[0].n).toBe(0);
     // la lección muestra la instantánea del vocabulario: lleva el mismo audio que la tarjeta
     const snapshots = await query("SELECT b.vocabularySnapshot AS s, v.audioUrl FROM lesson_blocks b JOIN vocabulary v ON v.id = b.vocabularyId WHERE b.type = 'expression'");
@@ -276,6 +276,7 @@ describe('audio e ilustraciones que llegan después', () => {
     expect(run('seed.js', ['--only', 'accounts']).status).toBe(0);
     tmpContent = fs.mkdtempSync(path.join(os.tmpdir(), 'trial-content-'));
     fs.cpSync(loadTrialContent().dir, tmpContent, { recursive: true });
+    fs.rmSync(path.join(tmpContent, 'images'), { recursive: true, force: true }); // simula que las ilustraciones todavía no llegaron
   }, 90000);
   afterAll(async () => {
     const urls = (await query('SELECT audioUrl AS url FROM lesson_blocks UNION SELECT imageUrl FROM lesson_blocks UNION SELECT audioUrl FROM vocabulary UNION SELECT audioUrl FROM repetition_activities UNION SELECT fileUrl FROM materials').catch(() => [])).map(r => r.url).filter(Boolean);

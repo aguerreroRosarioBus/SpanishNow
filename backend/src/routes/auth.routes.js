@@ -42,11 +42,8 @@ router.post('/register',
         const created = await User.create({ name, email, password, role: 'student', locale: ['en', 'es'].includes(req.body.locale) ? req.body.locale : null }, { transaction });
         await legal.recordAcceptances(created.id, docs, { locale, context: 'signup', transaction });
         // Curso de prueba gratis: si existe y está publicado, el alumno nuevo ya queda inscripto. Sin ese curso el registro sigue igual.
-        try {
-          await enrollInTrialCourse(created.id, { transaction });
-        } catch (error) {
-          console.warn(`No se pudo inscribir al curso de prueba: ${error.message}`);
-        }
+        // Sin try/catch: en MySQL un deadlock deshace toda la transacción, y tragarse ese error respondería 201 con un usuario que no existe.
+        await enrollInTrialCourse(created.id, { transaction });
         return created;
       });
 
