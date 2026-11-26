@@ -59,7 +59,7 @@ test('repara solo las versiones vigentes sin expectativas del catálogo inicial 
   const noHotmart = await template(teacherId, e.templateKey, 'draft', e, { hotmart: false });
   const foreign = await template(teacherId, 'mi-paquete', 'draft', f);                       // clave fuera del catálogo inicial
 
-  expect((await migrator.umzug.up()).map(m => m.name)).toEqual([NAME]);
+  expect((await migrator.umzug.up({ to: NAME })).map(m => m.name)).toEqual([NAME]);
 
   for (const [row, item] of [[sqlNull, a], [jsonNull, b], [noHotmart, e]]) {
     const before = (await q('SELECT * FROM class_package_template_versions WHERE id = ?', [row.versionId]))[0];
@@ -81,7 +81,7 @@ test('repara solo las versiones vigentes sin expectativas del catálogo inicial 
     expect((await currentOf(row.templateId)).id).toBe(row.versionId);
     expect(await versionsOf(row.templateId)).toBe(1);
   }
-  expect(await migrator.umzug.up()).toEqual([]);
+  expect((await migrator.umzug.pending()).map(m => m.name)).not.toContain(NAME);
   // Reaplicar el cuerpo de la migración tampoco duplica versiones.
   await require(`../migrations/${NAME}`).up(db.getQueryInterface(), require('sequelize').Sequelize);
   for (const row of [sqlNull, jsonNull, noHotmart]) expect(await versionsOf(row.templateId)).toBe(2);
