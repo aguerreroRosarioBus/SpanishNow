@@ -106,7 +106,12 @@ export class LessonSessionStore {
     if (block) this.persistCurrentBlock(block);
   }
 
-  setAnswer(value: string): void { this.answerText.set(value); }
+  /** Cambiar la respuesta después de un error descarta ese resultado: el botón vuelve a «Comprobar» para la nueva. */
+  setAnswer(value: string): void {
+    const result = this.answerResult();
+    if (result && !result.isCorrect && value !== this.answerText()) this.answerResult.set(null);
+    this.answerText.set(value);
+  }
 
   retryAnswer(): void {
     this.answerResult.set(null);

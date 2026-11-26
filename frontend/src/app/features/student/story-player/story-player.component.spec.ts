@@ -164,12 +164,18 @@ describe('StoryPlayerComponent (flujo TPRS)', () => {
     const next = [...el.querySelectorAll('button')].find(b => b.textContent?.trim() === 'Continuar') as HTMLButtonElement;
     expect(next.disabled).toBe(false);
 
-    // Reintentar limpia el resultado y deja volver a responder.
-    const retry = [...el.querySelectorAll('button')].find(b => b.textContent?.trim() === 'Reintentar') as HTMLButtonElement;
-    retry.click();
+    // Elegir otra opción descarta el resultado anterior: el botón vuelve a «Comprobar» y no avanza sin comprobar.
+    session.setAnswer('en la fiesta');
     fixture.detectChanges();
     expect(session.answerResult()).toBeNull();
-    expect(session.answerText()).toBe('');
+    expect(session.questionPending()).toBe(true);
+    const check = [...el.querySelectorAll('button')].find(b => b.textContent?.trim() === 'Comprobar') as HTMLButtonElement;
+    expect(check).toBeTruthy();
+    lessonApi.answer.mockReturnValue(of({ blockKey: 'q1', questionId: 9, isCorrect: true, attempt: 2, canRetry: false, canContinue: true }));
+    check.click();
+    fixture.detectChanges();
+    expect(session.answerResult()?.isCorrect).toBe(true);
+    expect(currentKey()).toBe('q1');
 
     session.goToBlock(1);
     expect(currentKey()).toBe('k2');
