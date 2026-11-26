@@ -34,6 +34,7 @@ h2 { margin: 0; font-size: 1rem; overflow-wrap: anywhere; }
 p { margin: 0; }
 .muted { margin-top: 2px; font-size: 0.8125rem; color: var(--color-text-light); overflow-wrap: anywhere; }
 .balance { font-size: 1rem; }
+.balance-closed { font-size: 0.9375rem; color: var(--color-text-light); overflow-wrap: anywhere; }
 .balance-num { font-size: 1.75rem; line-height: 1.1; font-weight: 700; }
 .expiry { margin-top: var(--spacing-sm); font-weight: 600; }
 .conditions { margin-top: var(--spacing-sm); }

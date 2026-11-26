@@ -22,14 +22,14 @@ async function decorate(views){
   const ids=views.map(v=>Number(v.id));
   const moves=await Ledger.findAll({where:{purchaseId:ids,operation:'adjust'},attributes:['purchaseId','units','fromBucket','toBucket']});
   const logs=await AuditLog.findAll({where:{entityType:'class_package_purchases',entityId:ids,action:['refund.requested','refund.reviewed']},order:[['id','ASC']],attributes:['id','action','entityId','data']});
-  const orders=new Map((await Order.findAll({where:{id:[...new Set(views.map(v=>v.orderId))]},attributes:['id','status','currency','refundedAmount']})).map(o=>[Number(o.id),o]));
+  const orders=new Map((await Order.findAll({where:{id:[...new Set(views.map(v=>v.orderId))]},attributes:['id','status','amount','currency','refundedAmount']})).map(o=>[Number(o.id),o]));
   return views.map(v=>{
     const adjustedUnits=moves.filter(m=>Number(m.purchaseId)===Number(v.id)).reduce((n,m)=>n+(m.fromBucket==='none'?m.units:m.toBucket==='none'?-m.units:0),0);
     const mine=logs.filter(a=>Number(a.entityId)===Number(v.id));const request=mine.filter(a=>a.action==='refund.requested').at(-1);
     const order=orders.get(Number(v.orderId));
     const decided=request&&mine.filter(a=>a.action==='refund.reviewed'&&Number(a.data.requestId)===Number(request.id)).at(-1);
     const refund=request?{status:order?.status==='refunded'?'confirmed':decided?.data.status||'requested',amount:request.data.amount,currency:request.data.currency,refundedAmount:order?.refundedAmount??0}:null;
-    return {...v,adjustedUnits,refund};
+    return {...v,adjustedUnits,refund,paid:order?{amount:order.amount,currency:order.currency}:null};
   });
 }
 async function scheduleExpiry(p,transaction){await outbox.enqueue({topic:'purchase.expire',aggregateType:'class_package_purchases',aggregateId:p.id,dedupeKey:`purchase.expire:${p.id}:v${p.version}`,payload:{},runAt:p.expiresAt},{transaction});}

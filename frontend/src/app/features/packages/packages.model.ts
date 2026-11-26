@@ -48,6 +48,7 @@ export interface ClassPurchase {
   balance:{granted:number;available:number;reserved:number;consumed:number;expired:number;refunded:number};
   snapshot:ClassOffer['snapshot'];ledger?:{id:number;operation:string;units:number;createdAt:string;reason:string|null;fromBucket?:string;toBucket?:string}[];
   /** Créditos sumados (+) o restados (−) a mano sobre lo comprado. */adjustedUnits?:number;
+  /** Importe pagado por la compra (orden). */paid?:{amount:number;currency:string}|null;
   /** Estado del reembolso de esta compra; null si no se pidió. */refund?:PurchaseRefund|null;
   /** Solo en la vista de administración (GET /api/admin/class-purchases/:id). */adjustments?:{id:number;units:number;direction:'add'|'remove'|'restore';reason:string|null;createdAt:string}[];
 }

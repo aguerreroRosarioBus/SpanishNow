@@ -35,3 +35,8 @@
   font-size: .875rem;
   summary { cursor: pointer; color: var(--color-primary, #0d6efd); }
 }
+
+.status-success { background: var(--color-success-soft); color: var(--color-success-text); }
+.status-warning { background: var(--color-warning-soft); color: #6b4a00; }
+.status-danger { background: var(--color-danger-soft); color: var(--color-danger); }
+.status-neutral { background: var(--color-bg-dark); color: var(--color-text-light); }

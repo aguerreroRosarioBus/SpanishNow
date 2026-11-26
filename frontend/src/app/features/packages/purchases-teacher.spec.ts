@@ -85,3 +85,30 @@ describe('Saldo de clases: jerarquía de la tarjeta (#71)',()=>{
     for(const k of keys)expect(PACKAGE_MESSAGES.en[k]).toBeDefined();
   });
 });
+
+describe('W20 estados de la tarjeta: reembolso y ajustes (D3-DIN-04, D3-DIN-09)',()=>{
+  const refund=(status:string,extra:object={})=>({amount:5000,currency:'USD',refundedAmount:0,status,...extra});
+  it('reembolso aprobado sin confirmar: «Reembolso en trámite», sin saldo ni vencimiento como si valieran',()=>{
+    const text=render(snap,{purchase:{status:'cancelled',expiresAt:expiry,refund:refund('queued')}}).replace(/\u00a0/g,' ');
+    expect(last.querySelector('.card-head .badge-status')?.textContent?.trim()).toBe('Reembolso en trámite');
+    expect(text).toContain('Reembolso de USD 50,00 aprobado');expect(text).not.toContain('disponibles de');expect(text).not.toContain('Vence el');expect(last.querySelector('.balance-num')).toBeNull();
+  });
+  it('reembolsado: «Reembolsado» con el importe devuelto; el docente ve lo mismo',()=>{
+    const purchase={status:'cancelled',expiresAt:expiry,balance:{granted:4,available:0,reserved:0,consumed:0,expired:0,refunded:4},refund:refund('confirmed',{refundedAmount:5000})};
+    for(const teacher of [false,true]){const text=render(snap,{teacher,purchase}).replace(/\u00a0/g,' ');expect(last.querySelector('.card-head .badge-status')?.textContent?.trim()).toBe('Reembolsado');expect(text).toContain('Se reembolsaron USD 50,00');expect(text).not.toContain('Vence el');}
+  });
+  it('reembolso solicitado: la compra sigue activa y se suma una segunda etiqueta',()=>{
+    render(snap,{purchase:{refund:refund('requested')}});
+    const badges=[...last.querySelectorAll('.card-head .badge-status')].map(b=>b.textContent?.trim());expect(badges).toEqual(['Activo','Reembolso solicitado']);
+  });
+  it('cancelada sin reembolso: avisa que no se puede reservar; vencida conserva «Venció el»',()=>{
+    expect(render(snap,{purchase:{status:'cancelled'}})).toContain('Compra cancelada. Ya no se pueden reservar clases.');
+    const text=render(snap,{purchase:{status:'expired',expiresAt:expiry,balance:{granted:4,available:0,reserved:0,consumed:0,expired:4,refunded:0}}});expect(text).toContain('Venció el');
+  });
+  it('el saldo ajustado se muestra aparte y el historial dice si sumó o restó',()=>{
+    const text=render(snap,{purchase:{adjustedUnits:1,balance:{granted:5,available:5,reserved:0,consumed:0,expired:0,refunded:0}}});
+    expect(text).toContain('disponibles de 5');expect(text).toContain('Incluye 1 más por un ajuste del equipo.');
+    const detail=render(snap,{purchase:{adjustedUnits:-3,ledger:[{id:1,operation:'adjust',units:1,createdAt:'2026-11-25T21:38:00Z',reason:'Alta',fromBucket:'none',toBucket:'available'},{id:2,operation:'adjust',units:4,createdAt:'2026-11-25T21:39:00Z',reason:'Baja',fromBucket:'available',toBucket:'none'},{id:3,operation:'adjust',units:1,createdAt:'2026-11-25T21:40:00Z',reason:null,fromBucket:'consumed',toBucket:'available'}]}});
+    expect(detail).toContain('Ajuste: se sumó 1');expect(detail).toContain('Ajuste: se restó 4');expect(detail).toContain('Ajuste: se devolvió 1 clase(s) ya usada(s)');expect(detail).toContain('Se descontaron 3 por un ajuste del equipo.');
+  });
+});
