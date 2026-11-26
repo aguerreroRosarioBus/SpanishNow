@@ -72,3 +72,23 @@ test('P2-3: class_credits.adjust solo alcanza compras propias; otro docente 404,
   await other.update({permissions:['class_credits.adjust','class_credits.adjust_any']});
   expect((await as(other).post(url,body).set('Idempotency-Key',randomUUID())).status).toBe(200);
 });
+test('D3-DIN-01: un ajuste no supera el tope y un valor desbordado no llega a la base',async()=>{
+  const w=await paid();const admin=await createUser('student','credits-cap');await admin.update({permissions:['class_credits.adjust','class_credits.adjust_any']});const url=`/api/admin/class-purchases/${w.p.id}/adjustments`;
+  const body={units:purchases.MAX_ADJUST_UNITS+1,direction:'add',reason:'Corrección ficticia'};
+  const high=await as(admin).post(url,body).set('Idempotency-Key',randomUUID());expect(high.status).toBe(400);expect(high.body.code).toBe('adjust_units_too_high');expect(high.body.params).toEqual({max:purchases.MAX_ADJUST_UNITS});
+  expect((await as(admin).post(url,{...body,units:2147483647}).set('Idempotency-Key',randomUUID())).body.code).toBe('adjust_units_too_high');
+  expect((await as(admin).post(url,{...body,units:99999999999}).set('Idempotency-Key',randomUUID())).body.code).toBe('adjust_units_too_high');
+  expect((await as(admin).post(url,{...body,units:purchases.MAX_ADJUST_UNITS}).set('Idempotency-Key',randomUUID())).status).toBe(200);
+  expect(await Ledger.count({where:{purchaseId:w.p.id,operation:'adjust'}})).toBe(1);
+});
+test('D3-DIN-03: no se suman créditos a una compra cancelada, pausada o vencida; restar sigue permitido',async()=>{
+  const w=await paid();const admin=await createUser('student','credits-state');await admin.update({permissions:['class_credits.adjust','class_credits.adjust_any']});const url=`/api/admin/class-purchases/${w.p.id}/adjustments`;
+  const add=()=>as(admin).post(url,{units:1,direction:'add',reason:'Corrección ficticia'}).set('Idempotency-Key',randomUUID());
+  for(const status of ['paused','cancelled','expired']){
+    await w.p.reload();await w.p.update({status});const r=await add();expect([status,r.status,r.body.code]).toEqual([status,409,'package_not_active']);
+  }
+  expect(await Ledger.count({where:{purchaseId:w.p.id,operation:'adjust'}})).toBe(0);
+  await w.p.reload();await w.p.update({status:'paused'});
+  const remove=await as(admin).post(url,{units:1,direction:'remove',reason:'Corrección ficticia'}).set('Idempotency-Key',randomUUID());expect(remove.status).toBe(200);expect(remove.body.balance.available).toBe(3);
+  await w.p.reload();await w.p.update({status:'active'});expect((await add()).status).toBe(200);
+});

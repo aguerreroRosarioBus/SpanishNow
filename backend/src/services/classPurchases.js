@@ -7,6 +7,8 @@ const offers=require('./classOffers');
 const outbox=require('./outbox');
 const chat=require('./chatService');
 const positive=n=>Number.isSafeInteger(n)&&n>0&&n<=2147483647;
+// Tope de un ajuste manual (D3-DIN-01): un error de tecleo no debe dejar cientos de clases pagadas ni desbordar el saldo.
+const MAX_ADJUST_UNITS=50;
 async function load(user,id,{transaction,lock=false,teacher=false}={}){
   if(!validId(id))throw fail(404,'not_found');const p=await Purchase.findByPk(id,{transaction,...(lock?{lock:transaction.LOCK.UPDATE}:{})});
   if(!p)throw fail(404,'not_found');
@@ -82,6 +84,7 @@ async function change(user,id,action,body,{now:clock=new Date()}={}){
 const canAdjust=(actor,p)=>p.teacherId===actor.id||require('../config/permissions').hasPermission(actor,'class_credits.adjust_any');
 async function adjust(actor,id,body,key){
   offers.key(key);
+  if(body&&Number.isSafeInteger(body.units)&&body.units>MAX_ADJUST_UNITS)throw fail(400,'adjust_units_too_high',{max:MAX_ADJUST_UNITS});
   if(!validId(id)||!only(body,['units','direction','reason','version'])||!positive(body.units)||!['add','remove','restore'].includes(body.direction)||typeof body.reason!=='string'||!body.reason.trim()||body.reason.length>500||body.version!==undefined&&!positive(body.version))throw invalid();
   const ref=await Purchase.findByPk(id);if(!ref||!canAdjust(actor,ref))throw fail(404,'not_found');
   return sequelize.transaction(async transaction=>{
@@ -96,4 +99,4 @@ async function adjust(actor,id,body,key){
   });
 }
 outbox.register('purchase.expire',job=>settle(job.aggregateId));outbox.register('purchase.resume',job=>settle(job.aggregateId));
-module.exports={load,present,settle,detail,list,teacherList,change,adjust,unresolved,canAdjust};
+module.exports={load,present,settle,detail,list,teacherList,change,adjust,unresolved,canAdjust,MAX_ADJUST_UNITS};
