@@ -76,3 +76,23 @@ test('demora interna de revisión no quita el plazo de una solicitud presentada 
  const w=await paid();const {r}=await request(w);expect(r.body.classification).toBe('standard_full_unused');const original=w.p.snapshot;
  const delayed=await refunds.preview(w.p,{now:new Date(Date.parse(r.body.deadline)+48*3600000)});expect(delayed.classification).toBe('standard_full_unused');expect(delayed.requests).toHaveLength(1);expect((await w.p.reload()).snapshot).toEqual(original);
 });
+test('D3-DIN-07: el motivo interno del revisor no llega al comprador; solo el mensaje que se le escribe',async()=>{
+ const w=await paid();const {r}=await request(w);const id=r.body.requests[0].id;
+ const review=body=>as(w.admin).post(`/api/admin/class-refund-requests/${id}/review`,body);
+ const needs=await review({action:'needs_information',reason:'Sospecha de abuso, nota interna',quote:r.body.quote});expect(needs.status).toBe(400);expect(needs.body.params.fields).toEqual(['buyerMessage']);
+ const asked=await review({action:'needs_information',reason:'Sospecha de abuso, nota interna',buyerMessage:'¿Puedes contarnos qué ocurrió con la clase?',quote:r.body.quote});expect(asked.status).toBe(200);
+ expect(asked.body.requests[0].updates[0]).toMatchObject({reason:'Sospecha de abuso, nota interna',message:'¿Puedes contarnos qué ocurrió con la clase?'});
+ const own=await as(w.buyer).get(`${url(w)}/refund-preview`);expect(own.status).toBe(200);
+ expect(own.body.requests[0].updates[0]).toEqual({status:'needs_information',createdAt:expect.anything(),message:'¿Puedes contarnos qué ocurrió con la clase?'});
+ expect(JSON.stringify(own.body)).not.toContain('Sospecha de abuso');
+ const approved=await review({action:'approve',reason:'Otra nota interna confidencial',quote:asked.body.quote});expect(approved.status).toBe(200);
+ const after=await as(w.buyer).get(`${url(w)}/refund-preview`);expect(JSON.stringify(after.body)).not.toContain('confidencial');expect(after.body.requests[0].updates.at(-1).message).toBeNull();
+});
+test('D3-DIN-06: bandeja de solicitudes y de tareas nombra a la persona y distingue compra de orden',async()=>{
+ const w=await paid();const {r}=await request(w);expect(r.status).toBe(200);
+ const list=(await as(w.admin).get('/api/admin/class-refund-requests')).body;const item=list.find(i=>i.purchaseId===w.p.id);expect(item).toMatchObject({buyerName:w.buyer.name,teacherName:w.teacher.name});
+ const jobs=(await as(w.admin).get('/api/admin/class-payment-jobs')).body;const refundJob=jobs.find(j=>j.topic==='review.package_refund'&&j.aggregateId===w.p.id);
+ expect(refundJob).toMatchObject({aggregateType:'class_package_purchases',orderId:null,purchaseIds:[w.p.id],buyerNames:[w.buyer.name]});
+ const orderJob=await OutboxJob.create({topic:'review.class_payment',aggregateType:'class_package_orders',aggregateId:w.p.orderId,dedupeKey:`review:order:${randomUUID()}`,payload:{reason:'x'},status:'done',runAt:new Date()});
+ const again=(await as(w.admin).get('/api/admin/class-payment-jobs')).body.find(j=>j.id===Number(orderJob.id));expect(again).toMatchObject({orderId:w.p.orderId,purchaseIds:[w.p.id],buyerNames:[w.buyer.name]});
+});

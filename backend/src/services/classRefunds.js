@@ -2,7 +2,7 @@ const {Op}=require('sequelize');
 // Solicitud, decisión interna y devolución del proveedor son hechos distintos, todos auditables.
 const {createHash}=require('crypto');
 const sequelize=require('../config/database');
-const {ClassPackagePurchase:Purchase,ClassPackageOrder:Order,AuditLog}=require('../models');
+const {ClassPackagePurchase:Purchase,ClassPackageOrder:Order,AuditLog,User}=require('../models');
 const {fail,invalid,only,validId}=require('./legalDocuments');
 const purchases=require('./classPurchases');
 const offers=require('./classOffers');
@@ -11,12 +11,13 @@ const TYPES=['voluntary','service_unavailable','group_incomplete','other'];
 const reason=value=>typeof value==='string'&&Boolean(value.trim())&&value.length<=500;
 const entityType='class_package_purchases';
 async function history(p,transaction){return AuditLog.findAll({where:{entityType,entityId:p.id,action:['refund.requested','refund.reviewed','refund.deadline_verified']},order:[['id','ASC']],transaction});}
-function requests(rows,order){return rows.filter(a=>a.action==='refund.requested').map(a=>{
+// `internal` solo para administración: el motivo auditado de una decisión es una nota interna; el comprador solo ve el mensaje que se le escribió (D3-DIN-07).
+function requests(rows,order,internal=false){return rows.filter(a=>a.action==='refund.requested').map(a=>{
   const decisions=rows.filter(b=>b.action==='refund.reviewed'&&b.data.requestId===Number(a.id));
   return {id:Number(a.id),reason:a.reason,createdAt:a.createdAt,type:a.data.type,classification:a.data.classification,amount:a.data.amount,currency:a.data.currency,
-    status:order.status==='refunded'?'confirmed':decisions.at(-1)?.data.status||'requested',updates:decisions.map(d=>({reason:d.reason,status:d.data.status,createdAt:d.createdAt}))};
+    status:order.status==='refunded'?'confirmed':decisions.at(-1)?.data.status||'requested',updates:decisions.map(d=>({status:d.data.status,createdAt:d.createdAt,message:d.data.buyerMessage||null,...(internal?{reason:d.reason}:{})}))};
 });}
-async function preview(p,{transaction,now=new Date(),type='voluntary'}={}){
+async function preview(p,{transaction,now=new Date(),type='voluntary',internal=false}={}){
   const order=await Order.findByPk(p.orderId,{transaction});const rows=await history(p,transaction);
   const calculated=new Date(p.paidAt.getTime()+p.snapshot.policy.refundWindowHours*3600000);
   const verified=rows.filter(a=>a.action==='refund.deadline_verified').map(a=>new Date(a.data.deadline)).sort((a,b)=>b-a)[0];
@@ -26,7 +27,7 @@ async function preview(p,{transaction,now=new Date(),type='voluntary'}={}){
   const reservationsPending=await purchases.unresolved(p,transaction,now);
   const result={purchaseId:p.id,orderId:order.id,provider:order.provider,version:p.version,amount:order.amount,currency:order.currency,orderStatus:order.status,refundedAmount:order.refundedAmount,
     deadline:deadline.toISOString(),deadlineVerified:Boolean(verified&&verified>=calculated),classification,reservationsPending,consumed:p.unitsConsumed,available:p.unitsAvailable,reserved:p.unitsReserved,type};
-  return {...result,quote:createHash('sha256').update(JSON.stringify(result)).digest('hex'),requests:requests(rows,order)};
+  return {...result,quote:createHash('sha256').update(JSON.stringify(result)).digest('hex'),requests:requests(rows,order,internal)};
 }
 async function ownPreview(user,id,type){if(type!==undefined&&!TYPES.includes(type))throw invalid(['type']);const p=await purchases.load(user,id);if(p.buyerId!==user.id)throw fail(404,'not_found');return preview(p,{type});}
 async function request(user,id,body,key){
@@ -49,15 +50,17 @@ async function request(user,id,body,key){
 }
 async function adminList(){
   const refs=await AuditLog.findAll({where:{action:'refund.requested',entityType},order:[['id','DESC']],limit:200});const items=[];
-  for(const ref of refs){const p=await Purchase.findByPk(ref.entityId);if(p)items.push({...await preview(p,{type:ref.data.type}),buyerId:p.buyerId,teacherId:p.teacherId});}return items;
+  const purchaseRows=new Map((await Purchase.findAll({where:{id:[...new Set(refs.map(r=>r.entityId))]}})).map(p=>[Number(p.id),p]));
+  const people=new Map((await User.findAll({where:{id:[...new Set([...purchaseRows.values()].flatMap(p=>[p.buyerId,p.teacherId]))]},attributes:['id','name']})).map(u=>[u.id,u.name]));
+  for(const ref of refs){const p=purchaseRows.get(Number(ref.entityId));if(p)items.push({...await preview(p,{type:ref.data.type,internal:true}),buyerId:p.buyerId,teacherId:p.teacherId,buyerName:people.get(p.buyerId)??null,teacherName:people.get(p.teacherId)??null});}return items;
 }
 async function review(actor,id,body){
-  if(!validId(id)||!only(body,['action','reason','quote'])||!['approve','manual_update','needs_information'].includes(body.action)||!reason(body.reason)||typeof body.quote!=='string')throw invalid();
+  if(!validId(id)||!only(body,['action','reason','quote','buyerMessage'])||!['approve','manual_update','needs_information'].includes(body.action)||!reason(body.reason)||typeof body.quote!=='string'||body.buyerMessage!==undefined&&(typeof body.buyerMessage!=='string'||body.buyerMessage.length>500)||body.action==='needs_information'&&!reason(body.buyerMessage))throw invalid(['buyerMessage']);
   const request=await AuditLog.findOne({where:{id,action:'refund.requested',entityType}});if(!request)throw fail(404,'not_found');
   const ref=await Purchase.findByPk(request.entityId);
   return sequelize.transaction(async transaction=>{
     await offers.teacherSettings(ref.teacherId,transaction);const p=await Purchase.findByPk(ref.id,{transaction,lock:transaction.LOCK.UPDATE});
-    const view=await preview(p,{transaction,type:request.data.type});
+    const view=await preview(p,{transaction,type:request.data.type,internal:true});
     if(view.quote!==body.quote)throw fail(409,'version_conflict');
     const latest=view.requests.find(r=>r.id===Number(id));
     if(latest.status==='confirmed')return view;
@@ -72,17 +75,17 @@ async function review(actor,id,body){
       if(p.status!=='cancelled')await p.update({status:'cancelled',cancelledAt:new Date(),version:p.version+1},{transaction});
       if(order.provider==='fake')await outbox.enqueue({topic:'payment.refund',aggregateType:'class_package_orders',aggregateId:p.orderId,dedupeKey:`payment.refund:${p.orderId}`,payload:{reason:body.reason.trim()},runAt:new Date()},{transaction});
     }
-    await AuditLog.create({actorId:actor.id,action:'refund.reviewed',entityType,entityId:p.id,reason:body.reason.trim(),data:{requestId:Number(id),status,amount:view.amount,currency:view.currency,classification:view.classification}},{transaction});
-    return preview(p,{transaction,type:request.data.type});
+    await AuditLog.create({actorId:actor.id,action:'refund.reviewed',entityType,entityId:p.id,reason:body.reason.trim(),data:{requestId:Number(id),status,amount:view.amount,currency:view.currency,classification:view.classification,...(body.buyerMessage?.trim()?{buyerMessage:body.buyerMessage.trim()}:{})}},{transaction});
+    return preview(p,{transaction,type:request.data.type,internal:true});
   });
 }
 async function verifyDeadline(actor,id,body){
   if(!validId(id)||!only(body,['deadline','reason'])||!reason(body.reason))throw invalid();
   const deadline=offers.instant(body.deadline);const ref=await Purchase.findByPk(id);if(!ref)throw fail(404,'not_found');
   return sequelize.transaction(async transaction=>{
-    await offers.teacherSettings(ref.teacherId,transaction);const p=await Purchase.findByPk(id,{transaction,lock:transaction.LOCK.UPDATE});const view=await preview(p,{transaction});
+    await offers.teacherSettings(ref.teacherId,transaction);const p=await Purchase.findByPk(id,{transaction,lock:transaction.LOCK.UPDATE});const view=await preview(p,{transaction,internal:true});
     if(deadline<new Date(view.deadline))throw invalid(['deadline']);
-    await AuditLog.create({actorId:actor.id,action:'refund.deadline_verified',entityType,entityId:p.id,reason:body.reason.trim(),data:{deadline:deadline.toISOString()}},{transaction});return preview(p,{transaction});
+    await AuditLog.create({actorId:actor.id,action:'refund.deadline_verified',entityType,entityId:p.id,reason:body.reason.trim(),data:{deadline:deadline.toISOString()}},{transaction});return preview(p,{transaction,internal:true});
   });
 }
 module.exports={preview,ownPreview,request,adminList,review,verifyDeadline};
