@@ -9,6 +9,7 @@ import { I18nService } from '../../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { CourseContentStore } from '../course-content.store';
 import { CourseManageStore } from '../course-manage.store';
+import { toastFrom } from '../../../../core/services/toast.service';
 
 export const MAX_MATERIAL_BYTES = 20 * 1024 * 1024;
 
@@ -22,6 +23,7 @@ interface Destination { value: string; label: string; group: string; }
   templateUrl: './materials-modal.component.html'
 })
 export class MaterialsModalComponent implements OnInit {
+  constructor() { toastFrom(() => this.errorMessage()); }
   private store = inject(CourseManageStore);
   private content = inject(CourseContentStore);
   private api = inject(MaterialService);

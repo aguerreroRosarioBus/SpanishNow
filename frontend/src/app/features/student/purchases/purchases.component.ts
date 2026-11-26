@@ -13,6 +13,7 @@ import { snapshotLink } from '../../legal/legal.service';
 import { PackagesService } from '../../packages/packages.service';
 import { ClassPurchase } from '../../packages/packages.model';
 import { purchaseStatusKey, purchaseTone } from '../../packages/purchase-state';
+import { toastFrom } from '../../../core/services/toast.service';
 
 /** «Mis compras»: historial de compras del alumno con link al recibo. */
 @Component({
@@ -23,6 +24,7 @@ import { purchaseStatusKey, purchaseTone } from '../../packages/purchase-state';
   styleUrl: './purchases.component.scss'
 })
 export class PurchasesComponent implements OnInit {
+  constructor() { toastFrom(() => this.errorMessage()); }
   readonly i18n = inject(I18nService);
   private readonly preferences = inject(UserPreferencesService);
   readonly timeZone = computed(() => this.preferences.preferences()?.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');

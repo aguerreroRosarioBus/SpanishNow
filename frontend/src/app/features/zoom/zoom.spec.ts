@@ -13,6 +13,7 @@ import { ClassSessionsService } from '../../core/services/class-sessions.service
 import { UserPreferencesService } from '../../core/services/user-preferences.service';
 import { FeaturesService } from '../../core/services/features.service';
 import { I18nService } from '../../core/i18n/i18n.service';
+import { toastText } from '../../shared/testing/toasts';
 const account = { status: 'connected', fake: true, accountEmail: 'docente@zoom.invalid', capabilities: { maxMinutes: 120, maxParticipants: 100 }, lastError: null };
 const preferences = { preferences: () => ({ timeZone: 'America/Argentina/Cordoba', timeZoneConfirmedAt: '2026-10-20T00:00:00Z' }) };
 const session = { id: 7, teacherId: 1, version: 2, status: 'confirmed', minutes: 50, startsAt: '2026-11-02T15:00:00Z', endsAt: '2026-11-02T15:50:00Z',
@@ -60,14 +61,14 @@ describe('W08 UI propia', () => {
   it('OAuth no duplica solicitudes mientras espera y conserva error recuperable', () => {
     const pending = new Subject<{ url: string; fake: boolean }>(); const connect = vi.fn(() => pending); const f = setupCard({ connect });
     f.componentInstance.connect(); f.componentInstance.connect(); expect(connect).toHaveBeenCalledTimes(1);
-    pending.error({ error: { code: 'zoom_busy' } }); f.detectChanges(); expect(f.nativeElement.querySelector('[role=alert]').textContent).toBe('Error seguro');
+    pending.error({ error: { code: 'zoom_busy' } }); f.detectChanges(); expect(toastText()).toBe('Error seguro');
     expect(f.componentInstance.busy()).toBe(false);
   });
   it('confirma el pendiente con sesión y conserva el rechazo de otra cuenta', () => {
     const complete = vi.fn(() => throwError(() => ({ error: { code: 'forbidden' } })));
     const f = setupCard({ complete }, { zoom: 'confirm', token: 'pendiente' });
     expect(complete).toHaveBeenCalledWith('pendiente'); expect(f.componentInstance.status()).toBeNull();
-    expect(f.nativeElement.querySelector('[role=alert]').textContent).toBe('Error seguro');
+    expect(toastText()).toBe('Error seguro');
   });
   it('cancelación OAuth muestra código traducible sin completar ningún grant', () => {
     const complete = vi.fn(); const f = setupCard({ complete }, { zoom: 'zoom_oauth_denied' });

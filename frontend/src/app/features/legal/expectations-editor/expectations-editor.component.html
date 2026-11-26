@@ -16,7 +16,7 @@
   @if (state() === 'loading') {
     <div class="text-center py-5" role="status"><div class="spinner-border text-primary" aria-hidden="true"></div></div>
   } @else if (state() === 'error') {
-    <div class="alert alert-danger" role="alert">{{ 'sales.editor.loadError' | t }}</div>
+    <div class="state-box state-box--error" role="status"><span>{{ 'sales.editor.loadError' | t }}</span></div>
   } @else {
     <form [formGroup]="form" (ngSubmit)="save()" novalidate>
       <div class="row g-4">
@@ -40,12 +40,6 @@
 
       @if (missing()) {
         <div class="alert alert-danger" role="alert">{{ 'sales.editor.required' | t }}</div>
-      }
-      @if (error()) {
-        <div class="alert alert-danger" role="alert">{{ error() }}</div>
-      }
-      @if (message()) {
-        <div class="alert alert-success" role="status">{{ 'sales.editor.saved' | t : { version: message() } }}</div>
       }
       <button type="submit" class="btn btn-primary" [disabled]="saving()">
         @if (saving()) { <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> }

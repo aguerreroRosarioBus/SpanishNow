@@ -11,9 +11,6 @@
     }
   </nav>
 
-  @if (error()) { <p class="alert alert-danger" role="alert">{{ error() }}</p> }
-  @if (feedback()) { <p class="alert alert-info" role="status">{{ feedback() | t }}</p> }
-
   @switch (tab()) {
     @case ('setup') {
       @if (setup(); as connection) {
@@ -206,7 +203,7 @@
       }
     }
     @case ('packages') {
-      <app-package-catalog [embedded]="true" />
+      <app-package-catalog [embedded]="true" (linkRequested)="linkPackage($event)" />
     }
     @case ('sales') {
       <section class="surface commerce-guide" [attr.aria-busy]="busy()">

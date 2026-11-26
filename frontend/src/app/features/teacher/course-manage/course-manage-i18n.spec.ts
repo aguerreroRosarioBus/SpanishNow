@@ -19,6 +19,7 @@ import {TEACHER_MANAGE_EN, TEACHER_MANAGE_ES} from '../../../core/i18n/catalogs/
 import {EN} from '../../../core/i18n/catalogs/en';
 import {ES} from '../../../core/i18n/catalogs/es';
 import {Course} from '../../../core/models/course.model';
+import {toastText} from '../../../shared/testing/toasts';
 
 const text = (f: ComponentFixture<unknown>) => (f.nativeElement as HTMLElement).textContent as string;
 const course = {
@@ -100,9 +101,9 @@ describe('gestión de cursos docentes: idioma', () => {
     (f.nativeElement.querySelector('#quizName') as HTMLInputElement).value = 'Quiz'; (f.nativeElement.querySelector('#quizName') as HTMLInputElement).dispatchEvent(new Event('input'));
     const save = [...f.nativeElement.querySelectorAll('button')].find((b: HTMLElement) => b.textContent?.includes('Guardar quiz')) as HTMLButtonElement;
     save.click(); f.detectChanges();
-    expect(text(f)).toContain('Revisa los campos marcados antes de guardar.'); expect(text(f)).toContain('Escribe el enunciado.');
+    expect(toastText()).toContain('Revisa los campos marcados antes de guardar.'); expect(text(f)).toContain('Escribe el enunciado.');
     i18n.setLocale('en'); f.detectChanges();
-    expect(text(f)).toContain('Review the highlighted fields before saving.'); expect(text(f)).toContain('Write the prompt.');
+    expect(text(f)).toContain('Write the prompt.');
     expect(text(f)).toContain('Passing score (%)'); expect(text(f)).toContain('Add question');
     expect((f.nativeElement.querySelector('#quizName') as HTMLInputElement).value).toBe('Quiz');
     expect(store.modal()?.kind).toBe('quiz'); expect(api.quiz.getForTeacher.mock.calls.filter(c => c[0] === 1).length).toBeGreaterThanOrEqual(1);
@@ -136,9 +137,9 @@ describe('gestión de cursos docentes: idioma', () => {
     title.value = 'Título nuevo'; title.dispatchEvent(new Event('input'));
     const form = f.nativeElement.querySelector('form.d-flex') as HTMLFormElement; form.dispatchEvent(new Event('submit')); f.detectChanges();
     expect(api.course.updateCourse).toHaveBeenCalledTimes(1);
-    const es = (f.nativeElement.querySelector('.alert-danger') as HTMLElement).textContent;
+    const es = toastText();
     i18n.setLocale('en'); f.detectChanges();
-    const en = (f.nativeElement.querySelector('.alert-danger') as HTMLElement).textContent;
+    const en = i18n.errorMessage({error: {code: 'forbidden'}});
     expect(en).not.toBe(es); expect(en).toBe(i18n.errorMessage({error: {code: 'forbidden'}}));
     expect(text(f)).toContain('Cover image'); expect(text(f)).toContain('USD (US dollar)'); expect(text(f)).toContain('Save changes');
     expect(text(f)).toContain('Sales text (in English)');

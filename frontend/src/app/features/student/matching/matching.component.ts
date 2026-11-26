@@ -6,6 +6,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { VocabularyService } from '../../../core/services/vocabulary.service';
 import { Vocabulary } from '../../../core/models/course.model';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
+import { toastFrom } from '../../../core/services/toast.service';
 
 interface MatchItem {
   id: number;
@@ -45,6 +46,7 @@ export class MatchingComponent implements OnInit {
   showCelebration = signal<boolean>(false);
 
   constructor() {
+    toastFrom(() => this.errorMessage());
     // Track completion and emit accuracy
     effect(() => {
       if (this.isComplete()) {

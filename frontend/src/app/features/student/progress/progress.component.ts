@@ -13,6 +13,7 @@ import { CertificateService } from '../../../core/services/certificate.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { unitDisplayTitle } from '../../../shared/utils/unit-title';
+import { toastFrom } from '../../../core/services/toast.service';
 
 export interface CourseProgress {
   enrollment: Enrollment;
@@ -31,6 +32,10 @@ export interface CourseProgress {
   styleUrl: './progress.component.scss'
 })
 export class ProgressComponent implements OnInit {
+  constructor() {
+    toastFrom(() => this.errorMessage());
+    toastFrom(() => this.claimError());
+  }
   readonly i18n = inject(I18nService);
   private enrollmentService = inject(EnrollmentService);
   private certificateService = inject(CertificateService);

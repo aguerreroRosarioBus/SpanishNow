@@ -6,6 +6,7 @@ import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { Locale } from '../../../core/i18n/i18n.types';
 import { AdminLegalDocument, BUSINESS_FIELDS, LEGAL_KEYS, LegalDraftInput, LegalKey } from '../legal.model';
 import { LegalService } from '../legal.service';
+import { toastFrom } from '../../../core/services/toast.service';
 
 type VersionStatus = 'draft' | 'scheduled' | 'current' | 'published';
 
@@ -21,6 +22,11 @@ type VersionStatus = 'draft' | 'scheduled' | 'current' | 'published';
   styleUrl: './admin-legal.component.scss'
 })
 export class AdminLegalComponent implements OnInit {
+  constructor() {
+    toastFrom(() => this.notice() ? this.i18n.t(this.notice()!.key, { version: this.notice()!.version }) : '', 'success');
+    toastFrom(() => this.state() === 'error' ? this.i18n.t('legal.admin.loadError') : '');
+    toastFrom(() => this.error() ? this.error() + (this.missingLabels() ? ' ' + this.i18n.t('legal.admin.missing', { fields: this.missingLabels() }) : '') : '');
+  }
   private legal = inject(LegalService);
   private fb = inject(FormBuilder);
   private auth = inject(AuthService);

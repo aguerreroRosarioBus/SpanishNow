@@ -13,6 +13,7 @@ import { NextCourseCardComponent } from '../../../../shared/components/next-cour
 import { VideoEmbedComponent } from '../../../../shared/components/video-embed/video-embed.component';
 import { LessonCommentsComponent } from '../../../../shared/components/lesson-comments/lesson-comments.component';
 import { MaterialsListComponent } from '../../../../shared/components/materials-list/materials-list.component';
+import { toastFrom } from '../../../../core/services/toast.service';
 
 const BLOCK_LABELS: Record<string, string> = {
   expression: 'player.expression',
@@ -30,6 +31,7 @@ const BLOCK_LABELS: Record<string, string> = {
   styleUrl: './lesson-view.component.scss'
 })
 export class LessonViewComponent {
+  constructor() { toastFrom(() => this.session.visibleError()); }
   i18n = inject(I18nService);
   session = inject(LessonSessionStore);
   nav = inject(LessonNavigationStore);

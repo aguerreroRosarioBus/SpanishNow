@@ -1,5 +1,4 @@
 <div class="page-container offer-page pilot-ui">
-  @if (error()) { <p class="alert alert-danger" role="alert">{{ error() }}</p> }
   @if (offer(); as o) {
     <a class="offer-back" [routerLink]="['/messages',o.conversationId]"><app-icon name="arrow-left" [size]="16" />{{ 'packages.offer.back' | t }}</a>
     <div class="offer-layout">

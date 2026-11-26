@@ -11,10 +11,6 @@
     </div>
   </div>
 
-  @if (errorMessage()) {
-    <div class="alert alert-danger" role="alert">{{ errorMessage() }}</div>
-  }
-
   @if (isLoading()) {
     <div class="text-center py-5" role="status">
       <div class="spinner-border text-primary" aria-hidden="true"></div>
@@ -187,9 +183,6 @@
           novalidate
         >
           <div class="modal-body">
-            @if (formError()) {
-              <div class="alert alert-danger" role="alert">{{ formError() }}</div>
-            }
             <div class="mb-3">
               <label for="affName" class="form-label">{{
                 'teacherPromotions.nameRequired' | t
@@ -434,9 +427,6 @@
           ></button>
         </div>
         <div class="modal-body">
-          @if (detailError()) {
-            <div class="alert alert-danger" role="alert">{{ detailError() }}</div>
-          }
           @if (detailLoading()) {
             <div class="text-center py-4" role="status">
               <div class="spinner-border text-primary" aria-hidden="true"></div>
@@ -519,9 +509,6 @@
                 {{ 'teacherPromotions.recordPayment' | t }}
               </button>
             </form>
-            @if (payoutError()) {
-              <div class="alert alert-danger mt-2" role="alert">{{ payoutError() }}</div>
-            }
             @if (payouts().length === 0) {
               <p class="text-secondary-ui mt-2 mb-0">{{ 'teacherPromotions.noPayments' | t }}</p>
             } @else {

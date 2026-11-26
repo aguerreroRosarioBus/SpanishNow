@@ -7,9 +7,9 @@ import {ChatFormat} from '../chat/chat-format';
 import {PackagesService} from './packages.service';
 import {RefundPreview} from './packages.model';
 import {presentInstant} from '../../core/time/class-time';
+import { toastFrom } from '../../core/services/toast.service';
 @Component({selector:'app-refund-request',standalone:true,imports:[FormsModule,TranslatePipe],styles:[`.refund{margin-top:var(--spacing-md)}.refund p{margin:var(--spacing-xs) 0 0}.refund .muted{font-size:.8125rem;color:var(--color-text-light);overflow-wrap:anywhere}.amount{font-weight:600}.refund-class{margin-top:var(--spacing-sm)!important}.request{margin-top:var(--spacing-sm);padding:var(--spacing-sm) var(--spacing-md);border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-bg-light)}.request-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--spacing-sm)}.badge-status{white-space:normal}.status-success{background:var(--color-success-soft);color:var(--color-success-text)}.status-warning{background:var(--color-warning-soft);color:#6b4a00}.status-danger{background:var(--color-danger-soft);color:var(--color-danger)}.refund-form{margin-top:var(--spacing-md)}`],template:`
 <details class="refund card-details" [open]="!!view()?.requests?.length"><summary>{{'packages.refund.title'|t}}</summary>
-@if(error()){<p role="alert" class="alert alert-danger mt-2">{{error()}}</p>}
 @if(view();as v){
   @if(v.orderStatus!=='refunded'){<p class="refund-class">{{('packages.refund.'+v.classification)|t}}</p>
   <p class="amount">{{'packages.refund.amount'|t:{amount:i18n.formatMoney(v.amount,v.currency)} }}</p>}
@@ -32,6 +32,7 @@ import {presentInstant} from '../../core/time/class-time';
 }
 </details>`})
 export class RefundRequestComponent implements OnChanges{
+  constructor() { toastFrom(() => this.error()); }
   purchaseId=input.required<number>();hours=input.required<number>();mode=input<string>();readonly i18n=inject(I18nService);readonly fmt=inject(ChatFormat);private api=inject(PackagesService);private destroy=inject(DestroyRef);
   view=signal<RefundPreview|null>(null);type=signal('voluntary');reason=signal('');confirmed=signal(false);busy=signal(false);private key=crypto.randomUUID();private failure=signal<unknown>(null);error=computed(()=>this.failure()?this.api.error(this.failure()):'');
   readonly types=['voluntary','service_unavailable','group_incomplete','other'];

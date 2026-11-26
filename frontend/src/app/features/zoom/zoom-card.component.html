@@ -2,7 +2,6 @@
   <header><h1>{{ 'zoom.title' | t }}</h1><p>{{ 'zoom.intro' | t }}</p></header>
   @if (denied()) { <app-permission-notice /> }
   @else {
-  @if (failure()) { <p class="alert alert-warning" role="alert">{{ api.error(failure()) }}</p> }
   @if (status(); as s) {
     @if (s.fake) { <p class="test-notice">{{ 'zoom.fake' | t }}</p> }
     <div class="zoom-panel">

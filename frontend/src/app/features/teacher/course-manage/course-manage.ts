@@ -19,6 +19,8 @@ import { VocabularyModalComponent } from './components/vocabulary-modal.componen
 import { RepetitionModalComponent } from './components/repetition-modal.component';
 import { TooltipModalComponent } from './components/tooltip-modal.component';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
+import { I18nService } from '../../../core/i18n/i18n.service';
+import { toastFrom } from '../../../core/services/toast.service';
 
 /** Pantalla de gestión de contenido de un curso: orquesta la lista de unidades y los diálogos. */
 @Component({
@@ -36,6 +38,7 @@ import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 })
 export class CourseManageComponent implements OnInit {
   store = inject(CourseManageStore);
+  private i18n = inject(I18nService);
   private content = inject(CourseContentStore);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
@@ -44,6 +47,7 @@ export class CourseManageComponent implements OnInit {
   tab = signal<'content' | 'students'>('content');
 
   constructor() {
+    toastFrom(() => this.store.errorMessage() ? this.i18n.t(this.store.errorMessage()) : '');
     // Cuando llegan las unidades se consulta el quiz de cada una para los indicadores de las tarjetas
     let loaded = false;
     effect(() => {

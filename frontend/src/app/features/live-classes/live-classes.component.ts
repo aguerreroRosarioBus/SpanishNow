@@ -12,6 +12,7 @@ import { I18nService } from '../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../core/i18n/translate.pipe';
 import { UserPreferencesService } from '../../core/services/user-preferences.service';
 import { LiveNotice, noticeError, noticeKey, noticeText, liveStatusText, presentationZone } from './live-notice';
+import { toastFrom } from '../../core/services/toast.service';
 
 export function invitationCode(value: string): string {
   const trimmed = value.trim();
@@ -23,6 +24,10 @@ export function invitationCode(value: string): string {
   templateUrl: './live-classes.component.html', styleUrl: './live-classes.component.scss'
 })
 export class LiveClassesComponent implements OnInit {
+  constructor() {
+    toastFrom(() => this.error());
+    toastFrom(() => this.info(), 'info');
+  }
   private api = inject(LiveClassService);
   private coursesApi = inject(CourseService);
   private router = inject(Router);

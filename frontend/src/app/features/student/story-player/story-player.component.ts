@@ -10,6 +10,7 @@ import { LessonViewComponent } from './components/lesson-view.component';
 import { IntroViewComponent } from './components/intro-view.component';
 import { QuizViewComponent } from './components/quiz-view.component';
 import { UnitLockedViewComponent } from './components/unit-locked-view.component';
+import { toastFrom } from '../../../core/services/toast.service';
 
 /** Contenedor del reproductor: carga el curso y coordina el índice del curso con la lección actual. */
 @Component({
@@ -30,6 +31,7 @@ export class StoryPlayerComponent implements OnInit, OnDestroy {
   private audio = inject(LessonAudioService);
 
   constructor() {
+    toastFrom(() => this.nav.errorMessage());
     // Cada vez que cambia la historia seleccionada (índice o fin de lección) se carga su lección.
     effect(() => {
       const storyId = this.nav.currentStoryId();

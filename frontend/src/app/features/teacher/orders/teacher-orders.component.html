@@ -34,10 +34,6 @@
     <button type="submit" class="btn btn-secondary">{{ 'teacherCommerce.search' | t }}</button>
   </form>
 
-  @if (errorMessage()) {
-    <div class="alert alert-danger" role="alert">{{ errorMessage() }}</div>
-  }
-
   @if (isLoading()) {
     <div class="text-center py-5" role="status">
       <div class="spinner-border text-primary" aria-hidden="true"></div>
@@ -126,9 +122,6 @@
             <input class="form-check-input" type="checkbox" id="revokeAccess" [checked]="revokeAccess()" (change)="revokeAccess.set($any($event.target).checked)">
             <label class="form-check-label" for="revokeAccess">{{ 'teacherCommerce.revoke' | t }}</label>
           </div>
-          @if (refundError()) {
-            <div class="alert alert-danger mt-3 mb-0" role="alert">{{ refundError() }}</div>
-          }
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" (click)="cancelRefund()" [disabled]="isRefunding()">{{ 'teacherCommerce.cancel' | t }}</button>

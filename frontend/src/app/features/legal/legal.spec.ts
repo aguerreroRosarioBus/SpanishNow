@@ -17,6 +17,7 @@ import { LegalConsentComponent } from './legal-consent/legal-consent.component';
 import { LEGAL_SALES_MESSAGES } from './legal-messages';
 import { LegalPageComponent } from './legal-page/legal-page.component';
 import { AdminLegalDocument, EXPECTATION_FIELDS, Expectations, PublicLegalDocument } from './legal.model';
+import { toastText } from '../../shared/testing/toasts';
 
 const api = environment.apiUrl;
 const business = { responsibleName: 'Responsable ficticio', address: 'Calle ficticia 1', contactEmail: 'c@negocio.invalid', privacyEmail: 'p@negocio.invalid', commercialRetention: 'Plazo ficticio' };
@@ -159,7 +160,7 @@ describe('W02 registro', () => {
       legalConsent: { accepted: true, documents: [{ documentKey: 'terms', documentVersion: '5' }] } });
     req.flush({ code: 'legal_version_changed' }, { status: 409, statusText: 'Conflict' });
     fixture.detectChanges();
-    expect(el.textContent).toContain('Los documentos legales se actualizaron');
+    expect(toastText()).toContain('Los documentos legales se actualizaron');
     http.expectOne(`${api}/public/legal?locale=es`).flush([publicDoc('terms', 'es', '6')]);
     fixture.detectChanges();
     expect(component.legalAccepted()).toBe(false);
@@ -226,7 +227,7 @@ describe('W02 editor legal', () => {
     draft.flush(adminDoc(5, '5', null));
     http.expectOne(`${api}/admin/legal-documents`).flush([adminDoc(5, '5', null), adminDoc(3, '3', null)]);
     fixture.detectChanges();
-    expect(el.textContent).toContain('Borrador versión 5 guardado');
+    expect(toastText()).toContain('Borrador versión 5 guardado');
 
     const five = c.versions()[0];
     c.publish(five);
@@ -238,8 +239,8 @@ describe('W02 editor legal', () => {
     expect(pub.request.body).toEqual({ documentVersion: '5' });
     pub.flush({ code: 'legal_publication_incomplete', params: { fields: ['content.es.body', 'business.address'] } }, { status: 400, statusText: 'Bad Request' });
     fixture.detectChanges();
-    expect(el.textContent).toContain('Todavía no se puede publicar');
-    expect(el.textContent).toContain('Texto (Español), Domicilio');
+    expect(toastText()).toContain('Todavía no se puede publicar');
+    expect(toastText()).toContain('Texto (Español), Domicilio');
   });
 });
 
@@ -270,7 +271,7 @@ describe('W02 editor de expectativas', () => {
     expect(again.request.body.version).toBe(1);
     again.flush({ code: 'version_conflict' }, { status: 409, statusText: 'Conflict' });
     fixture.detectChanges();
-    expect(el.textContent).toContain('Esto cambió al mismo tiempo');
+    expect(toastText()).toContain('Esto cambió al mismo tiempo');
   });
 });
 

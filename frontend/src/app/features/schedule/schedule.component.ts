@@ -17,6 +17,7 @@ import { SessionTimeComponent } from './session-time.component';
 import { isLapsed } from './session-lapse';
 import { DialogModule } from 'primeng/dialog';
 import { RestoreFocusDirective } from '../../shared/directives/restore-focus.directive';
+import { toastFrom } from '../../core/services/toast.service';
 
 interface Draft { localStart: string; timeZone: string; offset: string; disambiguation: Disambiguation; minutes: number }
 @Component({ selector: 'app-schedule', standalone: true, imports: [FormsModule, RouterLink, TranslatePipe, ClassSessionCardComponent, SessionTimeComponent, TimeZoneSelectComponent, IconComponent, DialogModule, RestoreFocusDirective],
@@ -79,6 +80,7 @@ export class ScheduleComponent {
   timeError = computed(() => this.choices().failure ? this.i18n.errorMessage({ error: this.choices().failure }) : '');
 
   constructor() {
+    toastFrom(() => this.error());
     this.features.load();
     effect(() => {
       const saving = this.preferences.saving();

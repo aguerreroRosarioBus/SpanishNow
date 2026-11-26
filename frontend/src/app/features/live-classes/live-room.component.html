@@ -27,7 +27,6 @@
       </div>
     </header>
     <div class="room-messages" aria-live="polite">
-      @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
       @if (info()) { <div class="room-info" role="status">{{ info() }}<button type="button" class="btn-icon" [attr.aria-label]="'liveBoard.room.closeNotice' | t" (click)="dismissInfo()"><app-icon name="close" [size]="16" /></button></div> }
       @if (connectionLost()) { <div class="alert alert-warning" role="status">{{ 'liveBoard.room.connectionLost' | t }}</div> }
       @if (syncError()) { <div class="alert alert-warning" role="alert"><p>{{ syncError() }}</p><p>{{ 'liveBoard.room.pendingVisible' | t }}</p><div class="page-actions"><button type="button" class="btn btn-secondary btn-sm" (click)="retry()" [disabled]="sending()">{{ 'liveBoard.room.retrySave' | t }}</button><button type="button" class="btn btn-secondary btn-sm" (click)="download()">{{ 'liveBoard.room.downloadCopy' | t }}</button><div ngbDropdown><button type="button" class="btn-icon" ngbDropdownToggle [attr.aria-label]="'liveBoard.room.recoveryActions' | t"><app-icon name="more" [size]="18" /></button><div ngbDropdownMenu><button ngbDropdownItem type="button" class="text-danger" (click)="ask('discard')">{{ 'liveBoard.room.discard' | t }}</button></div></div></div></div> }

@@ -13,6 +13,7 @@ import { copyText } from '../../../shared/utils/clipboard';
 import { UserPreferencesService } from '../../../core/services/user-preferences.service';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
+import { toastFrom } from '../../../core/services/toast.service';
 
 const CURRENCIES = [
   { code: 'usd', label: 'USD' },
@@ -29,6 +30,12 @@ const CURRENCIES = [
   styleUrl: './teacher-affiliates.component.scss'
 })
 export class TeacherAffiliatesComponent implements OnInit {
+  constructor() {
+    toastFrom(() => this.payoutError());
+    toastFrom(() => this.detailError());
+    toastFrom(() => this.errorMessage());
+    toastFrom(() => this.formError());
+  }
   private service = inject(AffiliateService);
   private courseService = inject(CourseService);
   private toast = inject(ToastService);

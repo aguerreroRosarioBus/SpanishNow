@@ -11,6 +11,7 @@ import { LessonNavigationStore } from '../lesson-navigation.store';
 import {
   DraftAnswers, correctCount, emptyAnswers, resultFor, setAnswer, toSubmission, unansweredCount
 } from '../quiz-attempt.logic';
+import { toastFrom } from '../../../../core/services/toast.service';
 
 /** Pantalla del quiz de la unidad: responder, ver el resultado con explicaciones y reintentar. */
 @Component({
@@ -46,6 +47,8 @@ export class QuizViewComponent {
   best = computed(() => this.result()?.bestScore ?? this.quiz()?.bestAttempt?.score ?? null);
 
   constructor() {
+    toastFrom(() => this.submitError());
+    toastFrom(() => this.error());
     effect(() => {
       const unitId = this.unitId();
       if (unitId !== null) untracked(() => this.load(unitId));

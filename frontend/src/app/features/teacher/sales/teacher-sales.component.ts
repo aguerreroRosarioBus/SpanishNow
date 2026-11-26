@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { SalesService } from '../../../core/services/sales.service';
 import { SalesSummary, SalesTotal } from '../../../core/models/sales.model';
 import { Bar, SalesPeriod, barLayout, currenciesOf, monthLabel, niceScale, periodRange, seriesForCurrency } from './sales-chart.logic';
+import { toastFrom } from '../../../core/services/toast.service';
 
 const CHART_W = 640;
 const CHART_H = 220;
@@ -25,6 +26,7 @@ interface CurrencyChart {
   styleUrl: './teacher-sales.component.scss'
 })
 export class TeacherSalesComponent implements OnInit {
+  constructor() { toastFrom(() => this.errorMessage()); }
   i18n = inject(I18nService);
   number(value: number): string { return this.i18n.formatNumber(value); }
   private service = inject(SalesService);

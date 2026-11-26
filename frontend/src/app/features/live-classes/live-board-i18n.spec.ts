@@ -16,6 +16,7 @@ import { LIVE_BOARD_EN, LIVE_BOARD_ES } from '../../core/i18n/catalogs/live-boar
 import { EN } from '../../core/i18n/catalogs/en';
 import { ES } from '../../core/i18n/catalogs/es';
 import { BoardElement, BoardOperation, BoardPage, LiveClass, LiveSnapshot } from '../../core/models/live-class.model';
+import { toastText } from '../../shared/testing/toasts';
 
 const text = (f: ComponentFixture<unknown>) => (f.nativeElement as HTMLElement).textContent as string;
 const placeholders = (value: unknown) => [...JSON.stringify(value).matchAll(/\{([a-zA-Z]\w*)\}/g)].map(m => m[1]).sort();
@@ -59,53 +60,53 @@ describe('clases en vivo y pizarra: idioma', () => {
 
     it('confirma la conexión de Google con el token del callback, solo una vez, y avisa en ES y EN', async () => {
       const completeGoogle = vi.fn(() => of({ configured: true, connected: true, email: 'docente@example.test' }));
-      const { f, i18n } = setup({ completeGoogle }, true, [['google', 'confirm'], ['token', 'a'.repeat(43)]]);
+      const { f, c, i18n } = setup({ completeGoogle }, true, [['google', 'confirm'], ['token', 'a'.repeat(43)]]);
       await f.whenStable(); f.detectChanges();
       expect(completeGoogle).toHaveBeenCalledTimes(1); expect(completeGoogle).toHaveBeenCalledWith('a'.repeat(43));
-      expect(text(f)).toContain('Tu cuenta de Google quedó conectada.');
-      i18n.setLocale('en'); f.detectChanges(); expect(text(f)).toContain('Your Google account is now connected.');
+      expect(toastText()).toContain('Tu cuenta de Google quedó conectada.');
+      i18n.setLocale('en'); f.detectChanges(); expect(c.info()).toContain('Your Google account is now connected.');
       expect(completeGoogle).toHaveBeenCalledTimes(1);
     });
 
     it('si otra cuenta inició la autorización (403) muestra el aviso de que no se conectó nada', async () => {
       const completeGoogle = vi.fn(() => throwError(() => ({ status: 403, error: { code: 'oauth_user_mismatch' } })));
-      const { f, i18n } = setup({ completeGoogle }, true, [['google', 'confirm'], ['token', 'a'.repeat(43)]]);
+      const { f, c, i18n } = setup({ completeGoogle }, true, [['google', 'confirm'], ['token', 'a'.repeat(43)]]);
       await f.whenStable(); f.detectChanges();
-      expect(text(f)).toContain('la inició otra cuenta de SpanishNow'); expect(text(f)).not.toContain('Tu cuenta de Google quedó conectada.');
-      i18n.setLocale('en'); f.detectChanges(); expect(text(f)).toContain('started by a different SpanishNow account');
+      expect(toastText()).toContain('la inició otra cuenta de SpanishNow'); expect(toastText()).not.toContain('Tu cuenta de Google quedó conectada.');
+      i18n.setLocale('en'); f.detectChanges(); expect(c.error()).toContain('started by a different SpanishNow account');
     });
 
     it('cambia textos, estados, fecha con la zona de preferencias y avisos; conserva borrador y no repite peticiones', async () => {
       const { f, c, i18n, api } = setup();
       await f.whenStable(); f.detectChanges();
       expect(text(f)).toContain('Clases en vivo'); expect(text(f)).toContain('Nueva clase'); expect(text(f)).toContain('En vivo');
-      expect(text(f)).toContain('Tu cuenta de Google quedó conectada.'); expect(text(f)).toContain('Cuenta conectada: docente@example.test');
+      expect(toastText()).toContain('Tu cuenta de Google quedó conectada.'); expect(text(f)).toContain('Cuenta conectada: docente@example.test');
       expect(text(f)).toContain('Actualizada'); expect(text(f)).toMatch(/23 oct 2026.*12:30/); expect(text(f)).toContain('Mi clase original');
       c.showCreate.set(true); f.detectChanges();
       c.title = 'Borrador a medias'; c.courseId = 3; await c.create(); f.detectChanges();
-      expect(text(f)).toContain('No tienes permiso para realizar esta acción.'); expect(text(f)).not.toContain('texto libre del servidor');
+      expect(toastText()).toContain('No tienes permiso para realizar esta acción.'); expect(toastText()).not.toContain('texto libre del servidor');
       expect(text(f)).toContain('Prepara una pizarra'); expect(text(f)).toContain('Curso original');
       const requests = [api.list.mock.calls.length, api.googleStatus.mock.calls.length, api.create.mock.calls.length];
 
       i18n.setLocale('en'); f.detectChanges();
       expect(text(f)).toContain('Live classes'); expect(text(f)).toContain('Create class'); expect(text(f)).toContain('Live');
-      expect(text(f)).toContain('Your Google account is now connected.'); expect(text(f)).toContain('Connected account: docente@example.test');
-      expect(text(f)).toMatch(/Oct 23, 2026.*12:30/); expect(text(f)).toContain('You do not have permission for this action.');
+      expect(c.info()).toContain('Your Google account is now connected.'); expect(text(f)).toContain('Connected account: docente@example.test');
+      expect(text(f)).toMatch(/Oct 23, 2026.*12:30/); expect(c.error()).toContain('You do not have permission for this action.');
       expect(text(f)).toContain('Prepare a board'); expect(text(f)).toContain('Standalone room'); expect(text(f)).toContain('Mi clase original');
       expect((f.nativeElement as HTMLElement).querySelector('[role="group"]')?.getAttribute('aria-label')).toBe('Filter classes');
       expect(c.title).toBe('Borrador a medias'); expect(c.courseId).toBe(3); expect(c.showCreate()).toBe(true);
       expect([api.list.mock.calls.length, api.googleStatus.mock.calls.length, api.create.mock.calls.length]).toEqual(requests);
-      i18n.setLocale('es'); f.detectChanges(); expect(text(f)).toContain('No tienes permiso para realizar esta acción.');
+      i18n.setLocale('es'); f.detectChanges(); expect(c.error()).toContain('No tienes permiso para realizar esta acción.');
     });
 
     it('estado vacío y código de invitación inválido por idioma', async () => {
       const { f, c, i18n } = setup({ list: vi.fn(() => of([])) }, false);
       await f.whenStable(); f.detectChanges();
       expect(text(f)).toContain('Aquí encontrarás tus clases en vivo'); expect(text(f)).toContain('Entrar a clase');
-      c.code = 'abc'; await c.join(); f.detectChanges();
-      expect(text(f)).toContain('Pega el enlace de invitación o el código de 16 caracteres.');
+      c.code = 'abc'; await c.join(); f.componentRef.changeDetectorRef.markForCheck(); f.detectChanges();
+      expect(toastText()).toContain('Pega el enlace de invitación o el código de 16 caracteres.');
       i18n.setLocale('en'); f.detectChanges();
-      expect(text(f)).toContain('Your live classes will appear here'); expect(text(f)).toContain('Paste the invitation link or the 16-character code.');
+      expect(text(f)).toContain('Your live classes will appear here'); expect(c.error()).toContain('Paste the invitation link or the 16-character code.');
       expect(c.code).toBe('abc');
     });
   });
@@ -115,9 +116,9 @@ describe('clases en vivo y pizarra: idioma', () => {
     TestBed.configureTestingModule({ providers: [provideRouter([]), { provide: ActivatedRoute, useValue: { snapshot: { paramMap: new Map([['code', 'x']]) } } }, { provide: LiveClassService, useValue: api }] });
     const i18n = TestBed.inject(I18nService); i18n.setLocale('es');
     const f = TestBed.createComponent(LiveJoinComponent); f.detectChanges();
-    expect(text(f)).toContain('Entrar a clase'); expect(text(f)).toContain(i18n.t('errors.not_found'));
+    expect(text(f)).toContain('Entrar a clase'); expect(toastText()).toContain(i18n.t('errors.not_found'));
     i18n.setLocale('en'); f.detectChanges();
-    expect(text(f)).toContain('Join a class'); expect(text(f)).toContain('This resource is not available.'); expect(text(f)).toContain('Retry');
+    expect(text(f)).toContain('Join a class'); expect(f.componentInstance.error()).toContain('This resource is not available.'); expect(text(f)).toContain('Retry');
     expect(api.join).toHaveBeenCalledTimes(1);
   });
 

@@ -119,8 +119,7 @@
         <p class="settings__note" role="status">{{ 'preferences.saving' | t }}</p>
       }
       @if (preferences.errorMessage()) {
-        <div class="alert alert-danger mt-3" role="alert">
-          {{ preferences.errorMessage() }}
+        <div class="mt-3">
           <button type="button" class="btn btn-secondary btn-sm" (click)="preferences.retry()">
             {{ 'preferences.retry' | t }}
           </button>

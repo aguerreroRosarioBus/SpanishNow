@@ -6,6 +6,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { PublicCatalogService } from '../../../core/services/public-catalog.service';
 import { PublicCourse } from '../../../core/models/sales.model';
 import { CourseCardComponent } from '../../../shared/components/course-card/course-card.component';
+import { toastFrom } from '../../../core/services/toast.service';
 
 /** Catálogo público de cursos publicados (sin login, EN/ES). */
 @Component({
@@ -15,6 +16,7 @@ import { CourseCardComponent } from '../../../shared/components/course-card/cour
   templateUrl: './public-courses.component.html'
 })
 export class PublicCoursesComponent implements OnInit {
+  constructor() { toastFrom(() => this.errorMessage()); }
   readonly i18n = inject(I18nService);
   private catalog = inject(PublicCatalogService);
   private auth = inject(AuthService);

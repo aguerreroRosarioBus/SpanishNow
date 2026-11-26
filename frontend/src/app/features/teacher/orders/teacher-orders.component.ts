@@ -11,6 +11,7 @@ import { Course } from '../../../core/models/course.model';
 import { OrderFilters, TeacherOrder } from '../../../core/models/sales.model';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { OrderBadge, orderBadge } from '../../../shared/utils/order-status';
+import { toastFrom } from '../../../core/services/toast.service';
 
 const PAGE_SIZE = 20;
 
@@ -23,6 +24,10 @@ const PAGE_SIZE = 20;
   styleUrl: './teacher-orders.component.scss'
 })
 export class TeacherOrdersComponent implements OnInit {
+  constructor() {
+    toastFrom(() => this.errorMessage());
+    toastFrom(() => this.refundError());
+  }
   i18n = inject(I18nService);
   number(value: number): string { return this.i18n.formatNumber(value); }
   private preferences = inject(UserPreferencesService);

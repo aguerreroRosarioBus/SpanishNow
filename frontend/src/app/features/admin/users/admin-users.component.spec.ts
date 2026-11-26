@@ -6,7 +6,7 @@ import { AdminUsersComponent } from './admin-users.component';
 import { AdminService } from '../../../core/services/admin.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { CourseService } from '../../../core/services/course.service';
-import { ToastService } from '../../../core/services/toast.service';
+import { toastText } from '../../../shared/testing/toasts';
 import { UserPreferencesService } from '../../../core/services/user-preferences.service';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { AdminUser } from '../../../core/models/admin.model';
@@ -18,7 +18,6 @@ function setup(fail = false, isTestAccount = true) {
     {provide: AdminService, useValue: service},
     {provide: AuthService, useValue: {currentUser: () => ({id: 1, role: 'teacher'}), hasPermission: () => true}},
     {provide: CourseService, useValue: {getCourses: () => of([])}},
-    {provide: ToastService, useValue: {success: vi.fn(), error: vi.fn(), warning: vi.fn()}},
     {provide: UserPreferencesService, useValue: {preferences: () => ({timeZone: 'America/Argentina/Cordoba'})}}
   ]});
   TestBed.inject(NgbOffcanvasConfig).animation = false;
@@ -50,9 +49,9 @@ it('admin: cambia idioma con confirmación abierta sin ejecutarla ni perder filt
 });
 it('admin: traduce error cargado sin repetir request y oculta texto arbitrario', () => {
   const {f, i18n, service, el} = setup(true);
-  expect(el.textContent).toContain('No se pudieron cargar los usuarios.');
+  expect(toastText()).toContain('No se pudieron cargar los usuarios.');
   i18n.setLocale('en'); f.detectChanges();
-  expect(el.textContent).toContain('Could not load users.'); expect(el.textContent).not.toContain('PRIVATE_INTERNAL');
+  expect(f.componentInstance.errorMessage()).toContain('Could not load users.'); expect(toastText()).not.toContain('PRIVATE_INTERNAL');
   expect(service.users).toHaveBeenCalledTimes(1);
 });
 

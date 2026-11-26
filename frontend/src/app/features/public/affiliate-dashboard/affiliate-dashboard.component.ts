@@ -8,6 +8,7 @@ import { AffiliateDashboard, CommissionStatus } from '../../../core/models/commu
 import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { copyText } from '../../../shared/utils/clipboard';
 import { formatAvailableDate } from '../../../shared/utils/release-date';
+import { toastFrom } from '../../../core/services/toast.service';
 
 /** Panel privado del afiliado (/affiliate/:token). Público, sin login; no muestra datos de compradores. */
 @Component({
@@ -18,6 +19,7 @@ import { formatAvailableDate } from '../../../shared/utils/release-date';
   styleUrl: './affiliate-dashboard.component.scss'
 })
 export class AffiliateDashboardComponent implements OnInit {
+  constructor() { toastFrom(() => this.loadError() ? this.i18n.t('affiliate.error') : ''); }
   private i18n = inject(I18nService);
   private preferences = inject(UserPreferencesService);
   private displayZone(): string { return this.preferences.preferences()?.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; }

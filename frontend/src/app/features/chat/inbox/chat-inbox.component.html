@@ -25,13 +25,11 @@
           </button>
         </div>
       }
-      @if (startError()) { <div class="alert alert-danger mt-2 mb-0" role="alert">{{ startError() }}</div> }
     </form></details>
   }
 
   @if (errorMessage()) {
-    <div class="alert alert-danger d-flex align-items-center justify-content-between gap-2" role="alert">
-      <span>{{ errorMessage() }}</span>
+    <div class="d-flex justify-content-center py-3">
       <button type="button" class="btn btn-secondary btn-sm" (click)="load()">{{ 'chat.conv.retry' | t }}</button>
     </div>
   }

@@ -7,9 +7,6 @@
     </h2>
 
     <label for="studentSearch" class="form-label">{{'refine.searchStudents'|t}}</label><input id="studentSearch" type="search" class="form-control mb-3" [value]="search()" (input)="search.set($any($event.target).value)">
-    @if (errorMessage()) {
-      <div class="alert alert-danger" role="alert">{{ errorMessage() }}</div>
-    }
 
     @if (isLoading()) {
       <div class="text-center py-4" role="status">
@@ -82,9 +79,6 @@
     <input #csvInput type="file" class="form-control" accept=".csv,text/csv" [attr.aria-label]="'teacherDashboard.students.csvLabel' | t"
            (change)="onFileSelected($event)" [disabled]="isPreviewing() || isImporting()">
 
-    @if (importError()) {
-      <div class="alert alert-danger mt-3 mb-0" role="alert">{{ importError() }}</div>
-    }
 
     @if (isPreviewing()) {
       <div class="text-center py-3" role="status">
@@ -143,11 +137,6 @@
       }
     }
 
-    @if (importDone(); as done) {
-      <div class="alert alert-success mt-3 mb-0" role="status">
-        {{ 'teacherDashboard.students.importDone' | t:{ added: done.summary.new, existing: done.summary.existingUser, enrolled: done.summary.alreadyEnrolled, invalid: done.summary.invalid } }}
-      </div>
-    }
   </details>
 
 

@@ -77,7 +77,7 @@ describe('Saldo de clases: jerarquía de la tarjeta (#71)',()=>{
     render(snap,{purchase:{balance}});
     expect(last.textContent).not.toContain('Reintentar');
     render(snap,{fail:true});
-    expect(last.querySelector('[role="alert"]')?.textContent).toContain('Reintentar');
+    expect(last.textContent).toContain('Reintentar');
   });
   it('las claves nuevas existen en es y en',()=>{
     const keys=Object.keys(PACKAGE_MESSAGES.es).filter(k=>/^packages\.purchase\.(expires|expiredOn|expiryExact|availableOf|conditions|conditionsDays|retry|scheduleStudent|scheduleTeacher|actionFor)$/.test(k));

@@ -6,10 +6,6 @@
       <p class="auth-card__subtitle">{{ 'auth.loginTitle' | t }}</p>
     </header>
 
-    @if (errorMessage()) {
-      <div class="alert alert-danger" role="alert">{{ errorMessage() }}</div>
-    }
-
     <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" novalidate>
       <div class="mb-3">
         <label for="email" class="form-label">{{ 'common.email' | t }}</label>

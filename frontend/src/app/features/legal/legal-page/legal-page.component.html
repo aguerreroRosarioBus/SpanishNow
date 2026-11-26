@@ -14,7 +14,7 @@
       <div class="state-box"><span>{{ 'legal.notPublished' | t }}</span></div>
     }
     @case ('error') {
-      <div class="alert alert-danger" role="alert">{{ 'legal.loadError' | t }}</div>
+      <div class="state-box state-box--error" role="status"><span>{{ 'legal.loadError' | t }}</span></div>
     }
     @case ('ready') {
       @if (doc(); as d) {

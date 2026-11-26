@@ -12,6 +12,7 @@ import { imageFileErrorKey, IMAGE_ACCEPT } from '../lesson-composer/image-file';
 import { ImageSearchComponent } from '../../../shared/components/image-search/image-search.component';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
+import { toastFrom } from '../../../core/services/toast.service';
 
 @Component({
   selector: 'app-teacher-dashboard',
@@ -57,6 +58,7 @@ export class TeacherDashboardComponent implements OnInit {
   levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
   constructor() {
+    toastFrom(() => this.errorMessage());
     this.courseForm = this.fb.group({
       title: ['', [Validators.required, Validators.minLength(3)]],
       description: ['', [Validators.required, Validators.minLength(10)]],

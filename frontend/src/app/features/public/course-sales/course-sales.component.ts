@@ -15,6 +15,7 @@ import { ExpectationsViewComponent } from '../../legal/expectations-view/expecta
 import { LegalConsentComponent } from '../../legal/legal-consent/legal-consent.component';
 import { CheckoutEvidence } from '../../legal/legal.model';
 import { consentFor, contractual, LegalService } from '../../legal/legal.service';
+import { toastFrom } from '../../../core/services/toast.service';
 
 /** Página de venta de un curso: descripción, índice, precio y botón de compra. */
 @Component({
@@ -25,6 +26,10 @@ import { consentFor, contractual, LegalService } from '../../legal/legal.service
   styleUrl: './course-sales.component.scss'
 })
 export class CourseSalesComponent implements OnInit {
+  constructor() {
+    toastFrom(() => this.buyError());
+    toastFrom(() => this.loadError() ? this.i18n.t('publicCourse.loadError') : '');
+  }
   private route = inject(ActivatedRoute);
   private catalog = inject(PublicCatalogService);
   private affiliates = inject(AffiliateService);

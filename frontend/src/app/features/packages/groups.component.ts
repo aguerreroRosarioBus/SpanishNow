@@ -13,6 +13,7 @@ import { PackageOrientationComponent } from './package-orientation.component';
 import { TimeZoneSelectComponent } from '../../shared/components/time-zone-select/time-zone-select.component';
 import { localTimeChoice } from '../../shared/utils/local-time-choice';
 import { Disambiguation } from '../../core/time/class-time';
+import { toastFrom } from '../../core/services/toast.service';
 
 @Component({ selector:'app-package-groups', standalone:true,
 imports:[FormsModule,RouterLink,TranslatePipe,PackageOrientationComponent,TimeZoneSelectComponent],
@@ -22,7 +23,6 @@ styles:[`
 <div class="page-container">
   <header class="page-header"><div><h1 class="page-title">{{'packages.group.manage'|t}}</h1></div><button type="button" class="btn btn-primary" [attr.aria-expanded]="creating()" (click)="creating.set(!creating())">{{'refine.newGroup'|t}}</button></header>
   <app-package-orientation section="groups" />
-  @if(error()){<p class="alert alert-danger" role="alert">{{error()}}</p>}
   @if(creating()){
     @if(templatesLoading()){<p role="status">{{'packages.loading'|t}}</p>}
     @else if(templatesFailed()){<button type="button" class="btn btn-secondary" (click)="ngOnInit()">{{'packages.purchase.retry'|t}}</button>}
@@ -55,6 +55,7 @@ styles:[`
   @if (!c.confirmedSession) { <small>{{i18n.formatInstant(c.tentativeStartsAt,zone())}} · {{zone()}}</small> }</a></li>}@empty{<li class="state-box">{{'refine.noGroups'|t}}</li>}</ul>}
 </div>`})
 export class GroupsComponent implements OnInit {
+  constructor() { toastFrom(() => this.error()); }
   private api=inject(PackagesService);private chat=inject(ChatService);private router=inject(Router);private destroy=inject(DestroyRef);private preferences=inject(UserPreferencesService);readonly i18n=inject(I18nService);
   templates=signal<CompleteTemplate[]>([]);groups=signal<ClassCohort[]>([]);conversations=signal<Conversation[]>([]);cursor=signal<string|null>(null);selectedId=signal(0);localStart=signal('');invited=signal<number[]>([]);busy=signal(false);creating=signal(false);templatesLoading=signal(true);groupsLoading=signal(true);templatesFailed=signal(false);groupsFailed=signal(false);search=signal('');
   zoneInput=signal('');zone=computed(()=>this.zoneInput()||this.preferences.preferences()?.timeZone||Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC');offset=signal('');disambiguation=signal<Disambiguation>('none');

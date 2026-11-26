@@ -9,6 +9,7 @@ import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { ChatFormat } from '../chat-format';
+import { toastFrom } from '../../../core/services/toast.service';
 
 /** Bandeja del chat (CHAT-03): contraparte, contexto, último mensaje, fecha local y no leídos. El alumno inicia consultas. */
 @Component({
@@ -19,6 +20,10 @@ import { ChatFormat } from '../chat-format';
   styleUrl: './chat-inbox.component.scss'
 })
 export class ChatInboxComponent implements OnInit {
+  constructor() {
+    toastFrom(() => this.errorMessage());
+    toastFrom(() => this.startError());
+  }
   private api = inject(ChatService);
   private badge = inject(ChatBadgeService);
   private router = inject(Router);

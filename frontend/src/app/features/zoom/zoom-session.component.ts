@@ -10,6 +10,7 @@ import { ClassSession, ClassSessionsService } from '../../core/services/class-se
 import { UserPreferencesService } from '../../core/services/user-preferences.service';
 import { SessionTimeComponent } from '../schedule/session-time.component';
 import { ZoomApi, ZoomSessionStatus } from './zoom-api.service';
+import { toastFrom } from '../../core/services/toast.service';
 @Component({ selector: 'app-zoom-session', standalone: true, imports: [FormsModule, RouterLink, TranslatePipe, SessionTimeComponent],
   templateUrl: './zoom-session.component.html', styleUrl: './zoom.component.scss' })
 export class ZoomSessionComponent {
@@ -39,7 +40,10 @@ export class ZoomSessionComponent {
   readonly teacher = computed(() => this.session()?.teacherId === this.auth.currentUser()?.id);
   readonly zone = computed(() => this.preferences.preferences()?.timeZone || 'UTC');
   private id = Number(this.route.snapshot.paramMap.get('id'));
-  constructor() { this.refresh(); }
+  constructor() {
+    toastFrom(() => this.failure() ? this.api.error(this.failure()) : '');
+    this.refresh();
+  }
   refresh(): void {
     if (this.busy()) return;
     this.busy.set(true); this.failure.set(null); this.syncFailure.set(null); this.meeting.set(null);

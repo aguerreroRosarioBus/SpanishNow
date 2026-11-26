@@ -14,6 +14,7 @@ import { NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem } from
 import { CourseCardComponent } from '../../../shared/components/course-card/course-card.component';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { toastFrom } from '../../../core/services/toast.service';
 
 @Component({
   selector: 'app-student-dashboard',
@@ -23,6 +24,7 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
   styleUrl: './student-dashboard.component.scss'
 })
 export class StudentDashboardComponent implements OnInit {
+  constructor() { toastFrom(() => this.errorMessage()); }
   readonly i18n = inject(I18nService);
   private readonly preferences = inject(UserPreferencesService);
   readonly timeZone = computed(() => this.preferences.preferences()?.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');

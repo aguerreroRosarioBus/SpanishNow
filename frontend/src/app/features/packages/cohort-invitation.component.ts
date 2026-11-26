@@ -6,6 +6,7 @@ import { I18nService } from '../../core/i18n/i18n.service';
 import { ChatFormat } from '../chat/chat-format';
 import { PackagesService } from './packages.service';
 import { ClassCohort } from './packages.model';
+import { toastFrom } from '../../core/services/toast.service';
 
 /** Detalle de un grupo de clases: invitación para quien la recibe y panel de seguimiento para el docente. */
 @Component({
@@ -36,7 +37,6 @@ import { ClassCohort } from './packages.model';
       </div>
       <button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="load()">{{ 'packages.offer.refresh' | t }}</button>
     </header>
-    @if (error()) {<p class="alert alert-danger" role="alert">{{ error() }}</p>}
     @if (cohort(); as c) {
       <section class="card mb-3" aria-labelledby="cohort-schedule">
         <div class="card-header"><h2 id="cohort-schedule" class="h5 mb-0">{{ 'packages.group.scheduleTitle' | t }}</h2></div>
@@ -115,6 +115,7 @@ export class CohortInvitationComponent {
   isTeacher = computed(() => Boolean(this.cohort()?.members));
 
   constructor() {
+    toastFrom(() => this.error());
     // Se vuelve a cargar al cambiar de id sin salir del componente (D-03).
     inject(ActivatedRoute).paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
       this.id = Number(params.get('id'));

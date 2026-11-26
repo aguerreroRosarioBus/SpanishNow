@@ -18,7 +18,7 @@
       <a routerLink="/courses" class="btn btn-primary mt-2">{{ 'publicCourse.browse' | t }}</a>
     </div>
   } @else if (loadError()) {
-    <div class="alert alert-danger" role="alert">{{ 'publicCourse.loadError' | t }}</div>
+    <div class="state-box state-box--error" role="status"><span>{{ 'publicCourse.loadError' | t }}</span></div>
   } @else if (course(); as c) {
     <div class="sales-layout">
       <div class="sales-main">
@@ -175,9 +175,6 @@
           }
           @if (needsConsent()) {
             <app-legal-consent [documents]="consentDocs()" [(accepted)]="legalAccepted" [submitted]="consentSubmitted()" />
-          }
-          @if (buyError()) {
-            <div class="alert alert-danger mb-0" role="alert">{{ buyError() }}</div>
           }
           <button type="button" class="btn btn-primary btn-lg w-100" (click)="buy()" [disabled]="isBuying()">
             @if (isBuying()) {

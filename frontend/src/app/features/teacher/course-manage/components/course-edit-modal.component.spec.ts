@@ -20,7 +20,7 @@ describe('CourseEditModalComponent cover changes', () => {
     TestBed.configureTestingModule({ providers: [
       { provide: CourseManageStore, useValue: store }, { provide: CourseService, useValue: api },
       { provide: CouponService, useValue: { list: () => of([]) } },
-      { provide: ToastService, useValue: { success: vi.fn(), warning: vi.fn() } }
+      { provide: ToastService, useValue: { success: vi.fn(), warning: vi.fn(), show: vi.fn() } }
     ] });
     vi.stubGlobal('URL', class extends URL {
       static override createObjectURL = vi.fn(() => 'blob:preview');
@@ -66,7 +66,7 @@ describe('Conexión propia de Hotmart en el editor de cursos', () => {
       { provide: CourseService, useValue: { getCourses: () => of([]), updateCourse } },
       { provide: CouponService, useValue: { list: () => of([]) } },
       { provide: HotmartService, useValue: { setup: () => of(setup), connection, saveKey } },
-      { provide: ToastService, useValue: { success: vi.fn(), warning: vi.fn() } }
+      { provide: ToastService, useValue: { success: vi.fn(), warning: vi.fn(), show: vi.fn() } }
     ] });
     TestBed.inject(I18nService).setLocale('es');
     const fixture = TestBed.createComponent(CourseEditModalComponent); fixture.detectChanges(); return fixture;

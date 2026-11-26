@@ -15,7 +15,7 @@
         <span>{{ 'certificate.missing' | t: {code: code()} }}</span>
       </div>
     } @else if (loadError()) {
-      <div class="alert alert-danger" role="alert">{{ 'certificate.error' | t }}</div>
+      <div class="state-box state-box--error" role="status"><span>{{ 'certificate.error' | t }}</span></div>
     } @else if (certificate(); as c) {
       <section class="cert-card" aria-labelledby="cert-title">
         <div class="cert-card__badge"><app-icon name="circle-check" [size]="20" />{{ 'certificate.valid' | t }}</div>

@@ -6,6 +6,7 @@ import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { BUSINESS_FIELDS, LEGAL_KEYS, LegalKey, PUBLIC_LEGAL_KEYS, PublicLegalDocument } from '../legal.model';
 import { LegalService } from '../legal.service';
+import { toastFrom } from '../../../core/services/toast.service';
 
 /** Página pública de un documento legal (LEGAL-01): vigente o, con ?version=, una publicada anterior. */
 @Component({
@@ -39,6 +40,7 @@ export class LegalPageComponent {
   private request?: Subscription;
 
   constructor() {
+    toastFrom(() => this.state() === 'error' ? this.i18n.t('legal.loadError') : '');
     // El idioma cambia el texto mostrado sin cambiar de versión ni de ruta.
     effect(() => {
       const key = this.key(); const version = this.version(); const locale = this.i18n.locale();

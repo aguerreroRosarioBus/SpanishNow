@@ -4,6 +4,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
+import { toastFrom } from '../../../core/services/toast.service';
 
 /** Pide el email para recibir el link de recuperación (siempre responde igual: no revela si existe). */
 @Component({
@@ -14,6 +15,7 @@ import { AuthService } from '../../../core/services/auth.service';
   styleUrl: './forgot-password.component.scss'
 })
 export class ForgotPasswordComponent {
+  constructor() { toastFrom(() => this.errorMessage()); }
   readonly i18n = inject(I18nService);
   private authService = inject(AuthService);
 

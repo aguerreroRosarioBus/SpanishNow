@@ -12,6 +12,7 @@ import { ModalFocusDirective } from '../../../shared/directives/modal-focus.dire
 import { applyDiscount, normalizeCouponCode } from '../../../shared/utils/coupon-price';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
+import { toastFrom } from '../../../core/services/toast.service';
 
 type DiscountKind = 'percent' | 'amount';
 
@@ -91,6 +92,8 @@ export class TeacherCouponsComponent implements OnInit {
   }
 
   constructor() {
+    toastFrom(() => this.formError());
+    toastFrom(() => this.errorMessage());
     this.form.valueChanges.subscribe(() => this.formVersion.update(n => n + 1));
   }
 

@@ -14,6 +14,7 @@ import { I18nService } from '../../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { TeacherHotmartConnectionComponent } from './teacher-hotmart-connection.component';
 import { HotmartGuideImageComponent } from './hotmart-guide-image.component';
+import { toastFrom } from '../../../../core/services/toast.service';
 
 /** Edición del curso: título, descripción y datos de venta (precio, moneda, slug, publicación, texto de venta). */
 @Component({
@@ -104,6 +105,7 @@ export class CourseEditModalComponent implements OnDestroy {
   });
 
   constructor() {
+    toastFrom(() => this.errorMessage());
     const course = this.store.course();
     if (course) {
       this.form.patchValue({

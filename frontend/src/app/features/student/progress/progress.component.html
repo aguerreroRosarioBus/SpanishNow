@@ -6,7 +6,6 @@
     </div>
   </div>
 
-  @if (errorMessage()) { <div class="alert alert-danger" role="alert">{{ errorMessage() }}</div> }
   @if (isLoading()) {
     <div class="text-center py-5" role="status">
       <div class="spinner-border text-primary" aria-hidden="true"></div>
@@ -90,7 +89,6 @@
                     <button type="button" class="btn btn-secondary" (click)="cancelClaim()" [disabled]="isIssuing()">{{ 'common.cancel' | t }}</button>
                   </div>
                   <small class="text-secondary-ui">{{ 'student.namePrinted' | t }}</small>
-                  @if (claimError()) { <div class="alert alert-danger mb-0 mt-2" role="alert">{{ claimError() }}</div> }
                 </form>
               }
             }

@@ -6,6 +6,7 @@ import { environment } from '../../../../environments/environment';
 import { ToastService } from '../../../core/services/toast.service';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
+import { toastFrom } from '../../../core/services/toast.service';
 
 @Component({
   selector: 'app-change-password-modal',
@@ -31,6 +32,7 @@ export class ChangePasswordModalComponent {
   showConfirmPassword = signal<boolean>(false);
 
   constructor() {
+    toastFrom(() => this.errorMessage());
     this.changePasswordForm = this.fb.group({
       currentPassword: ['', [Validators.required]],
       newPassword: ['', [Validators.required, Validators.minLength(6)]],

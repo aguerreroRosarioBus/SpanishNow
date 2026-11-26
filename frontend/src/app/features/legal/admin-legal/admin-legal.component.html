@@ -16,20 +16,10 @@
     }
   </div>
 
-  @if (notice(); as n) {
-    <div class="alert alert-success" role="status">{{ n.key | t : { version: n.version } }}</div>
-  }
-  @if (error()) {
-    <div class="alert alert-danger" role="alert">
-      {{ error() }}
-      @if (missingLabels()) { <div class="mt-1">{{ 'legal.admin.missing' | t : { fields: missingLabels() } }}</div> }
-    </div>
-  }
-
   @if (state() === 'loading') {
     <div class="text-center py-5" role="status"><div class="spinner-border text-primary" aria-hidden="true"></div></div>
   } @else if (state() === 'error') {
-    <div class="alert alert-danger" role="alert">{{ 'legal.admin.loadError' | t }}</div>
+    <div class="state-box state-box--error" role="status"><span>{{ 'legal.admin.loadError' | t }}</span></div>
   } @else {
     <div class="legal-admin">
       <section class="legal-admin__versions" aria-labelledby="legal-versions">
