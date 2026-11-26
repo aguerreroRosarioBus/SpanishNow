@@ -58,6 +58,7 @@ function vocabularyPdf(unit) {
 }
 
 module.exports = {
+  SAMPLE_VIDEO, // lo reutiliza el curso de prueba (seeds/trial/05-extras.js)
   name: 'rich-content',
   async run({ models: { Course, Unit, Story, Material, UnitQuiz, UnitQuizQuestion }, log, state }) {
     const { content } = state;

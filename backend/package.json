@@ -15,6 +15,7 @@
     "db:migrate:down": "node src/db/migrate.js down",
     "db:migrate:adopt": "node src/db/migrate.js adopt",
     "db:seed:curated": "node src/db/seed.js",
+    "db:seed:trial": "node src/db/seedTrial.js",
     "db:verify": "node src/db/verify.js",
     "db:audit:tprs": "node src/db/auditTprs.js",
     "db:rebuild": "bash scripts/db-rebuild.sh",

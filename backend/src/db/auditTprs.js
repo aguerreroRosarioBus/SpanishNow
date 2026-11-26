@@ -11,7 +11,7 @@
 const { auditCourse, fromContent, planFromBlocks, RULES, SYMBOLS } = require('../services/tprsAudit');
 
 function parseArgs(argv) {
-  const options = { source: 'content', content: 'curated', json: false, allowRemote: false, course: null };
+  const options = { source: 'content', json: false, allowRemote: false, course: null };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--source') options.source = argv[++i];
@@ -24,7 +24,7 @@ function parseArgs(argv) {
     else throw new Error(`Argumento desconocido: ${arg}`);
   }
   if (!['content', 'db'].includes(options.source)) throw new Error('--source debe ser content o db');
-  if (!['curated', 'trial'].includes(options.content)) throw new Error('--content debe ser curated o trial');
+  if (options.content !== undefined && !['curated', 'trial'].includes(options.content)) throw new Error('--content debe ser curated o trial');
   if (options.course !== null && !Number.isInteger(options.course)) throw new Error('--course necesita un id numérico');
   return options;
 }
@@ -123,7 +123,7 @@ async function main() {
   const options = parseArgs(process.argv.slice(2));
   const notes = [];
   const out = { note: message => notes.push(message) };
-  const audits = options.source === 'db' ? await auditDatabase(options, out) : auditContent(options.content);
+  const audits = options.source === 'db' ? await auditDatabase(options, out) : auditContent(options.content || 'curated');
   const errors = audits.reduce((n, a) => n + a.summary.errors, 0);
   const warnings = audits.reduce((n, a) => n + a.summary.warnings, 0);
   if (options.json) {

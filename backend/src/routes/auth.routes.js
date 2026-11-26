@@ -9,6 +9,7 @@ const { createToken, consumeToken, MIN_PASSWORD_LENGTH } = require('../services/
 const { sendMail } = require('../services/mailService');
 const { passwordReset } = require('../services/emailTemplates');
 const { signToken, serializeAuthUser } = require('../services/authUser');
+const { enrollInTrialCourse } = require('../services/trialEnrollment');
 
 // Register
 router.post('/register',
@@ -40,6 +41,12 @@ router.post('/register',
         // Se guarda el idioma elegido al registrarse para que los correos (compra, etc.) salgan en ese idioma (D3-DIN-19).
         const created = await User.create({ name, email, password, role: 'student', locale: ['en', 'es'].includes(req.body.locale) ? req.body.locale : null }, { transaction });
         await legal.recordAcceptances(created.id, docs, { locale, context: 'signup', transaction });
+        // Curso de prueba gratis: si existe y está publicado, el alumno nuevo ya queda inscripto. Sin ese curso el registro sigue igual.
+        try {
+          await enrollInTrialCourse(created.id, { transaction });
+        } catch (error) {
+          console.warn(`No se pudo inscribir al curso de prueba: ${error.message}`);
+        }
         return created;
       });
 

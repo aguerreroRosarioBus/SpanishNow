@@ -111,8 +111,11 @@ function validateMaterial(material) {
   }
 }
 
-/** Lee seeds/content-trial (o `dir`), valida todo y devuelve { course, unit, vocabulary, stories, quiz, material }. */
-function loadTrialContent({ dir = TRIAL_DIR } = {}) {
+/**
+ * Lee seeds/content-trial, valida todo y devuelve { course, unit, vocabulary, stories, quiz, material }.
+ * `dir` (o la variable TRIAL_CONTENT_DIR, pensada para las pruebas automáticas) lee otra carpeta con la misma estructura.
+ */
+function loadTrialContent({ dir = process.env.TRIAL_CONTENT_DIR || TRIAL_DIR } = {}) {
   const { course, unit } = readJson(path.join(dir, 'course.json'));
   assertCleanText({ course, unit }, 'course.json');
   validateCourse({ course, unit });

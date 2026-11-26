@@ -23,8 +23,9 @@ Todos los comandos leen `DB_HOST`, `DB_PORT` (3306 por defecto), `DB_USER`, `DB_
 | `npm run db:migrate:down -- --to <nombre>` | Revierte, de la más nueva a la indicada (inclusive). `-- --last` revierte solo la última. Sin ninguno de los dos se niega. |
 | `npm run db:migrate:adopt [-- --dry-run]` | Registra en `SequelizeMeta` las migraciones cuyo efecto **ya está** en el esquema. No modifica el esquema. |
 | `npm run db:seed:curated` | Siembra cuentas de prueba, curso, planes e inscripción (idempotente). |
+| `npm run db:seed:trial` | Siembra el curso de prueba gratis (idempotente, sin ids fijos; ver «Curso de prueba»). |
 | `npm run db:verify` | Comprueba recuentos, una revisión publicada por historia, docente e inscripción. Solo lectura. |
-| `npm run db:audit:tprs` | Auditoría de coherencia TPRS del contenido (`seeds/content`) o de la base. Solo lectura (ver «Auditoría TPRS»). |
+| `npm run db:audit:tprs` | Auditoría de coherencia TPRS del contenido (`seeds/content`; `-- --content trial` para `seeds/content-trial`) o de la base. Solo lectura (ver «Auditoría TPRS»). |
 | `npm run db:rebuild -- ...` | Dump previo, borrado, migraciones, semillas y verificación (ver abajo). |
 | `node scripts/db-schema-diff.js <bdA> <bdB>` | Compara tablas, columnas, tipos, nulos, defaults, índices y claves foráneas de dos bases locales. |
 | `npm run db:init` | **Solo desarrollo.** `sync({ alter: true })`, sin migraciones ni conversión de datos. Se niega con `NODE_ENV=production` y con hosts no locales (salvo `ALLOW_DB_INIT_REMOTE=yes`). |
@@ -124,12 +125,47 @@ Reglas de seguridad por defecto: nunca se pisa una fila existente; un plan solo 
 
 Además el dump trae textos sin tildes («Maria en la Fiesta», «Cafe»), que no son mojibake sino contenido distinto; el contenido canónico es el del seed. `db:verify` y la validación de los JSON rechazan estas secuencias. Una base vieja se corrige con `npm run db:seed:curated -- --sync-content`. En las historias sin `plan` el texto del keyframe se corrige publicando una revisión nueva (`--sync-content` lo hace si la última está sin curar).
 
+## Curso de prueba
+
+Curso gratis «Free trial: Learn Spanish through stories» (slug `free-trial-spanish-stories`, nivel A1, 1 unidad, 3 historias, cuestionario final) en el que se inscribe automáticamente cada alumno que se registra. El contenido y las decisiones están en `docs/curso-prueba/PLAN.md`.
+
+| Qué | Dónde |
+| --- | --- |
+| Contenido (JSON, **sin ids**) | `seeds/content-trial/`: `course.json` (curso, unidad, 9 estructuras), `stories/NN-*.json` (texto, preguntas, plan y glosas por keyframe), `quiz.json`, `material.json` (PDF) |
+| Audio con voz sintética (mp3 commiteados) | `seeds/content-trial/audio/` (`h<historia>-k<n>.mp3` por keyframe, `vocab-<slug>.mp3` por estructura), generados con `node scripts/trial-audio.js` (macOS `say -v Paulina` + ffmpeg, mono 48 kbps) |
+| Ilustraciones (W27) | `seeds/content-trial/images/h<historia>-k<n>.png\|webp` y `alt.json` (`{ "h1-k1": "texto alternativo" }`) |
+| Semilla | `src/db/seedTrial.js` + `seeds/trial/01..05-*.js` |
+| Inscripción al registrarse | `src/services/trialEnrollment.js`, llamado dentro de la transacción de `POST /api/auth/register` |
+
+**Variables.** `TRIAL_COURSE_SLUG` (por defecto `free-trial-spanish-stories`; la usan el registro y la semilla), `TRIAL_COURSE_TEACHER_EMAIL` (docente dueño del curso; en una base local, `admin@gmail.com` si falta) y `TRIAL_COURSE_NEXT_SLUG` (curso pago siguiente, opcional). Están comentadas en `backend/.env.example`.
+
+**Inscripción.** Al registrarse, si existe un curso con ese slug, `isPublished` y `price` 0, se crea un `Enrollment` con `source = 'free'` en la misma transacción que el alumno. Si el curso no existe, no está publicado o tiene precio, el registro sigue igual y no se inscribe a nadie. No hay alumnos anteriores que migrar (decisión 8 del plan).
+
+```bash
+npm run db:seed:trial                    # crea lo que falta; nunca pisa lo editado
+npm run db:seed:trial -- --sync-content  # actualiza lo que los archivos dicen distinto (curso, unidad, vocabulario, preguntas)
+npm run db:seed:trial -- --force-plans   # publica el plan del archivo como revisión nueva aunque la actual esté curada o haya un borrador
+npm run db:seed:trial -- --only media    # un solo paso: course-content, lesson-plans, glosses, media, extras
+node scripts/trial-audio.js              # (solo si cambia un texto) regenera los mp3 que falten; --force los rehace todos
+```
+
+Pasos, en orden, todos idempotentes:
+
+1. **course-content.** Identifica cada fila por clave natural: curso por `slug`; unidad por `courseId` y `order`; vocabulario por `unitId` y palabra; historia por `unitId` y título; pregunta por `storyId` y texto (se comparan sin tildes ni mayúsculas, en JavaScript). El docente es `TRIAL_COURSE_TEACHER_EMAIL`: debe existir con rol `teacher`; si no, la semilla falla con un mensaje claro y no crea cuentas. El curso se crea con `price` 0 e `isPublished` true y solo entonces; después no se toca su slug, precio, publicación ni docente. Una fila existente que difiere del archivo se conserva y se avisa (drift); `--sync-content` la actualiza. Renombrar en la app una fila sembrada hace que la semilla vuelva a crearla con el título original (la identifica por esa clave): la semilla avisa de las historias de la unidad que no están en los archivos.
+2. **lesson-plans.** Publica el plan de cada historia con `lessonPlanService` (borrador, `replaceDraftBlocks`, `publishDraft`, dentro de `draftTransaction`), igual que `seeds/curated/03-lesson-plans.js`: una historia sin revisión recibe el plan del archivo como revisión 1; si ya coincide no hace nada; si la última difiere y está curada, o hay un borrador abierto, avisa y no toca nada (salvo `--force-plans`). Las reapariciones (`later`) dejan su expresión `revisit` en el borrador de la historia destino, que la declara en su `before`.
+3. **glosses.** Tooltips `targetType 'keyframe'` con el contrato de `POST /api/tooltips`: `targetId` = historia, `blockKey` = el del keyframe **publicado**, offsets relativos al texto de ese keyframe (primera aparición de cada glosa como palabra completa, sin distinguir mayúsculas), `createdBy` = docente del curso. Una glosa que se pisa con un tooltip activo del mismo keyframe no se vuelve a crear. Un keyframe cuyo texto ya no coincide con el archivo (editado en la app) se omite.
+4. **media.** Sube cada archivo con el mismo mecanismo que la app (`src/config/cloudinary.js`: `MEDIA_FAKE_UPLOADS=1` en local, Cloudinary en el resto) y asigna la URL solo donde el campo está vacío: `audioUrl` del keyframe y de `Vocabulary` (más la instantánea del vocabulario de la revisión publicada, que es lo que muestra la lección), y `imageUrl`/`imageAlt` del keyframe. Sin `images/` (hoy no existen) lo omite con una línea; al correrla de nuevo cuando lleguen las agrega. Sin dónde subir (ni archivos falsos ni Cloudinary) avisa y sigue sin audio ni imágenes. No crea revisiones nuevas: completar un medio vacío no cambia qué enseña la lección (mismos bloques, claves, textos y preguntas), y los alumnos que ya la abrieron la ven completa sin que su progreso cambie. «Escuchar y repetir» no usa el vocabulario sino `repetition_activities`: se crea una actividad por estructura objetivo de la historia (frase de ejemplo + el mismo audio), solo si la historia no tiene ninguna.
+5. **extras.** Cuestionario «What just happened?» publicado (aprueba con 70) si la unidad no tiene uno; `introVideoUrl` provisorio (el mismo `SAMPLE_VIDEO` de `05-rich-content`) solo si está vacío; PDF de una página «How TPRS works» (pdfkit, guardado con `materialService.storePdf`) solo si el curso no tiene materiales; y, si `TRIAL_COURSE_NEXT_SLUG` apunta a un curso del mismo docente, `nextCourseId` (sin cupón) cuando está vacío.
+
+Auditoría del contenido: `npm run db:audit:tprs -- --content trial` (0 errores y 0 advertencias). Tests: `tests/seedTrial.test.js` (contenido, glosas, semilla completa en bases descartables) y `tests/trialEnrollment.test.js` (registro). Para probar la semilla con archivos propios (imágenes, por ejemplo) la variable `TRIAL_CONTENT_DIR` lee otra carpeta con la misma estructura.
+
 ## Auditoría TPRS
 
 `npm run db:audit:tprs` revisa que cada historia cumpla el diseño del plan TPRS (`spanishnow-plan-refactorizacion-tprs.md`). Solo lee; nunca escribe.
 
 ```bash
 npm run db:audit:tprs                          # contenido: seeds/content/course.json + stories/*.json (sin base de datos)
+npm run db:audit:tprs -- --content trial       # contenido del curso de prueba: seeds/content-trial (sin base de datos)
 npm run db:audit:tprs -- --json                # salida para máquina
 npm run db:audit:tprs -- --source db           # revisiones publicadas vigentes de DB_NAME (conexión normal de src/config/database.js)
 npm run db:audit:tprs -- --source db --course 1
