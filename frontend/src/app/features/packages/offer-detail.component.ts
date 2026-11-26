@@ -40,6 +40,8 @@ export class OfferDetailComponent implements OnInit {
     });
   });
   readonly payable=computed(()=>Boolean(this.offer()?.canCheckout&&['sent','checkout_pending'].includes(this.offer()!.status)&&(!this.order()||['pending','failed'].includes(this.order()!.status))));
+  /** La etiqueta sigue al pago: «Pago pendiente» tras ir a pagar y «Pago en revisión» cuando se recibió con diferencias (D3-DIN-16). */
+  readonly statusKey=computed(()=>{const o=this.offer();if(!o)return '';const status=this.order()?.status;return status==='paid_needs_review'?'packages.offer.status.under_review':o.status==='sent'&&status==='pending'?'packages.offer.status.checkout_pending':`packages.offer.status.${o.status}`;});
   accepted=signal(false);busy=signal(false);reason=signal('');private key=crypto.randomUUID();private routeChanges=new Subject<void>();
   ngOnInit(){this.route.paramMap.pipe(switchMap(p=>{this.routeChanges.next();this.busy.set(false);this.failure.set(null);this.offer.set(null);this.order.set(null);this.purchaseId.set(null);this.accepted.set(false);this.key=crypto.randomUUID();return this.api.offer(Number(p.get('id')));}),takeUntilDestroyed(this.destroyRef)).subscribe({next:o=>{this.offer.set(o);if(o.canCheckout)this.loadState(o.id);},error:e=>this.failure.set(e)});}
   instant(value:string){return this.i18n.formatInstant(value,this.fmt.timeZone());}

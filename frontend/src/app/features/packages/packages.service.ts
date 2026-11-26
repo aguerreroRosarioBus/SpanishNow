@@ -56,7 +56,10 @@ export class PackagesService {
   save(id: number, body: unknown) { return this.http.post<PackageTemplate>(`${this.base}/teacher/class-packages/${id}/versions`, body); }
   status(id: number, status: string, version: number) { return this.http.patch<PackageTemplate>(`${this.base}/teacher/class-packages/${id}/status`, {status, version}); }
   error(error: unknown) {
-    const code = (error as {error?:{code?:string}})?.error?.code;
+    const body = (error as {error?:{code?:string;params?:{bucket?:string}}})?.error;
+    const code = body?.code;
+    // «Sin saldo» según el saldo que falta: restaurar (consumidos) no es lo mismo que retirar (disponibles) (D3-DIN-12).
+    if(code === 'insufficient_credit' && body?.params?.bucket && this.i18n.has(`packages.errors.insufficient_credit.${body.params.bucket}`)) return this.i18n.t(`packages.errors.insufficient_credit.${body.params.bucket}`);
     if(code && this.i18n.has(`packages.errors.${code}`)) return this.i18n.t(`packages.errors.${code}`);
     return code && this.i18n.has(`legal.errors.${code}`) ? this.i18n.t(`legal.errors.${code}`) : this.i18n.errorMessage(error);
   }
