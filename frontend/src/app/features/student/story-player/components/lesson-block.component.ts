@@ -5,6 +5,7 @@ import { StudentLessonBlock } from '../../../../core/services/student-lesson.ser
 import { DisplayTooltip } from '../../../../core/services/tooltip.service';
 import { LessonAudioControlsComponent } from './lesson-audio-controls.component';
 import { TooltipDisplayComponent } from '../../../../shared/components/tooltip-display/tooltip-display.component';
+import { ToastService } from '../../../../core/services/toast.service';
 import { LessonSessionStore } from '../lesson-session.store';
 import { LessonIllustrationComponent } from './lesson-illustration.component';
 
@@ -19,6 +20,7 @@ import { LessonIllustrationComponent } from './lesson-illustration.component';
 export class LessonBlockComponent {
   i18n = inject(I18nService);
   session = inject(LessonSessionStore);
+  private toast = inject(ToastService);
   block = input.required<StudentLessonBlock>();
 
   // Referencia estable por bloque (el input del componente de tooltips se compara por referencia).
@@ -29,4 +31,12 @@ export class LessonBlockComponent {
     if (!list) { list = (block.tooltips || []).map(t => ({ ...t })); this.tooltipCache.set(block, list); }
     return list;
   });
+
+  /** Reproduce el audio de la expresión clave (un Audio simple, como las tarjetas de vocabulario). */
+  playExpression(url: string): void {
+    new Audio(url).play().catch(error => {
+      console.error('Error playing audio:', error);
+      this.toast.error(this.i18n.t('activities.audioError'));
+    });
+  }
 }

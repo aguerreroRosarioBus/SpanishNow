@@ -13,6 +13,11 @@
           <app-lesson-illustration class="expression-image" [src]="image" [alt]="'player.image' | t: {word: block().vocabulary?.word || i18n.t('player.expressionFallback')}" [compact]="true" />
         }
         <p class="read-text read-text--term">{{ block().vocabulary?.word || block().text }}</p>
+        @if (block().vocabulary?.audioUrl; as audioUrl) {
+          <button type="button" class="btn btn-secondary expression-audio" (click)="playExpression(audioUrl)">
+            <span aria-hidden="true">▶ </span>{{ 'player.listenExpression' | t }}<span class="visually-hidden">: {{ block().vocabulary?.word }}</span>
+          </button>
+        }
         @if (block().vocabulary?.translation) {
           <p class="read-text read-text--secondary">{{ block().vocabulary?.translation }}</p>
         }

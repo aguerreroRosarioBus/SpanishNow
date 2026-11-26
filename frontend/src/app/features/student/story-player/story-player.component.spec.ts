@@ -351,6 +351,29 @@ describe('StoryPlayerComponent (flujo TPRS)', () => {
     });
   });
 
+  describe('audio de la expresión clave', () => {
+    const withAudio = (audioUrl?: string) => (lesson: StudentLesson): StudentLesson => ({
+      ...lesson,
+      blocks: [lessonBlock('e1', -1, 'expression', 'before', { vocabulary: { word: 'la casa', translation: 'the house', audioUrl } }), ...lesson.blocks],
+    });
+    const listen = () => [...(fixture.nativeElement as HTMLElement).querySelectorAll('.expression-card button')].find(b => b.textContent?.includes('Escuchar')) as HTMLButtonElement | undefined;
+
+    it('muestra «Escuchar» y reproduce el audio del vocabulario', async () => {
+      const played: string[] = [];
+      vi.stubGlobal('Audio', class { constructor(public src: string) {} play() { played.push(this.src); return Promise.resolve(); } });
+      try {
+        await create('e1', withAudio('/uploads/casa.mp3'));
+        listen()!.click();
+        expect(played).toEqual(['/uploads/casa.mp3']);
+      } finally { vi.unstubAllGlobals(); }
+    });
+
+    it('sin audio no muestra el botón', async () => {
+      await create('e1', withAudio());
+      expect(listen()).toBeUndefined();
+    });
+  });
+
   describe('ilustraciones', () => {
     const withImages = (lesson: StudentLesson): StudentLesson => ({
       ...lesson,
