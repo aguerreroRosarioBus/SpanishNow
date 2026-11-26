@@ -111,6 +111,9 @@ async function newVersion(user, id, body) {
     if ((previous ? previous.version : 0) !== body.version) throw fail(409, 'version_conflict');
     if (row.status === 'archived') throw fail(409, 'version_conflict');
     const rules = await policy(body, transaction, user.id); await assertProductFree(values.hotmartProductId, { transaction });
+    // Paquetes del catálogo inicial: los campos de expectativas vacíos se completan con el texto por defecto (el editor
+    // los envía en blanco); `assertReady` se evalúa sobre los valores ya completados. Los demás paquetes no cambian.
+    if (initial.isInitialKey(row.templateKey)) values.expectations = initial.fillExpectations(values.expectations, values);
     if (row.status === 'active') assertReady(values);
     // Sin versión vigente se continúa tras la última existente (si la hubiera) para no chocar con el índice (templateId, version).
     const last = previous ? previous.version : (await Version.max('version', { where: { templateId: row.id }, transaction })) || 0;
@@ -171,13 +174,13 @@ async function importInitial(user, requested) {
         // se repara con la versión inicial; si ya tiene versión vigente no se toca...
         const current = existing.currentVersionId ? await Version.findByPk(existing.currentVersionId, { transaction }) : null;
         if (current) {
-          // ...salvo que no tenga expectativas (catálogo importado antes de traer condiciones por defecto): se publica una versión
-          // nueva idéntica (precio, Hotmart, política) con las expectativas por defecto. Las que ya tienen expectativas, aunque
-          // sean parciales, y las plantillas archivadas no se tocan.
-          if (existing.status !== 'archived' && current.expectations == null) {
+          // ...salvo que le falte algún campo de expectativas (nulas, o en blanco desde el editor): se publica una versión
+          // nueva idéntica (precio, Hotmart, política) con los campos vacíos completados por defecto y los escritos
+          // conservados. Si no falta nada, o la plantilla está archivada, no se toca.
+          if (existing.status !== 'archived' && initial.needsFill(current.expectations, current)) {
             const { id, createdAt, ...copy } = current.toJSON();
             const last = (await Version.max('version', { where: { templateId: existing.id }, transaction })) || current.version;
-            const v = await Version.create({ ...copy, expectations: initial.defaultExpectations(current), version: last + 1, createdById: user.id }, { transaction });
+            const v = await Version.create({ ...copy, expectations: initial.fillExpectations(current.expectations, current), version: last + 1, createdById: user.id }, { transaction });
             await existing.update({ currentVersionId: v.id }, { transaction });
           }
           continue;

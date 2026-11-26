@@ -73,19 +73,88 @@ test('al reimportar, una plantilla con versión vigente sin expectativas se repa
   expect(await Version.count({ where: { templateId: t.id } })).toBe(2);
 });
 
-test('al reimportar, no se tocan expectativas propias (ni parciales) ni plantillas archivadas', async () => {
+const blank = () => Object.fromEntries(['en', 'es'].map(l => [l, Object.fromEntries(FIELDS.map(k => [k, '']))]));
+const own = text => Object.fromEntries(['en', 'es'].map(l => [l, Object.fromEntries(FIELDS.map(k => [k, `${l} ${text} ${k}`]))]));
+const asBody = (v, extra = {}) => ({ version: v.version, ...Object.fromEntries(classCatalog.FIELDS.map(k => [k, v[k]])), ...extra });
+const defaultsOf = key => initial.find(i => i.templateKey === key).expectations;
+
+test('al reimportar, no se tocan expectativas completas ni plantillas archivadas', async () => {
   const teacher = await createUser('teacher', 'default-expectations-3');
   const items = (await importFor(teacher)).body;
-  const own = items[0], partial = items[1], archived = items[3];
-  const custom = Object.fromEntries(['en', 'es'].map(l => [l, Object.fromEntries(FIELDS.map(k => [k, `${l} propio ${k}`]))]));
-  await Version.update({ expectations: custom }, { where: { id: own.current.id } });
-  const parcial = Object.fromEntries(['en', 'es'].map(l => [l, Object.fromEntries(FIELDS.map(k => [k, k === 'audience' ? `${l} audiencia` : '']))]));
-  await Version.update({ expectations: parcial }, { where: { id: partial.current.id } });
-  await strip(archived.id);
+  const complete = items[0], archived = items[3];
+  const custom = own('propio');
+  await Version.update({ expectations: custom }, { where: { id: complete.current.id } });
+  await Version.update({ expectations: blank() }, { where: { id: archived.current.id } });
   await Template.update({ status: 'archived' }, { where: { id: archived.id } });
   await importFor(teacher);
-  expect((await current(own.id)).toJSON()).toMatchObject({ id: own.current.id, version: 1, expectations: custom });
-  expect((await current(partial.id)).toJSON()).toMatchObject({ id: partial.current.id, version: 1, expectations: parcial });
+  expect((await current(complete.id)).toJSON()).toMatchObject({ id: complete.current.id, version: 1, expectations: custom });
   const arch = await current(archived.id);
-  expect(arch.version).toBe(1); expect(arch.expectations).toBeNull();
+  expect(arch.version).toBe(1); expect(arch.expectations).toEqual(blank());
+});
+
+test('al reimportar, una versión vigente con los 16 campos en blanco se completa y queda activable', async () => {
+  const teacher = await createUser('teacher', 'default-expectations-4');
+  const t = (await importFor(teacher)).body[1];
+  await Version.update({ expectations: blank() }, { where: { id: t.current.id } });
+  await importFor(teacher);
+  const fixed = await current(t.id);
+  expect(fixed.version).toBe(2);
+  expect(fixed.expectations).toEqual(defaultsOf(t.templateKey));
+  await Version.update({ hotmartProductId: 'BLK-1', hotmartOfferCode: 'offblk', hotmartCheckoutUrl: 'https://pay.hotmart.com/BLK123' }, { where: { id: fixed.id } });
+  expect((await classCatalog.setStatus(teacher, t.id, { status: 'active', version: 2 })).status).toBe('active');
+  await importFor(teacher); // idempotente
+  expect(await Version.count({ where: { templateId: t.id } })).toBe(2);
+});
+
+test('al reimportar, los campos parciales conservan lo escrito y completan lo vacío', async () => {
+  const teacher = await createUser('teacher', 'default-expectations-5');
+  const t = (await importFor(teacher)).body[2];
+  const partial = { en: { ...blank().en, audience: 'my audience', outcomes: '   ' }, es: { audience: 'mi audiencia' } }; // es con claves ausentes
+  await Version.update({ expectations: partial }, { where: { id: t.current.id } });
+  await importFor(teacher);
+  const fixed = await current(t.id);
+  const defaults = defaultsOf(t.templateKey);
+  expect(fixed.version).toBe(2);
+  expect(fixed.expectations.en).toEqual({ ...defaults.en, audience: 'my audience' });
+  expect(fixed.expectations.es).toEqual({ ...defaults.es, audience: 'mi audiencia' });
+  await importFor(teacher);
+  expect(await Version.count({ where: { templateId: t.id } })).toBe(2);
+});
+
+test('guardar desde el editor con expectativas en blanco guarda los textos por defecto en un paquete del catálogo inicial', async () => {
+  const teacher = await createUser('teacher', 'default-expectations-6');
+  const t = (await importFor(teacher)).body[3];
+  const saved = await classCatalog.newVersion(teacher, t.id, asBody(t.current, { priceAmount: 9999, expectations: blank() }));
+  expect(saved.current).toMatchObject({ version: 2, priceAmount: 9999 });
+  expect(saved.current.expectations).toEqual(defaultsOf(t.templateKey));
+  // lo escrito se conserva y lo vacío se completa
+  const partial = { ...blank(), en: { ...blank().en, objective: 'my objective' } };
+  const again = await classCatalog.newVersion(teacher, t.id, asBody(saved.current, { expectations: partial }));
+  expect(again.current.expectations.en).toEqual({ ...defaultsOf(t.templateKey).en, objective: 'my objective' });
+  // sin expectativas en el cuerpo también se completan
+  const none = await classCatalog.newVersion(teacher, t.id, asBody(again.current, { expectations: null }));
+  expect(none.current.expectations).toEqual(defaultsOf(t.templateKey));
+});
+
+test('vincular Hotmart sobre una versión con blancos deja las expectativas completas y el paquete se puede activar', async () => {
+  const teacher = await createUser('teacher', 'default-expectations-7');
+  const t = (await importFor(teacher)).body[4];
+  await Version.update({ expectations: blank() }, { where: { id: t.current.id } });
+  const linked = await classCatalog.linkHotmart(teacher, t.id, { version: 1, url: 'https://pay.hotmart.com/LNK123?off=offlnk', productId: 'LNK-1', offerCode: 'offlnk' });
+  expect(linked.current.version).toBe(2);
+  expect(linked.current.expectations).toEqual(defaultsOf(t.templateKey));
+  expect((await classCatalog.setStatus(teacher, t.id, { status: 'active', version: 2 })).status).toBe('active');
+});
+
+test('un paquete creado a mano (clave ajena) con expectativas en blanco no se completa y no se puede activar', async () => {
+  const teacher = await createUser('teacher', 'default-expectations-8');
+  const t = (await importFor(teacher)).body[0];
+  const { version, ...fields } = asBody(t.current, { expectations: blank(), hotmartProductId: 'MAN-1', hotmartOfferCode: 'offman', hotmartCheckoutUrl: 'https://pay.hotmart.com/MAN123' });
+  const created = await classCatalog.create(teacher, { templateKey: 'mi-paquete', ...fields });
+  expect(created.current.expectations).toEqual(blank());
+  await expect(classCatalog.setStatus(teacher, created.id, { status: 'active', version: 1 })).rejects.toMatchObject({ code: 'validation_failed' });
+  const saved = await classCatalog.newVersion(teacher, created.id, asBody({ ...created.current, version: 1 }, { expectations: blank() }));
+  expect(saved.current.expectations).toEqual(blank());
+  await importFor(teacher); // la importación tampoco la toca
+  expect((await current(created.id)).version).toBe(2);
 });

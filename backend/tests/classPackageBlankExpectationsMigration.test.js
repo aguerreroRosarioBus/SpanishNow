@@ -1,0 +1,94 @@
+// Migración 20261126000100: completa los campos de expectativas en blanco (el editor los enviaba vacíos). Se prueba en una base descartable
+// migrada hasta la anterior, para no tocar los paquetes de las demás suites ni depender de su orden.
+const { createMigrator } = require('../src/db/migrator');
+const { TEST_DB_NAME } = require('./helpers/testEnv');
+const { createScratchDb, dropScratchDb } = require('./helpers/scratchDb');
+const { validateExpectations } = require('../src/services/salesExpectations');
+const initial = require('../src/domain/classInitialCatalog');
+
+const silent = { info() {}, warn() {}, error() {}, debug() {} };
+const PREVIOUS = '20261126000000-default-class-package-expectations.js';
+const NAME = '20261126000100-fill-blank-class-package-expectations.js';
+const DB = `${TEST_DB_NAME}_blank_expectations_migration`;
+const now = '2026-11-20 12:00:00';
+let db, migrator;
+
+const q = (sql, replacements) => db.query(sql, { replacements, type: 'SELECT' });
+const run = (sql, replacements) => db.query(sql, { replacements });
+const custom = { en: Object.fromEntries(['audience', 'prerequisites', 'objective', 'contents', 'selfStudy', 'outcomes', 'supportIncluded', 'supportExcluded'].map(k => [k, `own ${k}`])), es: {} };
+custom.es = { ...custom.en };
+
+async function template(teacherId, templateKey, status, item, { expectations, hotmart = true } = {}) {
+  await run('INSERT INTO class_package_templates (teacherId, templateKey, status, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?)', [teacherId, templateKey, status, now, now]);
+  const [{ id: templateId }] = await q('SELECT LAST_INSERT_ID() AS id');
+  await run(
+    `INSERT INTO class_package_template_versions (templateId, version, nameEn, nameEs, modality, groupSize, billing, sessionsCount, minutesPerSession, seatsCovered,
+       priceAmount, currency, validityHours, policyVersionId, hotmartProductId, hotmartOfferCode, hotmartCheckoutUrl, expectations, createdById, createdAt)
+     VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'USD', ?, 1, ?, ?, ?, ${expectations === undefined ? 'NULL' : 'CAST(? AS JSON)'}, ?, ?)`,
+    [templateId, item.nameEn, item.nameEs, item.modality, item.groupSize, item.billing, item.sessionsCount, item.minutesPerSession, item.seatsCovered, item.priceAmount, item.validityHours,
+      hotmart ? 'PROD-1' : null, hotmart ? 'offer-1' : null, hotmart ? 'https://pay.hotmart.com/ABC123' : null,
+      ...(expectations === undefined ? [] : [JSON.stringify(expectations)]), teacherId, now]
+  );
+  const [{ id: versionId }] = await q('SELECT LAST_INSERT_ID() AS id');
+  await run('UPDATE class_package_templates SET currentVersionId = ? WHERE id = ?', [versionId, templateId]);
+  return { templateId, versionId };
+}
+const currentOf = async templateId => (await q(
+  'SELECT v.* FROM class_package_templates t JOIN class_package_template_versions v ON v.id = t.currentVersionId WHERE t.id = ?', [templateId]))[0];
+const versionsOf = async templateId => (await q('SELECT id FROM class_package_template_versions WHERE templateId = ?', [templateId])).length;
+
+beforeAll(async () => {
+  db = await createScratchDb(DB);
+  migrator = await createMigrator(db, { logger: silent });
+  await migrator.umzug.up({ to: PREVIOUS });
+});
+afterAll(async () => { await dropScratchDb(DB, db); });
+
+const FIELDS = ['audience', 'prerequisites', 'objective', 'contents', 'selfStudy', 'outcomes', 'supportIncluded', 'supportExcluded'];
+const blank = Object.fromEntries(['en', 'es'].map(l => [l, Object.fromEntries(FIELDS.map(k => [k, '']))]));
+const partial = { en: { ...blank.en, audience: 'mi audience', contents: '   ', outcomes: 'mi outcomes' }, es: { audience: 'mi audiencia', objective: 'mi objetivo' } }; // faltan campos y claves
+const parsed = v => (typeof v === 'string' ? JSON.parse(v) : v);
+
+test('completa los campos en blanco del catálogo inicial conservando lo escrito, sin tocar archivadas ni claves ajenas, y es idempotente', async () => {
+  await run("INSERT INTO users (name, email, password, role, createdAt, updatedAt) VALUES ('Docente', 'doc2@jest.test', 'x', 'teacher', ?, ?)", [now, now]);
+  const [{ id: teacherId }] = await q('SELECT LAST_INSERT_ID() AS id');
+  await run('INSERT INTO class_policy_versions (version, rules, createdById, createdAt) VALUES (1, ?, NULL, ?)', [JSON.stringify({}), now]);
+
+  const [a, b, c, d, e, f] = initial;
+  const allBlank = await template(teacherId, a.templateKey, 'draft', a, { expectations: blank });
+  const some = await template(teacherId, b.templateKey, 'paused', b, { expectations: partial });
+  const sqlNull = await template(teacherId, c.templateKey, 'draft', c);
+  const complete = await template(teacherId, e.templateKey, 'draft', e, { expectations: custom });
+  const archived = await template(teacherId, d.templateKey, 'archived', d, { expectations: blank });
+  const foreign = await template(teacherId, 'mi-paquete', 'draft', f, { expectations: blank }); // clave fuera del catálogo inicial
+
+  expect((await migrator.umzug.up({ to: NAME })).map(m => m.name)).toEqual([NAME]);
+
+  const strip = ({ id, version, expectations, createdAt, ...rest }) => rest;
+  for (const [row, item] of [[allBlank, a], [some, b], [sqlNull, c]]) {
+    const before = (await q('SELECT * FROM class_package_template_versions WHERE id = ?', [row.versionId]))[0];
+    const after = await currentOf(row.templateId);
+    expect(after.version).toBe(2);
+    expect(after.id).not.toBe(row.versionId);
+    expect(strip(after)).toEqual(strip(before)); // copia todo salvo id, version, expectativas y fecha
+    expect(validateExpectations(parsed(after.expectations))).toBeTruthy(); // quedan activables
+    expect(await versionsOf(row.templateId)).toBe(2);
+  }
+  expect(parsed((await currentOf(allBlank.templateId)).expectations)).toEqual(a.expectations);
+  expect(parsed((await currentOf(sqlNull.templateId)).expectations)).toEqual(c.expectations);
+  const merged = parsed((await currentOf(some.templateId)).expectations);
+  expect(merged.en).toMatchObject({ audience: 'mi audience', outcomes: 'mi outcomes', contents: b.expectations.en.contents, objective: b.expectations.en.objective });
+  expect(merged.es).toMatchObject({ audience: 'mi audiencia', objective: 'mi objetivo', contents: b.expectations.es.contents, supportExcluded: b.expectations.es.supportExcluded });
+  expect(await currentOf(allBlank.templateId)).toMatchObject({ hotmartProductId: 'PROD-1', hotmartCheckoutUrl: 'https://pay.hotmart.com/ABC123', priceAmount: a.priceAmount, createdById: teacherId });
+  // las versiones anteriores no se reescriben
+  expect(parsed((await q('SELECT expectations FROM class_package_template_versions WHERE id = ?', [allBlank.versionId]))[0].expectations)).toEqual(blank);
+
+  for (const row of [complete, archived, foreign]) {
+    expect((await currentOf(row.templateId)).id).toBe(row.versionId);
+    expect(await versionsOf(row.templateId)).toBe(1);
+  }
+  expect(await migrator.umzug.up()).toEqual([]);
+  // Reaplicar el cuerpo de la migración tampoco duplica versiones.
+  await require(`../migrations/${NAME}`).up(db.getQueryInterface(), require('sequelize').Sequelize);
+  for (const row of [allBlank, some, sqlNull]) expect(await versionsOf(row.templateId)).toBe(2);
+});

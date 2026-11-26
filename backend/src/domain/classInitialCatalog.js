@@ -50,6 +50,26 @@ function defaultExpectations({ sessionsCount, minutesPerSession, groupSize, vali
   };
 }
 
+const FIELDS = ['audience', 'prerequisites', 'objective', 'contents', 'selfStudy', 'outcomes', 'supportIncluded', 'supportExcluded'];
+
+// Completa por campo: lo que el docente escribió se conserva y cualquier campo vacío (null, ausente, no texto o solo espacios)
+// toma el texto por defecto de la variante. Acepta `expectations` nulo. La migración 20261126000100 guarda una copia de esta regla.
+function fillExpectations(expectations, variant) {
+  const defaults = defaultExpectations(variant);
+  const filled = {};
+  for (const locale of ['en', 'es']) {
+    const own = expectations && typeof expectations === 'object' && expectations[locale] && typeof expectations[locale] === 'object' ? expectations[locale] : {};
+    filled[locale] = Object.fromEntries(FIELDS.map(key => [key, typeof own[key] === 'string' && own[key].trim() ? own[key] : defaults[locale][key]]));
+  }
+  return filled;
+}
+
+// ¿Falta algún campo? Compara campo por campo (MySQL reordena las claves del JSON, así que no sirve comparar el texto serializado).
+function needsFill(expectations, variant) {
+  const filled = fillExpectations(expectations, variant);
+  return ['en', 'es'].some(locale => FIELDS.some(key => !(expectations && expectations[locale] && expectations[locale][key] === filled[locale][key])));
+}
+
 const variants = [
   ['individual-1x30', 1, 30, 1500, 1],
   ['individual-1x50', 1, 50, 2500, 1],
@@ -75,3 +95,6 @@ const catalog = variants.map(([templateKey, sessionsCount, minutesPerSession, pr
 // El módulo sigue siendo el arreglo de variantes (lo recorre `importInitial`); la función se cuelga de él.
 module.exports = catalog;
 module.exports.defaultExpectations = defaultExpectations;
+module.exports.fillExpectations = fillExpectations;
+module.exports.needsFill = needsFill;
+module.exports.isInitialKey = key => variants.some(([templateKey]) => templateKey === key);
