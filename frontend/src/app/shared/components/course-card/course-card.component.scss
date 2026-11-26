@@ -14,7 +14,7 @@
 }
 
 .course-card__cover {
-  height: 128px;
+  aspect-ratio: 14 / 5; // proporción de portada recomendada: una imagen 14:5 llena la tarjeta a cualquier ancho (a 360 px mide 128 px)
   background: var(--color-section-tint);
 
   img {

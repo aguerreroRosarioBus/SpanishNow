@@ -3,6 +3,7 @@ import { AUDIO_MESSAGES, AudioMessageKey, LESSON_AUDIO_LOCALE } from './audio-me
 
 export type AudioState = 'idle' | 'loading' | 'ready' | 'playing' | 'paused' | 'ended' | 'buffering' | 'error';
 export type AudioSpeed = 'slow' | 'normal';
+export type AudioRate = 0.75 | 1;
 interface SeekRange { start: number; end: number }
 
 /** Un único medio por lección. Nunca escribe progreso ni completa la narrativa. */
@@ -12,6 +13,8 @@ export class LessonAudioService implements OnDestroy {
   readonly state = signal<AudioState>('idle');
   readonly isPlaying = signal(false);
   readonly speed = signal<AudioSpeed>('slow');
+  /** Velocidad de reproducción del mismo audio (aparte de las grabaciones lenta/normal). */
+  readonly rate = signal<AudioRate>(1);
   readonly currentTime = signal(0);
   readonly duration = signal<number | null>(null);
   readonly seekRanges = signal<SeekRange[]>([]);
@@ -38,6 +41,7 @@ export class LessonAudioService implements OnDestroy {
     this.source = source;
     const media = this.element = new Audio();
     media.preload = 'metadata';
+    media.playbackRate = this.rate();
     this.state.set('loading');
     const on = (type: string, handler: () => void) => {
       const guarded = () => { if (this.element === media) handler(); };
@@ -124,6 +128,12 @@ export class LessonAudioService implements OnDestroy {
     this.stop();
     this.prepare(resolveUrl());
     if (wasPlaying) this.play();
+  }
+
+  /** Cambia la velocidad sin reiniciar el audio; se conserva al cambiar de grabación o de fragmento. */
+  setRate(rate: AudioRate): void {
+    this.rate.set(rate);
+    if (this.element) this.element.playbackRate = rate;
   }
 
   /** Una búsqueda manual fuera de [A, B) sale de repetición y conserva la posición elegida. */

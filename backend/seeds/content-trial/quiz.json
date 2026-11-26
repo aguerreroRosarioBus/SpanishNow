@@ -1,0 +1,58 @@
+{
+  "title": "What just happened?",
+  "passingScore": 70,
+  "questions": [
+    {
+      "prompt": "¿Qué quiere Sofía en la primera historia?",
+      "options": [
+        "Un perro",
+        "Un gato",
+        "Una pizza",
+        "Un café"
+      ],
+      "correct": "Un perro",
+      "explanation": "You understood a whole story with just three new structures: hay, quiere, tiene. TPRS limits new language on purpose, so everything you hear stays comprehensible."
+    },
+    {
+      "prompt": "¿A Pancho le gusta el café?",
+      "options": [
+        "Sí",
+        "No"
+      ],
+      "correct": "No",
+      "explanation": "We asked yes/no and either/or questions about the same sentences again and again. That is \"circling\": many meaningful repetitions without boring drills."
+    },
+    {
+      "prompt": "¿Dónde encuentra Sofía a Pancho?",
+      "options": [
+        "En el café",
+        "En la escuela",
+        "En la cocina",
+        "En el parque"
+      ],
+      "correct": "En el café",
+      "explanation": "Words from stories 1 and 2 came back in story 3. Meeting them again in a new context is what moves them into long-term memory."
+    },
+    {
+      "prompt": "Why are the stories a little absurd (a cat with ideas, a dog that steals pizza)?",
+      "options": [
+        "To be funny for children",
+        "Because surprising stories are easier to remember",
+        "Because Spanish speakers talk like that"
+      ],
+      "correct": "Because surprising stories are easier to remember",
+      "explanation": "Emotion and surprise make language memorable. In live classes, students even help create the story."
+    },
+    {
+      "prompt": "What did you NOT need to do in this course?",
+      "options": [
+        "Read",
+        "Listen",
+        "Memorize grammar rules",
+        "Answer questions"
+      ],
+      "correct": "Memorize grammar rules",
+      "explanation": "You acquire a language by understanding messages, not by studying rules. Grammar comes naturally once you have heard it many times."
+    }
+  ]
+}

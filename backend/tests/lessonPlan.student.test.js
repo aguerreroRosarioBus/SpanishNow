@@ -135,6 +135,9 @@ describe('TPRS lesson plans: student journey', () => {
       expect(done.status).toBe(200);
       expect(done.body.narrativeCompleted).toBe(true);
       expect((await openLesson(world.student, story.id)).body.progress.narrativeCompleted).toBe(true);
+      // Terminada la narración se repasa libremente: volver al inicio y saltar adelante ya no es «visitar en orden».
+      expect((await visit(world.student, lesson.progress.id, keys.exp)).status).toBe(200);
+      expect((await visit(world.student, lesson.progress.id, keys.q2)).status).toBe(200);
     });
 
     test('rejects empty, oversized or non-string answers', async () => {

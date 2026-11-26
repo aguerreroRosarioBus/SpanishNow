@@ -1,6 +1,6 @@
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
-import { Component, computed, inject, OnInit, Input, Output, EventEmitter, signal, OnDestroy } from '@angular/core';
+import { booleanAttribute, Component, computed, inject, OnInit, Input, Output, EventEmitter, signal, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { RepetitionActivityService } from '../../../core/services/repetition-activity.service';
@@ -25,6 +25,8 @@ export class ListenRepeatComponent implements OnInit, OnDestroy {
   private toastService = inject(ToastService);
 
   @Input() storyId?: number;
+  /** Dentro de la ventana de práctica: sin «Volver» ni título propio (los pone la ventana). */
+  @Input({ transform: booleanAttribute }) embedded = false;
   @Output() completed = new EventEmitter<{ totalPhrases: number; goodPerformance: number }>(); // Emits phrase stats
 
   activities = signal<RepetitionActivity[]>([]);
@@ -123,6 +125,13 @@ export class ListenRepeatComponent implements OnInit, OnDestroy {
     if (this.totalActivities === 0) return 0;
     return Math.round(((this.currentIndex() + 1) / this.totalActivities) * 100);
   }
+
+  /** Porcentaje de frases ya calificadas: es lo que cuenta para completar la actividad. */
+  get ratedProgress(): number {
+    return this.totalActivities ? Math.round((this.completedCount / this.totalActivities) * 100) : 0;
+  }
+
+  readonly ratingLabels = ['activities.selectRating', 'activities.needsImprovement', 'activities.fair', 'activities.good', 'activities.veryGood', 'activities.excellentRating'];
 
   get completedCount(): number {
     return this.ratings().size;

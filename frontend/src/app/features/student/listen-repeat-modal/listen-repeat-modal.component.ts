@@ -2,49 +2,23 @@ import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { PracticeDialogComponent } from '../practice-dialog/practice-dialog.component';
 import { ListenRepeatComponent } from '../listen-repeat/listen-repeat.component';
 import { ToastService } from '../../../core/services/toast.service';
 
 @Component({
   selector: 'app-listen-repeat-modal',
   standalone: true,
-  imports: [TranslatePipe, CommonModule, ListenRepeatComponent],
+  imports: [TranslatePipe, CommonModule, ListenRepeatComponent, PracticeDialogComponent],
   template: `
-    <div class="modal fade" [class.show]="show" [style.display]="show ? 'block' : 'none'" tabindex="-1" (click)="onBackdropClick($event)">
-      <div class="modal-dialog modal-xl" (click)="$event.stopPropagation()">
-        <div class="modal-content">
-          <div class="modal-header bg-warning text-dark">
-            <h5 class="modal-title">{{ 'activities.repeatModal' | t }}</h5>
-            <button type="button" class="btn-close btn-close-white" (click)="onClose()" [attr.aria-label]="'activities.close' | t"></button>
-          </div>
-          <div class="modal-body">
-            <div class="alert alert-info mb-3">
-              <strong>{{ 'activities.objective' | t }}</strong> {{ 'activities.repeatGoal' | t }}
-            </div>
-            <app-listen-repeat
-              *ngIf="storyId"
-              [storyId]="storyId"
-              (completed)="onListenRepeatCompleted($event)">
-            </app-listen-repeat>
-            <div *ngIf="!storyId" class="alert alert-warning">
-              {{ 'activities.noRepeatUnit' | t }}
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" (click)="onClose()">
-              {{ 'activities.close' | t }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="modal-backdrop fade" [class.show]="show" *ngIf="show"></div>
-  `,
-  styles: [`
-    .modal {
-      background-color: rgba(0, 0, 0, 0.5);
-    }
-  `]
+    <app-practice-dialog [show]="show" [title]="'activities.repeatModal' | t" [goal]="'activities.repeatGoal' | t" (close)="onClose()">
+      @if (storyId) {
+        <app-listen-repeat embedded [storyId]="storyId" (completed)="onListenRepeatCompleted($event)" />
+      } @else {
+        <p class="practice-state">{{ 'activities.noRepeatUnit' | t }}</p>
+      }
+    </app-practice-dialog>
+  `
 })
 export class ListenRepeatModalComponent {
   i18n = inject(I18nService);
@@ -56,10 +30,6 @@ export class ListenRepeatModalComponent {
   private toastService = inject(ToastService);
 
   onClose(): void {
-    this.close.emit();
-  }
-
-  onBackdropClick(event: MouseEvent): void {
     this.close.emit();
   }
 

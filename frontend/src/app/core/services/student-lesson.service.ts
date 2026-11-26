@@ -19,7 +19,8 @@ export interface StudentLessonBlock {
   questionId?: number | null;
   contextBlockKey?: string | null;
   question?: { questionText: string; answerType: string; options?: string[]; audioUrl?: string | null } | null;
-  vocabulary?: { word: string; translation: string; example?: string; imageUrl?: string | null } | null;
+  vocabulary?: { word: string; translation: string; example?: string; imageUrl?: string | null; audioUrl?: string | null } | null;
+  vocabularyId?: number | null;
   vocabularyRole?: 'target' | 'support' | 'revisit' | null;
 }
 export interface StudentLesson {

@@ -1,152 +1,105 @@
-.flashcard-container {
-  perspective: 1000px;
-  margin: 0 auto;
-  max-width: 600px;
-  cursor: pointer;
-  min-height: 500px;
-}
+// Las piezas comunes (.practice-top, .practice-nav…) vienen de app-practice-dialog.
+:host { display: block; }
 
-.flashcard {
+.fc--page { max-width: 720px; margin: 0 auto; padding: 16px; }
+.fc-page-head { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+.fc-page-head__title { margin: 0; font: 600 1.25rem/1.3 var(--font-heading); }
+
+.practice-top__actions .btn.is-active { background: var(--color-primary-soft); color: var(--color-primary-dark); }
+
+.fc-stage { position: relative; perspective: 2400px; }
+
+.fc-card {
   position: relative;
+  display: block;
   width: 100%;
-  height: 500px;
-  transition: transform 0.6s;
+  height: clamp(220px, 38dvh, 320px);
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
   transform-style: preserve-3d;
+  transition: transform .5s ease;
 
-  &.flipped {
-    transform: rotateY(180deg);
-  }
+  &.is-flipped { transform: rotateY(180deg); }
+  &:focus-visible { outline: none; }
+  &:focus-visible .fc-face { box-shadow: 0 0 0 3px var(--color-primary-light); border-color: var(--color-primary); }
 }
 
-.flashcard-face {
+.fc-face {
   position: absolute;
-  width: 100%;
-  height: 100%;
-  backface-visibility: hidden;
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-lg);
+  inset: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
-  transition: box-shadow 0.3s ease;
-
-  &:hover {
-    box-shadow: 0 4px 8px rgba(74, 40, 15, 0.08), 0 20px 40px rgba(74, 40, 15, 0.16);
-  }
-}
-
-.flashcard-front {
-  background: linear-gradient(135deg, #d9541a 0%, var(--color-primary) 100%);
-  color: white;
-}
-
-.flashcard-back {
-  background: linear-gradient(135deg, var(--color-coral) 0%, #c93b35 100%);
-  color: white;
-  transform: rotateY(180deg);
-}
-
-/* A-04: la pista «Haz clic para ver…» sobre el naranja/coral debe leerse (el gris de .text-muted casi no contrastaba) */
-.flashcard-face .text-muted {
-  color: #fff !important;
-}
-
-.card-content {
+  gap: 10px;
+  padding: 20px 20px 44px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  backface-visibility: hidden;
+  color: var(--color-text);
   text-align: center;
-  width: 100%;
+  overflow: hidden;
+  transition: border-color var(--transition-fast);
 }
 
-.word-display h1,
-.translation-display h1 {
-  font-family: var(--font-heading);
-  font-size: 3rem;
-  font-weight: 600;
-  text-shadow: 0 2px 6px rgba(74, 40, 15, 0.25);
+.fc-card:hover .fc-face { border-color: #d9c2ab; }
+
+.fc-face--front { background: var(--color-bg-light); }
+.fc-face--back { background: var(--color-bg); transform: rotateY(180deg); }
+
+.fc-image {
+  max-width: min(260px, 80%);
+  max-height: clamp(64px, 14dvh, 120px);
+  border-radius: var(--radius-md);
+  object-fit: cover;
 }
 
-.badge {
-  font-size: 0.9rem;
-  padding: 0.5rem 1rem;
+.fc-word { font: 600 clamp(1.5rem, 3.6vw, 2.125rem)/1.25 var(--font-heading); }
+
+.fc-chip {
+  padding: 2px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-dark);
+  color: var(--color-text-light);
+  font-size: .75rem;
+  font-weight: 700;
   text-transform: capitalize;
 }
 
-.image-container {
-  max-width: 300px;
-  margin: 0 auto;
+.fc-example {
+  max-width: 460px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-light);
+  font-size: .9375rem;
+  line-height: 1.5;
 
-  img {
-    max-height: 200px;
-    object-fit: cover;
-    border: 4px solid white;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  }
+  strong { margin-right: 4px; font-weight: 700; }
 }
 
-.example-box {
-  background-color: rgba(255, 255, 255, 0.2);
-  padding: 1.5rem;
-  border-radius: 12px;
-  margin-top: 2rem;
-  backdrop-filter: blur(10px);
-
-  strong {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-size: 1.1rem;
-  }
-
-  p {
-    font-size: 1.2rem;
-    line-height: 1.6;
-  }
+.fc-hint {
+  position: absolute;
+  bottom: 14px;
+  left: 0;
+  right: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: .75rem;
+  color: var(--color-text-light);
 }
 
-.progress {
-  overflow: hidden;
+// El audio va sobre la cara frontal, arriba a la derecha, fuera del botón de voltear.
+.fc-audio { position: absolute; top: 12px; right: 12px; }
 
-  .progress-bar {
-    transition: width 0.4s ease;
-  }
+.fc-reviewed { font-size: .8125rem; color: var(--color-text-light); text-align: center; }
+
+@media (max-width: 575.98px) {
+  .fc-card { height: clamp(220px, 42dvh, 300px); }
+  .fc-audio { top: 8px; right: 8px; }
 }
 
-.btn-lg {
-  padding: 0.75rem 2rem;
-  font-size: 1.1rem;
-}
-
-// Animations
-@keyframes flipIn {
-  from {
-    transform: rotateY(90deg);
-    opacity: 0;
-  }
-  to {
-    transform: rotateY(0);
-    opacity: 1;
-  }
-}
-
-.flashcard-container {
-  animation: flipIn 0.6s ease-out;
-}
-
-// Responsive
-@media (max-width: 768px) {
-  .flashcard {
-    height: 400px;
-  }
-
-  .word-display h1,
-  .translation-display h1 {
-    font-size: 2rem;
-  }
-
-  .flashcard-face {
-    padding: 1.5rem;
-  }
-
-  .image-container img {
-    max-height: 150px;
-  }
-}
+@media (prefers-reduced-motion: reduce) { .fc-card { transition: none; } }

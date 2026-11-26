@@ -1,113 +1,68 @@
-<div class="container mt-4">
-  <!-- Loading -->
-  <div *ngIf="isLoading()" class="text-center py-5">
-    <div class="spinner-border text-primary" role="status"></div>
-    <p class="text-muted mt-2">{{ 'activities.loadingVocabulary' | t }}</p>
-  </div>
+<div class="mt" [class.mt--page]="!embedded">
+  @if (!embedded) {
+    <div class="mt-page-head">
+      <button class="btn btn-ghost" (click)="goBack()"><app-icon name="chevron-left" [size]="16" />{{ 'activities.back' | t }}</button>
+      <h1 class="mt-page-head__title">{{ 'activities.matchingTitle' | t }}</h1>
+    </div>
+  }
 
-  <!-- Error -->
-  <div *ngIf="errorMessage()">
-    <button class="btn btn-secondary mb-3" (click)="goBack()">
-      <app-icon name="chevron-left" [size]="16" />{{ 'activities.back' | t }}
-    </button>
-  </div>
-
-  <!-- Matching Game -->
-  <div *ngIf="!isLoading() && !errorMessage() && vocabulary().length > 0">
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <button class="btn btn-ghost" (click)="goBack()">
-        <app-icon name="chevron-left" [size]="16" />{{ 'activities.back' | t }}
-      </button>
-      <h2 class="mb-0">{{ 'activities.matchingTitle' | t }}</h2>
-      <button class="btn btn-outline-primary" (click)="restart()">
-        <app-icon name="rotate-ccw" [size]="16" />{{ 'activities.restart' | t }}
-      </button>
+  @if (isLoading()) {
+    <p class="practice-state"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>{{ 'activities.loadingVocabulary' | t }}</p>
+  } @else if (!errorMessage() && vocabulary().length > 0) {
+    <div class="practice-top">
+      <span class="practice-top__count">{{ 'activities.matched' | t }} {{ matches() }}/{{ vocabulary().length }}</span>
+      <div class="practice-progress" role="progressbar" [attr.aria-valuenow]="matches()" aria-valuemin="0" [attr.aria-valuemax]="vocabulary().length">
+        <span [style.width.%]="(matches() / vocabulary().length) * 100"></span>
+      </div>
+      <div class="practice-top__actions">
+        <button type="button" class="btn btn-ghost btn-sm" (click)="restart()"><app-icon name="rotate-ccw" [size]="15" /><span class="practice-label">{{ 'activities.restart' | t }}</span></button>
+      </div>
     </div>
 
-    <!-- Stats -->
-    <div class="row mb-4">
-      <div class="col-md-4">
-        <div class="stat-card">
-          <div class="stat-value">{{ matches() }} / {{ vocabulary().length }}</div>
-          <div class="stat-label">{{ 'activities.matched' | t }}</div>
+    <div class="mt-meta">
+      <span>{{ 'activities.matchingInstructions' | t }}</span>
+      <span class="mt-stats">{{ 'activities.attempts' | t }}: <strong>{{ attempts() }}</strong> · {{ 'activities.accuracy' | t }}: <strong>{{ accuracy }}%</strong></span>
+    </div>
+
+    <div class="mt-grid">
+      <div class="mt-col">
+        <span class="mt-col__label" id="mt-es">{{ 'activities.spanish' | t }}</span>
+        <ul class="mt-list" aria-labelledby="mt-es">
+          @for (word of words(); track word.id) {
+            <li>
+              <button type="button" class="mt-item" lang="es" [class.is-selected]="isSelected(word)" [class.is-matched]="word.matched"
+                      [class.is-wrong]="isWrong(word)" [disabled]="word.matched" [attr.aria-pressed]="isSelected(word)" (click)="selectItem(word)">
+                <span>{{ word.text }}</span>
+                @if (word.matched) { <app-icon name="check" [size]="16" /> }
+              </button>
+            </li>
+          }
+        </ul>
+      </div>
+      <div class="mt-col">
+        <span class="mt-col__label" id="mt-en">{{ 'activities.english' | t }}</span>
+        <ul class="mt-list" aria-labelledby="mt-en">
+          @for (translation of translations(); track translation.id) {
+            <li>
+              <button type="button" class="mt-item" lang="en" [class.is-selected]="isSelected(translation)" [class.is-matched]="translation.matched"
+                      [class.is-wrong]="isWrong(translation)" [disabled]="translation.matched" [attr.aria-pressed]="isSelected(translation)" (click)="selectItem(translation)">
+                <span>{{ translation.text }}</span>
+                @if (translation.matched) { <app-icon name="check" [size]="16" /> }
+              </button>
+            </li>
+          }
+        </ul>
+      </div>
+    </div>
+
+    @if (isComplete()) {
+      <div class="practice-done" role="status">
+        <div>
+          <strong>{{ 'activities.matchComplete' | t }}</strong>
+          <p>{{ 'activities.matchResult' | t: {attempts: attempts(), accuracy: accuracy} }}</p>
         </div>
+        <button type="button" class="btn btn-secondary btn-sm" (click)="restart()">{{ 'activities.playAgain' | t }}</button>
       </div>
-      <div class="col-md-4">
-        <div class="stat-card">
-          <div class="stat-value">{{ attempts() }}</div>
-          <div class="stat-label">{{ 'activities.attempts' | t }}</div>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="stat-card">
-          <div class="stat-value">{{ accuracy }}%</div>
-          <div class="stat-label">{{ 'activities.accuracy' | t }}</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Instructions -->
-    <div class="alert alert-info mb-4" *ngIf="matches() === 0">
-      <strong>{{ 'activities.instructions' | t }}</strong> {{ 'activities.matchingInstructions' | t }}
-    </div>
-
-    <!-- Celebration -->
-    <div *ngIf="showCelebration()" class="celebration-banner">
-      <h1>{{ 'activities.excellent' | t }}</h1>
-      <p>{{ 'activities.matchCelebration' | t: {accuracy: accuracy} }}</p>
-    </div>
-
-    <!-- Matching Grid -->
-    <div class="row matching-grid">
-      <!-- Spanish Words Column -->
-      <div class="col-md-6">
-        <h4 class="text-center mb-3">{{ 'activities.spanish' | t }}</h4>
-        <div class="match-column">
-          <button
-            *ngFor="let word of words()"
-            class="match-item"
-            [class.matched]="word.matched"
-            [class.selected]="isSelected(word)"
-            [disabled]="word.matched"
-            (click)="selectItem(word)"
-          >
-            <span class="match-text">{{ word.text }}</span>
-            <span *ngIf="word.matched" class="match-icon"><app-icon name="check" [size]="16" /></span>
-          </button>
-        </div>
-      </div>
-
-      <!-- English Translations Column -->
-      <div class="col-md-6">
-        <h4 class="text-center mb-3">{{ 'activities.english' | t }}</h4>
-        <div class="match-column">
-          <button
-            *ngFor="let translation of translations()"
-            class="match-item"
-            [class.matched]="translation.matched"
-            [class.selected]="isSelected(translation)"
-            [disabled]="translation.matched"
-            (click)="selectItem(translation)"
-          >
-            <span class="match-text">{{ translation.text }}</span>
-            <span *ngIf="translation.matched" class="match-icon"><app-icon name="check" [size]="16" /></span>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Complete Message -->
-    <div *ngIf="isComplete()" class="text-center mt-4">
-      <div class="alert alert-success">
-        <h4>{{ 'activities.matchComplete' | t }}</h4>
-        <p class="mb-3">
-          {{ 'activities.matchResult' | t: {attempts: attempts(), accuracy: accuracy} }}
-        </p>
-        <button class="btn btn-primary" (click)="restart()">
-          {{ 'activities.playAgain' | t }}
-        </button>
-      </div>
-    </div>
-  </div>
+    }
+  }
 </div>

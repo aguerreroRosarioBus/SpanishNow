@@ -89,6 +89,13 @@
   border-top: 1px solid var(--color-divider);
 }
 
+.lesson-hint {
+  margin: 0 0 8px;
+  text-align: right;
+  font-size: 0.875rem;
+  color: var(--color-text-light);
+}
+
 .lesson-foot {
   display: flex;
   justify-content: space-between;
@@ -96,6 +103,13 @@
   gap: 12px;
   padding-top: 16px;
   border-top: 1px solid var(--color-divider);
+}
+
+.lesson-foot__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 @media (max-width: 575.98px) {

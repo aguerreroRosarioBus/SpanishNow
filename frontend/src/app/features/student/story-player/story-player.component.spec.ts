@@ -131,6 +131,10 @@ describe('StoryPlayerComponent (flujo TPRS)', () => {
     const next = el.querySelector('.lesson-foot .btn-primary') as HTMLButtonElement;
     next.click(); fixture.detectChanges();
     expect(text()).toBe('Paso 2 de 4 · Pregunta');
+    // La pregunta se comprueba antes de poder avanzar.
+    lessonApi.answer.mockReturnValue(of({ blockKey: 'q1', questionId: 9, isCorrect: true, attempt: 1, canRetry: false, canContinue: true }));
+    session.setAnswer('en la fiesta'); fixture.detectChanges();
+    next.click(); fixture.detectChanges();
     next.click(); fixture.detectChanges();
     expect(text()).toBe('Paso 3 de 4 · Historia');
     next.click(); fixture.detectChanges();
@@ -160,12 +164,18 @@ describe('StoryPlayerComponent (flujo TPRS)', () => {
     const next = [...el.querySelectorAll('button')].find(b => b.textContent?.trim() === 'Continuar') as HTMLButtonElement;
     expect(next.disabled).toBe(false);
 
-    // Reintentar limpia el resultado y deja volver a responder.
-    const retry = [...el.querySelectorAll('button')].find(b => b.textContent?.trim() === 'Reintentar') as HTMLButtonElement;
-    retry.click();
+    // Elegir otra opción descarta el resultado anterior: el botón vuelve a «Comprobar» y no avanza sin comprobar.
+    session.setAnswer('en la fiesta');
     fixture.detectChanges();
     expect(session.answerResult()).toBeNull();
-    expect(session.answerText()).toBe('');
+    expect(session.questionPending()).toBe(true);
+    const check = [...el.querySelectorAll('button')].find(b => b.textContent?.trim() === 'Comprobar') as HTMLButtonElement;
+    expect(check).toBeTruthy();
+    lessonApi.answer.mockReturnValue(of({ blockKey: 'q1', questionId: 9, isCorrect: true, attempt: 2, canRetry: false, canContinue: true }));
+    check.click();
+    fixture.detectChanges();
+    expect(session.answerResult()?.isCorrect).toBe(true);
+    expect(currentKey()).toBe('q1');
 
     session.goToBlock(1);
     expect(currentKey()).toBe('k2');
@@ -242,6 +252,39 @@ describe('StoryPlayerComponent (flujo TPRS)', () => {
     expect(nav.currentItem()?.id).toBe('story-200');
   });
 
+  describe('refuerzos recomendados', () => {
+    const withReinforcements = (l: StudentLesson): StudentLesson => ({ ...l, blocks: [...l.blocks,
+      lessonBlock('r1', 10, 'flashcards', 'after'), lessonBlock('r2', 11, 'matching', 'after')] });
+    const el = () => fixture.nativeElement as HTMLElement;
+    const primary = () => el().querySelector('.lesson-foot .btn-primary') as HTMLButtonElement;
+
+    it('antes de terminar la narración no se muestra el panel de práctica', async () => {
+      await create('f1', withReinforcements);
+      expect(el().querySelector('.practice')).toBeNull();
+    });
+
+    it('al terminar, el panel muestra el contador y el primario abre el primer pendiente; saltar sigue disponible', async () => {
+      await create('f1', l => withReinforcements({ ...l, progress: { ...l.progress, narrativeCompleted: true } }));
+      const reinf = fixture.debugElement.query(sel => sel.name === 'app-reinforcements').componentInstance;
+      const open = vi.spyOn(reinf, 'open');
+      expect(el().querySelector('.practice__count')?.textContent?.trim()).toBe('0 de 2');
+      expect(primary().textContent?.trim()).toBe('Practicar: Tarjetas de vocabulario');
+      const skip = el().querySelector('.lesson-foot .btn-secondary') as HTMLButtonElement;
+      expect(skip.textContent?.trim()).toBe('Saltar práctica');
+      primary().click();
+      expect(open).toHaveBeenCalledWith(expect.objectContaining({ blockKey: 'r1' }));
+      skip.click();
+      expect(nav.currentItem()?.id).toBe('story-200');
+    });
+
+    it('con todo completo vuelve el primario «Siguiente historia»', async () => {
+      await create('f1', l => withReinforcements({ ...l, progress: { ...l.progress, narrativeCompleted: true,
+        reinforcements: [{ blockKey: 'r1', completed: true }, { blockKey: 'r2', completed: true }] } }));
+      expect(primary().textContent?.trim()).toBe('Siguiente historia');
+      expect(el().querySelector('.lesson-foot .btn-secondary')).toBeNull();
+    });
+  });
+
   it('las flechas avanzan y retroceden cuando el ítem destino es accesible', async () => {
     await create(null);
     nav.items.update(items => items.map(i => ({ ...i, canAccess: true })));
@@ -311,6 +354,29 @@ describe('StoryPlayerComponent (flujo TPRS)', () => {
       nav.items.update(items => items.map(i => ({ ...i, canAccess: true }))); nav.goToNext(); fixture.detectChanges();
       expect(full.src).toBe('');
       const active = media(); fixture.destroy(); expect(active.src).toBe('');
+    });
+  });
+
+  describe('audio de la expresión clave', () => {
+    const withAudio = (audioUrl?: string) => (lesson: StudentLesson): StudentLesson => ({
+      ...lesson,
+      blocks: [lessonBlock('e1', -1, 'expression', 'before', { vocabulary: { word: 'la casa', translation: 'the house', audioUrl } }), ...lesson.blocks],
+    });
+    const listen = () => [...(fixture.nativeElement as HTMLElement).querySelectorAll('.expression-card button')].find(b => b.textContent?.includes('Escuchar')) as HTMLButtonElement | undefined;
+
+    it('muestra «Escuchar» y reproduce el audio del vocabulario', async () => {
+      const played: string[] = [];
+      vi.stubGlobal('Audio', class { constructor(public src: string) {} play() { played.push(this.src); return Promise.resolve(); } });
+      try {
+        await create('e1', withAudio('/uploads/casa.mp3'));
+        listen()!.click();
+        expect(played).toEqual(['/uploads/casa.mp3']);
+      } finally { vi.unstubAllGlobals(); }
+    });
+
+    it('sin audio no muestra el botón', async () => {
+      await create('e1', withAudio());
+      expect(listen()).toBeUndefined();
     });
   });
 

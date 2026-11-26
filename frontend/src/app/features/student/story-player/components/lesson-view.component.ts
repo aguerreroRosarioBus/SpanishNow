@@ -1,6 +1,6 @@
 import { I18nService } from '../../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { unitDisplayTitle } from '../../../../shared/utils/unit-title';
@@ -37,6 +37,10 @@ export class LessonViewComponent {
   nav = inject(LessonNavigationStore);
   private router = inject(Router);
 
+  reinforcements = viewChild(ReinforcementsComponent);
+  /** Refuerzo que sigue pendiente cuando ya se terminó la narración (los refuerzos son recomendados, no obligatorios). */
+  pendingReinforcement = computed(() => this.isLast() && this.session.narrativeCompleted() ? this.reinforcements()?.nextPending() ?? null : null);
+
   blockLabel(type: string): string {
     return this.i18n.t(BLOCK_LABELS[type] ?? 'player.reinforcement');
   }
@@ -56,13 +60,26 @@ export class LessonViewComponent {
   });
   /** Etiqueta del botón principal según el punto de la lección. */
   nextLabel = computed(() => {
+    if (this.session.questionPending()) return this.i18n.t('player.check');
     if (!this.isLast()) return this.i18n.t('player.continue');
     if (!this.session.narrativeCompleted()) return this.i18n.t('player.completeReading');
     const after = this.nav.afterLesson();
     return after === 'story' ? this.i18n.t('player.nextStory') : after === 'quiz' ? this.i18n.t('player.takeQuiz') : after === 'unit' ? this.i18n.t('player.nextUnitButton') : this.i18n.t('player.backCourses');
   });
 
+  practiceNext(): void {
+    const block = this.pendingReinforcement();
+    if (block) this.reinforcements()?.open(block);
+  }
+
+  practiceLabel(): string {
+    const block = this.pendingReinforcement();
+    return block ? this.i18n.t('player.practiceNext', { name: this.reinforcements()!.label(block) }) : '';
+  }
+
   next(): void {
+    if (this.session.questionPending()) { this.session.submitAnswer(); return; }
+    if (this.session.questionNeedsAnswer()) return;
     if (!this.isLast()) { this.session.goToBlock(1); return; }
     if (!this.session.narrativeCompleted()) { this.session.completeNarrative(); return; }
     const after = this.nav.afterLesson();

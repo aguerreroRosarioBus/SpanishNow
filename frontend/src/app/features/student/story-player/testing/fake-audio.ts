@@ -7,6 +7,7 @@ export class FakeAudio extends EventTarget {
   preload = '';
   duration = NaN;
   currentTime = 0;
+  playbackRate = 1;
   paused = true;
   ranges: Array<[number, number]> = [];
   get seekable(): TimeRanges {

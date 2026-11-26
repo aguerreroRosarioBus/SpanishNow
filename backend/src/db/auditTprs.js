@@ -1,6 +1,7 @@
-// TPRS coherence audit.   node src/db/auditTprs.js [--source content|db] [--json] [--course <id>] [--allow-remote]
+// TPRS coherence audit.   node src/db/auditTprs.js [--source content|db] [--content curated|trial] [--json] [--course <id>] [--allow-remote]
 //
 //   --source content  (default) seeds/content/course.json + stories/*.json, read with the seed loader. No database.
+//   --content trial   with --source content: audits seeds/content-trial (the free trial course) instead of seeds/content.
 //   --source db       the current published revision of every story in DB_NAME (read-only). Refuses a non-local
 //                     DB_HOST unless --allow-remote is given.
 //   --json            machine-readable output (one JSON document on stdout)
@@ -15,21 +16,31 @@ function parseArgs(argv) {
     const arg = argv[i];
     if (arg === '--source') options.source = argv[++i];
     else if (arg.startsWith('--source=')) options.source = arg.slice('--source='.length);
+    else if (arg === '--content') options.content = argv[++i];
+    else if (arg.startsWith('--content=')) options.content = arg.slice('--content='.length);
     else if (arg === '--json') options.json = true;
     else if (arg === '--allow-remote') options.allowRemote = true;
     else if (arg === '--course') options.course = Number(argv[++i]);
     else throw new Error(`Argumento desconocido: ${arg}`);
   }
   if (!['content', 'db'].includes(options.source)) throw new Error('--source debe ser content o db');
+  if (options.content !== undefined && !['curated', 'trial'].includes(options.content)) throw new Error('--content debe ser curated o trial');
   if (options.course !== null && !Number.isInteger(options.course)) throw new Error('--course necesita un id numérico');
   return options;
 }
 
 const isLocalHost = host => ['localhost', '127.0.0.1', '::1', '[::1]'].includes(host) || /\.localhost$/.test(host);
 
-function auditContent() {
-  const { loadContent } = require('../../seeds/curated/lib/content');
-  const model = fromContent(loadContent());
+function auditContent(which = 'curated') {
+  let content;
+  if (which === 'trial') {
+    // Contenido del curso de prueba (sin ids; la auditoría usa ids solo en memoria).
+    const { loadTrialContent, toAuditContent } = require('../../seeds/trial/lib/content');
+    content = toAuditContent(loadTrialContent());
+  } else {
+    content = require('../../seeds/curated/lib/content').loadContent();
+  }
+  const model = fromContent(content);
   return [{ label: `contenido (${model.course.title})`, ...auditCourse(model) }];
 }
 
@@ -112,7 +123,7 @@ async function main() {
   const options = parseArgs(process.argv.slice(2));
   const notes = [];
   const out = { note: message => notes.push(message) };
-  const audits = options.source === 'db' ? await auditDatabase(options, out) : auditContent();
+  const audits = options.source === 'db' ? await auditDatabase(options, out) : auditContent(options.content || 'curated');
   const errors = audits.reduce((n, a) => n + a.summary.errors, 0);
   const warnings = audits.reduce((n, a) => n + a.summary.warnings, 0);
   if (options.json) {

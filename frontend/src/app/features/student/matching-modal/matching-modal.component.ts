@@ -2,46 +2,27 @@ import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { PracticeDialogComponent } from '../practice-dialog/practice-dialog.component';
 import { MatchingComponent } from '../matching/matching.component';
-import { ModalFocusDirective } from '../../../shared/directives/modal-focus.directive';
 import { ToastService } from '../../../core/services/toast.service';
 
 @Component({
   selector: 'app-matching-modal',
   standalone: true,
-  imports: [TranslatePipe, CommonModule, MatchingComponent, ModalFocusDirective],
+  imports: [TranslatePipe, CommonModule, MatchingComponent, PracticeDialogComponent],
   template: `
-    <div class="modal fade" [class.show]="show" [style.display]="show ? 'block' : 'none'" tabindex="-1" role="dialog" aria-modal="true"
-         [appModalFocus]="show" (modalDismiss)="onClose()" (click)="onBackdropClick($event)">
-      <div class="modal-dialog modal-xl" (click)="$event.stopPropagation()">
-        <div class="modal-content">
-          <div class="modal-header bg-success text-white">
-            <h5 class="modal-title">{{ 'activities.matchingModal' | t }}</h5>
-            <button type="button" class="btn-close btn-close-white" (click)="onClose()" [attr.aria-label]="'activities.close' | t"></button>
-          </div>
-          <div class="modal-body">
-            <div class="alert alert-info mb-3">
-              <strong>{{ 'activities.objective' | t }}</strong> {{ 'activities.matchingGoal' | t }}
-            </div>
-            <app-matching
-              [unitId]="unitId"
-              (completed)="onMatchingCompleted($event)">
-            </app-matching>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="modal-backdrop fade" [class.show]="show" *ngIf="show"></div>
-  `,
-  styles: [`
-    .modal {
-      background-color: rgba(0, 0, 0, 0.5);
-    }
-  `]
+    <app-practice-dialog [show]="show" [title]="'activities.matchingModal' | t" [goal]="'activities.matchingGoal' | t" (close)="onClose()">
+      <!-- Se crea al abrir: así carga el vocabulario de la historia actual y no el de la primera vez. -->
+      @if (show) {
+        <app-matching embedded [unitId]="unitId" [vocabularyIds]="vocabularyIds" (completed)="onMatchingCompleted($event)" />
+      }
+    </app-practice-dialog>
+  `
 })
 export class MatchingModalComponent {
   i18n = inject(I18nService);
   @Input() unitId!: number;
+  @Input() vocabularyIds?: number[] | null;
   @Input() show = false;
   @Output() completed = new EventEmitter<void>();
   @Output() close = new EventEmitter<void>();
@@ -49,10 +30,6 @@ export class MatchingModalComponent {
   private toastService = inject(ToastService);
 
   onClose(): void {
-    this.close.emit();
-  }
-
-  onBackdropClick(event: MouseEvent): void {
     this.close.emit();
   }
 

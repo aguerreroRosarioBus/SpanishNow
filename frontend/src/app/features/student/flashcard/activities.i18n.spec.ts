@@ -59,3 +59,19 @@ it('escuchar/repetir: conserva grabación, calificación y frase sin pausar audi
   expect(c.recordedAudio).toBe(media); expect(c.hasRecording()).toBe(true);
   expect(media.pause).not.toHaveBeenCalled(); expect(getActivitiesByStory).toHaveBeenCalledTimes(1);
 });
+
+it('flashcards y emparejar: con vocabularyIds solo muestran las palabras de la historia; sin ids, toda la unidad', () => {
+  setup();
+  const filtered = TestBed.createComponent(FlashcardComponent);
+  filtered.componentRef.setInput('unitId', 1); filtered.componentRef.setInput('vocabularyIds', [2]); filtered.detectChanges();
+  expect(filtered.componentInstance.vocabulary().map(v => v.id)).toEqual([2]);
+
+  const all = TestBed.createComponent(FlashcardComponent);
+  all.componentRef.setInput('unitId', 1); all.componentRef.setInput('vocabularyIds', []); all.detectChanges();
+  expect(all.componentInstance.vocabulary().map(v => v.id)).toEqual([1, 2]);
+
+  const matching = TestBed.createComponent(MatchingComponent);
+  matching.componentRef.setInput('unitId', 1); matching.componentRef.setInput('vocabularyIds', [1]); matching.detectChanges();
+  expect(matching.componentInstance.vocabulary().map(v => v.id)).toEqual([1]);
+  expect(matching.componentInstance.words().length).toBe(1);
+});

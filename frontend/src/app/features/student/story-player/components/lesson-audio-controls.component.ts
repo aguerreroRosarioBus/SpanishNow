@@ -1,13 +1,17 @@
 import { Component, OnDestroy, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { LessonAudioService, AudioSpeed } from '../lesson-audio.service';
 import { AUDIO_MESSAGES, AudioMessageKey, LESSON_AUDIO_LOCALE } from '../audio-messages';
+import { IconComponent } from '../../../../shared/components/icon/icon.component';
 
 let nextControlId = 0;
+/** Largo mínimo del tramo repetido, en segundos. */
+const MIN_LOOP = 0.5;
 
 /** Controles comunes; el audio de keyframe tiene una sola grabación, la historia puede tener dos. */
 @Component({
   selector: 'app-lesson-audio-controls',
   standalone: true,
+  imports: [IconComponent],
   templateUrl: './lesson-audio-controls.component.html',
   styleUrl: './lesson-audio-controls.component.scss',
 })
@@ -21,9 +25,9 @@ export class LessonAudioControlsComponent implements OnDestroy {
   readonly url = computed(() => this.hasVariants()
     ? this.audio.speed() === 'slow' ? this.slowUrl() : this.normalUrl()
     : this.singleUrl());
-  readonly a = signal('');
-  readonly b = signal('');
-  readonly invalidRepeat = signal(false);
+  /** Tramo en edición mientras se arrastra una manija; null cuando no hay arrastre. */
+  private draft = signal<{ a: number; b: number } | null>(null);
+  readonly loop = computed(() => this.draft() ?? this.audio.repeat());
   readonly descriptionId = `lesson-audio-${++nextControlId}`;
   readonly status = computed<AudioMessageKey | null>(() => {
     const state = this.audio.state();
@@ -34,7 +38,7 @@ export class LessonAudioControlsComponent implements OnDestroy {
     effect(() => {
       const url = this.url();
       untracked(() => {
-        this.a.set(''); this.b.set(''); this.invalidRepeat.set(false);
+        this.draft.set(null);
         this.audio.prepare(url);
       });
     });
@@ -49,15 +53,32 @@ export class LessonAudioControlsComponent implements OnDestroy {
   switchSpeed(speed: AudioSpeed): void {
     this.audio.switchSpeed(speed, () => this.url() || null);
   }
-  setBound(bound: 'a' | 'b', value: string): void {
-    this[bound].set(value); this.invalidRepeat.set(false);
+  /** Un solo botón de velocidad: alterna entre 1× y 0,75×. */
+  toggleRate(): void { this.audio.setRate(this.audio.rate() === 1 ? 0.75 : 1); }
+  percent(seconds: number): number {
+    const duration = this.audio.duration();
+    return duration ? Math.max(0, Math.min(100, (seconds / duration) * 100)) : 0;
   }
-  mark(bound: 'a' | 'b'): void { this.setBound(bound, String(Math.round(this.audio.currentTime() * 10) / 10)); }
   toggleRepeat(): void {
-    if (this.audio.repeat()) { this.audio.clearRepeat(); return; }
-    const a = this.a().trim() ? Number(this.a()) : NaN;
-    const b = this.b().trim() ? Number(this.b()) : NaN;
-    this.invalidRepeat.set(!this.audio.setRepeat(a, b));
+    if (this.audio.repeat()) { this.draft.set(null); this.audio.clearRepeat(); return; }
+    const duration = this.audio.duration();
+    if (duration) this.audio.setRepeat(0, duration);
+  }
+  /** Mueve una manija sin salir del tramo mínimo de 0,5 s; el bucle se aplica al soltar. */
+  moveHandle(bound: 'a' | 'b', input: HTMLInputElement): void {
+    const current = this.loop();
+    if (!current) return;
+    const value = input.valueAsNumber;
+    const next = bound === 'a'
+      ? { a: Math.max(0, Math.min(value, current.b - MIN_LOOP)), b: current.b }
+      : { a: current.a, b: Math.min(this.audio.duration() ?? value, Math.max(value, current.a + MIN_LOOP)) };
+    input.value = String(bound === 'a' ? next.a : next.b);
+    this.draft.set(next);
+  }
+  commitLoop(): void {
+    const draft = this.draft();
+    this.draft.set(null);
+    if (draft) this.audio.setRepeat(draft.a, draft.b);
   }
   ngOnDestroy(): void { this.audio.stop(); }
 }

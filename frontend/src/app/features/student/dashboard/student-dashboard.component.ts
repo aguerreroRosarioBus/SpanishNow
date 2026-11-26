@@ -66,6 +66,8 @@ export class StudentDashboardComponent implements OnInit {
   }
   resumeStory(e: Enrollment): number | null {
     const stories = this.progressByEnrollment()[e.id]?.stories ?? [];
+    // Curso sin empezar: no hay historia a retomar, el reproductor abre en la bienvenida.
+    if (!stories.some(s => s.lastBlockKey || s.narrativeCompleted)) return null;
     return stories.find(s => !s.narrativeCompleted && s.lastBlockKey)?.storyId ?? stories.find(s => !s.narrativeCompleted)?.storyId ?? null;
   }
 

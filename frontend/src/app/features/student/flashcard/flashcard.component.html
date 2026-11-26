@@ -1,138 +1,66 @@
-<div class="container mt-4">
-  <!-- Loading -->
-  <div *ngIf="isLoading()" class="text-center py-5">
-    <div class="spinner-border text-primary" role="status"></div>
-    <p class="text-muted mt-2">{{ 'activities.loadingVocabulary' | t }}</p>
-  </div>
+<div class="fc" [class.fc--page]="!embedded">
+  @if (!embedded) {
+    <div class="fc-page-head">
+      <button class="btn btn-ghost" (click)="goBack()"><app-icon name="chevron-left" [size]="16" />{{ 'activities.back' | t }}</button>
+      <h1 class="fc-page-head__title">{{ 'activities.flashcardTitle' | t }}</h1>
+    </div>
+  }
 
-  <!-- Error -->
-  <div *ngIf="errorMessage()">
-    <button class="btn btn-secondary mb-3" (click)="goBack()">
-      <app-icon name="chevron-left" [size]="16" />{{ 'activities.back' | t }}
-    </button>
-  </div>
+  @if (isLoading()) {
+    <p class="practice-state"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>{{ 'activities.loadingVocabulary' | t }}</p>
+  } @else if (!errorMessage() && vocabulary().length > 0) {
+    <div class="practice-top">
+      <span class="practice-top__count">{{ 'activities.cardCount' | t: {number: currentIndex() + 1, total: totalCards} }}</span>
+      <div class="practice-progress" role="progressbar" [attr.aria-valuenow]="progress" aria-valuemin="0" aria-valuemax="100"
+           [attr.aria-valuetext]="'activities.percent' | t: {percent: progress}">
+        <span [style.width.%]="progress"></span>
+      </div>
+      <div class="practice-top__actions">
+        <button type="button" class="btn btn-ghost btn-sm" [class.is-active]="isRandomMode()" [attr.aria-pressed]="isRandomMode()" (click)="toggleRandomMode()">
+          <app-icon name="shuffle" [size]="15" /><span class="practice-label">{{ 'activities.random' | t }}</span>
+        </button>
+        <button type="button" class="btn btn-ghost btn-sm" (click)="restart()"><app-icon name="rotate-ccw" [size]="15" /><span class="practice-label">{{ 'activities.restart' | t }}</span></button>
+      </div>
+    </div>
 
-  <!-- Flashcards -->
-  <div *ngIf="!isLoading() && !errorMessage() && vocabulary().length > 0">
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <button class="btn btn-ghost" (click)="goBack()">
-        <app-icon name="chevron-left" [size]="16" />{{ 'activities.back' | t }}
+    <!-- La tarjeta entera es el botón de voltear; el audio va aparte para no voltearla al escuchar. -->
+    <div class="fc-stage">
+      <button type="button" class="fc-card" [class.is-flipped]="isFlipped()" (click)="flipCard()"
+              [attr.aria-label]="(isFlipped() ? 'activities.showWord' : 'activities.showTranslation') | t">
+        <span class="fc-face fc-face--front" [attr.aria-hidden]="isFlipped()">
+          @if (currentCard?.imageUrl) {
+            <img class="fc-image" [src]="currentCard?.imageUrl" [alt]="'activities.image' | t: {word: currentCard?.word || i18n.t('activities.word')}">
+          }
+          <span class="fc-word" lang="es">{{ currentCard?.word }}</span>
+          @if (currentCard?.partOfSpeech) { <span class="fc-chip">{{ currentCard?.partOfSpeech }}</span> }
+          <span class="fc-hint"><app-icon name="rotate-cw" [size]="13" />{{ 'activities.showTranslation' | t }}</span>
+        </span>
+        <span class="fc-face fc-face--back" [attr.aria-hidden]="!isFlipped()">
+          <span class="fc-word">{{ currentCard?.translation }}</span>
+          @if (currentCard?.example) {
+            <span class="fc-example"><strong>{{ 'activities.example' | t }}</strong> <span lang="es">{{ currentCard?.example }}</span></span>
+          }
+          <span class="fc-hint"><app-icon name="rotate-ccw" [size]="13" />{{ 'activities.showWord' | t }}</span>
+        </span>
       </button>
-      <h2 class="mb-0">{{ 'activities.flashcardTitle' | t }}</h2>
-      <div class="btn-group">
-        <button
-          class="btn btn-sm"
-          [class.btn-primary]="isRandomMode()"
-          [class.btn-outline-primary]="!isRandomMode()"
-          (click)="toggleRandomMode()"
-        >
-          <app-icon name="shuffle" [size]="16" />{{ (isRandomMode() ? 'activities.random' : 'activities.sequential') | t }}
+      @if (currentCard?.audioUrl && !isFlipped()) {
+        <button type="button" class="btn btn-secondary btn-sm fc-audio" (click)="playAudio()">
+          <app-icon name="volume" [size]="15" />{{ 'activities.pronunciation' | t }}
         </button>
-        <button class="btn btn-sm btn-outline-secondary" (click)="restart()">
-          <app-icon name="rotate-ccw" [size]="16" />{{ 'activities.restart' | t }}
-        </button>
-      </div>
+      }
     </div>
 
-    <!-- Progress Bar -->
-    <div class="mb-4">
-      <div class="d-flex justify-content-between mb-2">
-        <small class="text-muted">
-          {{ 'activities.cardCount' | t: {number: currentIndex() + 1, total: totalCards} }}
-        </small>
-        <small class="text-muted">
-          {{ 'activities.percent' | t: {percent: progress} }}
-        </small>
-      </div>
-      <div class="progress" style="height: 8px;">
-        <div
-          class="progress-bar bg-success"
-          role="progressbar"
-          [style.width.%]="progress"
-        ></div>
-      </div>
-    </div>
-
-    <!-- Flashcard -->
-    <div class="flashcard-container" (click)="flipCard()">
-      <div class="flashcard" [class.flipped]="isFlipped()">
-        <!-- Front (Word) -->
-        <div class="flashcard-face flashcard-front">
-          <div class="card-content">
-            <div class="word-display">
-              <h1 class="mb-3">{{ currentCard?.word }}</h1>
-              <span *ngIf="currentCard?.partOfSpeech" class="badge bg-secondary mb-3">
-                {{ currentCard?.partOfSpeech }}
-              </span>
-            </div>
-
-            <div *ngIf="currentCard?.imageUrl" class="image-container mb-3">
-              <img
-                [src]="currentCard?.imageUrl"
-                [alt]="'activities.image' | t: {word: currentCard?.word || i18n.t('activities.word')}"
-                class="img-fluid rounded">
-            </div>
-
-            <button
-              *ngIf="currentCard?.audioUrl"
-              class="btn btn-outline-primary btn-lg"
-              (click)="playAudio(); $event.stopPropagation()"
-            >
-              <app-icon name="volume" [size]="16" />{{ 'activities.pronunciation' | t }}
-            </button>
-
-            <p class="mt-4 text-muted">
-              <small>{{ 'activities.showTranslation' | t }}</small>
-            </p>
-          </div>
-        </div>
-
-        <!-- Back (Translation) -->
-        <div class="flashcard-face flashcard-back">
-          <div class="card-content">
-            <div class="translation-display">
-              <h1 class="mb-3">{{ currentCard?.translation }}</h1>
-
-              <div *ngIf="currentCard?.example" class="example-box">
-                <strong>{{ 'activities.example' | t }}</strong>
-                <p class="mb-0">{{ currentCard?.example }}</p>
-              </div>
-            </div>
-
-            <p class="mt-4 text-muted">
-              <small>{{ 'activities.showWord' | t }}</small>
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Navigation -->
-    <div class="d-flex justify-content-center gap-3 mt-4">
-      <button
-        *ngIf="!isRandomMode()"
-        class="btn btn-lg btn-outline-primary"
-        [disabled]="currentIndex() === 0"
-        (click)="previousCard()"
-      >
+    <div class="practice-nav">
+      <button type="button" class="btn btn-ghost" [class.is-hidden]="isRandomMode() || currentIndex() === 0"
+              [disabled]="isRandomMode() || currentIndex() === 0" (click)="previousCard()">
         <app-icon name="chevron-left" [size]="16" />{{ 'activities.previous' | t }}
       </button>
-
-      <button
-        class="btn btn-lg btn-primary"
-        [disabled]="!isRandomMode() && currentIndex() >= totalCards - 1"
-        (click)="nextCard()"
-      >
+      @if (isRandomMode()) {
+        <span class="fc-reviewed">{{ 'activities.reviewed' | t: {count: playedIndices().size, total: totalCards} }}</span>
+      }
+      <button type="button" class="btn btn-primary" [disabled]="!isRandomMode() && currentIndex() >= totalCards - 1" (click)="nextCard()">
         {{ (isRandomMode() ? 'activities.nextRandom' : 'activities.next') | t }}<app-icon name="chevron-right" [size]="16" />
       </button>
     </div>
-
-    <!-- Stats -->
-    <div *ngIf="isRandomMode()" class="text-center mt-4">
-      <p class="text-muted">
-        {{ 'activities.reviewed' | t: {count: playedIndices().size, total: totalCards} }}
-      </p>
-    </div>
-  </div>
+  }
 </div>

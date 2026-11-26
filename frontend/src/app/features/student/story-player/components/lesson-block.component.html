@@ -13,6 +13,11 @@
           <app-lesson-illustration class="expression-image" [src]="image" [alt]="'player.image' | t: {word: block().vocabulary?.word || i18n.t('player.expressionFallback')}" [compact]="true" />
         }
         <p class="read-text read-text--term">{{ block().vocabulary?.word || block().text }}</p>
+        @if (block().vocabulary?.audioUrl; as audioUrl) {
+          <button type="button" class="btn btn-secondary expression-audio" (click)="playExpression(audioUrl)">
+            <app-icon name="volume" [size]="16" />{{ 'player.listenExpression' | t }}<span class="visually-hidden">: {{ block().vocabulary?.word }}</span>
+          </button>
+        }
         @if (block().vocabulary?.translation) {
           <p class="read-text read-text--secondary">{{ block().vocabulary?.translation }}</p>
         }
@@ -55,10 +60,9 @@
           </div>
         } @else {
           <input class="form-control mt-3 answer-input" type="text" maxlength="200"
-            [value]="session.answerText()" (input)="session.setAnswer($any($event.target).value)" [placeholder]="'player.writeAnswer' | t"
+            [value]="session.answerText()" (keydown.enter)="session.submitAnswer()" (input)="session.setAnswer($any($event.target).value)" [placeholder]="'player.writeAnswer' | t"
             [disabled]="session.answerResult()?.isCorrect" [attr.aria-label]="'player.yourAnswer' | t" />
         }
-        <button type="button" class="btn btn-secondary mt-3" (click)="session.submitAnswer()" [disabled]="!session.answerText().trim() || session.answerResult()?.isCorrect">{{ 'player.check' | t }}</button>
         @if (session.answerResult(); as result) {
           <div class="alert mt-3" [class.alert-success]="result.isCorrect" [class.alert-warning]="!result.isCorrect" role="status">
             @if (result.isCorrect) {
@@ -68,7 +72,6 @@
               @if (result.context?.text) {
                 <blockquote class="mt-2 mb-2">{{ result.context?.text }}</blockquote>
               }
-              <button type="button" class="btn btn-secondary btn-sm" (click)="session.retryAnswer()">{{ 'player.retry' | t }}</button>
             }
           </div>
         }

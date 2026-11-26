@@ -1,6 +1,6 @@
 import { I18nService } from '../../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, input, signal } from '@angular/core';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { StudentLessonBlock } from '../../../../core/services/student-lesson.service';
 import { ToastService } from '../../../../core/services/toast.service';
@@ -26,11 +26,19 @@ export class ReinforcementsComponent {
   private vocabularyService = inject(VocabularyService);
   private toastService = inject(ToastService);
 
+  /** El panel con la lista de refuerzos solo se muestra al terminar la narración; los modales siempre están disponibles. */
+  showPanel = input(false);
+
   showFlashcardModal = signal(false);
   showMatchingModal = signal(false);
   showListenRepeatModal = signal(false);
   listenRepeatStoryId = signal<number | undefined>(undefined);
   activeBlock = signal<StudentLessonBlock | null>(null);
+
+  /** Ids de vocabulario de las expresiones del plan de esta historia (antes de la narración); vacío: sin filtro. */
+  vocabularyIds = computed(() => (this.session.lesson()?.blocks ?? [])
+    .filter(block => block.type === 'expression' && block.phase === 'before' && block.active && block.vocabularyId)
+    .map(block => block.vocabularyId as number));
 
   /** Refuerzos que se pueden practicar: «escuchar y repetir» solo se ofrece si la historia tiene actividades (A-03). */
   blocks = computed(() => {
@@ -39,6 +47,10 @@ export class ReinforcementsComponent {
     const hasRepeat = Boolean(story?.repetitionActivities?.length);
     return this.session.reinforcementBlocks().filter(block => block.type !== 'listen_repeat' || hasRepeat);
   });
+
+  doneCount = computed(() => this.blocks().filter(block => this.session.isReinforcementComplete(block.blockKey)).length);
+  /** Primer refuerzo sin completar, para el botón principal del panel y del pie de la lección. */
+  nextPending = computed(() => this.blocks().find(block => !this.session.isReinforcementComplete(block.blockKey)) ?? null);
 
   label(block: StudentLessonBlock): string {
     return block.type === 'flashcards' ? this.i18n.t('player.flashcards') : block.type === 'matching' ? this.i18n.t('player.matching') : this.i18n.t('player.listenRepeat');
@@ -77,7 +89,9 @@ export class ReinforcementsComponent {
   private showVocabularyModal(unitId: number, flag: ReturnType<typeof signal<boolean>>, emptyMessage: string, errorMessage: string): void {
     this.vocabularyService.getVocabularyByUnit(unitId).subscribe({
       next: vocabulary => {
-        if (vocabulary && vocabulary.length > 0) flag.set(true);
+        const ids = this.vocabularyIds();
+        const available = ids.length ? vocabulary?.filter(v => ids.includes(v.id)) : vocabulary;
+        if (available && available.length > 0) flag.set(true);
         else this.toastService.info(this.i18n.t(emptyMessage));
       },
       error: error => {
