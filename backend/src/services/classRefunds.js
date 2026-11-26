@@ -76,8 +76,10 @@ async function review(actor,id,body){
       status=order.provider==='fake'?'queued':'manual_hotmart';
       // Impedir nuevas reservas durante el trámite; todavía no hay dinero ni créditos reembolsados.
       // Se recuerda el estado previo para poder revertir la aprobación (D3-DIN-02); una compra ya cancelada por el comprador no se toca.
-      closure={previousStatus:p.status,statusChanged:p.status!=='cancelled'};
-      if(p.status!=='cancelled')await p.update({status:'cancelled',cancelledAt:new Date(),version:p.version+1},{transaction});
+      // Un paquete vencido o ya cancelado conserva su estado: no hay reservas que impedir (D3-DIN-18).
+      const keeps=['cancelled','expired'].includes(p.status);
+      closure={previousStatus:p.status,statusChanged:!keeps};
+      if(!keeps)await p.update({status:'cancelled',cancelledAt:new Date(),version:p.version+1},{transaction});
       if(order.provider==='fake')await outbox.enqueue({topic:'payment.refund',aggregateType:'class_package_orders',aggregateId:p.orderId,dedupeKey:`payment.refund:${p.orderId}${reversals?`:r${reversals}`:''}`,payload:{reason:body.reason.trim()},runAt:new Date()},{transaction});
     }
     await AuditLog.create({actorId:actor.id,action:'refund.reviewed',entityType,entityId:p.id,reason:body.reason.trim(),data:{requestId:Number(id),status,amount:view.amount,currency:view.currency,classification:view.classification,...closure,...(body.buyerMessage?.trim()?{buyerMessage:body.buyerMessage.trim()}:{})}},{transaction});

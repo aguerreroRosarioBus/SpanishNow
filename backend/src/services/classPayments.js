@@ -78,11 +78,12 @@ async function applyRefund(order,offer,{refundedAmount,operationKey},transaction
   const purchase=await Purchase.findOne({where:{orderId:order.id},transaction,lock:transaction.LOCK.UPDATE});
   if(purchase){
     if(purchase.unitsAvailable)await credits.apply({purchaseId:purchase.id,operation:'refund',units:purchase.unitsAvailable,operationKey},{transaction});
-    await purchase.update({status:'cancelled',cancelledAt:persistedSecond(new Date()),frozenFromStatus:null,version:purchase.version+1},{transaction});
+    // Un paquete vencido sigue vencido al reembolsarse: el reembolso se ve en su estado de reembolso (D3-DIN-18).
+    await purchase.update({status:purchase.status==='expired'?'expired':'cancelled',cancelledAt:persistedSecond(new Date()),frozenFromStatus:null,version:purchase.version+1},{transaction});
     if(purchase.unitsReserved)await outbox.enqueue({topic:'review.refunded_with_reservations',aggregateType:'class_package_purchases',aggregateId:purchase.id,dedupeKey:`review:purchase:${purchase.id}:reserved-refund`,payload:{orderId:order.id},runAt:new Date()},{transaction});
   }
   if(offer.status!=='paid')await offer.update({status:'cancelled',cancelledAt:persistedSecond(new Date()),cancelReason:'Reembolso confirmado por el proveedor'},{transaction});
-  await chat.appendSystemMessage(offer.conversationId,{eventCode:'package_payment_refunded',offerId:offer.id,eventParams:{offerId:offer.id},dedupeKey:`order:${order.id}:refunded`},{transaction});
+  await chat.appendSystemMessage(offer.conversationId,{eventCode:'package_refund_confirmed',offerId:offer.id,eventParams:{offerId:offer.id,...(purchase?{purchaseId:purchase.id}:{})},dedupeKey:`order:${order.id}:refunded`},{transaction});
 }
 async function handleEvent(body,{provider='hotmart'}={}){
   const n=normalize(body);

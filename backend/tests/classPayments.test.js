@@ -92,8 +92,8 @@ test('dinero de webhook se convierte a unidades menores sin redondear silenciosa
 test('un pago en revisión bloquea cobrar de nuevo, cancelar o reemplazar hasta resolverlo',async()=>{
   const w=await world();const {body}=await pending(w);body.data.purchase.price.value=1;await apply(body);
   expect((await start(w)).body.code).toBe('offer_not_payable');
-  expect((await as(w.teacher).post(`/api/class-offers/${w.offer.id}/cancel`,{reason:'Cambio ficticio'})).body.code).toBe('offer_not_payable');
-  expect((await as(w.teacher).post(`/api/class-offers/${w.offer.id}/replace`,{templateVersionId:w.version.id}).set('Idempotency-Key',randomUUID())).body.code).toBe('offer_not_payable');
+  expect((await as(w.teacher).post(`/api/class-offers/${w.offer.id}/cancel`,{reason:'Cambio ficticio'})).body.code).toBe('offer_payment_in_review');
+  expect((await as(w.teacher).post(`/api/class-offers/${w.offer.id}/replace`,{templateVersionId:w.version.id}).set('Idempotency-Key',randomUUID())).body.code).toBe('offer_payment_in_review');
 });
 test('renovación manual crea otra oferta/compra y conserva saldo e historial anteriores',async()=>{
   const w=await world();await pending(w);await checkout.completeFake(w.buyer,w.offer.id);const original=await Purchase.findOne({where:{offerId:w.offer.id}});const before=original.toJSON();

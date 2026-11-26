@@ -37,7 +37,8 @@ router.post('/register',
         const docs = await legal.currentSet(['terms'], { transaction });
         const locale = req.body.locale || 'en';
         legal.validateConsent(req.body.legalConsent, docs, locale);
-        const created = await User.create({ name, email, password, role: 'student' }, { transaction });
+        // Se guarda el idioma elegido al registrarse para que los correos (compra, etc.) salgan en ese idioma (D3-DIN-19).
+        const created = await User.create({ name, email, password, role: 'student', locale: ['en', 'es'].includes(req.body.locale) ? req.body.locale : null }, { transaction });
         await legal.recordAcceptances(created.id, docs, { locale, context: 'signup', transaction });
         return created;
       });

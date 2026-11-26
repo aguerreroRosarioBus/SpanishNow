@@ -48,7 +48,7 @@ test.each(REASONS)('congelar (%s) guarda el estado previo; confirm_refund total 
   expect(w.purchase).toMatchObject({status:'cancelled',frozenFromStatus:null,unitsGranted:4,unitsAvailable:0,unitsReserved:0,unitsConsumed:1,unitsRefunded:3});expect(w.purchase.cancelledAt).not.toBeNull();
   expect(await Event.count({where:{orderId:w.order.id,outcome:'needs_review'}})).toBe(0);
   expect(await Ledger.count({where:{purchaseId:w.purchase.id,operation:'refund'}})).toBe(1);
-  expect(await Message.count({where:{offerId:w.offer.id,eventCode:'package_payment_refunded'}})).toBe(1);
+  expect(await Message.count({where:{offerId:w.offer.id,eventCode:'package_refund_confirmed'}})).toBe(1);
   const audit=await AuditLog.findAll({where:{entityId:w.order.id,action:'payment.review'}});expect(audit).toHaveLength(1);
   expect(audit[0]).toMatchObject({actorId:w.admin.id,reason:'Reembolso visto en Hotmart ficticio',data:{action:'confirm_refund',refundedAmount:9000,reviewReason:reason}});
 });

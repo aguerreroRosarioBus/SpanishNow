@@ -101,6 +101,7 @@ describe('W02 legal', () => {
     const r = await request(app).post('/api/auth/register').send({ ...input, legalConsent: consent([d]) });
     expect(r.status).toBe(201);
     expect(await LegalAcceptance.findOne({ where: { userId: r.body.user.id, context: 'signup' } })).toMatchObject({ documentVersion: d.documentVersion, locale: 'es' });
+    expect((await User.findByPk(r.body.user.id)).locale).toBe('es'); // D3-DIN-19: los correos salen en el idioma del registro
   });
 });
 
