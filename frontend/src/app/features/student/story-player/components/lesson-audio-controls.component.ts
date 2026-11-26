@@ -1,6 +1,7 @@
 import { Component, OnDestroy, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { LessonAudioService, AudioSpeed } from '../lesson-audio.service';
 import { AUDIO_MESSAGES, AudioMessageKey, LESSON_AUDIO_LOCALE } from '../audio-messages';
+import { IconComponent } from '../../../../shared/components/icon/icon.component';
 
 let nextControlId = 0;
 /** Largo mínimo del tramo repetido, en segundos. */
@@ -10,6 +11,7 @@ const MIN_LOOP = 0.5;
 @Component({
   selector: 'app-lesson-audio-controls',
   standalone: true,
+  imports: [IconComponent],
   templateUrl: './lesson-audio-controls.component.html',
   styleUrl: './lesson-audio-controls.component.scss',
 })
@@ -51,6 +53,8 @@ export class LessonAudioControlsComponent implements OnDestroy {
   switchSpeed(speed: AudioSpeed): void {
     this.audio.switchSpeed(speed, () => this.url() || null);
   }
+  /** Un solo botón de velocidad: alterna entre 1× y 0,75×. */
+  toggleRate(): void { this.audio.setRate(this.audio.rate() === 1 ? 0.75 : 1); }
   percent(seconds: number): number {
     const duration = this.audio.duration();
     return duration ? Math.max(0, Math.min(100, (seconds / duration) * 100)) : 0;

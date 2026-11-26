@@ -11,7 +11,7 @@ describe('Controles de audio compartidos', () => {
   const locale = signal<'es' | 'en'>('es');
   const media = () => FakeAudio.instances.at(-1)!;
   const el = () => fixture.nativeElement as HTMLElement;
-  const button = (text: string) => [...el().querySelectorAll('button')].find(b => b.textContent?.trim() === text)!;
+  const button = (text: string) => [...el().querySelectorAll('button')].find(b => b.textContent?.trim() === text || b.getAttribute('aria-label') === text)!;
   const input = (type: string) => el().querySelector(`input[type="${type}"]`) as HTMLInputElement;
   const change = (input: HTMLInputElement, value: string) => {
     input.value = value; input.dispatchEvent(new Event('input', { bubbles: true })); fixture.detectChanges();
@@ -65,19 +65,19 @@ describe('Controles de audio compartidos', () => {
     fixture.componentRef.setInput('singleUrl', '/frame.mp3'); fixture.detectChanges(); media().metadata(); fixture.detectChanges();
     expect(el().querySelectorAll('.handle').length).toBe(0);
     expect(el().querySelector('details')).toBeNull();
-    button('🔁 Repetir').click(); fixture.detectChanges();
+    button('Repetir').click(); fixture.detectChanges();
     expect(audio.repeat()).toEqual({ a: 0, b: 60 });
-    expect(button('🔁 Repetir').getAttribute('aria-pressed')).toBe('true');
+    expect(button('Repetir').getAttribute('aria-pressed')).toBe('true');
     const handles = [...el().querySelectorAll<HTMLInputElement>('.handle')];
     expect(handles.map(h => h.getAttribute('aria-label'))).toEqual(['Inicio del tramo', 'Fin del tramo']);
-    button('🔁 Repetir').click(); fixture.detectChanges();
+    button('Repetir').click(); fixture.detectChanges();
     expect(audio.repeat()).toBeNull();
     expect(el().querySelectorAll('.handle').length).toBe(0);
   });
 
   it('al soltar una manija acota el bucle y respeta el tramo mínimo de 0,5 s', () => {
     fixture.componentRef.setInput('singleUrl', '/frame.mp3'); fixture.detectChanges(); media().metadata(); fixture.detectChanges();
-    button('🔁 Repetir').click(); fixture.detectChanges();
+    button('Repetir').click(); fixture.detectChanges();
     const [start, end] = [...el().querySelectorAll<HTMLInputElement>('.handle')];
     change(start, '10'); expect(audio.repeat()).toEqual({ a: 0, b: 60 });
     start.dispatchEvent(new Event('change')); fixture.detectChanges();
@@ -90,10 +90,13 @@ describe('Controles de audio compartidos', () => {
 
   it('la velocidad 0,75× cambia el playbackRate y se conserva al cambiar de grabación', () => {
     fixture.componentRef.setInput('slowUrl', '/slow.mp3'); fixture.componentRef.setInput('normalUrl', '/normal.mp3'); fixture.detectChanges();
-    expect(button('1×').getAttribute('aria-pressed')).toBe('true');
-    button('0,75×').click(); fixture.detectChanges();
+    const rate = () => el().querySelector('.rate') as HTMLButtonElement;
+    expect(rate().textContent?.trim()).toBe('1×');
+    expect(rate().getAttribute('aria-pressed')).toBe('false');
+    rate().click(); fixture.detectChanges();
     expect(media().playbackRate).toBe(0.75);
-    expect(button('0,75×').getAttribute('aria-pressed')).toBe('true');
+    expect(rate().textContent?.trim()).toBe('0,75×');
+    expect(rate().getAttribute('aria-pressed')).toBe('true');
     button('Normal').click(); fixture.detectChanges();
     expect(media().src).toContain('/normal.mp3');
     expect(media().playbackRate).toBe(0.75);
@@ -109,7 +112,7 @@ describe('Controles de audio compartidos', () => {
     change(input('range'), '35'); media().emit('timeupdate'); fixture.detectChanges();
     expect(audio.repeat()).toBeNull(); expect(audio.currentTime()).toBe(35);
     expect(notice.textContent).toContain('Repetición desactivada: buscaste fuera');
-    expect(button('🔁 Repetir').getAttribute('aria-pressed')).toBe('false');
+    expect(button('Repetir').getAttribute('aria-pressed')).toBe('false');
     locale.set('en'); fixture.detectChanges();
     expect(notice.textContent).toContain('Repeat disabled: you moved outside');
     audio.setRepeat(10, 20); fixture.detectChanges();
