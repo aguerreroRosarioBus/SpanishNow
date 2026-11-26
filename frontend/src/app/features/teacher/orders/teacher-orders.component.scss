@@ -65,7 +65,8 @@
   .data-table { min-width: 0; }
   .data-table thead { display: none; }
   .data-table tr { display: block; padding: 8px 0; border-bottom: 1px solid var(--color-divider); }
-  .data-table td { display: flex; justify-content: space-between; gap: 12px; border: 0; padding: 4px 12px; text-align: right; white-space: normal; }
+  .data-table td, .data-table td.num, .data-table td:first-child { display: flex; justify-content: space-between; gap: 12px; border: 0; padding: 4px 12px; text-align: right; white-space: normal; overflow-wrap: anywhere; }
+  .data-table td > small { min-width: 0; }
   .data-table td:nth-child(3) { min-width: 0; }
-  .data-table td[data-label]::before { content: attr(data-label); font-weight: 700; color: var(--color-text-light); text-align: left; }
+  .data-table td[data-label]::before { content: attr(data-label); flex: none; white-space: nowrap; font-weight: 700; color: var(--color-text-light); text-align: left; }
 }
