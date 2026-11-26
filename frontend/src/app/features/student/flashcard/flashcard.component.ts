@@ -24,6 +24,8 @@ export class FlashcardComponent implements OnInit {
   private toastService = inject(ToastService);
 
   @Input() unitId?: number;
+  /** Si viene con ids, solo se muestran esas palabras (las de la historia actual); vacío o ausente: toda la unidad. */
+  @Input() vocabularyIds?: number[] | null;
   @Output() allViewed = new EventEmitter<void>();
 
   vocabulary = signal<Vocabulary[]>([]);
@@ -80,7 +82,10 @@ export class FlashcardComponent implements OnInit {
         if (vocab.length === 0) {
           this.errorKey.set('activities.noVocabulary');
         }
-        this.vocabulary.set(vocab);
+        const ids = this.vocabularyIds;
+        const shown = ids?.length ? vocab.filter(v => ids.includes(v.id)) : vocab;
+        if (shown.length === 0 && vocab.length > 0) this.errorKey.set('activities.noVocabulary');
+        this.vocabulary.set(shown);
         this.isLoading.set(false);
       },
       error: (error) => {

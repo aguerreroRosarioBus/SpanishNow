@@ -35,6 +35,11 @@ export class ReinforcementsComponent {
   listenRepeatStoryId = signal<number | undefined>(undefined);
   activeBlock = signal<StudentLessonBlock | null>(null);
 
+  /** Ids de vocabulario de las expresiones del plan de esta historia (antes de la narración); vacío: sin filtro. */
+  vocabularyIds = computed(() => (this.session.lesson()?.blocks ?? [])
+    .filter(block => block.type === 'expression' && block.phase === 'before' && block.active && block.vocabularyId)
+    .map(block => block.vocabularyId as number));
+
   /** Refuerzos que se pueden practicar: «escuchar y repetir» solo se ofrece si la historia tiene actividades (A-03). */
   blocks = computed(() => {
     const storyId = this.session.lesson()?.storyId;
@@ -84,7 +89,9 @@ export class ReinforcementsComponent {
   private showVocabularyModal(unitId: number, flag: ReturnType<typeof signal<boolean>>, emptyMessage: string, errorMessage: string): void {
     this.vocabularyService.getVocabularyByUnit(unitId).subscribe({
       next: vocabulary => {
-        if (vocabulary && vocabulary.length > 0) flag.set(true);
+        const ids = this.vocabularyIds();
+        const available = ids.length ? vocabulary?.filter(v => ids.includes(v.id)) : vocabulary;
+        if (available && available.length > 0) flag.set(true);
         else this.toastService.info(this.i18n.t(emptyMessage));
       },
       error: error => {

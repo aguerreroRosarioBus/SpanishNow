@@ -25,6 +25,7 @@ import { ToastService } from '../../../core/services/toast.service';
             </div>
             <app-matching
               [unitId]="unitId"
+              [vocabularyIds]="vocabularyIds"
               (completed)="onMatchingCompleted($event)">
             </app-matching>
           </div>
@@ -59,6 +60,7 @@ import { ToastService } from '../../../core/services/toast.service';
 export class MatchingModalComponent {
   i18n = inject(I18nService);
   @Input() unitId!: number;
+  @Input() vocabularyIds?: number[] | null;
   @Input() show = false;
   @Output() completed = new EventEmitter<void>();
   @Output() close = new EventEmitter<void>();

@@ -19,6 +19,7 @@ import { FlashcardComponent } from '../flashcard/flashcard.component';
           <div class="modal-body">
             <app-flashcard
               [unitId]="unitId"
+              [vocabularyIds]="vocabularyIds"
               (allViewed)="onAllViewed()">
             </app-flashcard>
           </div>
@@ -53,6 +54,7 @@ import { FlashcardComponent } from '../flashcard/flashcard.component';
 export class FlashcardModalComponent {
   i18n = inject(I18nService);
   @Input() unitId!: number;
+  @Input() vocabularyIds?: number[] | null;
   @Input() show = false;
   @Output() completed = new EventEmitter<void>();
   @Output() close = new EventEmitter<void>();

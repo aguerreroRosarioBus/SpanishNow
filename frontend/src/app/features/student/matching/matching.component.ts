@@ -30,6 +30,8 @@ export class MatchingComponent implements OnInit {
   private vocabularyService = inject(VocabularyService);
 
   @Input() unitId?: number;
+  /** Si viene con ids, solo se emparejan esas palabras (las de la historia actual); vacío o ausente: toda la unidad. */
+  @Input() vocabularyIds?: number[] | null;
   @Output() completed = new EventEmitter<number>(); // Emits accuracy percentage
 
   vocabulary = signal<Vocabulary[]>([]);
@@ -90,8 +92,15 @@ export class MatchingComponent implements OnInit {
           return;
         }
 
+        const ids = this.vocabularyIds;
+        const pool = ids?.length ? vocab.filter(v => ids.includes(v.id)) : vocab;
+        if (pool.length === 0) {
+          this.errorKey.set('activities.noVocabulary');
+          this.isLoading.set(false);
+          return;
+        }
         // Take maximum 8 words for the matching game
-        const selectedVocab = vocab.slice(0, Math.min(8, vocab.length));
+        const selectedVocab = pool.slice(0, Math.min(8, pool.length));
         this.vocabulary.set(selectedVocab);
         this.setupGame(selectedVocab);
         this.isLoading.set(false);

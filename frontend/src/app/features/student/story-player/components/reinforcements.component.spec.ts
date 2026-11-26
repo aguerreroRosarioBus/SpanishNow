@@ -16,6 +16,7 @@ const block = (blockKey: string, type: StudentLessonBlock['type']): StudentLesso
 describe('A-03: «Listen and repeat» solo se ofrece si la historia tiene actividades', () => {
   const stories = signal<{ id: number; repetitionActivities?: unknown[] }[]>([]);
   const blocks = signal<StudentLessonBlock[]>([]);
+  const lessonSig = signal<unknown>({ storyId: 5 });
 
   function render(): HTMLElement {
     const fixture = TestBed.createComponent(ReinforcementsComponent);
@@ -25,10 +26,11 @@ describe('A-03: «Listen and repeat» solo se ofrece si la historia tiene activi
   }
   beforeEach(() => {
     localStorage.clear();
+    lessonSig.set({ storyId: 5 });
     blocks.set([block('f', 'flashcards'), block('m', 'matching'), block('l', 'listen_repeat')]);
     TestBed.configureTestingModule({ providers: [
       provideRouter([]), provideHttpClient(), provideHttpClientTesting(),
-      { provide: LessonSessionStore, useValue: { lesson: signal({ storyId: 5 }), reinforcementBlocks: blocks, isReinforcementComplete: () => false } },
+      { provide: LessonSessionStore, useValue: { lesson: lessonSig, reinforcementBlocks: blocks, isReinforcementComplete: () => false } },
       { provide: LessonNavigationStore, useValue: { currentUnit: () => ({ id: 1, stories: stories() }), unitNumber: () => 1 } },
     ] });
     TestBed.inject(I18nService).setLocale('es');
@@ -66,5 +68,17 @@ describe('A-03: «Listen and repeat» solo se ofrece si la historia tiene activi
     expect(el.querySelector('.practice__count')?.textContent?.trim()).toBe('0 de 3');
     expect(el.querySelector('.practice')?.textContent).not.toContain('aria-labelledby');
     expect(el.querySelector('.practice__start')?.textContent?.trim()).toBe('Empezar: Flashcards');
+  });
+
+  it('calcula los ids de vocabulario de las expresiones del plan antes de la narración', () => {
+    lessonSig.set({ storyId: 5, blocks: [
+      { ...block('e1', 'expression'), phase: 'before', vocabularyId: 11 },
+      { ...block('e2', 'expression'), phase: 'before', vocabularyId: 12, vocabularyRole: 'revisit' },
+      { ...block('e3', 'expression'), phase: 'later', vocabularyId: 13 },
+      { ...block('k', 'keyframe'), phase: 'during' },
+    ] });
+    stories.set([{ id: 5 }]);
+    const fixture = TestBed.createComponent(ReinforcementsComponent);
+    expect(fixture.componentInstance.vocabularyIds()).toEqual([11, 12]);
   });
 });

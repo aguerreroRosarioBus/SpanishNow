@@ -33,6 +33,7 @@
   <app-flashcard-modal
     [show]="showFlashcardModal()"
     [unitId]="nav.currentUnit()!.id"
+    [vocabularyIds]="vocabularyIds()"
     (completed)="onModalCompleted()"
     (close)="closeAllModals()"
   />
@@ -40,6 +41,7 @@
   <app-matching-modal
     [show]="showMatchingModal()"
     [unitId]="nav.currentUnit()!.id"
+    [vocabularyIds]="vocabularyIds()"
     (completed)="onModalCompleted()"
     (close)="closeAllModals()"
   />
