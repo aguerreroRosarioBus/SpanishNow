@@ -11,6 +11,7 @@
 // app) no se toca.
 //   keyframe:      h<historia>-k<n>.mp3 -> lesson_blocks.audioUrl · images/h<historia>-k<n>.png|webp (+ alt.json) -> imageUrl, imageAlt
 //   estructura:    vocab-<slug>.mp3 -> vocabulary.audioUrl (tarjetas) y la instantánea del vocabulario de la revisión publicada
+//   portada:       images/h1-k1.png|webp -> courses.imageUrl (la primera ilustración, solo si el curso no tiene portada)
 //   escuchar y repetir: usa repetition_activities (frase + audio por historia), no el vocabulario: se crea una actividad por
 //                  estructura objetivo de la historia, con su frase de ejemplo y el mismo audio. Solo si la historia no tiene ninguna.
 const fs = require('fs');
@@ -40,7 +41,7 @@ module.exports = {
     const cloudinary = require('../../src/config/cloudinary');
     const audioDir = path.join(content.dir, 'audio');
     const imagesDir = path.join(content.dir, 'images');
-    const { stories, vocabulary } = await requireRows({ models, content });
+    const { course, stories, vocabulary } = await requireRows({ models, content });
 
     const audioPath = name => path.join(audioDir, name);
     const imageFor = key => IMAGE_EXTENSIONS.map(ext => path.join(imagesDir, `${key}${ext}`)).find(file => fs.existsSync(file));
@@ -56,7 +57,7 @@ module.exports = {
     if (!audioFiles.length) log('no hay audios en seeds/content-trial/audio (se generan con scripts/trial-audio.js); se sigue sin audio');
     if (!imageCount) log('no hay ilustraciones en seeds/content-trial/images todavía (llegan con W27); se omiten');
 
-    const counts = { keyframeAudio: 0, keyframeImages: 0, vocabularyAudio: 0, activities: 0, activityAudio: 0, skippedEdited: 0 };
+    const counts = { cover: 0, keyframeAudio: 0, keyframeImages: 0, vocabularyAudio: 0, activities: 0, activityAudio: 0, skippedEdited: 0 };
 
     // --- Estructuras del vocabulario (tarjetas): primero, porque «escuchar y repetir» reutiliza esos audios.
     const publishedPlanIds = (await LessonPlan.findAll({ where: { status: 'published', storyId: stories.map(s => s.row.id) }, attributes: ['id'] })).map(p => p.id);
@@ -103,6 +104,13 @@ module.exports = {
       }
     }
 
+    // --- Portada del curso: la primera ilustración de la primera historia, si el docente no puso otra.
+    const coverFile = canUpload && !course.imageUrl && imageFor(keyframeKey(1, 1));
+    if (coverFile) {
+      await course.update({ imageUrl: await upload(cloudinary, fs.readFileSync(coverFile), { folder: 'spanishnow/courses', resource_type: 'image' }) });
+      counts.cover++;
+    }
+
     // --- «Escuchar y repetir»: una actividad por estructura objetivo, con la frase de ejemplo y el audio de la estructura.
     for (const { spec, row } of stories) {
       if (!spec.plan.after.includes('listen_repeat')) continue;
@@ -125,7 +133,7 @@ module.exports = {
       });
     }
 
-    log(`audio de keyframes: ${counts.keyframeAudio}; ilustraciones: ${counts.keyframeImages}; audio de estructuras: ${counts.vocabularyAudio}; ` +
+    log(`portada: ${counts.cover ? 'asignada' : 'sin cambios'}; audio de keyframes: ${counts.keyframeAudio}; ilustraciones: ${counts.keyframeImages}; audio de estructuras: ${counts.vocabularyAudio}; ` +
       `actividades de escuchar y repetir: ${counts.activities} creadas, ${counts.activityAudio} con audio completado${counts.skippedEdited ? `; keyframes editados omitidos: ${counts.skippedEdited}` : ''}`);
   }
 };

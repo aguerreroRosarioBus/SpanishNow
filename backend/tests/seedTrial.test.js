@@ -107,7 +107,7 @@ describe('semilla del curso de prueba en una base vacía', () => {
   }, 90000);
   afterAll(async () => {
     const urls = [
-      ...(await query('SELECT audioUrl AS url FROM lesson_blocks UNION SELECT audioUrl FROM vocabulary UNION SELECT audioUrl FROM repetition_activities UNION SELECT fileUrl FROM materials').catch(() => [])).map(r => r.url)
+      ...(await query('SELECT audioUrl AS url FROM lesson_blocks UNION SELECT audioUrl FROM vocabulary UNION SELECT audioUrl FROM repetition_activities UNION SELECT fileUrl FROM materials UNION SELECT imageUrl FROM courses').catch(() => [])).map(r => r.url)
     ].filter(Boolean);
     for (const url of urls) await require('../src/config/fakeUploads').removeFake(url);
     await dropScratchDb(SEED_DB, scratch);
@@ -195,6 +195,7 @@ describe('semilla del curso de prueba en una base vacía', () => {
     expect((await query("SELECT COUNT(*) AS n FROM lesson_blocks WHERE type = 'keyframe' AND audioUrl IS NULL"))[0].n).toBe(0);
     expect((await query("SELECT COUNT(*) AS n FROM lesson_blocks WHERE type = 'keyframe' AND (imageUrl IS NULL OR imageAlt IS NULL)"))[0].n).toBe(0); // las 15 ilustraciones de W27, cada una con su texto alternativo
     expect((await query('SELECT COUNT(*) AS n FROM vocabulary WHERE audioUrl IS NULL'))[0].n).toBe(0);
+    expect((await query("SELECT imageUrl FROM courses WHERE slug = 'free-trial-spanish-stories'"))[0].imageUrl).toMatch(/\.png$/); // portada: la primera ilustración
     // la lección muestra la instantánea del vocabulario: lleva el mismo audio que la tarjeta
     const snapshots = await query("SELECT b.vocabularySnapshot AS s, v.audioUrl FROM lesson_blocks b JOIN vocabulary v ON v.id = b.vocabularyId WHERE b.type = 'expression'");
     expect(snapshots.length).toBeGreaterThan(0);
@@ -279,7 +280,7 @@ describe('audio e ilustraciones que llegan después', () => {
     fs.rmSync(path.join(tmpContent, 'images'), { recursive: true, force: true }); // simula que las ilustraciones todavía no llegaron
   }, 90000);
   afterAll(async () => {
-    const urls = (await query('SELECT audioUrl AS url FROM lesson_blocks UNION SELECT imageUrl FROM lesson_blocks UNION SELECT audioUrl FROM vocabulary UNION SELECT audioUrl FROM repetition_activities UNION SELECT fileUrl FROM materials').catch(() => [])).map(r => r.url).filter(Boolean);
+    const urls = (await query('SELECT audioUrl AS url FROM lesson_blocks UNION SELECT imageUrl FROM lesson_blocks UNION SELECT audioUrl FROM vocabulary UNION SELECT audioUrl FROM repetition_activities UNION SELECT fileUrl FROM materials UNION SELECT imageUrl FROM courses').catch(() => [])).map(r => r.url).filter(Boolean);
     for (const url of urls) await require('../src/config/fakeUploads').removeFake(url);
     fs.rmSync(tmpContent, { recursive: true, force: true });
     await dropScratchDb(SEED_DB_LATE, scratch);
@@ -308,6 +309,9 @@ describe('audio e ilustraciones que llegan después', () => {
     expect(result.stderr).toBe('');
     expect(result.status).toBe(0);
     expect(result.stdout).toContain('ilustraciones: 2');
+    expect(result.stdout).toContain('portada: asignada');
+    const cover = (await query("SELECT imageUrl FROM courses WHERE slug = 'free-trial-spanish-stories'"))[0].imageUrl;
+    expect(cover).toMatch(/^\/uploads-dev\/.+\.png$/);
     expect(result.stdout).toContain('la ilustración h2-k3 no tiene texto alternativo');
     expect((await query('SELECT COUNT(*) AS n FROM lesson_plans'))[0].n).toBe(revisionsBefore);
     expect((await query("SELECT COUNT(*) AS n FROM lesson_blocks WHERE type = 'keyframe' AND audioUrl IS NULL"))[0].n).toBe(0);
@@ -321,7 +325,8 @@ describe('audio e ilustraciones que llegan después', () => {
     expect(activities.every(a => a.audioUrl)).toBe(true); // las actividades creadas sin audio lo reciben después
 
     const again = run('seedTrial.js', [], { TRIAL_CONTENT_DIR: tmpContent, MEDIA_FAKE_UPLOADS: '1' });
-    expect(again.stdout).toContain('audio de keyframes: 0; ilustraciones: 0; audio de estructuras: 0');
+    expect(again.stdout).toContain('portada: sin cambios; audio de keyframes: 0; ilustraciones: 0; audio de estructuras: 0');
+    expect((await query("SELECT imageUrl FROM courses WHERE slug = 'free-trial-spanish-stories'"))[0].imageUrl).toBe(cover); // no pisa la portada
   }, 90000);
 
   test('TRIAL_COURSE_NEXT_SLUG enlaza el curso siguiente del mismo docente, sin cupón, y solo si el campo está vacío', async () => {
