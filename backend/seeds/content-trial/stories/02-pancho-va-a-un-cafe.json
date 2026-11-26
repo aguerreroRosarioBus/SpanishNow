@@ -1,0 +1,184 @@
+{
+  "order": 200,
+  "title": "Pancho va a un café",
+  "text": "Pancho es el perro de Sofía. A Pancho le gusta comer. Le gusta mucho la pizza. No le gusta la comida de perro. Un día, Sofía va a un café. Pancho va también. En el café hay pizza, café y pan. Sofía quiere un café. A Sofía le gusta el café. A Pancho no le gusta el café. Pancho quiere pizza. Un señor tiene una pizza grande. Pancho va a la mesa del señor. ¡Pancho come la pizza del señor! El señor no está furioso. El señor dice: «¿Te gusta la pizza? ¡A mí me gusta tu perro!». Sofía y el señor son amigos ahora.",
+  "questions": [
+    {
+      "text": "¿A Pancho le gusta la pizza?",
+      "type": "yes_no",
+      "options": [
+        "Sí",
+        "No"
+      ],
+      "correct": "Sí"
+    },
+    {
+      "text": "¿A Pancho le gusta la comida de perro?",
+      "type": "yes_no",
+      "options": [
+        "Sí",
+        "No"
+      ],
+      "correct": "No"
+    },
+    {
+      "text": "¿Sofía va a un café o a una escuela?",
+      "type": "choice",
+      "options": [
+        "A un café",
+        "A una escuela"
+      ],
+      "correct": "A un café"
+    },
+    {
+      "text": "¿A Pancho le gusta el café?",
+      "type": "yes_no",
+      "options": [
+        "Sí",
+        "No"
+      ],
+      "correct": "No"
+    },
+    {
+      "text": "¿Pancho come la pizza o el pan?",
+      "type": "choice",
+      "options": [
+        "La pizza",
+        "El pan"
+      ],
+      "correct": "La pizza"
+    },
+    {
+      "text": "¿El señor está furioso?",
+      "type": "yes_no",
+      "options": [
+        "Sí",
+        "No"
+      ],
+      "correct": "No"
+    }
+  ],
+  "plan": {
+    "before": [
+      {
+        "expression": "va a",
+        "role": "target"
+      },
+      {
+        "expression": "le gusta",
+        "role": "target"
+      },
+      {
+        "expression": "no le gusta",
+        "role": "target"
+      },
+      {
+        "expression": "quiere",
+        "role": "revisit"
+      }
+    ],
+    "keyframes": [
+      {
+        "text": "Pancho es el perro de Sofía. A Pancho le gusta comer. Le gusta mucho la pizza. No le gusta la comida de perro.",
+        "glosses": [
+          {
+            "text": "comer",
+            "gloss": "to eat"
+          },
+          {
+            "text": "comida",
+            "gloss": "food"
+          }
+        ],
+        "questionsAfter": [
+          "¿A Pancho le gusta la pizza?",
+          "¿A Pancho le gusta la comida de perro?"
+        ]
+      },
+      {
+        "text": "Un día, Sofía va a un café. Pancho va también. En el café hay pizza, café y pan.",
+        "glosses": [
+          {
+            "text": "un día",
+            "gloss": "one day"
+          },
+          {
+            "text": "también",
+            "gloss": "too"
+          },
+          {
+            "text": "pan",
+            "gloss": "bread"
+          }
+        ],
+        "questionsAfter": [
+          "¿Sofía va a un café o a una escuela?"
+        ]
+      },
+      {
+        "text": "Sofía quiere un café. A Sofía le gusta el café. A Pancho no le gusta el café. Pancho quiere pizza.",
+        "glosses": [],
+        "questionsAfter": [
+          "¿A Pancho le gusta el café?"
+        ]
+      },
+      {
+        "text": "Un señor tiene una pizza grande. Pancho va a la mesa del señor. ¡Pancho come la pizza del señor!",
+        "glosses": [
+          {
+            "text": "señor",
+            "gloss": "man / sir"
+          },
+          {
+            "text": "mesa",
+            "gloss": "table"
+          },
+          {
+            "text": "come",
+            "gloss": "eats"
+          }
+        ],
+        "questionsAfter": [
+          "¿Pancho come la pizza o el pan?"
+        ]
+      },
+      {
+        "text": "El señor no está furioso. El señor dice: «¿Te gusta la pizza? ¡A mí me gusta tu perro!». Sofía y el señor son amigos ahora.",
+        "glosses": [
+          {
+            "text": "señor",
+            "gloss": "man / sir"
+          },
+          {
+            "text": "furioso",
+            "gloss": "angry"
+          },
+          {
+            "text": "amigos",
+            "gloss": "friends"
+          }
+        ]
+      }
+    ],
+    "after": [
+      "full_story",
+      {
+        "question": "¿El señor está furioso?"
+      },
+      "matching",
+      "listen_repeat"
+    ],
+    "later": [
+      {
+        "expression": "le gusta",
+        "role": "revisit",
+        "story": "¿Dónde está Pancho?"
+      },
+      {
+        "expression": "va a",
+        "role": "revisit",
+        "story": "¿Dónde está Pancho?"
+      }
+    ]
+  }
+}

@@ -1,0 +1,204 @@
+{
+  "order": 100,
+  "title": "Sofía quiere un perro",
+  "text": "Hay una chica. La chica se llama Sofía. Sofía tiene un gato. El gato se llama Tito. Sofía no tiene un perro. Sofía quiere un perro. Quiere un perro grande. Sofía dice: «Mamá, quiero un perro». Mamá dice: «No. Tienes un gato». Sofía camina a una tienda de animales. En la tienda hay muchos perros. Hay perros grandes y hay perros pequeños. Un perro grande cuesta cien dólares. Sofía tiene diez dólares. Sofía no tiene cien dólares. ¡Qué problema! Hay un perro pequeño. No tiene casa. ¡Es gratis! Sofía dice: «¡Quiero este perro!». Ahora Sofía tiene un gato y un perro. El perro se llama Pancho.",
+  "questions": [
+    {
+      "text": "¿Sofía tiene un gato?",
+      "type": "yes_no",
+      "options": [
+        "Sí",
+        "No"
+      ],
+      "correct": "Sí"
+    },
+    {
+      "text": "¿El gato se llama Tito o Toby?",
+      "type": "choice",
+      "options": [
+        "Tito",
+        "Toby"
+      ],
+      "correct": "Tito"
+    },
+    {
+      "text": "¿Sofía quiere un perro o un gato?",
+      "type": "choice",
+      "options": [
+        "Un perro",
+        "Un gato"
+      ],
+      "correct": "Un perro"
+    },
+    {
+      "text": "¿Mamá dice que sí?",
+      "type": "yes_no",
+      "options": [
+        "Sí",
+        "No"
+      ],
+      "correct": "No"
+    },
+    {
+      "text": "¿En la tienda hay muchos perros?",
+      "type": "yes_no",
+      "options": [
+        "Sí",
+        "No"
+      ],
+      "correct": "Sí"
+    },
+    {
+      "text": "¿Sofía tiene cien dólares?",
+      "type": "yes_no",
+      "options": [
+        "Sí",
+        "No"
+      ],
+      "correct": "No"
+    },
+    {
+      "text": "¿El perro se llama Pancho o Tito?",
+      "type": "choice",
+      "options": [
+        "Pancho",
+        "Tito"
+      ],
+      "correct": "Pancho"
+    }
+  ],
+  "plan": {
+    "before": [
+      {
+        "expression": "hay",
+        "role": "target"
+      },
+      {
+        "expression": "quiere",
+        "role": "target"
+      },
+      {
+        "expression": "tiene",
+        "role": "target"
+      }
+    ],
+    "keyframes": [
+      {
+        "text": "Hay una chica. La chica se llama Sofía. Sofía tiene un gato. El gato se llama Tito. Sofía no tiene un perro.",
+        "glosses": [
+          {
+            "text": "chica",
+            "gloss": "girl"
+          },
+          {
+            "text": "se llama",
+            "gloss": "is called"
+          }
+        ],
+        "questionsAfter": [
+          "¿Sofía tiene un gato?",
+          "¿El gato se llama Tito o Toby?"
+        ]
+      },
+      {
+        "text": "Sofía quiere un perro. Quiere un perro grande. Sofía dice: «Mamá, quiero un perro». Mamá dice: «No. Tienes un gato».",
+        "glosses": [
+          {
+            "text": "grande",
+            "gloss": "big"
+          },
+          {
+            "text": "dice",
+            "gloss": "says"
+          }
+        ],
+        "questionsAfter": [
+          "¿Sofía quiere un perro o un gato?",
+          "¿Mamá dice que sí?"
+        ]
+      },
+      {
+        "text": "Sofía camina a una tienda de animales. En la tienda hay muchos perros. Hay perros grandes y hay perros pequeños.",
+        "glosses": [
+          {
+            "text": "camina",
+            "gloss": "walks"
+          },
+          {
+            "text": "tienda de animales",
+            "gloss": "pet shop"
+          },
+          {
+            "text": "pequeños",
+            "gloss": "small"
+          }
+        ],
+        "questionsAfter": [
+          "¿En la tienda hay muchos perros?"
+        ]
+      },
+      {
+        "text": "Un perro grande cuesta cien dólares. Sofía tiene diez dólares. Sofía no tiene cien dólares. ¡Qué problema!",
+        "glosses": [
+          {
+            "text": "grande",
+            "gloss": "big"
+          },
+          {
+            "text": "cuesta",
+            "gloss": "costs"
+          }
+        ],
+        "questionsAfter": [
+          "¿Sofía tiene cien dólares?"
+        ]
+      },
+      {
+        "text": "Hay un perro pequeño. No tiene casa. ¡Es gratis! Sofía dice: «¡Quiero este perro!». Ahora Sofía tiene un gato y un perro. El perro se llama Pancho.",
+        "glosses": [
+          {
+            "text": "gratis",
+            "gloss": "free"
+          },
+          {
+            "text": "dice",
+            "gloss": "says"
+          },
+          {
+            "text": "ahora",
+            "gloss": "now"
+          },
+          {
+            "text": "se llama",
+            "gloss": "is called"
+          }
+        ]
+      }
+    ],
+    "after": [
+      "full_story",
+      {
+        "question": "¿El perro se llama Pancho o Tito?"
+      },
+      "flashcards",
+      "listen_repeat"
+    ],
+    "later": [
+      {
+        "expression": "quiere",
+        "role": "revisit",
+        "story": "Pancho va a un café"
+      },
+      {
+        "expression": "tiene",
+        "role": "revisit",
+        "story": "¿Dónde está Pancho?"
+      },
+      {
+        "expression": "hay",
+        "role": "revisit",
+        "story": "¿Dónde está Pancho?"
+      }
+    ]
+  }
+}

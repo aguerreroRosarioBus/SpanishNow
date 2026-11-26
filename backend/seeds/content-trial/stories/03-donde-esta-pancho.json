@@ -1,0 +1,176 @@
+{
+  "order": 300,
+  "title": "¿Dónde está Pancho?",
+  "text": "Un día, Pancho no está en la casa. Sofía busca a Pancho. Busca en la cocina. Busca en el jardín. Pancho no está. Sofía va a la escuela. Busca a Pancho en la escuela. Hay muchos niños, pero Pancho no está en la escuela. Tito, el gato, tiene una idea. Tito dice: «A Pancho le gusta la pizza». ¡Claro! Sofía va al café. Sofía encuentra a Pancho en el café. Pancho está en una mesa con el señor. ¡Pancho come pizza otra vez! Sofía dice: «Pancho, ¿te gusta más la pizza o tu casa?». Pancho no responde. Pancho quiere más pizza.",
+  "questions": [
+    {
+      "text": "¿Sofía busca a Pancho o a Tito?",
+      "type": "choice",
+      "options": [
+        "A Pancho",
+        "A Tito"
+      ],
+      "correct": "A Pancho"
+    },
+    {
+      "text": "¿Pancho está en la escuela?",
+      "type": "yes_no",
+      "options": [
+        "Sí",
+        "No"
+      ],
+      "correct": "No"
+    },
+    {
+      "text": "¿Tito tiene una idea?",
+      "type": "yes_no",
+      "options": [
+        "Sí",
+        "No"
+      ],
+      "correct": "Sí"
+    },
+    {
+      "text": "¿Sofía encuentra a Pancho en el café o en el parque?",
+      "type": "choice",
+      "options": [
+        "En el café",
+        "En el parque"
+      ],
+      "correct": "En el café"
+    },
+    {
+      "text": "¿Pancho quiere más pizza?",
+      "type": "yes_no",
+      "options": [
+        "Sí",
+        "No"
+      ],
+      "correct": "Sí"
+    }
+  ],
+  "plan": {
+    "before": [
+      {
+        "expression": "busca",
+        "role": "target"
+      },
+      {
+        "expression": "está en",
+        "role": "target"
+      },
+      {
+        "expression": "encuentra",
+        "role": "target"
+      },
+      {
+        "expression": "tiene",
+        "role": "revisit"
+      },
+      {
+        "expression": "hay",
+        "role": "revisit"
+      },
+      {
+        "expression": "le gusta",
+        "role": "revisit"
+      },
+      {
+        "expression": "va a",
+        "role": "revisit"
+      }
+    ],
+    "keyframes": [
+      {
+        "text": "Un día, Pancho no está en la casa. Sofía busca a Pancho. Busca en la cocina. Busca en el jardín. Pancho no está.",
+        "glosses": [
+          {
+            "text": "casa",
+            "gloss": "house / home"
+          },
+          {
+            "text": "cocina",
+            "gloss": "kitchen"
+          },
+          {
+            "text": "jardín",
+            "gloss": "garden"
+          }
+        ],
+        "questionsAfter": [
+          "¿Sofía busca a Pancho o a Tito?"
+        ]
+      },
+      {
+        "text": "Sofía va a la escuela. Busca a Pancho en la escuela. Hay muchos niños, pero Pancho no está en la escuela.",
+        "glosses": [
+          {
+            "text": "escuela",
+            "gloss": "school"
+          },
+          {
+            "text": "niños",
+            "gloss": "children"
+          }
+        ],
+        "questionsAfter": [
+          "¿Pancho está en la escuela?"
+        ]
+      },
+      {
+        "text": "Tito, el gato, tiene una idea. Tito dice: «A Pancho le gusta la pizza». ¡Claro! Sofía va al café.",
+        "glosses": [
+          {
+            "text": "idea",
+            "gloss": "idea"
+          },
+          {
+            "text": "¡claro!",
+            "gloss": "of course!"
+          }
+        ],
+        "questionsAfter": [
+          "¿Tito tiene una idea?"
+        ]
+      },
+      {
+        "text": "Sofía encuentra a Pancho en el café. Pancho está en una mesa con el señor. ¡Pancho come pizza otra vez!",
+        "glosses": [
+          {
+            "text": "otra vez",
+            "gloss": "again"
+          }
+        ],
+        "questionsAfter": [
+          "¿Sofía encuentra a Pancho en el café o en el parque?"
+        ]
+      },
+      {
+        "text": "Sofía dice: «Pancho, ¿te gusta más la pizza o tu casa?». Pancho no responde. Pancho quiere más pizza.",
+        "glosses": [
+          {
+            "text": "más",
+            "gloss": "more"
+          },
+          {
+            "text": "casa",
+            "gloss": "house / home"
+          },
+          {
+            "text": "responde",
+            "gloss": "answers"
+          }
+        ]
+      }
+    ],
+    "after": [
+      "full_story",
+      {
+        "question": "¿Pancho quiere más pizza?"
+      },
+      "flashcards",
+      "matching",
+      "listen_repeat"
+    ]
+  }
+}

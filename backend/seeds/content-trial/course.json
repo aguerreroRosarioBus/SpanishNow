@@ -1,0 +1,70 @@
+{
+  "_comment": "Contenido del curso de prueba gratis (docs/curso-prueba/PLAN.md). Sin ids: la semilla identifica las filas por clave natural (slug, orden, palabra, título, texto).",
+  "course": {
+    "slug": "free-trial-spanish-stories",
+    "title": "Free trial: Learn Spanish through stories",
+    "description": "Understand your first three Spanish stories in 30 minutes — no grammar drills. A taste of TPRS, the method behind every SpanishNow course.",
+    "level": "A1"
+  },
+  "unit": {
+    "order": 0,
+    "title": "Your first Spanish stories",
+    "description": "Each story introduces just three new structures. You see them first, then hear and read the story in short scenes, answering easy questions along the way. Those questions are the method: many meaningful repetitions, so the words stick without memorizing.",
+    "vocabulary": [
+      {
+        "word": "hay",
+        "translation": "there is / there are",
+        "example": "Hay un perro.",
+        "partOfSpeech": "verb"
+      },
+      {
+        "word": "quiere",
+        "translation": "wants",
+        "example": "Sofía quiere un perro.",
+        "partOfSpeech": "verb"
+      },
+      {
+        "word": "tiene",
+        "translation": "has",
+        "example": "Sofía tiene un gato.",
+        "partOfSpeech": "verb"
+      },
+      {
+        "word": "va a",
+        "translation": "goes to",
+        "example": "Sofía va a un café.",
+        "partOfSpeech": "phrase"
+      },
+      {
+        "word": "le gusta",
+        "translation": "likes (it pleases him/her)",
+        "example": "A Pancho le gusta la pizza.",
+        "partOfSpeech": "phrase"
+      },
+      {
+        "word": "no le gusta",
+        "translation": "doesn't like",
+        "example": "No le gusta el café.",
+        "partOfSpeech": "phrase"
+      },
+      {
+        "word": "busca",
+        "translation": "looks for",
+        "example": "Sofía busca a Pancho.",
+        "partOfSpeech": "verb"
+      },
+      {
+        "word": "está en",
+        "translation": "is in / is at",
+        "example": "Pancho está en el café.",
+        "partOfSpeech": "phrase"
+      },
+      {
+        "word": "encuentra",
+        "translation": "finds",
+        "example": "Sofía encuentra a Pancho.",
+        "partOfSpeech": "verb"
+      }
+    ]
+  }
+}
