@@ -17,10 +17,7 @@
       <p class="text-muted mt-2 mb-0">{{ 'teacherPromotions.loadingCoupons' | t }}</p>
     </div>
   } @else if (coupons().length === 0 && !errorMessage()) {
-    <div class="state-box">
-      <strong>{{ 'teacherPromotions.emptyCoupons' | t }}</strong>
-      <span>{{ 'teacherPromotions.emptyCouponHint' | t }}</span>
-    </div>
+    <app-empty-state icon="tag" [title]="'teacherPromotions.emptyCoupons' | t" [hint]="'teacherPromotions.emptyCouponHint' | t" />
   } @else if (coupons().length > 0) {
     <div class="table-wrap">
       <table class="data-table">

@@ -1,3 +1,7 @@
+import { IconComponent } from '../../shared/components/icon/icon.component';
+import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
+import { SectionHeaderComponent } from '../../shared/components/section-header/section-header.component';
+import { TabBarComponent } from '../../shared/components/tab-bar/tab-bar.component';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -18,7 +22,7 @@ const codePattern = /^[A-Za-z0-9-]{1,40}$/;
 
 @Component({
   selector: 'app-class-commerce',
-  imports: [FormsModule, RouterLink, TranslatePipe, HotmartGuideImageComponent, PackageCatalogComponent],
+  imports: [IconComponent, EmptyStateComponent, SectionHeaderComponent, TabBarComponent, FormsModule, RouterLink, TranslatePipe, HotmartGuideImageComponent, PackageCatalogComponent],
   templateUrl: './class-commerce.component.html',
   styleUrl: './class-commerce.component.scss',
 })
@@ -31,6 +35,7 @@ export class ClassCommerceComponent {
   readonly fmt = inject(ChatFormat);
   readonly tabs = ['setup', 'packages', 'sales'] as const;
   readonly tab = signal<Tab>('setup');
+  readonly tabItems = computed(() => this.tabs.map(id => ({ id, label: this.i18n.t('packages.commerce.tab.' + id) })));
   readonly step = signal<Step>('home');
   readonly setup = signal<ClassHotmartSetup | null>(null);
   readonly items = signal<PackageTemplate[]>([]);

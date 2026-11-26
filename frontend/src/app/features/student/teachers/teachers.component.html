@@ -18,10 +18,7 @@
       <button type="button" class="btn btn-secondary btn-sm" (click)="loadTeachers()">{{ 'preferences.retry' | t }}</button>
     </div>
   } @else if (teachers().length === 0) {
-    <div class="state-box">
-      <strong>{{ 'student.teachersEmpty' | t }}</strong>
-      <span>{{ 'student.teachersEmptyHelp' | t }}</span>
-    </div>
+    <app-empty-state icon="users" [title]="'student.teachersEmpty' | t" [hint]="'student.teachersEmptyHelp' | t" />
   } @else {
     @if (startError(); as message) {
       <div class="state-box state-box--error" role="alert"><app-icon name="alert-triangle" [size]="18" /><span>{{ message }}</span></div>

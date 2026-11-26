@@ -1,3 +1,4 @@
+import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
@@ -21,7 +22,7 @@ interface CurrencyChart {
 @Component({
   selector: 'app-teacher-sales',
   standalone: true,
-  imports: [TranslatePipe, RouterLink],
+  imports: [EmptyStateComponent, TranslatePipe, RouterLink],
   templateUrl: './teacher-sales.component.html',
   styleUrl: './teacher-sales.component.scss'
 })

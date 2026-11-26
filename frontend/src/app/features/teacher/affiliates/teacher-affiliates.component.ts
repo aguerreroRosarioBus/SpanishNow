@@ -1,3 +1,4 @@
+import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { NgbTooltip } from '@ng-bootstrap/ng-bootstrap';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -25,7 +26,7 @@ const CURRENCIES = [
 @Component({
   selector: 'app-teacher-affiliates',
   standalone: true,
-  imports: [NgbTooltip, ReactiveFormsModule, TranslatePipe, NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem, IconComponent, ConfirmDialogComponent],
+  imports: [EmptyStateComponent, NgbTooltip, ReactiveFormsModule, TranslatePipe, NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem, IconComponent, ConfirmDialogComponent],
   templateUrl: './teacher-affiliates.component.html',
   styleUrl: './teacher-affiliates.component.scss'
 })

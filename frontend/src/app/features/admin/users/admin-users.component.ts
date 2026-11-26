@@ -1,3 +1,4 @@
+import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { NgbOffcanvas, NgbOffcanvasRef, NgbTooltip } from '@ng-bootstrap/ng-bootstrap';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
@@ -38,7 +39,7 @@ interface PendingAction {
 @Component({
   selector: 'app-admin-users',
   standalone: true,
-  imports: [NgbTooltip, TranslatePipe, IconComponent, ConfirmDialogComponent],
+  imports: [EmptyStateComponent, NgbTooltip, TranslatePipe, IconComponent, ConfirmDialogComponent],
   templateUrl: './admin-users.component.html',
   styleUrl: './admin-users.component.scss',
 })

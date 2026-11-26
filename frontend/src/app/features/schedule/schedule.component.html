@@ -361,13 +361,12 @@
       }
     }
     @if (!loading() && !visibleSessions().length) {
-      <div class="state-box" data-testid="schedule-empty">
-        <p class="mb-0">{{ 'schedule.empty' | t }}</p>
+      <app-empty-state icon="calendar" data-testid="schedule-empty" [title]="'schedule.empty' | t">
         @if (!teacher()) {
-          <p class="mb-0" data-testid="student-empty-hint">{{ 'schedule.studentEmptyHint' | t }}</p>
+          <p class="text-muted small mb-0 w-100" data-testid="student-empty-hint">{{ 'schedule.studentEmptyHint' | t }}</p>
           <a class="btn btn-secondary btn-sm" routerLink="/messages">{{ 'schedule.openMessages' | t }}</a>
         }
-      </div>
+      </app-empty-state>
     }
   </section>
 </div>

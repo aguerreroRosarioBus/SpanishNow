@@ -1,3 +1,4 @@
+import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { LocaleDatePipe } from '../../../core/i18n/locale-format.pipe';
 import { UserPreferencesService } from '../../../core/services/user-preferences.service';
 import { I18nService } from '../../../core/i18n/i18n.service';
@@ -19,7 +20,7 @@ import { toastFrom } from '../../../core/services/toast.service';
 @Component({
   selector: 'app-purchases',
   standalone: true,
-  imports: [LocaleDatePipe, TranslatePipe, RouterLink, ExpectationsViewComponent],
+  imports: [EmptyStateComponent, LocaleDatePipe, TranslatePipe, RouterLink, ExpectationsViewComponent],
   templateUrl: './purchases.component.html',
   styleUrl: './purchases.component.scss'
 })

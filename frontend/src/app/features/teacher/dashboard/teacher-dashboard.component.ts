@@ -1,3 +1,4 @@
+import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AbstractControl, FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
@@ -17,7 +18,7 @@ import { toastFrom } from '../../../core/services/toast.service';
 @Component({
   selector: 'app-teacher-dashboard',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, CourseCardComponent, IconComponent, TranslatePipe, ImageSearchComponent],
+  imports: [EmptyStateComponent, CommonModule, ReactiveFormsModule, RouterLink, CourseCardComponent, IconComponent, TranslatePipe, ImageSearchComponent],
   templateUrl: './teacher-dashboard.component.html',
   styleUrl: './teacher-dashboard.component.scss'
 })

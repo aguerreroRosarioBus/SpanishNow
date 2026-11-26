@@ -23,15 +23,11 @@
         <p class="text-muted mt-2 mb-0">{{ 'student.loadingCatalog' | t }}</p>
       </div>
     } @else if (allCourses().length === 0) {
-      <div class="state-box">
-        <strong>{{ 'student.noCourses' | t }}</strong>
-        <span>{{ 'student.noCoursesHelp' | t }}</span>
-      </div>
+      <app-empty-state icon="book-open" [title]="'student.noCourses' | t" [hint]="'student.noCoursesHelp' | t" />
     } @else if (filteredCourses().length === 0) {
-      <div class="state-box">
-        <strong>{{ 'student.noLevel' | t : { level: currentLevelFilter() ?? '' } }}</strong>
-        <a [routerLink]="['/student/dashboard']" [queryParams]="{ view: 'catalog' }">{{ 'student.viewAll' | t }}</a>
-      </div>
+      <app-empty-state icon="search" [title]="'student.noLevel' | t : { level: currentLevelFilter() ?? '' }">
+        <a class="btn btn-secondary btn-sm" [routerLink]="['/student/dashboard']" [queryParams]="{ view: 'catalog' }">{{ 'student.viewAll' | t }}</a>
+      </app-empty-state>
     } @else {
       <div class="card-grid">
         @for (course of filteredCourses(); track course.id) {
@@ -66,11 +62,9 @@
         <p class="text-muted mt-2 mb-0">{{ 'student.loadingMyCourses' | t }}</p>
       </div>
     } @else if (myCourses().length === 0) {
-      <div class="state-box">
-        <strong>{{ 'student.noEnrollments' | t }}</strong>
-        <span>{{ 'student.noEnrollmentsHelp' | t }}</span>
-        <button type="button" class="btn btn-primary mt-2" (click)="switchView('catalog')">{{ 'student.explore' | t }}</button>
-      </div>
+      <app-empty-state icon="graduation-cap" [title]="'student.noEnrollments' | t" [hint]="'student.noEnrollmentsHelp' | t">
+        <button type="button" class="btn btn-primary" (click)="switchView('catalog')">{{ 'student.explore' | t }}</button>
+      </app-empty-state>
     } @else {
       <div class="card-grid">
         @for (enrollment of myCourses(); track enrollment.id) {

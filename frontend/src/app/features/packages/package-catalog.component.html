@@ -113,11 +113,9 @@
         </article>
       } @empty {
         @if (!busy()) {
-          <section class="state-box" data-testid="catalog-empty">
-            <h3 class="h5 mb-0">{{ 'packages.catalog.empty' | t }}</h3>
-            <p class="mb-0">{{ 'packages.catalog.emptyHint' | t }}</p>
+          <app-empty-state icon="package" data-testid="catalog-empty" [title]="'packages.catalog.empty' | t" [hint]="'packages.catalog.emptyHint' | t">
             <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="importInitial()">{{ 'packages.catalog.import' | t }}</button>
-          </section>
+          </app-empty-state>
         }
       }
     </div>

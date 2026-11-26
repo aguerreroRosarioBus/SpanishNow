@@ -1,3 +1,4 @@
+import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -15,7 +16,7 @@ import { toastFrom } from '../../../core/services/toast.service';
 @Component({
   selector: 'app-chat-inbox',
   standalone: true,
-  imports: [FormsModule, RouterLink, IconComponent, TranslatePipe],
+  imports: [EmptyStateComponent, FormsModule, RouterLink, IconComponent, TranslatePipe],
   templateUrl: './chat-inbox.component.html',
   styleUrl: './chat-inbox.component.scss'
 })

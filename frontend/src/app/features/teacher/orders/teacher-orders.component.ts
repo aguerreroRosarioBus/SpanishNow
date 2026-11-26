@@ -1,3 +1,4 @@
+import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { NgbDropdownModule } from '@ng-bootstrap/ng-bootstrap';
 import { UserPreferencesService } from '../../../core/services/user-preferences.service';
 import { I18nService } from '../../../core/i18n/i18n.service';
@@ -19,7 +20,7 @@ const PAGE_SIZE = 20;
 @Component({
   selector: 'app-teacher-orders',
   standalone: true,
-  imports: [NgbDropdownModule, TranslatePipe,  FormsModule, IconComponent],
+  imports: [EmptyStateComponent, NgbDropdownModule, TranslatePipe,  FormsModule, IconComponent],
   templateUrl: './teacher-orders.component.html',
   styleUrl: './teacher-orders.component.scss'
 })

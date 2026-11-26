@@ -1,4 +1,5 @@
 import { effect, inject, Injectable, signal, untracked } from '@angular/core';
+import { I18nService } from '../i18n/i18n.service';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -32,6 +33,7 @@ export class ToastService {
   private toasts = signal<Toast[]>([]);
   private nextId = 0;
   private timers = new Map<number, Timer>();
+  private i18n = inject(I18nService);
 
   getToasts = this.toasts.asReadonly();
 
@@ -40,6 +42,18 @@ export class ToastService {
    * no se duplica: se reinicia su tiempo.
    */
   show(type: ToastType, message: string, duration?: number, title?: string): void {
+    // Sin conexión, todas las pantallas fallan a la vez: se muestra solo el aviso de red y
+    // se descartan los demás errores (que serían consecuencia de lo mismo).
+    if (type === 'error') {
+      const offline = message === this.i18n.t('errors.network');
+      const networkShown = this.toasts().some(t => t.type === 'error' && t.message === this.i18n.t('errors.network'));
+      if (offline) {
+        const others = this.toasts().filter(t => t.type === 'error' && t.message !== message);
+        others.forEach(t => this.remove(t.id));
+      } else if (networkShown) {
+        return;
+      }
+    }
     const time = duration ?? DEFAULT_DURATION[type];
     const existing = this.toasts().find(t => t.type === type && t.message === message && t.title === title);
     if (existing) {

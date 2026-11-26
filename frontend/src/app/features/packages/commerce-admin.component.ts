@@ -14,16 +14,16 @@ import {PackagesService} from './packages.service';
 import {ClassOrder,ClassPurchase,ClassSettings,RefundPreview,PaymentJob,ClassProviderState,isFrozenOrder} from './packages.model';
 import { toastFrom, toastWhen } from '../../core/services/toast.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
+import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
+import { SectionHeaderComponent } from '../../shared/components/section-header/section-header.component';
+import { TabBarComponent } from '../../shared/components/tab-bar/tab-bar.component';
 type CommerceSection = 'setup'|'payments'|'refunds'|'settings';
-@Component({selector:'app-commerce-admin',standalone:true,imports:[FormsModule,RouterLink,TranslatePipe,IconComponent,ModalFocusDirective,PermissionNoticeComponent],
-styles:[`.commerce{max-width:960px}.block{margin:var(--spacing-md) 0}.block-title{margin:0 0 var(--spacing-xs);font-size:1.125rem}.sub-title{margin:var(--spacing-md) 0 var(--spacing-sm);font-size:.9375rem;font-weight:700}.notice{margin:var(--spacing-xs) 0 0;font-size:.8125rem;color:var(--color-text-light);overflow-wrap:anywhere}.item{margin:var(--spacing-sm) 0;padding:var(--spacing-md);border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-bg)}.item-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--spacing-sm)}.item-head h4,.item-head h3{margin:0;font-size:1rem}.item p{margin:var(--spacing-xs) 0 0}.item-actions{display:flex;flex-wrap:wrap;gap:var(--spacing-sm);margin-top:var(--spacing-sm)}.block-head{margin-bottom:var(--spacing-md)}.block-head .block-title{margin:0}.block-desc{margin:var(--spacing-xs) 0 0;font-size:.875rem;color:var(--color-text-light)}.toolbar{display:flex;align-items:center;gap:var(--spacing-sm);flex-wrap:wrap;margin-bottom:var(--spacing-md)}.toolbar-field{display:flex;align-items:center;gap:var(--spacing-sm);flex-wrap:wrap}.toolbar-field .form-label{margin:0}.toolbar .form-select{width:auto;max-width:100%}.toolbar-end{margin-left:auto;display:inline-flex;align-items:center;gap:var(--spacing-xs)}.empty{display:flex;flex-direction:column;align-items:center;gap:var(--spacing-xs);padding:var(--spacing-xl) var(--spacing-md);text-align:center;border:1px solid var(--color-border);border-radius:var(--radius-lg);background:var(--color-bg)}.empty-icon{display:grid;place-items:center;width:44px;height:44px;margin-bottom:var(--spacing-xs);border-radius:50%;background:var(--color-bg-dark);color:var(--color-text-light)}.empty p{margin:0;font-size:.875rem;color:var(--color-text-light)}.badge-status{flex:none;white-space:normal}.status-success{background:var(--color-success-soft);color:var(--color-success-text)}.status-warning{background:var(--color-warning-soft);color:#6b4a00}.status-danger{background:var(--color-danger-soft);color:var(--color-danger)}.status-neutral{background:var(--color-bg-dark);color:var(--color-text-light)}@media (max-width:480px){.item-actions .btn{flex:1 1 auto;max-width:100%;white-space:normal}}`],
+@Component({selector:'app-commerce-admin',standalone:true,imports:[FormsModule,RouterLink,TranslatePipe,IconComponent,EmptyStateComponent,SectionHeaderComponent,TabBarComponent,ModalFocusDirective,PermissionNoticeComponent],
+styles:[`.commerce{max-width:960px}.block{margin:var(--spacing-md) 0}.block-title{margin:0 0 var(--spacing-xs);font-size:1.125rem}.sub-title{margin:var(--spacing-md) 0 var(--spacing-sm);font-size:.9375rem;font-weight:700}.notice{margin:var(--spacing-xs) 0 0;font-size:.8125rem;color:var(--color-text-light);overflow-wrap:anywhere}.item{margin:var(--spacing-sm) 0;padding:var(--spacing-md);border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-bg)}.item-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--spacing-sm)}.item-head h4,.item-head h3{margin:0;font-size:1rem}.item p{margin:var(--spacing-xs) 0 0}.item-actions{display:flex;flex-wrap:wrap;gap:var(--spacing-sm);margin-top:var(--spacing-sm)}.badge-status{flex:none;white-space:normal}.status-success{background:var(--color-success-soft);color:var(--color-success-text)}.status-warning{background:var(--color-warning-soft);color:#6b4a00}.status-danger{background:var(--color-danger-soft);color:var(--color-danger)}.status-neutral{background:var(--color-bg-dark);color:var(--color-text-light)}@media (max-width:480px){.item-actions .btn{flex:1 1 auto;max-width:100%;white-space:normal}}`],
 template:`
 <div class="page-container commerce"><h1>{{'packages.admin.title'|t}}</h1>
 @if(denied()){<app-permission-notice />}@else{
-<nav class="item-actions" [attr.aria-label]="'packages.admin.title'|t">
-  @for(s of sections();track s){<button type="button" class="btn" [class.btn-secondary]="currentSection()===s"
-    [attr.aria-pressed]="currentSection()===s" (click)="section.set(s)">{{('packages.commerce.admin.'+s)|t}}</button>}
-</nav>
+<app-tab-bar [items]="tabItems()" [active]="currentSection()" [label]="'packages.admin.title'|t" (selected)="section.set($any($event))" />
 @if(provider();as pv){
 <section class="surface block" aria-labelledby="adminProviderTitle" data-test="provider-card" [hidden]="currentSection()!=='setup'">
   <h2 id="adminProviderTitle" class="block-title">{{'packages.pv.title'|t}}</h2>
@@ -89,7 +89,7 @@ template:`
 }
 @if(can('class_payments.review')){
 <section class="surface block" aria-labelledby="adminSalesTitle" [hidden]="currentSection()!=='payments'">
-  <header class="block-head"><h2 id="adminSalesTitle" class="block-title">{{'packages.admin.salesTitle'|t}}</h2><p class="block-desc">{{'packages.admin.paymentsDesc'|t}}</p></header>
+  <app-section-header titleId="adminSalesTitle" [title]="'packages.admin.salesTitle'|t" [description]="'packages.admin.paymentsDesc'|t" />
   <div class="toolbar"><div class="toolbar-field"><label for="paymentFilter" class="form-label">{{'packages.admin.filter'|t}}</label><select id="paymentFilter" class="form-select form-select-sm" [(ngModel)]="filter" (ngModelChange)="loadPayments()">@for(s of statuses;track s){<option [value]="s">{{('packages.admin.orderStatus.'+s)|t}}</option>}</select></div>
     <button type="button" class="btn btn-secondary btn-sm toolbar-end" [disabled]="busy()" (click)="loadPayments()"><app-icon name="rotate-ccw" [size]="14" />{{'packages.admin.reload'|t}}</button></div>
   @for(o of orders();track o.id){<article class="item">
@@ -112,11 +112,11 @@ template:`
     }@else if(o.status==='paid_needs_review'||o.status==='paid'){<div class="item-actions">
       @if(o.status==='paid_needs_review'){<button class="btn btn-primary" [disabled]="!ready()" (click)="resolve(o,'credit')">{{'packages.admin.credit'|t}}</button>}
       <button class="btn btn-outline-danger" [disabled]="!ready()" (click)="resolve(o,'refund')">{{'packages.admin.approve'|t}}</button></div>}
-  </article>}@empty{<div class="empty"><span class="empty-icon" aria-hidden="true"><app-icon name="credit-card" [size]="22" /></span><strong>{{'packages.admin.paymentsEmpty'|t}}</strong><p>{{'packages.admin.paymentsEmptyHint'|t}}</p></div>}
+  </article>}@empty{<app-empty-state icon="credit-card" [title]="'packages.admin.paymentsEmpty'|t" [hint]="'packages.admin.paymentsEmptyHint'|t" />}
   @for(e of events();track e.id){<p class="notice">{{'packages.admin.unmatched'|t}} #{{e.id}} · {{e.eventType}} · {{i18n.formatInstant(e.createdAt,fmt.timeZone())}}</p>}
 </section>
 <section class="surface block" aria-labelledby="adminProceduresTitle" [hidden]="currentSection()!=='refunds'">
-  <header class="block-head"><h2 id="adminProceduresTitle" class="block-title">{{'packages.admin.proceduresTitle'|t}}</h2><p class="block-desc">{{'packages.admin.proceduresDesc'|t}}</p></header>
+  <app-section-header titleId="adminProceduresTitle" [title]="'packages.admin.proceduresTitle'|t" [description]="'packages.admin.proceduresDesc'|t" />
   <div class="toolbar"><button type="button" class="btn btn-secondary btn-sm toolbar-end" [disabled]="busy()" (click)="load()"><app-icon name="rotate-ccw" [size]="14" />{{'packages.admin.reload'|t}}</button></div>
   @for(v of refunds();track v.purchaseId){@for(r of v.requests;track r.id){<article class="item">
     <div class="item-head"><h4>{{'packages.admin.refundTitle'|t:{buyer:v.buyerName||('packages.admin.purchase'|t),purchase:v.purchaseId} }}</h4></div>
@@ -137,7 +137,7 @@ template:`
       </div>
       @if(r.status==='queued'&&v.provider==='fake'){<p class="notice">{{'packages.payment.fakeNote'|t}}</p><div class="item-actions"><button class="btn btn-secondary" [disabled]="busy()" (click)="fake(v.orderId)">{{'packages.admin.fakeRefund'|t}}</button></div>}
     }
-  </article>}}@empty{<div class="empty"><span class="empty-icon" aria-hidden="true"><app-icon name="rotate-ccw" [size]="22" /></span><strong>{{'packages.admin.refundsEmpty'|t}}</strong><p>{{'packages.admin.refundsEmptyHint'|t}}</p></div>}
+  </article>}}@empty{<app-empty-state icon="rotate-ccw" [title]="'packages.admin.refundsEmpty'|t" [hint]="'packages.admin.refundsEmptyHint'|t" />}
   <h3 class="sub-title">{{'packages.admin.jobs'|t}}</h3>
   @if(jobsFailed()){<div class="toolbar"><button type="button" class="btn btn-secondary btn-sm" [disabled]="busy()" (click)="load()"><app-icon name="rotate-ccw" [size]="14" />{{'packages.admin.reload'|t}}</button></div>}
   @for(j of jobs();track j.id){<article class="item">
@@ -149,7 +149,7 @@ template:`
       @if(j.topic.startsWith('review.')){<button class="btn btn-secondary" [disabled]="!ready()" (click)="acknowledge(j.id)">{{'packages.admin.acknowledge'|t}}</button>}
       @if(j.status==='failed'){<button class="btn btn-secondary" [disabled]="!ready()" (click)="retry(j.id)">{{'packages.admin.retry'|t}}</button>}
     </div>
-  </article>}@empty{@if(!jobsFailed()){<div class="empty"><span class="empty-icon" aria-hidden="true"><app-icon name="circle-check" [size]="22" /></span><strong>{{'packages.admin.jobsEmpty'|t}}</strong><p>{{'packages.admin.jobsEmptyHint'|t}}</p></div>}}
+  </article>}@empty{@if(!jobsFailed()){<app-empty-state icon="circle-check" [title]="'packages.admin.jobsEmpty'|t" [hint]="'packages.admin.jobsEmptyHint'|t" />}}
 </section>
 }
 @if(can('class_teachers.manage')){
@@ -157,7 +157,7 @@ template:`
   <h2 id="adminTeachersTitle" class="block-title">{{'packages.admin.teachers'|t}}</h2>
   @for(t of teachers();track t.id){<article class="item"><div class="item-head"><h3>{{t.name}}</h3><span class="badge-status badge-status--dot status-{{t.settings?.classesEnabledAt?'success':'neutral'}}">{{(t.settings?.classesEnabledAt?'packages.admin.enabled':'packages.admin.disabled')|t}}</span></div>
     <div class="item-actions"><button class="btn" [class.btn-primary]="!t.settings?.classesEnabledAt" [class.btn-secondary]="t.settings?.classesEnabledAt" [disabled]="busy()" (click)="enable(t.id,!t.settings?.classesEnabledAt)" [attr.aria-label]="((t.settings?.classesEnabledAt?'packages.admin.disable':'packages.admin.enable')|t)+' — '+t.name">{{(t.settings?.classesEnabledAt?'packages.admin.disable':'packages.admin.enable')|t}}</button></div></article>}
-  @empty{<div class="empty"><span class="empty-icon" aria-hidden="true"><app-icon name="users" [size]="22" /></span><strong>{{'packages.admin.teachersEmpty'|t}}</strong><p>{{'packages.admin.teachersEmptyHint'|t}}</p></div>}
+  @empty{<app-empty-state icon="users" [title]="'packages.admin.teachersEmpty'|t" [hint]="'packages.admin.teachersEmptyHint'|t" />}
 </section>}
 @if(can('class_packages.manage_all')&&policy();as p){
 <section class="surface block" aria-labelledby="adminPolicyTitle" [hidden]="currentSection()!=='settings'">
@@ -219,6 +219,7 @@ export class CommerceAdminComponent implements OnInit{
     if(this.can('class_teachers.manage')||this.can('class_packages.manage_all')||this.can('class_credits.adjust')||this.can('class_payments.review'))sections.push('settings');
     return sections;
   });
+  readonly tabItems=computed(()=>this.sections().map(id=>({id,label:this.i18n.t('packages.commerce.admin.'+id)})));
   readonly currentSection=computed(()=>this.section()??this.sections()[0]);
   readonly candidateId=signal<number|null>(null);
   readonly canReview=computed(()=>{

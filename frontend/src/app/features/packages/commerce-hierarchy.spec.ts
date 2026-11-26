@@ -29,9 +29,9 @@ describe('Gestión comercial: jerarquía visual',()=>{
   it('estados vacíos centrados con ícono y texto secundario, y una sola recarga por pestaña',()=>{
     const paymentList=vi.fn(()=>of({items:[],events:[]}));
     const f=render(['class_payments.review','class_teachers.manage'],{paymentList});
-    const empties=[...f.nativeElement.querySelectorAll('.empty')] as HTMLElement[];
+    const empties=[...f.nativeElement.querySelectorAll('app-empty-state')] as HTMLElement[];
     expect(empties.map(e=>e.querySelector('strong')!.textContent)).toEqual(['No hay pagos con este estado.','No hay solicitudes de reembolso para revisar.','No hay trámites del proveedor ni recuperaciones pendientes.','Todavía no hay docentes para habilitar.']);
-    expect(empties.every(e=>e.querySelector('app-icon')&&e.querySelector('p')?.textContent?.trim())).toBe(true);
+    expect(empties.every(e=>e.querySelector('app-icon')&&e.querySelector('.empty-state__hint')?.textContent?.trim())).toBe(true);
     expect(empties.some(e=>e.querySelector('button'))).toBe(false);
     const reloads=[...f.nativeElement.querySelectorAll('.toolbar button')] as HTMLButtonElement[];
     expect(reloads.map(b=>b.textContent?.trim())).toEqual(['Volver a cargar','Volver a cargar']);

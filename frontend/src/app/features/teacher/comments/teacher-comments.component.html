@@ -32,10 +32,7 @@
       <p class="text-muted mt-2 mb-0">{{ 'lessonComments.loading' | t }}</p>
     </div>
   } @else if (rows().length === 0 && !errorMessage()) {
-    <div class="state-box">
-      <strong>{{ (status() === 'unanswered' ? 'lessonComments.emptyUnanswered' : 'lessonComments.emptyInbox') | t }}</strong>
-      <span>{{ (status() === 'unanswered' ? 'lessonComments.upToDate' : 'lessonComments.inboxHint') | t }}</span>
-    </div>
+    <app-empty-state icon="message-square" [title]="(status() === 'unanswered' ? 'lessonComments.emptyUnanswered' : 'lessonComments.emptyInbox') | t" [hint]="(status() === 'unanswered' ? 'lessonComments.upToDate' : 'lessonComments.inboxHint') | t" />
   } @else if (rows().length > 0) {
     <ul class="inbox">
       @for (c of rows(); track c.id) {

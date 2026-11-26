@@ -1,3 +1,4 @@
+import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { UserPreferencesService } from '../../../core/services/user-preferences.service';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
@@ -19,7 +20,7 @@ import { toastFrom } from '../../../core/services/toast.service';
 @Component({
   selector: 'app-student-dashboard',
   standalone: true,
-  imports: [ TranslatePipe, CommonModule, RouterLink, NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem, CourseCardComponent, IconComponent, ConfirmDialogComponent],
+  imports: [EmptyStateComponent,  TranslatePipe, CommonModule, RouterLink, NgbDropdown, NgbDropdownToggle, NgbDropdownMenu, NgbDropdownItem, CourseCardComponent, IconComponent, ConfirmDialogComponent],
   templateUrl: './student-dashboard.component.html',
   styleUrl: './student-dashboard.component.scss'
 })

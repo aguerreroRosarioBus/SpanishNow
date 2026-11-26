@@ -1,3 +1,4 @@
+import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -20,7 +21,7 @@ export function invitationCode(value: string): string {
   try { return new URL(trimmed).pathname.match(/^\/live\/join\/([\w-]{16})\/?$/)?.[1] || ''; } catch { return ''; }
 }
 @Component({
-  selector: 'app-live-classes', standalone: true, imports: [FormsModule, RouterLink, IconComponent, TranslatePipe],
+  selector: 'app-live-classes', standalone: true, imports: [EmptyStateComponent, FormsModule, RouterLink, IconComponent, TranslatePipe],
   templateUrl: './live-classes.component.html', styleUrl: './live-classes.component.scss'
 })
 export class LiveClassesComponent implements OnInit {

@@ -9,12 +9,7 @@
   @if (!allowed()) {
     <div class="alert alert-warning" role="alert">{{ 'legal.admin.noPermission' | t }}</div>
   } @else {
-  <div class="legal-keys" role="tablist" [attr.aria-label]="'legal.admin.document' | t">
-    @for (k of keys; track k) {
-      <button type="button" role="tab" class="btn btn-sm" [class.btn-primary]="key() === k" [class.btn-outline-secondary]="key() !== k"
-              [attr.aria-selected]="key() === k" (click)="selectKey(k)">{{ ('legal.doc.' + k) | t }}</button>
-    }
-  </div>
+  <app-tab-bar [items]="keyItems()" [active]="key()" [label]="'legal.admin.document' | t" (selected)="selectKey($any($event))" />
 
   @if (state() === 'loading') {
     <div class="text-center py-5" role="status"><div class="spinner-border text-primary" aria-hidden="true"></div></div>

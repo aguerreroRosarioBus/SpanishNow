@@ -1,3 +1,4 @@
+import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -12,7 +13,7 @@ import { toastFrom } from '../../../core/services/toast.service';
 @Component({
   selector: 'app-legal-page',
   standalone: true,
-  imports: [TranslatePipe, RouterLink],
+  imports: [EmptyStateComponent, TranslatePipe, RouterLink],
   templateUrl: './legal-page.component.html',
   styleUrl: './legal-page.component.scss'
 })

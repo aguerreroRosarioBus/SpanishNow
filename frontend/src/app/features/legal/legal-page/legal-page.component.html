@@ -11,7 +11,7 @@
       </div>
     }
     @case ('missing') {
-      <div class="state-box"><span>{{ 'legal.notPublished' | t }}</span></div>
+      <app-empty-state icon="file-text" [title]="'legal.notPublished' | t" />
     }
     @case ('error') {
       <div class="state-box state-box--error" role="status"><span>{{ 'legal.loadError' | t }}</span></div>

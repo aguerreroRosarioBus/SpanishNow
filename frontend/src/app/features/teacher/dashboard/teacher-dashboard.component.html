@@ -17,10 +17,7 @@
       <p class="text-muted mt-2 mb-0">{{ 'teacherDashboard.loading' | t }}</p>
     </div>
   } @else if (courses().length === 0) {
-    <div class="state-box">
-      <strong>{{ 'teacherDashboard.emptyTitle' | t }}</strong>
-      <span>{{ 'teacherDashboard.emptyHint' | t }}</span>
-    </div>
+    <app-empty-state icon="book-open" [title]="'teacherDashboard.emptyTitle' | t" [hint]="'teacherDashboard.emptyHint' | t" />
   } @else {
     <div class="card-grid">
       @for (course of courses(); track course.id) {

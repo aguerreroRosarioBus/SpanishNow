@@ -1,3 +1,4 @@
+import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { Component, DestroyRef, DOCUMENT, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -20,7 +21,7 @@ import { RestoreFocusDirective } from '../../shared/directives/restore-focus.dir
 import { toastFrom } from '../../core/services/toast.service';
 
 interface Draft { localStart: string; timeZone: string; offset: string; disambiguation: Disambiguation; minutes: number }
-@Component({ selector: 'app-schedule', standalone: true, imports: [FormsModule, RouterLink, TranslatePipe, ClassSessionCardComponent, SessionTimeComponent, TimeZoneSelectComponent, IconComponent, DialogModule, RestoreFocusDirective],
+@Component({ selector: 'app-schedule', standalone: true, imports: [EmptyStateComponent, FormsModule, RouterLink, TranslatePipe, ClassSessionCardComponent, SessionTimeComponent, TimeZoneSelectComponent, IconComponent, DialogModule, RestoreFocusDirective],
   templateUrl: './schedule.component.html',
   styleUrl: './schedule.component.scss'
 })

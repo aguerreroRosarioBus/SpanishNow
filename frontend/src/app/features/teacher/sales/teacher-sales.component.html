@@ -21,10 +21,7 @@
       <p class="text-muted mt-2 mb-0">{{ 'teacherCommerce.loadingSales' | t }}</p>
     </div>
   } @else if (summary() && isEmpty()) {
-    <div class="state-box">
-      <strong>{{ 'teacherCommerce.emptySales' | t }}</strong>
-      <span>{{ 'teacherCommerce.emptySalesHint' | t }}</span>
-    </div>
+    <app-empty-state icon="receipt" [title]="'teacherCommerce.emptySales' | t" [hint]="'teacherCommerce.emptySalesHint' | t" />
   } @else if (summary()) {
     @for (currency of currencies(); track currency) {
       <section class="currency-block" [attr.aria-label]="'teacherCommerce.salesCurrency' | t: {currency: currency.toUpperCase()}">

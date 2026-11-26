@@ -2,17 +2,12 @@
   max-width: 960px;
 }
 
-.commerce-nav,
 .commerce-actions,
 .commerce-copy {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--spacing-sm);
-}
-
-.commerce-nav {
-  margin-bottom: var(--spacing-md);
 }
 
 .commerce-guide {

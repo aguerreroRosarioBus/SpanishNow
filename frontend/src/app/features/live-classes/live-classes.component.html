@@ -33,7 +33,7 @@
   </div></div>
   @if (loading()) { <p role="status" class="text-muted">{{ 'liveBoard.list.loading' | t }}</p> }
   @else if (!filtered().length) {
-    <div class="empty-live"><app-icon name="rectangle" [size]="48" /><h2>{{ (teacher ? 'liveBoard.list.emptyTeacherTitle' : 'liveBoard.list.emptyStudentTitle') | t }}</h2><p>{{ (teacher ? 'liveBoard.list.emptyTeacherText' : 'liveBoard.list.emptyStudentText') | t }}</p></div>
+    <app-empty-state icon="rectangle" [title]="(teacher ? 'liveBoard.list.emptyTeacherTitle' : 'liveBoard.list.emptyStudentTitle') | t" [hint]="(teacher ? 'liveBoard.list.emptyTeacherText' : 'liveBoard.list.emptyStudentText') | t" />
   } @else {
     <div class="live-grid">@for (c of filtered(); track c.id) {
       <a [routerLink]="['/live', c.id]" class="live-card"><div class="board-mini" aria-hidden="true"><div class="mini-sheet"><span class="mini-note"></span><i class="mini-connector"></i><b class="mini-shape"></b><span class="mini-lines"></span></div><span class="board-kind"><app-icon name="rectangle" [size]="12" />{{ 'liveBoard.list.boardKind' | t }}</span></div>

@@ -1,3 +1,4 @@
+import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
 import { Component, inject, OnInit, signal, computed } from '@angular/core';
@@ -27,7 +28,7 @@ export interface CourseProgress {
 @Component({
   selector: 'app-progress',
   standalone: true,
-  imports: [TranslatePipe, CommonModule, RouterLink, IconComponent, NextCourseCardComponent],
+  imports: [EmptyStateComponent, TranslatePipe, CommonModule, RouterLink, IconComponent, NextCourseCardComponent],
   templateUrl: './progress.component.html',
   styleUrl: './progress.component.scss'
 })

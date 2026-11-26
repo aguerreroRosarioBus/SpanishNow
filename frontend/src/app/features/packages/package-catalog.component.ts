@@ -1,3 +1,4 @@
+import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { parseMoneyInput, moneyInputValue } from '../../shared/utils/money-input';
 import { Component, OnInit, computed, inject, input, output, signal } from '@angular/core';
 import { FormsModule, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -19,7 +20,7 @@ import { RestoreFocusDirective } from '../../shared/directives/restore-focus.dir
 import { toastFrom, toastWhen } from '../../core/services/toast.service';
 const editable = ['nameEn','nameEs','descriptionEn','descriptionEs','modality','groupSize','billing','sessionsCount','minutesPerSession','seatsCovered','priceAmount','currency','validityHours','policyVersionId','hotmartProductId','hotmartOfferCode','hotmartCheckoutUrl'] as const;
 @Component({
-  selector:'app-package-catalog', standalone:true, imports:[TranslatePipe,FormsModule,ReactiveFormsModule,RouterLink,PackageOrientationComponent,DialogModule,NgbDropdownModule,IconComponent,RestoreFocusDirective,ConfirmDialogComponent],
+  selector:'app-package-catalog', standalone:true, imports:[EmptyStateComponent, TranslatePipe,FormsModule,ReactiveFormsModule,RouterLink,PackageOrientationComponent,DialogModule,NgbDropdownModule,IconComponent,RestoreFocusDirective,ConfirmDialogComponent],
   templateUrl:'./package-catalog.component.html', styleUrl:'./package-catalog.component.scss'
 })
 export class PackageCatalogComponent implements OnInit {
