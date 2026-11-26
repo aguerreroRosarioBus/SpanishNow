@@ -1,8 +1,9 @@
 // Courses sold on Hotmart: the checkout link "Buy now" opens, and the purchase webhook (version 2.0.0) that gives access.
 // Hotmart charges the buyer; SpanishNow only learns about the purchase here and fulfils it like any other order.
-const { timingSafeEqual } = require('crypto');
+const { createHash, timingSafeEqual } = require('node:crypto');
 const { Op } = require('sequelize');
-const { Course, Order } = require('../models');
+const sequelize = require('../config/database');
+const { Course, Order, TeacherHotmartConnection } = require('../models');
 const { fulfillOrder, registerRefund } = require('./orderService');
 const { normalizeEmail, isValidEmail } = require('./accounts');
 const { PaymentError } = require('./paymentService');
@@ -17,7 +18,7 @@ const isHotmartCourse = course => Boolean(course && course.hotmartCheckoutUrl);
 /** Course fields of a PUT body: { values } or { error, status? }. '' or null clears a field. */
 async function parseCourseFields(body, course, { transaction } = {}) {
   const has = key => body[key] !== undefined;
-  if (!has('hotmartProductId') && !has('hotmartCheckoutUrl')) return { values: {} };
+  if (!has('hotmartProductId') && !has('hotmartCheckoutUrl') && !has('hotmartOwnAccount')) return { values: {} };
   const values = {};
   const text = key => (body[key] === null ? '' : String(body[key]).trim());
 
@@ -47,20 +48,32 @@ async function parseCourseFields(body, course, { transaction } = {}) {
   const productId = has('hotmartProductId') ? values.hotmartProductId : course.hotmartProductId;
   const checkoutUrl = has('hotmartCheckoutUrl') ? values.hotmartCheckoutUrl : course.hotmartCheckoutUrl;
   if (checkoutUrl && !productId) return { error: 'Set the Hotmart product id too: the webhook needs it to find the course' };
+  if (has('hotmartOwnAccount')) {
+    const flag = body.hotmartOwnAccount;
+    if (![true, false, 'true', 'false'].includes(flag)) return { error: 'Invalid Hotmart account option' };
+    values.hotmartOwnAccount = flag === true || flag === 'true';
+  }
+  if (productId && checkoutUrl && (values.hotmartOwnAccount ?? course.hotmartOwnAccount)) {
+    const connection = await TeacherHotmartConnection.findByPk(course.teacherId, { transaction });
+    if (!connection?.verifiedAt) {
+      return { status: 409, code: 'hotmart_connection_unverified', error: 'Verify your Hotmart connection first' };
+    }
+  } else if (!productId || !checkoutUrl) {
+    values.hotmartOwnAccount = false;
+  }
   return { values };
 }
 
 // La validación previa puede quedar obsoleta durante una subida de imagen. Se repite bajo el mismo cerrojo que W05
 // inmediatamente antes de escribir, sin mantener transacciones abiertas durante llamadas a Cloudinary.
 async function saveCourseFields(course, fields) {
-  if (fields.hotmartProductId === undefined && fields.hotmartCheckoutUrl === undefined) return course.update(fields);
-  const sequelize = require('../config/database');
+  if (fields.hotmartProductId === undefined && fields.hotmartCheckoutUrl === undefined && fields.hotmartOwnAccount === undefined) return course.update(fields);
   return sequelize.transaction(async transaction => {
     await require('./hotmartProductLocks').lock(fields.hotmartProductId || course.hotmartProductId, transaction);
     const fresh = await Course.findByPk(course.id, { transaction, lock: transaction.LOCK.UPDATE });
     const parsed = await parseCourseFields(fields, fresh, { transaction });
-    if (parsed.error) throw Object.assign(new Error(parsed.error), { statusCode: parsed.status || 400, code: 'hotmart_product_conflict' });
-    await fresh.update(fields, { transaction });
+    if (parsed.error) throw Object.assign(new Error(parsed.error), { statusCode: parsed.status || 400, code: parsed.code || 'hotmart_product_conflict' });
+    await fresh.update({ ...fields, ...parsed.values }, { transaction });
     course.set(fresh.toJSON());
     return course;
   });
@@ -77,9 +90,9 @@ function checkoutUrlFor(course, user) {
 }
 
 /** URL to paste in Hotmart. PUBLIC_API_URL (e.g. https://api.example.com) wins; otherwise the host the request came to. */
-function webhookUrl(req) {
+function webhookUrl(req, { trustedProtocol = false } = {}) {
   const configuredBase = (process.env.PUBLIC_API_URL || '').replace(/\/+$/, '');
-  const proto = String(req.get('x-forwarded-proto') || req.protocol).split(',')[0].trim();
+  const proto = trustedProtocol ? req.protocol : String(req.get('x-forwarded-proto') || req.protocol).split(',')[0].trim();
   return `${configuredBase || `${proto}://${req.get('host')}`}/api/payments/hotmart/webhook`;
 }
 const configured = () => Boolean(process.env.HOTMART_HOTTOK);
@@ -103,31 +116,48 @@ function priceOf(purchase, course) {
   return { amount: course.price, currency: String(course.currency).toLowerCase() };
 }
 
-async function courseOf(product) {
+async function courseOf(product, teacherId) {
   const keys = [product && product.id, product && product.ucode].filter(value => value !== undefined && value !== null && value !== '').map(String);
   if (!keys.length) return null;
-  return Course.findOne({ where: { hotmartProductId: keys } });
+  const owner = teacherId == null ? {} : { teacherId, hotmartOwnAccount: true };
+  return Course.findOne({ where: { hotmartProductId: keys, ...owner } });
 }
 
 /** The order of a Hotmart transaction, created on first sight (the transaction code is the idempotency key). */
-async function orderFor(course, purchase, buyer, status) {
-  const transaction = String(purchase.transaction);
-  const sessionId = `hotmart_${transaction}`.slice(0, 255);
-  const existing = await Order.findOne({ where: { providerSessionId: sessionId } });
-  if (existing) return existing;
-  const { amount, currency } = priceOf(purchase, course);
-  const email = normalizeEmail(buyer && buyer.email);
-  try {
-    return await Order.create({
-      courseId: course.id, email: isValidEmail(email) ? email : null, amount, currency, originalAmount: amount,
-      provider: 'hotmart', providerSessionId: sessionId, providerPaymentId: transaction.slice(0, 255),
-      status, ...(status === 'refunded' ? { refundedAmount: amount, refundedAt: new Date() } : {})
+async function orderFor(course, purchase, buyer, status, teacherId) {
+  const paymentId = String(purchase.transaction);
+  const legacySessionId = `hotmart_${paymentId}`.slice(0, 255);
+  const ownAccount = teacherId != null;
+  const sessionId = ownAccount
+    ? `hotmart_course_${course.id}_${createHash('sha256').update(paymentId).digest('hex')}`
+    : legacySessionId;
+  return sequelize.transaction(async transaction => {
+    // La elección de cuenta y la creación de la orden se serializan con el guardado del curso.
+    const current = await Course.findByPk(course.id, { transaction, lock: transaction.LOCK.UPDATE });
+    if (!current || current.hotmartProductId !== course.hotmartProductId ||
+      (ownAccount && (!current.hotmartOwnAccount || current.teacherId !== teacherId))) return null;
+
+    const findOwnOrder = id => Order.findOne({
+      where: { providerSessionId: id, courseId: current.id, provider: 'hotmart' }, transaction
     });
-  } catch (error) {
-    // Two deliveries of the same transaction at once: the other one created it.
-    if (error.name === 'SequelizeUniqueConstraintError') return Order.findOne({ where: { providerSessionId: sessionId } });
-    throw error;
-  }
+    const existing = await findOwnOrder(sessionId) || (ownAccount ? await findOwnOrder(legacySessionId) : null);
+    if (existing) return existing;
+    // Tras cambiar de cuenta, el webhook compartido puede conciliar ventas anteriores de este curso.
+    if (!ownAccount && current.hotmartOwnAccount) return null;
+    const { amount, currency } = priceOf(purchase, current);
+    const email = normalizeEmail(buyer && buyer.email);
+    try {
+      return await Order.create({
+        courseId: current.id, email: isValidEmail(email) ? email : null, amount, currency, originalAmount: amount,
+        provider: 'hotmart', providerSessionId: sessionId, providerPaymentId: paymentId.slice(0, 255),
+        status, ...(status === 'refunded' ? { refundedAmount: amount, refundedAt: new Date() } : {})
+      }, { transaction });
+    } catch (error) {
+      // Una colisión con un código de otro curso nunca permite operar sobre su orden.
+      if (error.name === 'SequelizeUniqueConstraintError') return null;
+      throw error;
+    }
+  });
 }
 
 /**
@@ -137,15 +167,20 @@ async function orderFor(course, purchase, buyer, status) {
 async function handleEvent(body) {
   const classResult = await require('./classPayments').handleEvent(body);
   if (classResult.handled) return classResult;
+  return handleCourseEvent(body);
+}
+
+async function handleCourseEvent(body, teacherId) {
   const event = body && body.event;
   const data = (body && body.data) || {};
   const purchase = data.purchase || {};
   if (!FULFIL_EVENTS.has(event) && !REFUND_EVENTS.has(event)) return { handled: false, reason: 'event' };
   if (!purchase.transaction) return { handled: false, reason: 'no_transaction' };
 
-  const course = await courseOf(data.product);
+  const course = await courseOf(data.product, teacherId);
+  const ownAccount = teacherId != null;
   if (!course) {
-    console.warn(`Hotmart ${event} for unknown product ${data.product && data.product.id}; ignored`);
+    if (!ownAccount) console.warn(`Hotmart ${event} for unknown product ${data.product && data.product.id}; ignored`);
     return { handled: false, reason: 'unknown_product' };
   }
 
@@ -153,16 +188,18 @@ async function handleEvent(body) {
     const buyer = data.buyer || {};
     const email = normalizeEmail(buyer.email);
     if (!isValidEmail(email)) {
-      console.warn(`Hotmart ${purchase.transaction} has no valid buyer email; ignored`);
+      if (!ownAccount) console.warn(`Hotmart ${purchase.transaction} has no valid buyer email; ignored`);
       return { handled: false, reason: 'no_email' };
     }
-    const order = await orderFor(course, purchase, buyer, 'pending');
+    const order = await orderFor(course, purchase, buyer, 'pending', teacherId);
+    if (!order) return { handled: false };
     const result = await fulfillOrder(order, { email, name: buyer.name, paymentId: String(purchase.transaction) });
     return { handled: true, alreadyPaid: result.alreadyPaid };
   }
 
   // Refund or chargeback. Seen before the approval: the order is stored as refunded so a late approval gives no access.
-  const order = await orderFor(course, purchase, data.buyer, 'refunded');
+  const order = await orderFor(course, purchase, data.buyer, 'refunded', teacherId);
+  if (!order) return { handled: false };
   const result = await registerRefund(order.id, { full: true, revokeAccess: true });
   if (result.reason === 'not_paid') {
     // Approved delivery that never got fulfilled (still pending): close it so a retry of the approval gives no access.
@@ -172,4 +209,4 @@ async function handleEvent(body) {
   return { handled: true, applied: result.applied };
 }
 
-module.exports = { isHotmartCourse, parseCourseFields, saveCourseFields, checkoutUrlFor, verifyHottok, handleEvent, webhookUrl, configured };
+module.exports = { isHotmartCourse, parseCourseFields, saveCourseFields, checkoutUrlFor, verifyHottok, handleEvent, handleCourseEvent, webhookUrl, configured };

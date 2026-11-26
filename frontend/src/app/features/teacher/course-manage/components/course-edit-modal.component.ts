@@ -1,8 +1,7 @@
 import { ModalFocusDirective } from '../../../../shared/directives/modal-focus.directive';
-import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Component, OnDestroy, computed, inject, signal, viewChild } from '@angular/core';
+import { AbstractControl, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CourseService } from '../../../../core/services/course.service';
-import { HotmartService, HotmartSetup } from '../../../../core/services/hotmart.service';
 import { CouponService } from '../../../../core/services/coupon.service';
 import { Course } from '../../../../core/models/course.model';
 import { Coupon } from '../../../../core/models/sales.model';
@@ -13,19 +12,20 @@ import { ImageSearchComponent } from '../../../../shared/components/image-search
 import { imageFileErrorKey, IMAGE_ACCEPT } from '../../lesson-composer/image-file';
 import { I18nService } from '../../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
+import { TeacherHotmartConnectionComponent } from './teacher-hotmart-connection.component';
+import { HotmartGuideImageComponent } from './hotmart-guide-image.component';
 
 /** Edición del curso: título, descripción y datos de venta (precio, moneda, slug, publicación, texto de venta). */
 @Component({
   selector: 'app-course-edit-modal',
   standalone: true,
-  imports: [ModalFocusDirective, ReactiveFormsModule, VideoEmbedComponent, ImageSearchComponent, TranslatePipe],
+  imports: [ModalFocusDirective, ReactiveFormsModule, VideoEmbedComponent, ImageSearchComponent, TranslatePipe, TeacherHotmartConnectionComponent, HotmartGuideImageComponent],
   templateUrl: './course-edit-modal.component.html'
 })
 export class CourseEditModalComponent implements OnDestroy {
   private store = inject(CourseManageStore);
   private courseService = inject(CourseService);
   private couponService = inject(CouponService);
-  private hotmartService = inject(HotmartService);
   private toast = inject(ToastService);
   private i18n = inject(I18nService);
 
@@ -47,12 +47,22 @@ export class CourseEditModalComponent implements OnDestroy {
     introVideoUrl: [''],
     nextCourseId: [null as number | null],
     nextCourseCouponId: [null as number | null],
-    hotmartProductId: ['', [Validators.maxLength(40), Validators.pattern(/^[A-Za-z0-9]*$/)]],
-    hotmartCheckoutUrl: ['', [Validators.maxLength(500)]]
-  });
-  /** URL del webhook y estado del token en el servidor; null si no se pudo consultar. */
-  hotmartSetup = signal<HotmartSetup | null>(null);
-  webhookCopied = signal(false);
+    hotmartProductId: ['', [Validators.maxLength(40), Validators.pattern(/^\s*[A-Za-z0-9-]*\s*$/)]],
+    hotmartCheckoutUrl: ['', [Validators.maxLength(500), (control: AbstractControl<string>) => {
+      const raw = control.value?.trim();
+      if (!raw) return null;
+      try {
+        const url = new URL(raw);
+        return url.protocol === 'https:' && ['pay.hotmart.com', 'go.hotmart.com'].includes(url.hostname)
+          ? null : { hotmartUrl: true };
+      } catch {
+        return { hotmartUrl: true };
+      }
+    }]],
+    hotmartOwnAccount: [true]
+  }, { validators: group => group.value.hotmartCheckoutUrl?.trim() && !group.value.hotmartProductId?.trim()
+    ? { hotmartProductMissing: true } : null });
+  readonly hotmartConnection = viewChild(TeacherHotmartConnectionComponent);
   /** Otros cursos del docente (candidatos a «curso siguiente») y sus cupones activos. */
   otherCourses = signal<Course[]>([]);
   private coupons = signal<Coupon[]>([]);
@@ -108,7 +118,8 @@ export class CourseEditModalComponent implements OnDestroy {
         nextCourseId: course.nextCourseId ?? null,
         nextCourseCouponId: course.nextCourseCouponId ?? null,
         hotmartProductId: course.hotmartProductId || '',
-        hotmartCheckoutUrl: course.hotmartCheckoutUrl || ''
+        hotmartCheckoutUrl: course.hotmartCheckoutUrl || '',
+        hotmartOwnAccount: course.hotmartCheckoutUrl ? Boolean(course.hotmartOwnAccount) : true
       });
       this.selectedNext.set(course.nextCourseId ?? null);
     }
@@ -122,7 +133,6 @@ export class CourseEditModalComponent implements OnDestroy {
       next: list => this.otherCourses.set(list.filter(c => c.id !== this.store.courseId())),
       error: () => { /* sin lista, el select queda vacío */ }
     });
-    this.hotmartService.setup().subscribe({ next: s => this.hotmartSetup.set(s), error: () => { /* sin datos, solo se oculta la URL */ } });
     this.couponService.list().subscribe({ next: list => this.coupons.set(list), error: () => { /* idem */ } });
   }
 
@@ -136,20 +146,20 @@ export class CourseEditModalComponent implements OnDestroy {
     return this.store.course()?.introVideoUrl ?? null;
   }
 
-  /** Copia la URL del webhook para pegarla en Hotmart. */
-  copyWebhook(): void {
-    const url = this.hotmartSetup()?.webhookUrl;
-    if (!url) return;
-    navigator.clipboard?.writeText(url).then(() => {
-      this.webhookCopied.set(true);
-      setTimeout(() => this.webhookCopied.set(false), 2000);
-    }, () => this.toast.error(this.i18n.t('teacherManage.courseEdit.copyError')));
+  hasSharedHotmart(): boolean {
+    const course = this.store.course();
+    return Boolean(course?.hotmartCheckoutUrl && !course.hotmartOwnAccount);
+  }
+
+  needsVerifiedHotmart(): boolean {
+    return Boolean(this.form.value.hotmartOwnAccount && this.form.value.hotmartCheckoutUrl?.trim()
+      && !this.store.course()?.hotmartOwnAccount && !this.hotmartConnection()?.verified());
   }
 
   close(): void { this.store.close(); }
 
   save(): void {
-    if (this.form.invalid) {
+    if (this.form.invalid || this.needsVerifiedHotmart()) {
       this.form.markAllAsTouched();
       return;
     }
@@ -169,7 +179,8 @@ export class CourseEditModalComponent implements OnDestroy {
       nextCourseCouponId: v.nextCourseId != null && v.nextCourseCouponId != null ? Number(v.nextCourseCouponId) : null,
       // Vacío = quitar (el curso vuelve a cobrarse en el sitio)
       hotmartProductId: (v.hotmartProductId ?? '').trim(),
-      hotmartCheckoutUrl: (v.hotmartCheckoutUrl ?? '').trim()
+      hotmartCheckoutUrl: (v.hotmartCheckoutUrl ?? '').trim(),
+      hotmartOwnAccount: Boolean(v.hotmartOwnAccount)
     } as Record<string, unknown>;
     const slug = (v.slug ?? '').trim();
     if (slug) payload['slug'] = slug;

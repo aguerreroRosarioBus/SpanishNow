@@ -1,7 +1,7 @@
 // Courses sold on Hotmart: course fields, "Buy now" to the Hotmart checkout and the purchase webhook (2.0.0).
 const request = require('supertest');
 const { randomUUID } = require('crypto');
-const { Order, Enrollment, User, Coupon } = require('../src/models');
+const { Order, Enrollment, User, Coupon, TeacherHotmartConnection, PaymentProviderEvent } = require('../src/models');
 const { clearOutbox } = require('../src/services/mailService');
 const { app, as, createWorld, createUser } = require('./helpers/fixtures');
 const { publish, newCourse, mailsTo } = require('./helpers/sales');
@@ -209,5 +209,99 @@ describe('selling on Hotmart', () => {
       await world.teacher.update({ permissions: [] });
       expect((await as(world.student).get('/api/teacher/hotmart')).status).toBe(403);
     });
+  });
+});
+
+describe('conexión de Hotmart autogestionada por el docente', () => {
+  const settings = '/api/teacher/hotmart/connection';
+  const key = 'hottok-docente-ficticio';
+  const testBody = { id: randomUUID(), version: '2.0.0', event: 'PURCHASE_OUT_OF_SHOPPING_CART' };
+  const send = (path, body, token = key) => request(app).post(path).set('X-HOTMART-HOTTOK', token).send(body);
+  let world;
+  let other;
+
+  beforeAll(async () => {
+    world = await createWorld();
+    other = await createUser('teacher', 'otro-docente-hotmart');
+  });
+  beforeEach(() => { process.env.HOTMART_HOTTOK = HOTTOK; clearOutbox(); });
+  afterAll(() => { delete process.env.HOTMART_HOTTOK; });
+
+  test('cada docente prepara una clave privada y verifica con un evento sin efectos comerciales', async () => {
+    const initial = await as(world.teacher).get(settings);
+    expect(initial.body).toEqual({ webhookUrl: null, pending: false, verifiedAt: null });
+    expect((await as(world.student).put(settings, { hottok: key })).status).toBe(403);
+    expect((await as(world.teacher).put(settings, { hottok: ' clave inválida ' })).status).toBe(400);
+
+    const staged = await as(world.teacher).put(settings, { hottok: ` ${key} ` });
+    expect(staged.status).toBe(200);
+    expect(staged.headers['cache-control']).toBe('no-store');
+    expect(staged.body).toEqual({ webhookUrl: expect.stringMatching(/\/teachers\/[\da-f-]{36}$/), pending: true, verifiedAt: null });
+    const row = await TeacherHotmartConnection.findByPk(world.teacher.id);
+    expect(row).toMatchObject({ activeDigest: null, pendingDigest: expect.stringMatching(/^[\da-f]{64}$/) });
+    expect(JSON.stringify(row)).not.toContain(key);
+    expect((await as(other).get(settings)).body.webhookUrl).toBeNull();
+
+    const path = new URL(staged.body.webhookUrl).pathname;
+    const course = await publish(await newCourse(world.teacher));
+    const product = productId();
+    const values = { hotmartProductId: product, hotmartCheckoutUrl: CHECKOUT, hotmartOwnAccount: true };
+    const change = () => as(world.teacher).put(`/api/courses/${course.id}`, values);
+    const body = purchase('PURCHASE_APPROVED', { product, transaction: randomUUID(), email: 'prueba-docente@jest.test' });
+    expect((await change()).body.code).toBe('hotmart_connection_unverified');
+    expect((await send(path, testBody, 'otra-clave')).status).toBe(401);
+    expect((await send(path, body)).status).toBe(503);
+    expect((await send(path, { ...body, ...testBody })).body).toEqual({ received: true, test: true });
+    expect(await Order.count({ where: { courseId: course.id } })).toBe(0);
+    expect(await PaymentProviderEvent.count({ where: { eventType: testBody.event } })).toBe(0);
+    expect(mailsTo('prueba-docente@jest.test')).toHaveLength(0);
+    expect((await as(world.teacher).get(settings)).body).toMatchObject({ pending: false, verifiedAt: expect.any(String) });
+    expect((await change()).body.hotmartOwnAccount).toBe(true);
+  });
+
+  test('aísla cursos y transacciones, admite reenvíos y mantiene la clave activa durante el cambio', async () => {
+    const staged = await as(world.teacher).put(settings, { hottok: key });
+    const path = new URL(staged.body.webhookUrl).pathname;
+    await send(path, testBody);
+    const otherKey = 'hottok-otro-docente-ficticio';
+    const otherPath = new URL((await as(other).put(settings, { hottok: otherKey })).body.webhookUrl).pathname;
+    await send(otherPath, testBody, otherKey);
+    const link = async teacher => {
+      const course = await publish(await newCourse(teacher));
+      const result = await as(teacher).put(`/api/courses/${course.id}`, {
+        hotmartProductId: productId(), hotmartCheckoutUrl: CHECKOUT, hotmartOwnAccount: true
+      });
+      expect(result.body.hotmartOwnAccount).toBe(true);
+      return result.body;
+    };
+    const course = await link(world.teacher);
+    const otherCourse = await link(other);
+    const transaction = randomUUID();
+    const email = `auto-${randomUUID()}@jest.test`;
+    const body = purchase('PURCHASE_APPROVED', { product: course.hotmartProductId, transaction, email });
+    const otherBody = purchase('PURCHASE_APPROVED', { product: otherCourse.hotmartProductId, transaction, email });
+
+    expect((await send(path, otherBody)).body.ignored).toBe(true);
+    expect((await send(otherPath, body, otherKey)).body.ignored).toBe(true);
+    expect((await hook(body)).body.ignored).toBe(true);
+    expect(await Order.count({ where: { courseId: [course.id, otherCourse.id] } })).toBe(0);
+    expect((await send(path, body)).body).toEqual({ received: true });
+    expect((await send(path, body)).body).toEqual({ received: true });
+    expect((await send(otherPath, otherBody, otherKey)).body).toEqual({ received: true });
+    expect(await Order.count({ where: { providerPaymentId: transaction } })).toBe(2);
+
+    const newKey = 'hottok-renovado-ficticio';
+    const replacement = await as(world.teacher).put(settings, { hottok: newKey });
+    expect(replacement.body).toMatchObject({ pending: true, verifiedAt: expect.any(String) });
+    expect(new URL(replacement.body.webhookUrl).pathname).toBe(path);
+    expect((await send(path, body, newKey)).status).toBe(503);
+    expect((await send(path, body)).status).toBe(200);
+    expect((await send(path, testBody, newKey)).body.test).toBe(true);
+    expect((await send(path, body)).status).toBe(401);
+
+    const refund = purchase('PURCHASE_REFUNDED', { product: course.hotmartProductId, transaction, email });
+    expect((await send(path, refund, newKey)).body).toEqual({ received: true });
+    expect(await Order.findOne({ where: { courseId: course.id, providerPaymentId: transaction } })).toMatchObject({ status: 'refunded' });
+    expect(await Order.findOne({ where: { courseId: otherCourse.id, providerPaymentId: transaction } })).toMatchObject({ status: 'paid' });
   });
 });
