@@ -53,7 +53,7 @@ export interface ClassPurchase {
   /** Solo en la vista de administración (GET /api/admin/class-purchases/:id). */adjustments?:{id:number;units:number;direction:'add'|'remove'|'restore';reason:string|null;createdAt:string}[];
 }
 
-export interface PurchaseRefund{status:'requested'|'needs_information'|'manual_followup'|'manual_hotmart'|'queued'|'confirmed';amount:number;currency:string;refundedAmount:number}
+export interface PurchaseRefund{status:'requested'|'needs_information'|'manual_followup'|'manual_hotmart'|'queued'|'confirmed'|'reverted';amount:number;currency:string;refundedAmount:number}
 export interface RefundPreview {
   purchaseId:number;orderId:number;provider:'fake'|'hotmart';version:number;amount:number;currency:string;orderStatus:string;refundedAmount:number;deadline:string;deadlineVerified:boolean;
   classification:'standard_full_unused'|'individual_review';reservationsPending:boolean;consumed:number;available:number;reserved:number;type:string;quote:string;

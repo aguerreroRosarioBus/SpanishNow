@@ -12,6 +12,7 @@ export class PackagesService {
   requestRefund(id:number,body:unknown,key:string){return this.http.post<RefundPreview>(`${this.base}/me/class-packages/${id}/refund-requests`,body,{headers:{'Idempotency-Key':key}});}
   refundRequests(){return this.http.get<RefundPreview[]>(`${this.base}/admin/class-refund-requests`);}
   reviewRefund(id:number,body:unknown){return this.http.post<RefundPreview>(`${this.base}/admin/class-refund-requests/${id}/review`,body);}
+  reverseRefund(id:number,body:unknown){return this.http.post<RefundPreview>(`${this.base}/admin/class-refund-requests/${id}/reverse`,body);}
   paymentList(status:string){return this.http.get<{items:ClassOrder[];events:{id:number;orderId:number|null;eventType:string;createdAt:string}[]}>(`${this.base}/admin/class-payments`,{params:{status}});}
   resolvePayment(id:number,action:string,reason:string,refundedAmount?:number){return this.http.post<{manualRequired?:boolean}>(`${this.base}/admin/class-payments/${id}/resolve`,{action,reason,...(refundedAmount!=null?{refundedAmount}:{})});}
   providerState(){return this.http.get<ClassProviderState>(`${this.base}/admin/class-provider`);}

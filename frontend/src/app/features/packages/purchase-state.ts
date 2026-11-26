@@ -5,7 +5,7 @@ export type RefundKind = 'requested' | 'processing' | 'refunded';
 
 export function refundKind(p: Pick<ClassPurchase, 'refund'>): RefundKind | null {
   const status = p.refund?.status;
-  if (!status) return null;
+  if (!status || status === 'reverted') return null; // aprobación revertida: la compra vuelve a ser normal
   return status === 'confirmed' ? 'refunded' : status === 'queued' || status === 'manual_hotmart' ? 'processing' : 'requested';
 }
 

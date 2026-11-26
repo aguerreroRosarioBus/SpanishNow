@@ -117,4 +117,13 @@ describe('W20 panel comercial: ajuste, fecha y bandeja',()=>{
   expect(text).toContain('Ya se dieron 1 clase(s)');expect(text).toContain('devuelve el importe completo (USD 90,00)');
   expect(text).toContain('Mensaje al comprador');
  });
+ it('una aprobación en trámite se puede revertir con motivo y mensaje obligatorio al comprador (D3-DIN-02)',()=>{
+  const reverseRefund=vi.fn((..._args:unknown[])=>of(preview));
+  TestBed.configureTestingModule({imports:[CommerceAdminComponent],providers:[...providers,{provide:AuthService,useValue:{currentUser:()=>null,hasPermission:(k:string)=>k==='class_payments.review'}},{provide:PackagesService,useValue:{providerState:()=>throwError(()=>({status:403})),refundRequests:()=>of([{...preview,requests:[{id:7,type:'voluntary',classification:'standard_full_unused',reason:'Ficticio',createdAt:'2026-11-25T10:00:00Z',amount:9000,currency:'USD',status:'queued',updates:[]}]},{...preview,purchaseId:6,requests:[{id:8,type:'voluntary',classification:'standard_full_unused',reason:'Ficticio',createdAt:'2026-11-25T10:00:00Z',amount:9000,currency:'USD',status:'requested',updates:[]}]}]),paymentList:()=>of({items:[],events:[]}),paymentJobs:()=>of([]),reverseRefund,error:()=>''}}]});
+  const i18n=TestBed.inject(I18nService);i18n.setLocale('es');
+  const f=TestBed.createComponent(CommerceAdminComponent);f.detectChanges();const c=f.componentInstance;
+  const buttons=[...f.nativeElement.querySelectorAll('button')].filter((b:any)=>b.textContent.includes('Revertir aprobación'));expect(buttons).toHaveLength(1); // solo en la aprobada, no en la solicitada
+  c.reverseRefund(preview,7);c.confirmed=true;c.reason='Nota interna';c.confirmOperation();expect(reverseRefund).not.toHaveBeenCalled();
+  c.buyerMessage='Seguimos con tu paquete.';c.confirmOperation();expect(reverseRefund.mock.calls[0]).toEqual([7,{reason:'Nota interna',quote:'server-quote',buyerMessage:'Seguimos con tu paquete.'}]);
+ });
 });

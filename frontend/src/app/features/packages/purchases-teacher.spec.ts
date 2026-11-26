@@ -111,4 +111,8 @@ describe('W20 estados de la tarjeta: reembolso y ajustes (D3-DIN-04, D3-DIN-09)'
     const detail=render(snap,{purchase:{adjustedUnits:-3,ledger:[{id:1,operation:'adjust',units:1,createdAt:'2026-11-25T21:38:00Z',reason:'Alta',fromBucket:'none',toBucket:'available'},{id:2,operation:'adjust',units:4,createdAt:'2026-11-25T21:39:00Z',reason:'Baja',fromBucket:'available',toBucket:'none'},{id:3,operation:'adjust',units:1,createdAt:'2026-11-25T21:40:00Z',reason:null,fromBucket:'consumed',toBucket:'available'}]}});
     expect(detail).toContain('Ajuste: se sumó 1');expect(detail).toContain('Ajuste: se restó 4');expect(detail).toContain('Ajuste: se devolvió 1 clase(s) ya usada(s)');expect(detail).toContain('Se descontaron 3 por un ajuste del equipo.');
   });
+  it('aprobación revertida: la compra vuelve a verse activa, sin etiqueta de reembolso',()=>{
+    const text=render(snap,{purchase:{refund:refund('reverted')}});
+    expect([...last.querySelectorAll('.card-head .badge-status')].map(b=>b.textContent?.trim())).toEqual(['Activo']);expect(text).toContain('disponibles de 4');
+  });
 });

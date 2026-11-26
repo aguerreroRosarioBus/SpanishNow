@@ -88,6 +88,7 @@ template:`
     @if(r.status!=='confirmed'){
       <div class="item-actions">
         <button class="btn btn-outline-danger" [disabled]="!ready()||v.reservationsPending||r.status==='queued'||r.status==='manual_hotmart'" (click)="reviewRefund(v,r.id,'approve')">{{'packages.admin.approve'|t}}</button>
+        @if(r.status==='queued'||r.status==='manual_hotmart'){<button class="btn btn-secondary" [disabled]="!ready()" (click)="reverseRefund(v,r.id)">{{'packages.admin.reverse'|t}}</button>}
         <button class="btn btn-secondary" [disabled]="!ready()" (click)="reviewRefund(v,r.id,'needs_information')">{{'packages.admin.information'|t}}</button>
         <button class="btn btn-secondary" [disabled]="!ready()" (click)="reviewRefund(v,r.id,'manual_update')">{{'packages.admin.followup'|t}}</button>
       </div>
@@ -204,6 +205,7 @@ export class CommerceAdminComponent implements OnInit{
   loadPayments(){this.read(this.api.paymentList(this.filter),v=>{this.orders.set(v.items);this.events.set(v.events);});}
   private act<T>(o:Observable<T>,done?:(v:T)=>void){if(this.busy())return;this.busy.set(true);this.saved.set(false);this.failure.set(null);o.pipe(takeUntilDestroyed(this.destroy)).subscribe({next:v=>{done?.(v);this.busy.set(false);this.saved.set(true);this.confirmed=false;this.load();this.loadProvider();},error:e=>{this.busy.set(false);this.failure.set(e);}});}
   reviewRefund(v:RefundPreview,id:number,action:string){const label=this.i18n.t(action==='approve'?'packages.admin.approve':action==='needs_information'?'packages.admin.information':'packages.admin.followup');this.requestOperation(this.i18n.t('refine.purchaseAction',{id:v.purchaseId,action:label})+' · '+this.i18n.formatMoney(v.amount,v.currency),reason=>this.api.reviewRefund(id,{action,reason,quote:v.quote,...(action==='needs_information'?{buyerMessage:this.buyerMessage.trim()}:{})}),undefined,action==='needs_information');}
+  reverseRefund(v:RefundPreview,id:number){this.requestOperation(this.i18n.t('refine.purchaseAction',{id:v.purchaseId,action:this.i18n.t('packages.admin.reverse')})+' · '+this.i18n.formatMoney(v.amount,v.currency),reason=>this.api.reverseRefund(id,{reason,quote:v.quote,buyerMessage:this.buyerMessage.trim()}),undefined,true);}
   resolve(o:ClassOrder,action:string){this.requestOperation(this.orderContext(o,action),reason=>this.api.resolvePayment(o.id,action,reason));}
   acknowledge(id:number){this.requestOperation(this.i18n.t('refine.taskAction',{id,action:this.i18n.t('packages.admin.acknowledge')}),reason=>this.api.acknowledgePaymentJob(id,reason));}
   verifyDeadline(){const p=this.purchase(),time=this.deadlineChoice().value;if(!p||!time||!this.ready())return;const deadline=time.startsAt;this.requestOperation(this.i18n.t('refine.purchaseAction',{id:p.id,action:this.i18n.t('packages.admin.verifyDeadline')})+' · '+this.i18n.formatInstant(deadline,this.fmt.timeZone()),reason=>this.api.verifyRefundDeadline(p.id,deadline,reason),()=>{this.deadline='';this.loadPurchase();});}

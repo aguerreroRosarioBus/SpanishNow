@@ -35,7 +35,7 @@ export class RefundRequestComponent implements OnChanges{
   purchaseId=input.required<number>();hours=input.required<number>();mode=input<string>();readonly i18n=inject(I18nService);readonly fmt=inject(ChatFormat);private api=inject(PackagesService);private destroy=inject(DestroyRef);
   view=signal<RefundPreview|null>(null);type=signal('voluntary');reason=signal('');confirmed=signal(false);busy=signal(false);private key=crypto.randomUUID();private failure=signal<unknown>(null);error=computed(()=>this.failure()?this.api.error(this.failure()):'');
   readonly types=['voluntary','service_unavailable','group_incomplete','other'];
-  tone(status:string){return status==='confirmed'?'success':['rejected','denied','failed'].includes(status)?'danger':'warning';}
+  tone(status:string){return status==='confirmed'||status==='reverted'?'success':['rejected','denied','failed'].includes(status)?'danger':'warning';}
   /** Fecha compacta con hora, zona IANA y desplazamiento (TZ-07); sin formateo manual. */
   when(value:string){try{const t=presentInstant(value,this.fmt.timeZone(),this.i18n.locale());return `${t.day} ${t.time} · ${t.timeZone} · ${t.offsetLabel}`;}catch{return '';}}
   ngOnChanges(){this.load();}
