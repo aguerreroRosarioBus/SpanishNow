@@ -13,12 +13,13 @@ import { imageFileErrorKey, IMAGE_ACCEPT } from '../../lesson-composer/image-fil
 import { I18nService } from '../../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
 import { TeacherHotmartConnectionComponent } from './teacher-hotmart-connection.component';
+import { HotmartGuideImageComponent } from './hotmart-guide-image.component';
 
 /** Edición del curso: título, descripción y datos de venta (precio, moneda, slug, publicación, texto de venta). */
 @Component({
   selector: 'app-course-edit-modal',
   standalone: true,
-  imports: [ModalFocusDirective, ReactiveFormsModule, VideoEmbedComponent, ImageSearchComponent, TranslatePipe, TeacherHotmartConnectionComponent],
+  imports: [ModalFocusDirective, ReactiveFormsModule, VideoEmbedComponent, ImageSearchComponent, TranslatePipe, TeacherHotmartConnectionComponent, HotmartGuideImageComponent],
   templateUrl: './course-edit-modal.component.html'
 })
 export class CourseEditModalComponent implements OnDestroy {

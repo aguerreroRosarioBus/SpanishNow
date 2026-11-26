@@ -3,6 +3,7 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs';
 import { TranslatePipe } from '../../../../core/i18n/translate.pipe';
+import { HotmartGuideImageComponent } from './hotmart-guide-image.component';
 import {
   HotmartService,
   HotmartSetup,
@@ -12,7 +13,7 @@ import {
 @Component({
   selector: 'app-teacher-hotmart-connection',
   standalone: true,
-  imports: [ReactiveFormsModule, TranslatePipe],
+  imports: [ReactiveFormsModule, TranslatePipe, HotmartGuideImageComponent],
   host: { '(window:focus)': 'checkWhenReturning()' },
   templateUrl: './teacher-hotmart-connection.component.html'
 })

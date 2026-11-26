@@ -127,6 +127,8 @@
           }
           <div class="small fw-semibold mb-2">{{ 'teacherManage.courseEdit.hotmartLinkProduct' | t }}</div>
           <p class="small mb-2">{{ 'teacherManage.courseEdit.hotmartSameProduct' | t }}</p>
+          <a class="btn btn-sm btn-outline-secondary text-wrap mb-3" href="https://app.hotmart.com/products/producer"
+             target="_blank" rel="noopener noreferrer">{{ 'teacherManage.courseEdit.hotmartOpenProducts' | t }}</a>
           <div class="mb-3">
             <label for="hotmartProduct" class="form-label">{{ 'teacherManage.courseEdit.hotmartProduct' | t }}</label>
             <input class="form-control" id="hotmartProduct" formControlName="hotmartProductId" maxlength="40" autocomplete="off"
@@ -139,6 +141,7 @@
               <div class="invalid-feedback">{{ 'teacherManage.courseEdit.hotmartProductMissing' | t }}</div>
             }
             <div class="form-text" id="hotmartProductHelp">{{ 'teacherManage.courseEdit.hotmartProductHelp' | t }}</div>
+            <app-hotmart-guide-image file="product-id" label="teacherManage.courseEdit.hotmartImageProduct" />
           </div>
           <div class="mb-3">
             <label for="hotmartUrl" class="form-label">{{ 'teacherManage.courseEdit.hotmartUrl' | t }}</label>
@@ -149,6 +152,7 @@
               <div class="invalid-feedback">{{ 'teacherManage.courseEdit.hotmartUrlInvalid' | t }}</div>
             }
             <div class="form-text" id="hotmartUrlHelp">{{ 'teacherManage.courseEdit.hotmartUrlHelp' | t }}</div>
+            <app-hotmart-guide-image file="checkout" label="teacherManage.courseEdit.hotmartImageCheckout" />
             @if (needsVerifiedHotmart()) {
               <p class="form-text text-danger mb-0">{{ 'teacherManage.courseEdit.hotmartVerifyFirst' | t }}</p>
             }

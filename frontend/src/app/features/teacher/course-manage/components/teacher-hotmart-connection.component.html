@@ -20,13 +20,22 @@
 
   @if (connection(); as status) {
     <p class="small mt-3 mb-2">{{ 'teacherManage.courseEdit.hotmartOneTime' | t }}</p>
-    <a class="btn btn-sm btn-outline-secondary mb-3" href="https://app-postback.hotmart.com/"
-       target="_blank" rel="noopener noreferrer">{{ 'teacherManage.courseEdit.hotmartOpen' | t }}</a>
     <ol class="small ps-3 mb-0">
+      <li class="mb-3">
+        <span class="fw-semibold">{{ 'teacherManage.courseEdit.hotmartOpenTitle' | t }}</span>
+        <p class="mt-1 mb-2">{{ 'teacherManage.courseEdit.hotmartOpenHelp' | t }}</p>
+        <a class="btn btn-sm btn-primary text-wrap" href="https://app.hotmart.com/tools/webhook"
+           target="_blank" rel="noopener noreferrer">{{ 'teacherManage.courseEdit.hotmartOpen' | t }}</a>
+        <details class="mt-2">
+          <summary>{{ 'teacherManage.courseEdit.hotmartOpenFallbackTitle' | t }}</summary>
+          <p class="mt-1 mb-0">{{ 'teacherManage.courseEdit.hotmartOpenFallback' | t }}</p>
+        </details>
+      </li>
       <li class="mb-3">
         <span class="fw-semibold">{{ 'teacherManage.courseEdit.hotmartKeyTitle' | t }}</span>
         @if (!status.webhookUrl || changingKey()) {
           <p class="mt-1 mb-2" id="teacher-hotmart-key-help">{{ 'teacherManage.courseEdit.hotmartKeyHelp' | t }}</p>
+          <app-hotmart-guide-image file="authentication" label="teacherManage.courseEdit.hotmartImageAuth" class="d-block mb-2" />
           <label class="form-label" for="teacher-hotmart-key">{{ 'teacherManage.courseEdit.hotmartKey' | t }}</label>
           <input class="form-control" type="password" id="teacher-hotmart-key" [formControl]="key"
                  aria-describedby="teacher-hotmart-key-help" maxlength="512" autocomplete="off" spellcheck="false"
@@ -44,7 +53,10 @@
       @if (status.webhookUrl; as url) {
         <li class="mb-3">
           <span class="fw-semibold">{{ 'teacherManage.courseEdit.hotmartNotifyTitle' | t }}</span>
-          <p class="mt-1 mb-2">{{ 'teacherManage.courseEdit.hotmartNotifyHelp' | t }}</p>
+          @if (status.pending) {
+            <p class="mt-1 mb-2">{{ 'teacherManage.courseEdit.hotmartNotifyHelp' | t }}</p>
+            <app-hotmart-guide-image file="register" label="teacherManage.courseEdit.hotmartImageRegister" class="d-block mb-2" />
+          }
           <label for="teacher-hotmart-url" class="form-label">{{ 'teacherManage.courseEdit.hotmartNotifyUrl' | t }}</label>
           <div class="input-group input-group-sm">
             <input #personalUrl class="form-control" id="teacher-hotmart-url" [value]="url" readonly />
@@ -60,34 +72,42 @@
           @if (!hasHttps()) {
             <p class="alert alert-warning py-2 my-2">{{ 'teacherManage.courseEdit.hotmartHttps' | t }}</p>
           }
-          <p class="mt-2 mb-1">{{ 'teacherManage.courseEdit.hotmartNotifyEvents' | t }}</p>
-          <ul class="mb-1 ps-3">
-            <li>{{ 'teacherManage.courseEdit.hotmartEventApproved' | t }}</li>
-            <li>{{ 'teacherManage.courseEdit.hotmartEventComplete' | t }}</li>
-            <li>{{ 'teacherManage.courseEdit.hotmartEventRefunded' | t }}</li>
-            <li>{{ 'teacherManage.courseEdit.hotmartEventChargeback' | t }}</li>
-          </ul>
           @if (status.pending) {
-            <p class="mb-0">{{ 'teacherManage.courseEdit.hotmartEventForTest' | t }}</p>
+            @if (status.verifiedAt) {
+              <p class="mt-2 mb-1">{{ 'teacherManage.courseEdit.hotmartRotationSetup' | t }}</p>
+            }
+            <p class="mt-2 mb-0">{{ 'teacherManage.courseEdit.hotmartEventForTest' | t }}</p>
+            <app-hotmart-guide-image file="cart-abandonment" label="teacherManage.courseEdit.hotmartImageCart" />
           }
         </li>
-        <li>
-          <span class="fw-semibold">{{ 'teacherManage.courseEdit.hotmartTestTitle' | t }}</span>
-          @if (status.pending) {
+        @if (status.pending) {
+          <li>
+            <span class="fw-semibold">{{ 'teacherManage.courseEdit.hotmartTestTitle' | t }}</span>
             @if (status.verifiedAt) {
               <p class="mt-1 mb-2">{{ 'teacherManage.courseEdit.hotmartOldKeyActive' | t }}</p>
             }
             <p class="mt-1 mb-2">{{ 'teacherManage.courseEdit.hotmartTestHelp' | t }}</p>
+            <app-hotmart-guide-image file="run-test" label="teacherManage.courseEdit.hotmartImageTest" class="d-block mb-2" />
             <button type="button" class="btn btn-sm btn-outline-secondary" [disabled]="checking() || saving()"
                     (click)="refresh()">{{ 'teacherManage.courseEdit.hotmartCheckTest' | t }}</button>
             <details class="mt-2">
               <summary>{{ 'teacherManage.courseEdit.hotmartTroubleTitle' | t }}</summary>
               <p class="mt-1 mb-0">{{ 'teacherManage.courseEdit.hotmartTroubleHelp' | t }}</p>
             </details>
-          } @else {
-            <p class="mt-1 mb-0">{{ 'teacherManage.courseEdit.hotmartTestDone' | t }}</p>
-          }
-        </li>
+          </li>
+        } @else if (status.verifiedAt) {
+          <li>
+            <span class="fw-semibold">{{ 'teacherManage.courseEdit.hotmartNotifyEvents' | t }}</span>
+            <p class="mt-1 mb-2">{{ 'teacherManage.courseEdit.hotmartTestDone' | t }}</p>
+            <ul class="mb-2 ps-3">
+              <li>{{ 'teacherManage.courseEdit.hotmartEventApproved' | t }}</li>
+              <li>{{ 'teacherManage.courseEdit.hotmartEventComplete' | t }}</li>
+              <li>{{ 'teacherManage.courseEdit.hotmartEventRefunded' | t }}</li>
+              <li>{{ 'teacherManage.courseEdit.hotmartEventChargeback' | t }}</li>
+            </ul>
+            <p class="mb-0">{{ 'teacherManage.courseEdit.hotmartSaveEvents' | t }}</p>
+          </li>
+        }
       }
     </ol>
   }
