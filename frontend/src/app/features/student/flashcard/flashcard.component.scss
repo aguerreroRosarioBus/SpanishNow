@@ -3,13 +3,13 @@
   margin: 0 auto;
   max-width: 600px;
   cursor: pointer;
-  min-height: 500px;
 }
 
 .flashcard {
   position: relative;
   width: 100%;
-  height: 500px;
+  /* Alto relativo a la ventana para que la tarjeta entre completa en el modal. */
+  height: clamp(220px, 40dvh, 360px);
   transition: transform 0.6s;
   transform-style: preserve-3d;
 
@@ -28,7 +28,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
+  padding: clamp(0.75rem, 2dvh, 1.5rem);
+  overflow-y: auto;
   transition: box-shadow 0.3s ease;
 
   &:hover {
@@ -60,7 +61,7 @@
 .word-display h1,
 .translation-display h1 {
   font-family: var(--font-heading);
-  font-size: 3rem;
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
   font-weight: 600;
   text-shadow: 0 2px 6px rgba(74, 40, 15, 0.25);
 }
@@ -76,7 +77,7 @@
   margin: 0 auto;
 
   img {
-    max-height: 200px;
+    max-height: clamp(70px, 14dvh, 140px);
     object-fit: cover;
     border: 4px solid white;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
@@ -85,19 +86,19 @@
 
 .example-box {
   background-color: rgba(255, 255, 255, 0.2);
-  padding: 1.5rem;
-  border-radius: 12px;
-  margin-top: 2rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-lg);
+  margin-top: 0.75rem;
   backdrop-filter: blur(10px);
 
   strong {
     display: block;
-    margin-bottom: 0.5rem;
-    font-size: 1.1rem;
+    margin-bottom: 0.25rem;
+    font-size: 1rem;
   }
 
   p {
-    font-size: 1.2rem;
+    font-size: 1.05rem;
     line-height: 1.6;
   }
 }
@@ -108,11 +109,6 @@
   .progress-bar {
     transition: width 0.4s ease;
   }
-}
-
-.btn-lg {
-  padding: 0.75rem 2rem;
-  font-size: 1.1rem;
 }
 
 // Animations
@@ -129,24 +125,4 @@
 
 .flashcard-container {
   animation: flipIn 0.6s ease-out;
-}
-
-// Responsive
-@media (max-width: 768px) {
-  .flashcard {
-    height: 400px;
-  }
-
-  .word-display h1,
-  .translation-display h1 {
-    font-size: 2rem;
-  }
-
-  .flashcard-face {
-    padding: 1.5rem;
-  }
-
-  .image-container img {
-    max-height: 150px;
-  }
 }

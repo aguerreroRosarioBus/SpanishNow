@@ -11,16 +11,14 @@ import { ToastService } from '../../../core/services/toast.service';
   imports: [TranslatePipe, CommonModule, ListenRepeatComponent],
   template: `
     <div class="modal fade" [class.show]="show" [style.display]="show ? 'block' : 'none'" tabindex="-1" (click)="onBackdropClick($event)">
-      <div class="modal-dialog modal-xl" (click)="$event.stopPropagation()">
+      <div class="modal-dialog modal-lg" (click)="$event.stopPropagation()">
         <div class="modal-content">
           <div class="modal-header bg-warning text-dark">
             <h5 class="modal-title">{{ 'activities.repeatModal' | t }}</h5>
             <button type="button" class="btn-close btn-close-white" (click)="onClose()" [attr.aria-label]="'activities.close' | t"></button>
           </div>
           <div class="modal-body">
-            <div class="alert alert-info mb-3">
-              <strong>{{ 'activities.objective' | t }}</strong> {{ 'activities.repeatGoal' | t }}
-            </div>
+            <p class="goal text-muted mb-2"><small><strong>{{ 'activities.objective' | t }}</strong> {{ 'activities.repeatGoal' | t }}</small></p>
             <app-listen-repeat
               *ngIf="storyId"
               [storyId]="storyId"
@@ -44,6 +42,25 @@ import { ToastService } from '../../../core/services/toast.service';
     .modal {
       background-color: rgba(0, 0, 0, 0.5);
     }
+    /* La ventana nunca supera el alto visible: el contenido se compacta en vez de generar scroll. */
+    .modal-dialog {
+      margin: 1rem auto;
+      max-height: calc(100dvh - 2rem);
+    }
+    .modal-content {
+      max-height: calc(100dvh - 2rem);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+    }
+    .modal-body {
+      min-height: 0;
+      max-height: calc(100dvh - 2rem);
+      overflow-y: auto;
+      padding: 0.75rem 1rem;
+    }
+    .modal-header, .modal-footer { padding: 0.5rem 1rem; }
+    /* En pantallas angostas el botón de la cabecera alcanza para cerrar y se gana alto. */
+    @media (max-width: 575.98px) { .modal-footer { display: none; } }
   `]
 })
 export class ListenRepeatModalComponent {

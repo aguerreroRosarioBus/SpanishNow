@@ -64,6 +64,7 @@ describe('A-03: «Listen and repeat» solo se ofrece si la historia tiene activi
     stories.set([{ id: 5, repetitionActivities: [{ id: 1 }] }]);
     const el = render();
     expect(el.querySelector('.practice__count')?.textContent?.trim()).toBe('0 de 3');
+    expect(el.querySelector('.practice')?.textContent).not.toContain('aria-labelledby');
     expect(el.querySelector('.practice__start')?.textContent?.trim()).toBe('Empezar: Flashcards');
   });
 });

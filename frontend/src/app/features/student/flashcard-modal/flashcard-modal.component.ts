@@ -10,7 +10,7 @@ import { FlashcardComponent } from '../flashcard/flashcard.component';
   imports: [TranslatePipe, CommonModule, FlashcardComponent],
   template: `
     <div class="modal fade" [class.show]="show" [style.display]="show ? 'block' : 'none'" tabindex="-1" (click)="onBackdropClick($event)">
-      <div class="modal-dialog modal-xl" (click)="$event.stopPropagation()">
+      <div class="modal-dialog modal-lg" (click)="$event.stopPropagation()">
         <div class="modal-content">
           <div class="modal-header bg-primary text-white">
             <h5 class="modal-title">{{ 'activities.flashcardsModal' | t }}</h5>
@@ -31,6 +31,23 @@ import { FlashcardComponent } from '../flashcard/flashcard.component';
     .modal {
       background-color: rgba(0, 0, 0, 0.5);
     }
+    /* La ventana nunca supera el alto visible: el contenido se compacta en vez de generar scroll. */
+    .modal-dialog {
+      margin: 1rem auto;
+      max-height: calc(100dvh - 2rem);
+    }
+    .modal-content {
+      max-height: calc(100dvh - 2rem);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+    }
+    .modal-body {
+      min-height: 0;
+      max-height: calc(100dvh - 2rem);
+      overflow-y: auto;
+      padding: 0.75rem 1rem;
+    }
+    .modal-header, .modal-footer { padding: 0.5rem 1rem; }
   `]
 })
 export class FlashcardModalComponent {

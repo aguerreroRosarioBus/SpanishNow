@@ -1,4 +1,4 @@
-<div class="container mt-4">
+<div class="container mt-2">
   <!-- Loading -->
   <div *ngIf="isLoading()" class="text-center py-5">
     <div class="spinner-border text-primary" role="status"></div>
@@ -15,31 +15,31 @@
   <!-- Matching Game -->
   <div *ngIf="!isLoading() && !errorMessage() && vocabulary().length > 0">
     <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-2 gap-2">
       <button class="btn btn-ghost" (click)="goBack()">
         <app-icon name="chevron-left" [size]="16" />{{ 'activities.back' | t }}
       </button>
-      <h2 class="mb-0">{{ 'activities.matchingTitle' | t }}</h2>
+      <h2 class="mb-0 h4">{{ 'activities.matchingTitle' | t }}</h2>
       <button class="btn btn-outline-primary" (click)="restart()">
         <app-icon name="rotate-ccw" [size]="16" />{{ 'activities.restart' | t }}
       </button>
     </div>
 
     <!-- Stats -->
-    <div class="row mb-4">
-      <div class="col-md-4">
+    <div class="row g-2 mb-2">
+      <div class="col-4">
         <div class="stat-card">
           <div class="stat-value">{{ matches() }} / {{ vocabulary().length }}</div>
           <div class="stat-label">{{ 'activities.matched' | t }}</div>
         </div>
       </div>
-      <div class="col-md-4">
+      <div class="col-4">
         <div class="stat-card">
           <div class="stat-value">{{ attempts() }}</div>
           <div class="stat-label">{{ 'activities.attempts' | t }}</div>
         </div>
       </div>
-      <div class="col-md-4">
+      <div class="col-4">
         <div class="stat-card">
           <div class="stat-value">{{ accuracy }}%</div>
           <div class="stat-label">{{ 'activities.accuracy' | t }}</div>
@@ -48,7 +48,7 @@
     </div>
 
     <!-- Instructions -->
-    <div class="alert alert-info mb-4" *ngIf="matches() === 0">
+    <div class="alert alert-info py-2 px-3 mb-2 small" *ngIf="matches() === 0">
       <strong>{{ 'activities.instructions' | t }}</strong> {{ 'activities.matchingInstructions' | t }}
     </div>
 
@@ -59,10 +59,10 @@
     </div>
 
     <!-- Matching Grid -->
-    <div class="row matching-grid">
+    <div class="row g-2 matching-grid">
       <!-- Spanish Words Column -->
-      <div class="col-md-6">
-        <h4 class="text-center mb-3">{{ 'activities.spanish' | t }}</h4>
+      <div class="col-6">
+        <h4 class="text-center mb-2">{{ 'activities.spanish' | t }}</h4>
         <div class="match-column">
           <button
             *ngFor="let word of words()"
@@ -79,8 +79,8 @@
       </div>
 
       <!-- English Translations Column -->
-      <div class="col-md-6">
-        <h4 class="text-center mb-3">{{ 'activities.english' | t }}</h4>
+      <div class="col-6">
+        <h4 class="text-center mb-2">{{ 'activities.english' | t }}</h4>
         <div class="match-column">
           <button
             *ngFor="let translation of translations()"
