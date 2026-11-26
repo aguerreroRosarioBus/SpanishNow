@@ -46,16 +46,21 @@ export interface ClassPurchase {
   id:number;offerId:number;buyerId:number;/** Solo en la vista docente (GET /api/teacher/class-purchases). */buyerName?:string|null;teacherId:number;version:number;status:'active'|'paused'|'exhausted'|'expired'|'cancelled';
   expiresAt:string;paidAt:string;pausedAt:string|null;pauseCount:number;minutesPerSession:number;seatsCovered:number;
   balance:{granted:number;available:number;reserved:number;consumed:number;expired:number;refunded:number};
-  snapshot:ClassOffer['snapshot'];ledger?:{id:number;operation:string;units:number;createdAt:string;reason:string|null}[];
+  snapshot:ClassOffer['snapshot'];ledger?:{id:number;operation:string;units:number;createdAt:string;reason:string|null;fromBucket?:string;toBucket?:string}[];
+  /** Créditos sumados (+) o restados (−) a mano sobre lo comprado. */adjustedUnits?:number;
+  /** Estado del reembolso de esta compra; null si no se pidió. */refund?:PurchaseRefund|null;
+  /** Solo en la vista de administración (GET /api/admin/class-purchases/:id). */adjustments?:{id:number;units:number;direction:'add'|'remove'|'restore';reason:string|null;createdAt:string}[];
 }
 
+export interface PurchaseRefund{status:'requested'|'needs_information'|'manual_followup'|'manual_hotmart'|'queued'|'confirmed';amount:number;currency:string;refundedAmount:number}
 export interface RefundPreview {
   purchaseId:number;orderId:number;provider:'fake'|'hotmart';version:number;amount:number;currency:string;orderStatus:string;refundedAmount:number;deadline:string;deadlineVerified:boolean;
   classification:'standard_full_unused'|'individual_review';reservationsPending:boolean;consumed:number;available:number;reserved:number;type:string;quote:string;
-  buyerId?:number;teacherId?:number;
-  requests:{id:number;type:string;classification:string;reason:string;createdAt:string;amount:number;currency:string;status:string;updates:{reason:string;status:string;createdAt:string}[]}[];
+  buyerId?:number;teacherId?:number;buyerName?:string|null;teacherName?:string|null;
+  /** `reason` (nota interna) solo llega a administración; el comprador ve `message`. */
+  requests:{id:number;type:string;classification:string;reason:string;createdAt:string;amount:number;currency:string;status:string;updates:{reason?:string;message:string|null;status:string;createdAt:string}[]}[];
 }
-export interface PaymentJob{id:number;topic:string;aggregateId:number;purchaseIds:number[];status:string;attempts:number;lastError:string|null;runAt:string}
+export interface PaymentJob{id:number;topic:string;aggregateType:string|null;aggregateId:number;orderId:number|null;purchaseIds:number[];buyerNames:string[];status:string;attempts:number;lastError:string|null;runAt:string}
 
 export const FROZEN_REASONS=['refund_mapping_mismatch','refund_amount_review','partial_refund_pending_validation'] as const;
 export const isFrozenOrder=(o:ClassOrder)=>o.status==='paid_needs_review'&&!!o.reviewReason&&(FROZEN_REASONS as readonly string[]).includes(o.reviewReason);

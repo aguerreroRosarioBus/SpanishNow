@@ -20,7 +20,7 @@ const headings=(f:{nativeElement:HTMLElement})=>[...f.nativeElement.querySelecto
 describe('Gestión comercial: jerarquía visual',()=>{
   it('agrupa en secciones con encabezado: ventas y proveedor, trámites, docentes y política',()=>{
     const f=render(['class_payments.review','class_teachers.manage','class_packages.manage_all','class_credits.adjust']);
-    expect(headings(f)).toEqual(['Ventas y proveedor','Trámites y reembolsos','Docentes habilitados para clases','Política para ventas futuras','Ajuste de créditos auditado']);
+    expect(headings(f)).toEqual(['Ventas y proveedor','Trámites y reembolsos','Docentes habilitados para clases','Política para ventas futuras','Compra: garantía y ajuste de créditos']);
   });
   it('sin permiso de pagos no muestra ventas ni trámites',()=>{
     const f=render(['class_teachers.manage']);
@@ -46,7 +46,7 @@ describe('Gestión comercial: jerarquía visual',()=>{
   });
   it('el catálogo EN y ES tiene las mismas claves nuevas de gestión comercial',()=>{
     const keys=(l:'en'|'es')=>Object.keys(PACKAGE_MESSAGES[l]).filter(k=>/^packages\.admin\.(confirmTitle|confirmHint|salesTitle|proceduresTitle|order|refundsEmpty|paymentsEmpty|teachersEmpty|reload|policyVersion|providerIds|jobMeta|job\.title|orderStatus\.)/.test(k)).sort();
-    expect(keys('en')).toEqual(keys('es'));expect(keys('en').length).toBe(19);
+    expect(keys('en')).toEqual(keys('es'));expect(keys('en').length).toBe(21);
   });
 });
 
