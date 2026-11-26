@@ -168,8 +168,20 @@ async function importInitial(user, requested) {
       const existing = await Template.findOne({ where: { teacherId, templateKey }, transaction });
       if (existing) {
         // Una plantilla sin versión vigente (la FK currentVersionId es ON DELETE SET NULL: alguien borró la versión a mano)
-        // se repara con la versión inicial; si ya tiene versión vigente no se toca.
-        if (existing.currentVersionId && await Version.findByPk(existing.currentVersionId, { transaction })) continue;
+        // se repara con la versión inicial; si ya tiene versión vigente no se toca...
+        const current = existing.currentVersionId ? await Version.findByPk(existing.currentVersionId, { transaction }) : null;
+        if (current) {
+          // ...salvo que no tenga expectativas (catálogo importado antes de traer condiciones por defecto): se publica una versión
+          // nueva idéntica (precio, Hotmart, política) con las expectativas por defecto. Las que ya tienen expectativas, aunque
+          // sean parciales, y las plantillas archivadas no se tocan.
+          if (existing.status !== 'archived' && current.expectations == null) {
+            const { id, createdAt, ...copy } = current.toJSON();
+            const last = (await Version.max('version', { where: { templateId: existing.id }, transaction })) || current.version;
+            const v = await Version.create({ ...copy, expectations: initial.defaultExpectations(current), version: last + 1, createdById: user.id }, { transaction });
+            await existing.update({ currentVersionId: v.id }, { transaction });
+          }
+          continue;
+        }
         const last = (await Version.max('version', { where: { templateId: existing.id }, transaction })) || 0;
         const v = await Version.create({ ...values, policyVersionId: rules.id, templateId: existing.id, version: last + 1, createdById: user.id }, { transaction });
         await existing.update({ currentVersionId: v.id }, { transaction });
