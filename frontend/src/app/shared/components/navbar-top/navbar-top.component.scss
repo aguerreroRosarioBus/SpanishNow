@@ -42,6 +42,7 @@
 
 .account-button {
   gap: 8px;
+  height: 44px; // mismo alto que el selector de idioma y la ayuda, que tiene al lado
 
   // Flechita de ngbDropdownToggle
   &::after {

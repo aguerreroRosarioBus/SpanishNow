@@ -1,6 +1,6 @@
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
-import { Component, computed, inject, OnInit, Input, Output, EventEmitter, signal, effect, untracked } from '@angular/core';
+import { booleanAttribute, Component, computed, inject, OnInit, Input, Output, EventEmitter, signal, effect, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { VocabularyService } from '../../../core/services/vocabulary.service';
@@ -30,6 +30,8 @@ export class MatchingComponent implements OnInit {
   private vocabularyService = inject(VocabularyService);
 
   @Input() unitId?: number;
+  /** Dentro de la ventana de práctica: sin «Volver» ni título propio (los pone la ventana). */
+  @Input({ transform: booleanAttribute }) embedded = false;
   /** Si viene con ids, solo se emparejan esas palabras (las de la historia actual); vacío o ausente: toda la unidad. */
   @Input() vocabularyIds?: number[] | null;
   @Output() completed = new EventEmitter<number>(); // Emits accuracy percentage
@@ -46,6 +48,8 @@ export class MatchingComponent implements OnInit {
   errorMessage = computed(() => this.errorKey() ? this.i18n.t(this.errorKey()) : '');
   isComplete = signal<boolean>(false);
   showCelebration = signal<boolean>(false);
+  /** Pareja equivocada recién elegida: se marca en rojo medio segundo antes de soltarla. */
+  mismatch = signal<number[]>([]);
 
   constructor() {
     toastFrom(() => this.errorMessage());
@@ -188,16 +192,22 @@ export class MatchingComponent implements OnInit {
       }
     } else {
       // Wrong match - show briefly then reset
+      this.mismatch.set([word.id, translation.id]);
       setTimeout(() => {
+        this.mismatch.set([]);
         this.selectedWord.set(null);
         this.selectedTranslation.set(null);
-      }, 500);
+      }, 600);
       return;
     }
 
     // Reset selection
     this.selectedWord.set(null);
     this.selectedTranslation.set(null);
+  }
+
+  isWrong(item: MatchItem): boolean {
+    return this.mismatch().includes(item.id);
   }
 
   isSelected(item: MatchItem): boolean {

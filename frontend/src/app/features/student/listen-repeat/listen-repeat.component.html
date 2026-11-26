@@ -1,194 +1,84 @@
-<div class="container mt-2">
-  <!-- Loading -->
-  <div *ngIf="isLoading()" class="text-center py-5">
-    <div class="spinner-border text-primary" role="status"></div>
-    <p class="text-muted mt-2">{{ 'activities.loadingActivities' | t }}</p>
-  </div>
-
-  <!-- Error -->
-  <div *ngIf="errorMessage()">
-    <button class="btn btn-secondary mb-3" (click)="goBack()">
-      <app-icon name="chevron-left" [size]="16" />{{ 'activities.back' | t }}
-    </button>
-  </div>
-
-  <!-- Listen & Repeat Activity -->
-  <div *ngIf="!isLoading() && !errorMessage() && activities().length > 0">
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-2 gap-2">
-      <button class="btn btn-ghost" (click)="goBack()">
-        <app-icon name="chevron-left" [size]="16" />{{ 'activities.back' | t }}
-      </button>
-      <h2 class="mb-0 h4">{{ 'activities.repeatTitle' | t }}</h2>
-      <button class="btn btn-outline-primary" (click)="restart()">
-        <app-icon name="rotate-ccw" [size]="16" />{{ 'activities.restart' | t }}
-      </button>
+<div class="lr" [class.lr--page]="!embedded">
+  @if (!embedded) {
+    <div class="lr-page-head">
+      <button class="btn btn-ghost" (click)="goBack()"><app-icon name="chevron-left" [size]="16" />{{ 'activities.back' | t }}</button>
+      <h1 class="lr-page-head__title">{{ 'activities.repeatTitle' | t }}</h1>
     </div>
+  }
 
-    <!-- Progress -->
-    <div class="mb-2">
-      <div class="d-flex justify-content-between mb-1">
-        <small class="text-muted">
-          {{ 'activities.phraseCount' | t: {number: currentIndex() + 1, total: totalActivities} }}
-        </small>
-        <small class="text-muted">
-          {{ 'activities.completedCount' | t: {count: completedCount, total: totalActivities} }}
-        </small>
+  @if (isLoading()) {
+    <p class="practice-state"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>{{ 'activities.loadingActivities' | t }}</p>
+  } @else if (!errorMessage() && activities().length > 0) {
+    <div class="practice-top">
+      <span class="practice-top__count">{{ 'activities.phraseCount' | t: {number: currentIndex() + 1, total: totalActivities} }}</span>
+      <div class="practice-progress" role="progressbar" [attr.aria-valuenow]="completedCount" aria-valuemin="0" [attr.aria-valuemax]="totalActivities"
+           [attr.aria-valuetext]="'activities.completedCount' | t: {count: completedCount, total: totalActivities}">
+        <span [style.width.%]="ratedProgress"></span>
       </div>
-      <div class="progress" style="height: 8px;">
-        <div
-          class="progress-bar bg-success"
-          role="progressbar"
-          [style.width.%]="progress"
-        ></div>
+      <div class="practice-top__actions">
+        <button type="button" class="btn btn-ghost btn-sm" (click)="restart()"><app-icon name="rotate-ccw" [size]="15" /><span class="practice-label">{{ 'activities.restart' | t }}</span></button>
       </div>
     </div>
 
-    <!-- Main Activity Card -->
-    <div class="activity-card">
-      <div class="card">
-        <div class="card-body p-3">
-          <!-- Phrase Display -->
-          <div class="text-center mb-2">
-            <h1 class="phrase-text">{{ currentActivity?.phrase }}</h1>
-          </div>
+    <p class="lr-phrase" lang="es">{{ currentActivity?.phrase }}</p>
 
-          <div class="steps-row">
-          <!-- Step 1: Listen to Model -->
-          <div class="step-section">
-            <h5 class="step-title">
-              <span class="step-number">1</span>
-              {{ 'activities.listenModel' | t }}
-            </h5>
-            <button
-              class="btn btn-primary w-100"
-              [disabled]="!currentActivity?.audioUrl || isPlayingModel()"
-              (click)="playModel()"
-            >
-              <span *ngIf="!isPlayingModel()"><app-icon name="volume" [size]="16" />{{ 'activities.playModel' | t }}</span>
-              <span *ngIf="isPlayingModel()">
-                <span class="spinner-border spinner-border-sm me-2"></span>
-                {{ 'activities.playing' | t }}
-              </span>
+    <ol class="lr-steps">
+      <li class="lr-step">
+        <span class="lr-step__label"><span class="lr-step__n">1</span>{{ 'activities.listenModel' | t }}</span>
+        <button type="button" class="btn btn-secondary" [disabled]="!currentActivity?.audioUrl || isPlayingModel()" (click)="playModel()">
+          @if (isPlayingModel()) { <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>{{ 'activities.playing' | t }} }
+          @else { <app-icon name="volume" [size]="16" />{{ 'activities.playModel' | t }} }
+        </button>
+      </li>
+      <li class="lr-step">
+        <span class="lr-step__label"><span class="lr-step__n">2</span>{{ 'activities.recordVoice' | t }}</span>
+        <div class="lr-step__actions">
+          @if (isRecording()) {
+            <button type="button" class="btn btn-primary lr-recording" (click)="stopRecording()"><app-icon name="square" [size]="14" />{{ 'activities.stopRecording' | t }}</button>
+          } @else {
+            <button type="button" class="btn btn-secondary" (click)="startRecording()"><app-icon name="mic" [size]="16" />{{ 'activities.startRecording' | t }}</button>
+          }
+          @if (hasRecording() && !isRecording()) {
+            <button type="button" class="btn btn-ghost" [disabled]="isPlayingRecording()" (click)="playRecording()"
+                    [attr.aria-label]="'activities.listenRecording' | t">
+              <app-icon [name]="isPlayingRecording() ? 'volume' : 'play'" [size]="16" />{{ 'activities.myRecording' | t }}
             </button>
-          </div>
-
-          <!-- Step 2: Record Your Voice -->
-          <div class="step-section">
-            <h5 class="step-title">
-              <span class="step-number">2</span>
-              {{ 'activities.recordVoice' | t }}
-            </h5>
-            <div class="d-grid gap-2">
-              <button
-                *ngIf="!isRecording()"
-                class="btn btn-danger w-100"
-                (click)="startRecording()"
-              >
-                <app-icon name="mic" [size]="16" />{{ 'activities.startRecording' | t }}
-              </button>
-              <button
-                *ngIf="isRecording()"
-                class="btn btn-warning w-100"
-                (click)="stopRecording()"
-              >
-                <app-icon name="square" [size]="16" />{{ 'activities.stopRecording' | t }}
-              </button>
-              <button
-                *ngIf="hasRecording() && !isRecording()"
-                class="btn btn-outline-primary w-100"
-                [disabled]="isPlayingRecording()"
-                (click)="playRecording()"
-              >
-                <span *ngIf="!isPlayingRecording()"><app-icon name="play" [size]="16" />{{ 'activities.listenRecording' | t }}</span>
-                <span *ngIf="isPlayingRecording()">
-                  <span class="spinner-border spinner-border-sm me-2"></span>
-                  {{ 'activities.playing' | t }}
-                </span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Step 3: Self-Evaluation -->
-          <div class="step-section">
-            <h5 class="step-title">
-              <span class="step-number">3</span>
-              {{ 'activities.evaluate' | t }}
-            </h5>
-            <div class="rating-container">
-              <button
-                *ngFor="let star of [1, 2, 3, 4, 5]"
-                class="star-btn"
-                [attr.aria-label]="'activities.rateStars' | t: {count: star}"
-                [class.active]="star <= rating()"
-                (click)="setRating(star)"
-              >
-                <app-icon name="star" [size]="28" [class.is-filled]="star <= rating()" />
-              </button>
-            </div>
-            <div class="text-center">
-              <small class="text-muted">
-                <span *ngIf="rating() === 0">{{ 'activities.selectRating' | t }}</span>
-                <span *ngIf="rating() === 1">{{ 'activities.needsImprovement' | t }}</span>
-                <span *ngIf="rating() === 2">{{ 'activities.fair' | t }}</span>
-                <span *ngIf="rating() === 3">{{ 'activities.good' | t }}</span>
-                <span *ngIf="rating() === 4">{{ 'activities.veryGood' | t }}</span>
-                <span *ngIf="rating() === 5">{{ 'activities.excellentRating' | t }}</span>
-              </small>
-            </div>
-          </div>
-          </div>
+          }
         </div>
-      </div>
-    </div>
+      </li>
+      <li class="lr-step">
+        <span class="lr-step__label"><span class="lr-step__n">3</span>{{ 'activities.evaluate' | t }}</span>
+        <div class="lr-stars" role="radiogroup" [attr.aria-label]="'activities.evaluate' | t">
+          @for (star of [1, 2, 3, 4, 5]; track star) {
+            <button type="button" class="lr-star" role="radio" [attr.aria-checked]="star === rating()"
+                    [attr.aria-label]="'activities.rateStars' | t: {count: star}" [class.is-on]="star <= rating()" (click)="setRating(star)">
+              <app-icon name="star" [size]="24" [class.is-filled]="star <= rating()" />
+            </button>
+          }
+        </div>
+        <span class="lr-step__feedback" aria-live="polite">{{ ratingLabels[rating()] | t }}</span>
+      </li>
+    </ol>
 
-    <!-- Navigation -->
-    <div class="d-flex justify-content-between mt-2">
-      <button
-        class="btn btn-outline-secondary"
-        [disabled]="currentIndex() === 0"
-        (click)="previousActivity()"
-      >
+    @if (completedCount === totalActivities && completedCount > 0) {
+      <div class="practice-done">
+        <div>
+          <strong>{{ 'activities.allPhrases' | t }}</strong>
+          <p>{{ 'activities.evaluated' | t: {count: totalActivities} }}</p>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" (click)="restart()">{{ 'activities.practiceAgain' | t }}</button>
+      </div>
+    }
+
+    <div class="practice-nav">
+      <button type="button" class="btn btn-ghost" [class.is-hidden]="currentIndex() === 0" [disabled]="currentIndex() === 0" (click)="previousActivity()">
         <app-icon name="chevron-left" [size]="16" />{{ 'activities.previous' | t }}
       </button>
-
-      <button
-        *ngIf="currentIndex() === totalActivities - 1"
-        class="btn btn-primary"
-        [disabled]="completedCount !== totalActivities"
-        (click)="checkCompletion()"
-      >
-        {{ 'activities.finish' | t }}
-      </button>
-      <button
-        *ngIf="currentIndex() < totalActivities - 1"
-        class="btn btn-primary"
-        (click)="nextActivity()"
-      >
-        {{ 'activities.next' | t }}<app-icon name="chevron-right" [size]="16" />
-      </button>
+      @if (currentIndex() === totalActivities - 1) {
+        <button type="button" class="btn btn-primary" [disabled]="completedCount !== totalActivities" (click)="checkCompletion()">{{ 'activities.finish' | t }}</button>
+      } @else {
+        <button type="button" class="btn btn-primary" (click)="nextActivity()">{{ 'activities.next' | t }}<app-icon name="chevron-right" [size]="16" /></button>
+      }
     </div>
-
-    <!-- Summary -->
-    <div *ngIf="completedCount === totalActivities && completedCount > 0" class="alert alert-success py-2 mt-2">
-      <h4>{{ 'activities.allPhrases' | t }}</h4>
-      <p class="mb-0">
-        {{ 'activities.evaluated' | t: {count: totalActivities} }}
-        <button class="btn btn-sm btn-outline-success ms-3" (click)="restart()">
-          {{ 'activities.practiceAgain' | t }}
-        </button>
-      </p>
-    </div>
-
-    <!-- Instructions -->
-    <div class="alert alert-info py-2 px-3 mt-2 small" *ngIf="completedCount === 0">
-      <strong>{{ 'activities.instructions' | t }}</strong>
-      <ol class="mb-0 mt-2 d-none d-md-block">
-        <li>{{ 'activities.listenInstruction' | t }}</li>
-        <li>{{ 'activities.recordInstruction' | t }}</li>
-        <li>{{ 'activities.compareInstruction' | t }}</li>
-        <li>{{ 'activities.rateInstruction' | t }}</li>
-      </ol>
-    </div>
-  </div>
+  }
 </div>

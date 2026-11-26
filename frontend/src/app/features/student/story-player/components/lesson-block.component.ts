@@ -8,12 +8,13 @@ import { TooltipDisplayComponent } from '../../../../shared/components/tooltip-d
 import { ToastService } from '../../../../core/services/toast.service';
 import { LessonSessionStore } from '../lesson-session.store';
 import { LessonIllustrationComponent } from './lesson-illustration.component';
+import { IconComponent } from '../../../../shared/components/icon/icon.component';
 
 /** Bloque narrativo actual: expresión, keyframe (con audio y tooltips) o pregunta. */
 @Component({
   selector: 'app-lesson-block',
   standalone: true,
-  imports: [TranslatePipe, LessonAudioControlsComponent, TooltipDisplayComponent, LessonIllustrationComponent],
+  imports: [IconComponent, TranslatePipe, LessonAudioControlsComponent, TooltipDisplayComponent, LessonIllustrationComponent],
   templateUrl: './lesson-block.component.html',
   styleUrl: './lesson-block.component.scss'
 })

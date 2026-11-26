@@ -268,7 +268,7 @@ describe('StoryPlayerComponent (flujo TPRS)', () => {
       const reinf = fixture.debugElement.query(sel => sel.name === 'app-reinforcements').componentInstance;
       const open = vi.spyOn(reinf, 'open');
       expect(el().querySelector('.practice__count')?.textContent?.trim()).toBe('0 de 2');
-      expect(primary().textContent?.trim()).toBe('Practicar: Flashcards');
+      expect(primary().textContent?.trim()).toBe('Practicar: Tarjetas de vocabulario');
       const skip = el().querySelector('.lesson-foot .btn-secondary') as HTMLButtonElement;
       expect(skip.textContent?.trim()).toBe('Saltar práctica');
       primary().click();

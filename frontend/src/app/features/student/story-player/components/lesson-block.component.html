@@ -15,7 +15,7 @@
         <p class="read-text read-text--term">{{ block().vocabulary?.word || block().text }}</p>
         @if (block().vocabulary?.audioUrl; as audioUrl) {
           <button type="button" class="btn btn-secondary expression-audio" (click)="playExpression(audioUrl)">
-            <span aria-hidden="true">▶ </span>{{ 'player.listenExpression' | t }}<span class="visually-hidden">: {{ block().vocabulary?.word }}</span>
+            <app-icon name="volume" [size]="16" />{{ 'player.listenExpression' | t }}<span class="visually-hidden">: {{ block().vocabulary?.word }}</span>
           </button>
         }
         @if (block().vocabulary?.translation) {

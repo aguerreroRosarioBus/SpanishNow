@@ -8,8 +8,8 @@
 
   <div class="filters" role="search" [attr.aria-label]="'lessonComments.filters' | t">
     <div class="btn-group" role="group" [attr.aria-label]="'lessonComments.status' | t">
-      <button type="button" class="btn btn-sm" [class.btn-primary]="status() === 'unanswered'" [class.btn-secondary]="status() !== 'unanswered'" [attr.aria-pressed]="status() === 'unanswered'" (click)="setStatus('unanswered')">{{ 'lessonComments.unanswered' | t }}</button>
-      <button type="button" class="btn btn-sm" [class.btn-primary]="status() === 'all'" [class.btn-secondary]="status() !== 'all'" [attr.aria-pressed]="status() === 'all'" (click)="setStatus('all')">{{ 'lessonComments.all' | t }}</button>
+      <button type="button" class="btn" [class.btn-primary]="status() === 'unanswered'" [class.btn-secondary]="status() !== 'unanswered'" [attr.aria-pressed]="status() === 'unanswered'" (click)="setStatus('unanswered')">{{ 'lessonComments.unanswered' | t }}</button>
+      <button type="button" class="btn" [class.btn-primary]="status() === 'all'" [class.btn-secondary]="status() !== 'all'" [attr.aria-pressed]="status() === 'all'" (click)="setStatus('all')">{{ 'lessonComments.all' | t }}</button>
     </div>
     <div class="filters__field">
       <label for="commentCourse" class="form-label">{{ 'lessonComments.course' | t }}</label>

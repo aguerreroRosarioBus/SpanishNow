@@ -1,6 +1,6 @@
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { TranslatePipe } from '../../../core/i18n/translate.pipe';
-import { Component, computed, inject, OnInit, Input, Output, EventEmitter, signal, effect, untracked } from '@angular/core';
+import { booleanAttribute, Component, computed, inject, OnInit, Input, Output, EventEmitter, signal, effect, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { VocabularyService } from '../../../core/services/vocabulary.service';
@@ -24,6 +24,8 @@ export class FlashcardComponent implements OnInit {
   private toastService = inject(ToastService);
 
   @Input() unitId?: number;
+  /** Dentro de la ventana de práctica: sin «Volver» ni título propio (los pone la ventana). */
+  @Input({ transform: booleanAttribute }) embedded = false;
   /** Si viene con ids, solo se muestran esas palabras (las de la historia actual); vacío o ausente: toda la unidad. */
   @Input() vocabularyIds?: number[] | null;
   @Output() allViewed = new EventEmitter<void>();

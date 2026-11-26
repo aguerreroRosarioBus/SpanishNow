@@ -76,6 +76,9 @@ $input-btn-focus-color: rgba(232, 99, 43, 0.25);
    ============================================ */
 
 :root {
+  /* Alto común de botones, inputs y selects: los que comparten fila quedan parejos (antes .btn 36 px e inputs 40 px). */
+  --control-height: 40px;
+
   /* Marca (logo) */
   --color-brand: #e8632b;
   --color-coral: #e5544e;
@@ -305,7 +308,7 @@ a {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 36px;
+  height: var(--control-height);
   font-family: var(--font-body);
   font-weight: 600;
   line-height: 1;
@@ -684,9 +687,10 @@ a {
   color: var(--color-text);
 }
 
-.form-control:not(textarea):not(.form-control-sm):not(.form-control-lg),
-.form-select:not(.form-select-sm):not(.form-select-lg) {
-  min-height: 40px;
+.form-control:not(textarea):not(.form-control-sm):not(.form-control-lg):not([type='file']),
+.form-select:not(.form-select-sm):not(.form-select-lg):not([multiple]):not([size]) {
+  height: var(--control-height);
+  min-height: var(--control-height);
 }
 
 .form-control::placeholder {
