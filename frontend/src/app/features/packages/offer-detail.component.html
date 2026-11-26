@@ -53,7 +53,7 @@
         </section>
       </article>
       <aside class="offer-checkout" aria-labelledby="offerPrice">
-        <span class="offer-status" [attr.data-status]="o.status">{{ ('packages.offer.status.'+o.status) | t }}</span>
+        <span class="offer-status" [attr.data-status]="o.status">{{ statusKey() | t }}</span>
         <p id="offerPrice" class="offer-price">{{ i18n.formatMoney(o.amount,o.currency) }}</p>
         <p class="offer-payment-kind">{{ 'packages.ui.onePayment' | t }}</p>
         @if (o.status==='sent' || o.status==='checkout_pending') {
@@ -82,9 +82,11 @@
             <a routerLink="/teacher/class-offers/new" [queryParams]="{conversationId:o.conversationId,replacesOfferId:o.id,cohortId:o.cohortId}">{{ 'packages.offer.replace' | t }}</a>
           </details>
         }
-        <button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="reload()"><app-icon name="rotate" [size]="16" />{{ 'packages.offer.refresh' | t }}</button>
-        @if (o.status!=='sent' && o.status!=='checkout_pending') {
-          <p class="offer-deadline">{{ 'packages.offer.expires' | t:{time:instant(o.expiresAt),zone:fmt.timeZone()} }}</p>
+        @if (o.status==='draft' || o.status==='sent' || o.status==='checkout_pending') {
+          <button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="reload()"><app-icon name="rotate" [size]="16" />{{ 'packages.offer.refresh' | t }}</button>
+        }
+        @if (o.status==='expired') {
+          <p class="offer-deadline">{{ 'packages.offer.expiredOn' | t:{time:instant(o.expiresAt),zone:fmt.timeZone()} }}</p>
         }
       </aside>
     </div>

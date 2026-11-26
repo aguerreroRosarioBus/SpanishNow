@@ -12,6 +12,7 @@ import { RefundRequestComponent } from './refund-request.component';
 import { ClassPurchase } from './packages.model';
 import { presentInstant } from '../../core/time/class-time';
 import { PackageOrientationComponent } from './package-orientation.component';
+import { formatPackageValidity } from './package-validity';
 import { isClosedPurchase, purchaseStatusKey, purchaseTone, refundKind } from './purchase-state';
 @Component({selector:'app-class-purchases',standalone:true,imports:[FormsModule,RouterLink,TranslatePipe,RefundRequestComponent,PackageOrientationComponent],styleUrl:'./purchases.component.scss',template:`
 <div class="page-container"><h1>{{ 'packages.purchase.title' | t }}</h1>
@@ -39,6 +40,7 @@ import { isClosedPurchase, purchaseStatusKey, purchaseTone, refundKind } from '.
       <p class="expiry">{{(p.status==='expired'?'packages.purchase.expiredOn':'packages.purchase.expires')|t:{day:e.day} }}</p>
       <p class="muted">{{'packages.purchase.expiryExact'|t:{time:e.time,zone:e.timeZone,offset:e.offsetLabel} }}</p>
     }
+    @if(p.status==='paused'){<p class="muted">{{'packages.purchase.pausedNote'|t:{date:pauseResume(p)} }}</p>}
     </div><div class="card-actions primary-action">      @if(primary(p)==='schedule'){<a class="btn btn-primary" routerLink="/schedule" [attr.aria-label]="label(teacher?'packages.purchase.scheduleTeacher':'packages.purchase.scheduleStudent',p)">{{(teacher?'packages.purchase.scheduleTeacher':'packages.purchase.scheduleStudent')|t}}</a>}
       @else{<button type="button" class="btn btn-primary" [disabled]="busy()" [attr.aria-label]="label(teacher?'packages.purchase.renew':'packages.purchase.contact',p)" (click)="conversation(p,teacher)">{{(teacher?'packages.purchase.renew':'packages.purchase.contact')|t}}</button>}
 </div>
@@ -49,14 +51,23 @@ import { isClosedPurchase, purchaseStatusKey, purchaseTone, refundKind } from '.
       @if(!teacher && !id){<a class="btn btn-secondary" [routerLink]="['/class-packages',p.id]" [attr.aria-label]="label('packages.purchase.history',p)">{{ 'packages.purchase.history' | t }}</a>}
       @if(primary(p)==='schedule'){<button type="button" class="btn btn-secondary" [disabled]="busy()" [attr.aria-label]="label(teacher?'packages.purchase.renew':'packages.purchase.contact',p)" (click)="conversation(p,teacher)">{{(teacher?'packages.purchase.renew':'packages.purchase.contact')|t}}</button>}
       @if(!teacher && p.buyerId===auth.currentUser()?.id){
-        @if(p.status==='active' && p.pauseCount<p.snapshot.policy.maxPauses){<button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="change(p,'pause')">{{'packages.purchase.pause'|t}}</button>}
+        @if(p.status==='active' && p.pauseCount<p.snapshot.policy.maxPauses){<button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="pauseId.set(p.id);cancelId.set(0);blocked.set(null)">{{'packages.purchase.pause'|t}}</button>}
+        @if(p.status==='active' && p.snapshot.policy.maxPauses>0 && p.pauseCount>=p.snapshot.policy.maxPauses){<p class="muted">{{'packages.purchase.pauseUsed'|t}}</p>}
         @if(p.status==='paused'){<button type="button" class="btn btn-secondary" [disabled]="busy()" (click)="change(p,'resume')">{{'packages.purchase.resume'|t}}</button>}
         @if(p.status==='active'||p.status==='paused'){
-          <button type="button" class="btn btn-ghost card-actions-end" [disabled]="busy()" (click)="cancelId.set(p.id)">{{'packages.purchase.cancel'|t}}</button>
+          <button type="button" class="btn btn-ghost card-actions-end" [disabled]="busy()" (click)="cancelId.set(p.id);pauseId.set(0);blocked.set(null)">{{'packages.purchase.cancel'|t}}</button>
         }
       }
     </div>
     </details>
+    @if(pauseId()===p.id){
+      <div class="confirm"><p>{{'packages.purchase.pauseNote'|t:{limit:pauseLimit(p),date:pauseUntil(p)} }}</p>
+      <button type="button" class="btn btn-primary btn-sm mt-2" [disabled]="busy()" (click)="change(p,'pause')">{{'packages.purchase.pauseConfirm'|t}}</button>
+      <button type="button" class="btn btn-ghost btn-sm mt-2" [disabled]="busy()" (click)="pauseId.set(0)">{{'common.cancel'|t}}</button></div>
+    }
+    @if(blocked();as b){@if(b.id===p.id){<div class="alert alert-warning" role="alert"><p>{{(b.sessions.length?'packages.purchase.blocked':'packages.purchase.blockedReserved')|t:{count:b.count} }}</p>
+      @if(b.sessions.length){<ul>@for(s of b.sessions;track s.id){<li>{{instant(s.startsAt)}}</li>}</ul>}
+      <a class="btn btn-secondary btn-sm" routerLink="/schedule">{{'packages.purchase.openSchedule'|t}}</a></div>}}
     @if(cancelId()===p.id){
       <div class="confirm"><p>{{'packages.purchase.cancelNote'|t}}</p><label [for]="'reason-'+p.id" class="form-label mt-2">{{'packages.offer.cancelReason'|t}}</label>
       <input [id]="'reason-'+p.id" class="form-control" maxlength="500" [ngModel]="reason()" (ngModelChange)="reason.set($event)">
@@ -80,8 +91,8 @@ export class PurchasesComponent implements OnInit{
       .slice().sort((a,b)=>Number(b.status==='active'&&b.balance.available>0)-Number(a.status==='active'&&a.balance.available>0)||Date.parse(a.expiresAt)-Date.parse(b.expiresAt)||a.id-b.id);
   });
   readonly extras=['reserved','consumed','expired','refunded'] as const;
-  items=signal<ClassPurchase[]>([]);busy=signal(false);cancelId=signal(0);reason=signal('');private failure=signal<unknown>(null);error=computed(()=>this.failure()?this.api.error(this.failure()):'');
-  ngOnInit(){this.destroy.onDestroy(()=>this.requests.unsubscribe());this.route.paramMap.pipe(takeUntilDestroyed(this.destroy)).subscribe(p=>{this.requests.unsubscribe();this.requests=new Subscription();this.id=Number(p.get('id'))||0;this.items.set([]);this.cancelId.set(0);this.reason.set('');this.read();});}
+  items=signal<ClassPurchase[]>([]);busy=signal(false);cancelId=signal(0);pauseId=signal(0);blocked=signal<{id:number;count:number;sessions:{id:number;startsAt:string;status:string}[]}|null>(null);reason=signal('');private failure=signal<unknown>(null);error=computed(()=>this.failure()?this.api.error(this.failure()):'');
+  ngOnInit(){this.destroy.onDestroy(()=>this.requests.unsubscribe());this.route.paramMap.pipe(takeUntilDestroyed(this.destroy)).subscribe(p=>{this.requests.unsubscribe();this.requests=new Subscription();this.id=Number(p.get('id'))||0;this.items.set([]);this.cancelId.set(0);this.pauseId.set(0);this.blocked.set(null);this.reason.set('');this.read();});}
   read(){this.busy.set(true);this.failure.set(null);if(this.id)this.watch(this.api.purchase(this.id),p=>{this.items.set([p]);this.busy.set(false);});else this.watch(this.api.purchases(this.teacher),p=>{this.items.set(p);this.busy.set(false);});}
   tone(status:string){return status==='active'?'success':status==='paused'?'warning':status==='cancelled'?'danger':'neutral';}
   inactive(p:ClassPurchase){return p.status==='expired'||isClosedPurchase(p);}
@@ -114,7 +125,23 @@ export class PurchasesComponent implements OnInit{
   name(p:ClassPurchase){return this.i18n.locale()==='es'?p.snapshot.nameEs:p.snapshot.nameEn;}
   instant(value:string){try{const t=presentInstant(value,this.fmt.timeZone(),this.i18n.locale());return t.day+' '+t.time;}catch{return '';}}
   untilExpiry(p:ClassPurchase){return (Date.parse(p.expiresAt)-Date.now())/3600000;}
-  change(p:ClassPurchase,action:string){if(this.busy())return;this.busy.set(true);this.failure.set(null);this.watch(this.api.changePurchase(p,action,action==='cancel'?this.reason():undefined),()=>{this.cancelId.set(0);this.reason.set('');this.read();});}
+  /** Horas que le quedan de pausa a la compra y cuándo se reanudaría sola si se pausara ahora (D3-DIN-14). */
+  private pauseHoursLeft(p:ClassPurchase){return Math.max(0,p.snapshot.policy.maxPauseHours-(p.pausedHoursUsed||0));}
+  pauseLimit(p:ClassPurchase){return formatPackageValidity(this.i18n,this.pauseHoursLeft(p));}
+  private day(ms:number){try{const t=presentInstant(new Date(ms).toISOString(),this.fmt.timeZone(),this.i18n.locale());return t.day+' '+t.time;}catch{return '';}}
+  pauseUntil(p:ClassPurchase){return this.day(Date.now()+this.pauseHoursLeft(p)*3600000);}
+  pauseResume(p:ClassPurchase){return this.day(Date.parse(p.pausedAt||new Date().toISOString())+this.pauseHoursLeft(p)*3600000);}
+  change(p:ClassPurchase,action:string){
+    if(this.busy())return;this.busy.set(true);this.failure.set(null);this.blocked.set(null);
+    this.requests.add(this.api.changePurchase(p,action,action==='cancel'?this.reason():undefined).subscribe({
+      next:()=>{this.cancelId.set(0);this.pauseId.set(0);this.reason.set('');this.read();},
+      error:e=>{
+        const body=(e as {error?:{code?:string;params?:{sessions?:{id:number;startsAt:string;status:string}[];count?:number}}})?.error;
+        // Lo que impide pausar o cancelar se dice junto a la tarjeta, con las sesiones a resolver (D3-DIN-15).
+        if(body?.code==='sessions_pending_resolution')this.blocked.set({id:p.id,count:body.params?.count??0,sessions:body.params?.sessions??[]});else this.failure.set(e);
+        this.busy.set(false);
+      }}));
+  }
   conversation(p:ClassPurchase,renew:boolean){if(this.busy())return;this.busy.set(true);this.watch(this.api.offer(p.offerId),o=>void this.router.navigate(renew?['/teacher/class-offers/new']:['/messages',o.conversationId],renew?{queryParams:{conversationId:o.conversationId}}:{}));}
   private watch<T>(source:Observable<T>,next:(r:T)=>void){this.requests.add(source.subscribe({next,error:e=>{this.failure.set(e);this.busy.set(false);}}));}
 }

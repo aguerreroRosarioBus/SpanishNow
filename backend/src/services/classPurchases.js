@@ -65,13 +65,19 @@ async function teacherList(user,studentId){
   const buyers=new Map((await User.findAll({where:{id:[...new Set(rows.map(r=>r.buyerId))]},attributes:['id','name']})).map(u=>[u.id,u.name]));
   const result=[];for(const p of rows)result.push({...present(await settle(p.id)),buyerName:buyers.get(p.buyerId)??null});return decorate(result);
 }
-async function unresolved(p,transaction,now){
+// Sesiones que impiden pausar o cancelar: futuras activas o con una propuesta pendiente (D3-DIN-15: se le dicen al comprador).
+async function pendingSessions(p,transaction,now){
   const participants=await Participant.findAll({where:{purchaseId:p.id,status:{[Op.ne]:'cancelled'}},attributes:['sessionId'],transaction});
-  const ids=[...new Set(participants.map(x=>x.sessionId))];if(!ids.length)return p.unitsReserved>0;
+  const ids=[...new Set(participants.map(x=>x.sessionId))];if(!ids.length)return [];
   const sessions=await Session.findAll({where:{id:ids,status:['draft','forming','proposed','confirmed']},transaction});
   const proposals=await Proposal.findAll({where:{sessionId:ids,status:'pending',expiresAt:{[Op.gt]:now}},transaction});
-  return p.unitsReserved>0||sessions.some(s=>!s.endsAt||s.endsAt>now)||proposals.length>0;
+  const proposed=new Set(proposals.map(x=>Number(x.sessionId)));
+  const open=sessions.filter(s=>!s.endsAt||s.endsAt>now);
+  const extra=[...proposed].filter(id=>!open.some(s=>Number(s.id)===id));
+  const more=extra.length?await Session.findAll({where:{id:extra},transaction}):[];
+  return [...open,...more].sort((x,y)=>(x.startsAt?.getTime?.()??0)-(y.startsAt?.getTime?.()??0));
 }
+async function unresolved(p,transaction,now){return p.unitsReserved>0||(await pendingSessions(p,transaction,now)).length>0;}
 async function change(user,id,action,body,{now:clock=new Date()}={}){
   if(!only(body,['version','reason'])||!positive(body.version)||body.reason!==undefined&&(typeof body.reason!=='string'||body.reason.length>500))throw invalid(['version','reason']);
   const ref=await load(user,id);if(ref.buyerId!==user.id)throw fail(404,'not_found');
@@ -82,7 +88,7 @@ async function change(user,id,action,body,{now:clock=new Date()}={}){
       if(p.status!=='paused')throw fail(409,'package_not_active');await resumeLocked(p,transaction,now);
     }else{
       if(!['active','paused'].includes(p.status)||p.status!=='paused'&&p.expiresAt<=now)throw fail(409,'package_not_active');
-      if(await unresolved(p,transaction,now))throw fail(409,'sessions_pending_resolution');
+      {const pending=await pendingSessions(p,transaction,now);if(p.unitsReserved>0||pending.length)throw fail(409,'sessions_pending_resolution',{sessions:pending.slice(0,5).map(x=>({id:Number(x.id),startsAt:x.startsAt,status:x.status})),count:pending.length});}
       if(action==='pause'){
         const rules=p.snapshot.policy;
         if(p.status!=='active'||p.pauseCount>=rules.maxPauses||p.pausedHoursUsed>=rules.maxPauseHours)throw fail(409,'package_not_active');

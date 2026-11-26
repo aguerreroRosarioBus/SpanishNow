@@ -65,7 +65,7 @@ function sameRequest(existing, conversationId, body, replacesOfferId) {
     (existing.replacesOfferId || null) === (replacesOfferId || null) && JSON.stringify(sortedIds(existing.snapshot.beneficiaryIds)) === JSON.stringify(ids);
 }
 async function closePending(row, status, reason, transaction, now) {
-  if(status!=='expired' && await Order.findOne({where:{offerId:row.id,status:'paid_needs_review'},transaction})) throw fail(409,'offer_not_payable');
+  if(status!=='expired' && await Order.findOne({where:{offerId:row.id,status:'paid_needs_review'},transaction})) throw fail(409,'offer_payment_in_review'); // D3-DIN-21: cancelar o reemplazar no cabe con un pago en revisión
   const orders = await Order.findAll({where:{offerId:row.id,status:'pending'},transaction,lock:transaction.LOCK.UPDATE});
   for (const order of orders) await order.update({status:'failed',failedAt:now},{transaction});
   await row.update({status,cancelledAt:status==='expired'?null:now,cancelReason:reason},{transaction});

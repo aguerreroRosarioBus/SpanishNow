@@ -104,3 +104,16 @@ test('D3-DIN-04/09: la compra lleva el saldo ajustado y el estado del reembolso,
   expect((await as(w.buyer).get('/api/me/class-packages')).body.find(p=>p.id===w.p.id).refund).toMatchObject({status:'requested',amount:9000,currency:'USD'});
   expect((await as(w.teacher).get(`/api/teacher/class-purchases?studentId=${w.buyer.id}`)).body.find(p=>p.id===w.p.id).refund.status).toBe('requested');
 });
+test('D3-DIN-15: el rechazo por sesiones pendientes lista las sesiones que hay que resolver',async()=>{
+  const w=await paid();const startsAt=new Date(Date.now()+86400000);
+  const session=await Session.create({teacherId:w.teacher.id,kind:'individual',status:'proposed',version:1,startsAt,endsAt:new Date(startsAt.getTime()+3600000),timeZone:'UTC',localStart:'2026-11-01T10:00',utcOffset:'+00:00',disambiguation:'none',minutes:50});
+  await Participant.create({sessionId:session.id,userId:w.buyer.id,purchaseId:w.p.id,status:'invited'});
+  const r=await change(w,'pause',{version:w.p.version});expect(r.status).toBe(409);expect(r.body.code).toBe('sessions_pending_resolution');
+  expect(r.body.params).toMatchObject({count:1,sessions:[{id:Number(session.id),status:'proposed'}]});expect(Date.parse(r.body.params.sessions[0].startsAt)).toBe(Math.floor(startsAt.getTime()/1000)*1000);
+});
+test('D3-DIN-18: un paquete vencido sigue vencido al confirmarse su reembolso',async()=>{
+  const w=await paid();const now=new Date();await w.p.update({expiresAt:new Date(now-1000)});await purchases.settle(w.p.id);expect((await w.p.reload()).status).toBe('expired');
+  const order=await require('../src/models').ClassPackageOrder.findByPk(w.p.orderId);const payments=require('../src/services/classPayments');
+  await db.transaction(async transaction=>payments.applyRefund?payments.applyRefund(order,await Offer.findByPk(w.offer.id,{transaction}),{refundedAmount:order.amount,operationKey:`refund:order:${order.id}:t`},transaction):null);
+  expect((await w.p.reload()).status).toBe('expired');
+});

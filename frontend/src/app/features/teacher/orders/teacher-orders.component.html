@@ -60,10 +60,10 @@
         <tbody>
           @for (o of rows(); track o.id) {
             <tr>
-              <td>{{ date(o.paidAt ?? o.createdAt) }}</td>
-              <td>{{ o.buyer.name }}<small class="d-block text-secondary-ui">{{ o.buyer.email }}</small></td>
-              <td>{{ o.course.title }}</td>
-              <td class="num">
+              <td [attr.data-label]="'teacherCommerce.date' | t">{{ date(o.paidAt ?? o.createdAt) }}</td>
+              <td [attr.data-label]="'teacherCommerce.buyer' | t">{{ o.buyer.name }}<small class="d-block text-secondary-ui">{{ o.buyer.email }}</small></td>
+              <td [attr.data-label]="'teacherCommerce.course' | t">{{ o.course.title }}</td>
+              <td class="num" [attr.data-label]="'teacherCommerce.amount' | t">
                 {{ money(o.amount, o.currency) }}
                 @if (o.discountAmount > 0 && o.originalAmount) {
                   <small class="d-block text-secondary-ui"><s>{{ money(o.originalAmount, o.currency) }}</s></small>
@@ -72,7 +72,7 @@
                   <small class="d-block text-secondary-ui">{{ 'teacherCommerce.returned' | t: {amount: money(o.refundedAmount, o.currency)} }}</small>
                 }
               </td>
-              <td>
+              <td [attr.data-label]="'teacherCommerce.status' | t">
                 <span class="badge-status" [class.badge-status--published]="badge(o) === 'paid'" [class.badge-status--draft]="badge(o) !== 'paid' && badge(o) !== 'refunded' && badge(o) !== 'partial'"
                       [class.badge-status--warn]="badge(o) === 'partial'" [class.badge-status--danger]="badge(o) === 'refunded' || badge(o) === 'failed'">{{ badgeLabel(o) }}</span>
               </td>
