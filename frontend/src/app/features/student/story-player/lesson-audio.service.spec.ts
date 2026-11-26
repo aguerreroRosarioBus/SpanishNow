@@ -16,6 +16,16 @@ describe('LessonAudioService — AUDIO-01–06', () => {
   });
   afterEach(() => { audio.stop(); vi.unstubAllGlobals(); });
 
+  it('setRate cambia el playbackRate del medio y se aplica a los medios nuevos', () => {
+    audio.prepare('/slow.mp3');
+    audio.setRate(0.75);
+    expect(media().playbackRate).toBe(0.75);
+    audio.stop(); audio.prepare('/normal.mp3');
+    expect(media().playbackRate).toBe(0.75);
+    audio.setRate(1);
+    expect(media().playbackRate).toBe(1);
+  });
+
   it('precarga sin reproducir; no permite seek sin metadata finita y rango disponible', () => {
     audio.prepare('/slow.mp3');
     expect(audio.state()).toBe('loading');

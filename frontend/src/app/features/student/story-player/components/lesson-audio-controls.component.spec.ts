@@ -61,17 +61,42 @@ describe('Controles de audio compartidos', () => {
     expect(audio.currentTime()).toBe(25);
   });
 
-  it('valida límites escritos, marca A/B y conserva controles para salir de repetición', () => {
+  it('el botón Repetir activa el bucle sobre todo el audio y muestra dos manijas accesibles', () => {
     fixture.componentRef.setInput('singleUrl', '/frame.mp3'); fixture.detectChanges(); media().metadata(); fixture.detectChanges();
-    const numbers = [...el().querySelectorAll<HTMLInputElement>('input[type="number"]')];
-    button('Activar repetición').click(); fixture.detectChanges();
-    expect(el().querySelector('[role="alert"]')?.textContent).toContain('0 ≤ A < B');
-    audio.seek(10); button('Marcar A aquí').click();
-    change(numbers[1], '20'); button('Activar repetición').click(); fixture.detectChanges();
+    expect(el().querySelectorAll('.handle').length).toBe(0);
+    expect(el().querySelector('details')).toBeNull();
+    button('🔁 Repetir').click(); fixture.detectChanges();
+    expect(audio.repeat()).toEqual({ a: 0, b: 60 });
+    expect(button('🔁 Repetir').getAttribute('aria-pressed')).toBe('true');
+    const handles = [...el().querySelectorAll<HTMLInputElement>('.handle')];
+    expect(handles.map(h => h.getAttribute('aria-label'))).toEqual(['Inicio del tramo', 'Fin del tramo']);
+    button('🔁 Repetir').click(); fixture.detectChanges();
+    expect(audio.repeat()).toBeNull();
+    expect(el().querySelectorAll('.handle').length).toBe(0);
+  });
+
+  it('al soltar una manija acota el bucle y respeta el tramo mínimo de 0,5 s', () => {
+    fixture.componentRef.setInput('singleUrl', '/frame.mp3'); fixture.detectChanges(); media().metadata(); fixture.detectChanges();
+    button('🔁 Repetir').click(); fixture.detectChanges();
+    const [start, end] = [...el().querySelectorAll<HTMLInputElement>('.handle')];
+    change(start, '10'); expect(audio.repeat()).toEqual({ a: 0, b: 60 });
+    start.dispatchEvent(new Event('change')); fixture.detectChanges();
+    expect(audio.repeat()).toEqual({ a: 10, b: 60 });
+    change(end, '20'); end.dispatchEvent(new Event('change')); fixture.detectChanges();
     expect(audio.repeat()).toEqual({ a: 10, b: 20 });
-    expect(numbers[0].disabled).toBe(true);
-    button('Salir de repetición').click(); fixture.detectChanges();
-    expect(audio.repeat()).toBeNull(); expect(numbers[0].disabled).toBe(false);
+    change(end, '10.1'); end.dispatchEvent(new Event('change')); fixture.detectChanges();
+    expect(audio.repeat()!.b - audio.repeat()!.a).toBeCloseTo(0.5, 5);
+  });
+
+  it('la velocidad 0,75× cambia el playbackRate y se conserva al cambiar de grabación', () => {
+    fixture.componentRef.setInput('slowUrl', '/slow.mp3'); fixture.componentRef.setInput('normalUrl', '/normal.mp3'); fixture.detectChanges();
+    expect(button('1×').getAttribute('aria-pressed')).toBe('true');
+    button('0,75×').click(); fixture.detectChanges();
+    expect(media().playbackRate).toBe(0.75);
+    expect(button('0,75×').getAttribute('aria-pressed')).toBe('true');
+    button('Normal').click(); fixture.detectChanges();
+    expect(media().src).toContain('/normal.mp3');
+    expect(media().playbackRate).toBe(0.75);
   });
 
   it('anuncia la salida de A/B por seek fuera del fragmento y conserva la posición', () => {
@@ -84,8 +109,7 @@ describe('Controles de audio compartidos', () => {
     change(input('range'), '35'); media().emit('timeupdate'); fixture.detectChanges();
     expect(audio.repeat()).toBeNull(); expect(audio.currentTime()).toBe(35);
     expect(notice.textContent).toContain('Repetición desactivada: buscaste fuera');
-    expect(button('Activar repetición')).toBeTruthy();
-    expect(input('number').disabled).toBe(false);
+    expect(button('🔁 Repetir').getAttribute('aria-pressed')).toBe('false');
     locale.set('en'); fixture.detectChanges();
     expect(notice.textContent).toContain('Repeat disabled: you moved outside');
     audio.setRepeat(10, 20); fixture.detectChanges();
@@ -104,11 +128,11 @@ describe('Controles de audio compartidos', () => {
 
   it('reintenta solo el medio y limpia A/B y recursos al cambiar de fuente o destruir', async () => {
     fixture.componentRef.setInput('singleUrl', '/frame.mp3'); fixture.detectChanges(); media().metadata();
-    fixture.componentInstance.a.set('10'); fixture.componentInstance.b.set('20'); media().emit('error'); fixture.detectChanges();
+    media().emit('error'); fixture.detectChanges();
     button('Reintentar audio').click(); await Promise.resolve(); fixture.detectChanges();
     expect(audio.error()).toBe(''); expect(audio.isPlaying()).toBe(true);
     const old = media(); fixture.componentRef.setInput('singleUrl', '/next.mp3'); fixture.detectChanges();
-    expect(old.src).toBe(''); expect(fixture.componentInstance.a()).toBe(''); expect(audio.currentTime()).toBe(0);
+    expect(old.src).toBe(''); expect(audio.currentTime()).toBe(0);
     fixture.destroy(); expect(media().src).toBe(''); expect(audio.state()).toBe('idle');
   });
 });

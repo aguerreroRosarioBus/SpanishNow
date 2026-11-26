@@ -15,41 +15,37 @@
       </button>
       <button type="button" class="btn btn-secondary" (click)="audio.skip(-10)" [disabled]="!audio.canSeek()" [attr.aria-label]="text('audio.back')" [attr.title]="text('audio.back')"><span aria-hidden="true">↶ 10 s</span></button>
       <button type="button" class="btn btn-secondary" (click)="audio.skip(10)" [disabled]="!audio.canSeek()" [attr.aria-label]="text('audio.forward')" [attr.title]="text('audio.forward')"><span aria-hidden="true">10 s ↷</span></button>
+      <button type="button" class="btn btn-secondary" (click)="toggleRepeat()" [disabled]="!audio.canSeek() && !audio.repeat()" [attr.aria-pressed]="!!audio.repeat()">
+        <span aria-hidden="true">🔁 </span>{{ text('audio.repeatButton') }}
+      </button>
+    </div>
+    <div class="rates" role="group" [attr.aria-label]="text('audio.rate')">
+      <button type="button" class="btn btn-secondary" [attr.aria-pressed]="audio.rate() === 0.75" (click)="audio.setRate(0.75)">{{ text('audio.rate075') }}</button>
+      <button type="button" class="btn btn-secondary" [attr.aria-pressed]="audio.rate() === 1" (click)="audio.setRate(1)">{{ text('audio.rate1') }}</button>
     </div>
     <div class="timeline">
       <span class="time" aria-hidden="true">{{ time(audio.currentTime()) }} / {{ time(audio.duration()) }}</span>
-      <input type="range" min="0" [max]="audio.duration() || 0" step="0.1" [value]="audio.currentTime()"
-        [disabled]="!audio.canSeek()" [attr.aria-label]="text('audio.seek')"
-        [attr.aria-valuetext]="time(audio.currentTime()) + ' / ' + time(audio.duration())"
-        [attr.aria-describedby]="!audio.canSeek() ? descriptionId + '-seek' : null"
-        (input)="audio.seek($any($event.target).valueAsNumber)" />
+      <div class="track">
+        <input type="range" min="0" [max]="audio.duration() || 0" step="0.1" [value]="audio.currentTime()"
+          [disabled]="!audio.canSeek()" [attr.aria-label]="text('audio.seek')"
+          [attr.aria-valuetext]="time(audio.currentTime()) + ' / ' + time(audio.duration())"
+          [attr.aria-describedby]="!audio.canSeek() ? descriptionId + '-seek' : null"
+          (input)="audio.seek($any($event.target).valueAsNumber)" />
+        @if (loop(); as l) {
+          <span class="loop-band" aria-hidden="true" [style.left.%]="percent(l.a)" [style.right.%]="100 - percent(l.b)"></span>
+          <input type="range" class="handle" min="0" [max]="audio.duration() || 0" step="0.1" [value]="l.a"
+            [attr.aria-label]="text('audio.loopStart')" [attr.aria-valuetext]="time(l.a)"
+            (input)="moveHandle('a', $any($event.target))" (change)="commitLoop()" />
+          <input type="range" class="handle" min="0" [max]="audio.duration() || 0" step="0.1" [value]="l.b"
+            [attr.aria-label]="text('audio.loopEnd')" [attr.aria-valuetext]="time(l.b)"
+            (input)="moveHandle('b', $any($event.target))" (change)="commitLoop()" />
+        }
+      </div>
     </div>
     @if (!audio.canSeek()) {
       <p class="hint" [id]="descriptionId + '-seek'">{{ text(audio.duration() === null ? 'audio.metadata' : 'audio.noSeek') }}</p>
     }
-    <details class="repeat">
-      <summary>{{ text('audio.repeat') }}</summary>
-      <div class="bounds">
-        <label>{{ text('audio.start') }}
-          <input type="number" min="0" [max]="audio.duration() || 0" step="0.1" inputmode="decimal"
-            [value]="a()" [disabled]="!audio.canSeek() || !!audio.repeat()" [attr.aria-invalid]="invalidRepeat()"
-            [attr.aria-describedby]="invalidRepeat() ? descriptionId + '-invalid' : null" (input)="setBound('a', $any($event.target).value)" />
-        </label>
-        <button type="button" class="btn btn-secondary" [disabled]="!audio.canSeek() || !!audio.repeat()" (click)="mark('a')">{{ text('audio.markStart') }}</button>
-        <label>{{ text('audio.end') }}
-          <input type="number" min="0" [max]="audio.duration() || 0" step="0.1" inputmode="decimal"
-            [value]="b()" [disabled]="!audio.canSeek() || !!audio.repeat()" [attr.aria-invalid]="invalidRepeat()"
-            [attr.aria-describedby]="invalidRepeat() ? descriptionId + '-invalid' : null" (input)="setBound('b', $any($event.target).value)" />
-        </label>
-        <button type="button" class="btn btn-secondary" [disabled]="!audio.canSeek() || !!audio.repeat()" (click)="mark('b')">{{ text('audio.markEnd') }}</button>
-        <button type="button" class="btn btn-secondary" [disabled]="!audio.canSeek() && !audio.repeat()" [attr.aria-pressed]="!!audio.repeat()"
-          (click)="toggleRepeat()">{{ text(audio.repeat() ? 'audio.disableRepeat' : 'audio.enableRepeat') }}</button>
-      </div>
-      @if (invalidRepeat()) {
-        <p class="hint" role="alert" [id]="descriptionId + '-invalid'">{{ text('audio.invalidRepeat') }}</p>
-      }
-      @if (audio.repeat()) { <p class="hint" role="status">{{ text('audio.repeatActive') }}</p> }
-    </details>
+    @if (audio.repeat()) { <p class="hint" role="status">{{ text('audio.repeatActive') }}</p> }
     <div class="hint repeat-notice" role="status" aria-live="polite" aria-atomic="true">
       @if (audio.repeatStoppedBySeek()) { {{ text('audio.repeatStoppedBySeek') }} }
     </div>
