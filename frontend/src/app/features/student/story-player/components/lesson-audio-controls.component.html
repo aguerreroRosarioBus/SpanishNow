@@ -24,14 +24,17 @@
       <div class="timeline">
         <span class="time" aria-hidden="true">{{ time(audio.currentTime()) }}</span>
         <div class="track">
+          <!-- Una sola línea: el tramo repetido se pinta dentro de ella; las manijas son píldoras finas encima. -->
           <input type="range" class="seek" min="0" [max]="audio.duration() || 0" step="0.1" [value]="audio.currentTime()"
+            [class.looping]="!!loop()"
             [style.--progress.%]="percent(audio.currentTime())"
+            [style.--loop-a.%]="loop() ? percent(loop()!.a) : 0"
+            [style.--loop-b.%]="loop() ? percent(loop()!.b) : 0"
             [disabled]="!audio.canSeek()" [attr.aria-label]="text('audio.seek')"
             [attr.aria-valuetext]="time(audio.currentTime()) + ' / ' + time(audio.duration())"
             [attr.aria-describedby]="!audio.canSeek() ? descriptionId + '-seek' : null"
             (input)="audio.seek($any($event.target).valueAsNumber)" />
           @if (loop(); as l) {
-            <span class="loop-band" aria-hidden="true" [style.left.%]="percent(l.a)" [style.right.%]="100 - percent(l.b)"></span>
             <input type="range" class="handle" min="0" [max]="audio.duration() || 0" step="0.1" [value]="l.a"
               [attr.aria-label]="text('audio.loopStart')" [attr.aria-valuetext]="time(l.a)"
               (input)="moveHandle('a', $any($event.target))" (change)="commitLoop()" />
