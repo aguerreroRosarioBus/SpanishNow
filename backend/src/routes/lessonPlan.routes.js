@@ -323,7 +323,8 @@ router.put('/progress/:progressId/current-block', authMiddleware, isStudent, asy
       const currentIndex = visitable.findIndex(b => b.blockKey === progress.lastBlockKey);
       const block = visitable[targetIndex];
       if (!block || block.phase === 'later') fail(400, 'Block is not visitable in this revision');
-      if (targetIndex > currentIndex + 1) fail(409, 'Visit preceding blocks first');
+      // Con la narración terminada, el alumno repasa y puede saltar a cualquier paso de su revisión.
+      if (!progress.narrativeCompleted && targetIndex > currentIndex + 1) fail(409, 'Visit preceding blocks first');
       await progress.update({ lastBlockKey: block.blockKey }, { transaction });
       return { id: progress.id, planId: plan.id, revision: plan.revision, lastBlockKey: progress.lastBlockKey, narrativeCompleted: progress.narrativeCompleted };
     });
